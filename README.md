@@ -229,6 +229,21 @@ and the connectome brain does not, the problem is the brain's parameterisation, 
 - `haltere/sim/tasks.py::observe_from_sensors` is the single place that turns physical quantities into
   the brain's sensory channels; both the simulator and the live pilot go through it.
 
+## Trained brains and where to get them
+
+`artifacts/` holds slim inference checkpoints (parameters only, 12 MB each) that work with the
+committed flight graph in `data/built/`; the
+[GitHub release](https://github.com/skulitom/haltere/releases/tag/v0.1.0) adds the full
+checkpoints with optimizer state and the videos, and `haltere publish-hf` mirrors the artifacts
+and a model card to a Hugging Face model repo.
+
+| checkpoint | trained by | pick it when |
+|---|---|---|
+| `artifacts/ftSmooth_best.pt` | imitation, then flight cost with 50 ms extra latency and a smoothness penalty | flying in Liftoff |
+| `artifacts/ftRobust_best.pt` | imitation, then flight cost with wide domain randomization | the first brain that flew in Liftoff |
+| `artifacts/imJ_best.pt` | imitation of the MLP with the premotor readout | best simulator accuracy |
+| `artifacts/mlp_baseline.pt` | the MLP teacher, no connectome | control experiment |
+
 ## Prior art
 
 - Lappalainen et al. 2024, Nature, connectome-constrained visual-system model (flyvis).

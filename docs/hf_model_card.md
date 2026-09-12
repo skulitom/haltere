@@ -1,0 +1,85 @@
+---
+license: mit
+tags:
+  - connectome
+  - drosophila
+  - computational-neuroscience
+  - drone
+  - fpv
+  - liftoff
+  - pytorch
+  - recurrent-neural-network
+  - imitation-learning
+  - reinforcement-learning
+library_name: pytorch
+pipeline_tag: reinforcement-learning
+---
+
+# Haltere: a fruit-fly connectome brain that flies an FPV drone
+
+A recurrent network whose 30,000 neurons and 2.77 million synaptic connections are copied from the
+[Janelia male CNS connectome v1.0](https://www.janelia.org/project-team/flyem/male-cns-connectome)
+(FlyEM, Cambridge Connectomics, Google Connectomics), trained to fly a quadcopter in the FPV
+simulator [Liftoff](https://store.steampowered.com/app/410340/). The drone's senses are written into
+the fly's own sensory neurons (haltere, wing campaniform, optic-flow, ocellar, Johnston's organ,
+compass and goal cells) and the four stick commands are read out of the wing motor neurons and their
+premotor partners. Synaptic structure and sign are fixed by the connectome; per-synapse gains,
+neuron gains, biases, time constants, sensory encoders and the readout are trained.
+
+Code, training pipeline, Liftoff integration and videos: https://github.com/skulitom/haltere
+
+![The fly brain flying the drone in Liftoff](liftoff_hover.gif)
+
+## Files
+
+| file | what | use |
+|---|---|---|
+| `ftSmooth_best.pt` | recommended brain for Liftoff: fine-tuned with 50 ms extra latency and a smoothness penalty | `haltere liftoff fly ftSmooth_best.pt` |
+| `ftRobust_best.pt` | wide domain randomization; first brain that flew in Liftoff | |
+| `imJ_best.pt` | imitation of the MLP controller with the premotor readout | |
+| `mlp_baseline.pt` | the MLP teacher (no connectome) | control experiment |
+| `flight.npz`, `flight.nodes.parquet`, `flight.meta.json` | the built flight graph: 30,000 neurons, signed synapse counts, named populations | required by every brain checkpoint |
+
+The checkpoints are slim (parameters only, about 12 MB); the graph is loaded next to them. Full
+checkpoints with optimizer state are on the
+[GitHub release](https://github.com/skulitom/haltere/releases/tag/v0.1.0).
+
+## Results
+
+| controller | simulator, full difficulty | Liftoff |
+|---|---|---|
+| MLP baseline | 0.05 m mean error, 100% within 0.5 m | not flown |
+| `imJ_best` (imitation) | 0.22 m, 95% | drifts 1.4 m on the physics stand-in |
+| `ftRobust_best` (+ domain randomization) | 0.20 m, 99.6% | 2 m hover, 0.34 m mean error over 40 s; 3 m square pattern |
+| `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 4x smaller stick jitter at Liftoff-like latency |
+
+Full difficulty: 25 degrees of tilt, 90 deg/s rotation, 1 m/s velocity and 1 m offset at the start,
+targets anywhere in a 6 x 6 x 2 m box, physics jittered by 35%.
+
+## How to use
+
+```bash
+git clone https://github.com/skulitom/haltere && cd haltere
+uv venv --python 3.13 .venv && uv pip install --python .venv/Scripts/python.exe torch --index-url https://download.pytorch.org/whl/cu128
+uv pip install --python .venv/Scripts/python.exe -e ".[dev]"
+# put the files of this repo into artifacts/ and data/built/, then:
+haltere eval artifacts/ftSmooth_best.pt          # simulator evaluation
+haltere render artifacts/ftSmooth_best.pt        # neural activity + drone video
+haltere liftoff doctor                           # everything needed to fly it in Liftoff
+```
+
+## Data
+
+Connectome: male CNS v1.0, Janelia FlyEM, CC BY 4.0, downloaded by `haltere fetch` from
+`gs://flyem-male-cns` (neuron annotations, neurotransmitter predictions, connection weights). Not
+redistributed here.
+
+## Method in one paragraph
+
+Lappalainen et al. 2024-style connectome-constrained RNN (rate units, weights proportional to
+synapse counts with fixed neurotransmitter signs) on a 30k-neuron subgraph of the male CNS (all
+neurons within two synapses of the flight senses and the wing motor neurons, plus the central
+complex and all descending neurons). Trained in a batched differentiable quadrotor simulator with
+Betaflight-style rates and rate PID (Liftoff's own Zetaflight gains) by imitation of an MLP
+controller, then fine-tuned by back-propagation through the simulator with domain randomization.
+Flown in Liftoff through its UDP telemetry and a virtual Xbox controller (ViGEmBus).

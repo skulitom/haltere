@@ -146,6 +146,33 @@ def cmd_export(a):
     print(json.dumps(export_slim(a.ckpt, a.out), indent=1))
 
 
+def cmd_publish_hf(a):
+    """Upload the trained brains, the flight graph and the model card to a Hugging Face model repo."""
+    from huggingface_hub import HfApi
+    api = HfApi()
+    me = api.whoami()
+    role = (me.get('auth', {}).get('accessToken', {}) or {}).get('role')
+    print(f'logged in as {me.get("name")} (token role: {role})')
+    if role == 'read':
+        raise SystemExit('the cached token is read-only: run `.venv\\Scripts\\hf.exe auth login` with a WRITE token '
+                         '(https://huggingface.co/settings/tokens) and retry')
+    repo = a.repo or f'{me["name"]}/haltere'
+    api.create_repo(repo, repo_type='model', exist_ok=True, private=a.private)
+    files = [('docs/hf_model_card.md', 'README.md'), ('docs/liftoff_hover.gif', 'liftoff_hover.gif'),
+             ('docs/liftoff_square.gif', 'liftoff_square.gif'), ('docs/flight.gif', 'flight.gif'),
+             ('data/built/flight.npz', 'flight.npz'), ('data/built/flight.nodes.parquet', 'flight.nodes.parquet'),
+             ('data/built/flight.meta.json', 'flight.meta.json'), ('configs/flight.yaml', 'flight.yaml')]
+    files += [(str(p), p.name) for p in sorted(Path('artifacts').glob('*.pt'))]
+    for src, dst in files:
+        if not Path(src).exists():
+            print(f'  skip {src} (missing)')
+            continue
+        api.upload_file(path_or_fileobj=src, path_in_repo=dst, repo_id=repo, repo_type='model',
+                        commit_message=f'add {dst}')
+        print(f'  uploaded {src} -> {dst}')
+    print(f'https://huggingface.co/{repo}')
+
+
 def cmd_render(a):
     from .viz.render import record_flight, render_video, live_view
     rec = record_flight(a.ckpt, seconds=a.seconds, difficulty=a.difficulty, waypoint_every=a.waypoint_every,
@@ -226,6 +253,11 @@ def main(argv=None):
     s.add_argument('--device', default='cuda')
     s.add_argument('--trajectory', default='', help='save env-0 trajectory to this .npz')
     s.set_defaults(fn=cmd_eval)
+
+    s = sp.add_parser('publish-hf', help='upload artifacts/, the flight graph and the model card to Hugging Face')
+    s.add_argument('--repo', default='', help='model repo id (default: <your account>/haltere)')
+    s.add_argument('--private', action='store_true')
+    s.set_defaults(fn=cmd_publish_hf)
 
     s = sp.add_parser('export', help='write a slim inference checkpoint (parameters only, ~12 MB) for publishing')
     s.add_argument('ckpt')
