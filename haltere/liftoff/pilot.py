@@ -243,7 +243,7 @@ class TelemetryPilot:
                 if na < 0.3 or nb < 0.3:
                     return False
                 ang = np.degrees(np.arccos(np.clip(ra @ rb / (na * nb), -1.0, 1.0)))
-                return ang < 6.0 and 0.4 < na / nb < 2.5
+                return ang < 6.0 and 0.3 < na / nb < 4.0
 
             if self.vision_gate_w is not None:
                 if agrees(cand, self.vision_gate_w):
@@ -274,10 +274,17 @@ class TelemetryPilot:
                 line = gate - start
                 L = float(np.linalg.norm(line))
                 u = line / max(L, 1e-6)
-                carrot = start + u * min(self._line_s + self.vision_lookahead, L)
+                # the range from the apparent width is rough and often short: let the carrot run well past the
+                # estimate (the memory slides forward with fresh sightings; passing is judged by the gate falling behind)
+                L_run = 1.6 * L + 4.0
+                carrot = start + u * min(self._line_s + self.vision_lookahead, L_run)
+                if self._line_s >= L_run - 0.5:                                   # ran out of line without passing it
+                    self.vision_gate_w = None
+                    self._line = None
+                    self.vision_passed_t = now
                 gap = float(np.linalg.norm(pos_w - carrot)) - self.vision_lookahead
                 keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
-                self._line_s = min(self._line_s + self.vision_speed * keep_up * dt, L)
+                self._line_s = min(self._line_s + self.vision_speed * keep_up * dt, L_run)
                 rel_w = carrot - pos_w
                 # altitude: the arches are 4-5 m tall and the taught line passes them 1.2-1.8 m up; fly between
                 # vision_z_min and vision_z_max above the start rather than trusting the detection's elevation
