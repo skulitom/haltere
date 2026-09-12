@@ -28,6 +28,8 @@ class HoverTaskConfig:
     w_dact: float = 0.2
     w_floor: float = 5.0
     w_crash: float = 20.0
+    pos_huber: float = 0.0              # m; > 0: position cost grows linearly beyond this distance (Huber) so that
+                                        # far-behind moving targets do not dominate the smoothness terms
     goal_scale: float = 3.0             # m, saturating scale of goal-vector encoding
     vel_scale: float = 6.0              # m/s
     rate_scale: float = 6.0             # rad/s
@@ -160,6 +162,9 @@ class HoverTask:
         c = self.cfg
         s = self.sim.sensors(st, noise=False)
         pos_err = (st.pos - self.target).pow(2).sum(1)
+        if c.pos_huber > 0:
+            dist = (pos_err + 1e-8).sqrt()
+            pos_err = torch.where(dist < c.pos_huber, pos_err, c.pos_huber * (2 * dist - c.pos_huber))
         vel = st.vel.pow(2).sum(1)
         rate = st.omega.pow(2).sum(1)
         tilt = 1.0 - s['up']
