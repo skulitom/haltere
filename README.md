@@ -234,8 +234,8 @@ and the connectome brain does not, the problem is the brain's parameterisation, 
 `artifacts/` holds slim inference checkpoints (parameters only, 12 MB each) that work with the
 committed flight graph in `data/built/`; the
 [GitHub release](https://github.com/skulitom/haltere/releases/tag/v0.1.0) adds the full
-checkpoints with optimizer state and the videos, and `haltere publish-hf` mirrors the artifacts
-and a model card to a Hugging Face model repo.
+checkpoints with optimizer state and the videos, and the same artifacts with a model card are on Hugging Face:
+[huggingface.co/Skulitom/haltere](https://huggingface.co/Skulitom/haltere) (`haltere publish-hf` mirrors them).
 
 | checkpoint | trained by | pick it when |
 |---|---|---|
