@@ -421,10 +421,8 @@ def cmd_waypoints(a):
     print(f'  haltere liftoff fly runs/imJ_best.pt --waypoints-file {a.out} --advance-radius 1.0')
 
 
-def focus_game_window(title_substring: str = 'Liftoff') -> bool:
-    """Restore and bring the game window to the foreground. Liftoff ignores the controller while its window
-    is unfocused and minimizes itself whenever it loses focus, so the pilot does this at start and before
-    every keystroke it sends. Windows only; returns False when no such window exists."""
+def find_game_window(title_substring: str = 'Liftoff') -> int:
+    """Handle of the first visible window whose title contains the text (0 when none). Windows only."""
     import ctypes
     import ctypes.wintypes as wt
     user32 = ctypes.windll.user32
@@ -441,9 +439,27 @@ def focus_game_window(title_substring: str = 'Liftoff') -> bool:
         return True
 
     user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, wt.HWND, wt.LPARAM)(cb), 0)
-    if not found:
+    return found[0] if found else 0
+
+
+def game_window_active(hwnd: int) -> bool:
+    """True when the game window is in the foreground and not minimized (the only state in which Liftoff
+    reads the controller)."""
+    import ctypes
+    user32 = ctypes.windll.user32
+    return bool(hwnd) and user32.GetForegroundWindow() == hwnd and not user32.IsIconic(hwnd)
+
+
+def focus_game_window(title_substring: str = 'Liftoff') -> bool:
+    """Restore and bring the game window to the foreground. Liftoff ignores the controller while its window
+    is unfocused and minimizes itself whenever it loses focus, so the pilot does this at start, before
+    every keystroke it sends, and whenever it notices the focus is gone. Windows only; returns False when
+    no such window exists."""
+    import ctypes
+    user32 = ctypes.windll.user32
+    hwnd = find_game_window(title_substring)
+    if not hwnd:
         return False
-    hwnd = found[0]
     for _ in range(3):
         if user32.IsIconic(hwnd):
             user32.ShowWindow(hwnd, 9)          # SW_RESTORE
@@ -534,6 +550,9 @@ def cmd_fly(a):
     last_print = 0.0
     last_frame_time = time.time()
     t_begin = time.time()
+    game_hwnd = 0 if a.dry_run else find_game_window(a.capture or 'Liftoff')
+    last_focus_check = 0.0
+    game_active = True
     dists = []
     stick_hist = []
     armed_since = None      # Liftoff arms only after the throttle has been low; hold it low briefly, then ramp in
@@ -556,11 +575,21 @@ def cmd_fly(a):
             last_reset_ts = fr.timestamp
             sticks = pilot.step(fr)
             phase = now - armed_since
+            if game_hwnd and now - last_focus_check > 1.0:
+                # Liftoff drops the controller whenever another window takes the focus (and minimizes itself):
+                # take the focus back, and do not mistake the unresponsive drone for a crash meanwhile
+                last_focus_check = now
+                was_active, game_active = game_active, game_window_active(game_hwnd)
+                if not game_active:
+                    game_active = focus_game_window(a.capture or 'Liftoff')
+                    print(f'[{time.strftime("%H:%M:%S")}] game window had lost the focus; '
+                          + ('restored' if game_active else 'could not restore it'), flush=True)
+                    grounded_since = None
             # crash detection: on the ground and not moving while the brain asks for thrust -> Liftoff will not
             # arm again until the drone is reset; hold the throttle low (and press the reset button if configured)
             alt = float(pilot.last_pos[2])
             still = float(np.linalg.norm(fr.velocity)) < 0.05
-            if phase > a.arm_hold + a.arm_ramp + 1.0 and alt < 0.15 and still and sticks[0] > -0.5:
+            if game_active and phase > a.arm_hold + a.arm_ramp + 1.0 and alt < 0.15 and still and sticks[0] > -0.5:
                 grounded_since = grounded_since or now
                 if now - grounded_since > 1.5 and not crashed:
                     crashed = True
