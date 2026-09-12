@@ -23,6 +23,8 @@ targets moving continuously while the brain follows.
 
 ![Climb and dive in Liftoff](docs/liftoff_climbdive.gif)
 
+![The fly brain following the taught Straw Bale lap at 1.5 m/s, nose along the path](docs/liftoff_race.gif)
+
 The same brain in the training simulator, with the drone drawn in 3D:
 [docs/flight.gif](docs/flight.gif) / [docs/flight.mp4](docs/flight.mp4)
 (`haltere render runs/imJ_best.pt`, or `--live` for a window).
@@ -265,7 +267,8 @@ checkpoints with optimizer state and the videos, and the same artifacts with a m
 
 | checkpoint | trained by | pick it when |
 |---|---|---|
-| `artifacts/ftSmooth_best.pt` | imitation, then flight cost with 50 ms extra latency and a smoothness penalty | flying in Liftoff |
+| `artifacts/ftPath2_best.pt` | the smooth brain fine-tuned on moving targets (two stages: speed, then smoothness back) | following a lap in Liftoff (`--path-speed 1.5 --face-travel 0.8`) |
+| `artifacts/ftSmooth_best.pt` | imitation, then flight cost with 50 ms extra latency and a smoothness penalty | hovering and patterns in Liftoff |
 | `artifacts/ftRobust_best.pt` | imitation, then flight cost with wide domain randomization | the first brain that flew in Liftoff |
 | `artifacts/imJ_best.pt` | imitation of the MLP with the premotor readout | best simulator accuracy |
 | `artifacts/mlp_baseline.pt` | the MLP teacher, no connectome | control experiment |
@@ -330,7 +333,8 @@ checkpoints with optimizer state and the videos, and the same artifacts with a m
 | MLP baseline (`runs/mlp300/best.pt`) | 0.05 m, 100%, 0% | not tested |
 | **connectome brain**, imitation, premotor readout (`runs/imJ_best.pt`) | 0.22 m, 95%, 0% | 1.4 m, no crashes |
 | **connectome brain**, + wide domain randomization (`runs/ftRobust_best.pt`) | 0.20 m, 99.6%, 0% (physics jittered 35%) | **0.55 m, no crashes**; in Liftoff: 0.34 m hover |
-| **connectome brain**, + latency and smoothness fine-tune (`runs/ftSmooth_best.pt`) | 0.30 m, 95%, 0% (50 ms delay) | in Liftoff: 0.35 m hover with a quarter of the stick jitter; orbit and climb-and-dive |
+| **connectome brain**, + latency and smoothness fine-tune (`runs/ftSmooth_best.pt`) | 0.30 m, 95%, 0% (50 ms delay) | in Liftoff: 0.35 m hover with a quarter of the stick jitter; orbit and climb-and-dive; follows the taught lap at 1.2 m/s with 0.9-1.0 m error |
+| **connectome brain**, + moving-target fine-tune (`runs/ftPath2_best.pt`) | 0.37 m, 80%, 2% static; 0.76 m at 1 m/s, 3.1 m at 2 m/s | in Liftoff: follows the taught lap at 1.5 m/s with 0.67 m mean error, 46% of the time within 0.5 m, nose along the path |
 | connectome brain, wing-motor-neuron readout only (`runs/imD2`) | 2.4 m, 0%, 1% | not tested |
 
 Difficulty 1.0 means every drone starts with up to 25 degrees of tilt, 90 deg/s of rotation,
@@ -379,10 +383,15 @@ with a lateral offset of about 1.4 m; fine-tuning on the identified physics is t
   the symptom while holding the throttle low to arm and asks the bridge to re-plug the pad.
 - Racing: a lap of the "Field Day" infinite race on Straw Bale was flown once by hand, turned into
   174 waypoints 3 m apart (`configs/track_strawbale.yaml`, a 601 m loop) and followed as a path.
-  The smooth brain keeps to the line within 0.9 m at 1.2 m/s but falls behind anything faster; the
-  moving-target fine-tune (`runs/ftPath`) tracks 2 m/s targets in the simulator with 1.2 m error
-  where the smooth brain lost them (4.8 m), at the price of a jittery throttle in the game, which a
-  second stage with a static-target share and a stronger smoothness cost addresses.
+  The smooth brain keeps to the line within 0.9-1.0 m at 1.2 m/s but falls behind anything faster.
+  The moving-target fine-tune (`runs/ftPath`, stage 1) tracks 2 m/s targets in the simulator with
+  1.2 m error where the smooth brain lost them (4.8 m), but thrashed the throttle in the game (raw
+  stick std 0.40 against 0.01); stage 2 (`configs/train_path2.yaml`: 30% static targets, Huber
+  position cost, smoothness weight 3) brought the jitter back to the smooth brain's level and kept
+  hover at 0.37 m, giving up most of the speed (3.1 m at 2 m/s in the simulator). In the game the
+  decisive change was not the brain but the heading: with `--face-travel 0.8` the same stage-2
+  brain went from 1.30 m to **0.67 m mean error at 1.5 m/s** (46% of the time within 0.5 m, 3% of
+  the time more than 2 m off), flying through the gates nose first (`docs/liftoff_race.mp4`).
 
 ## Status
 

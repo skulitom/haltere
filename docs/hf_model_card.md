@@ -34,11 +34,14 @@ Code, training pipeline, Liftoff integration and videos: https://github.com/skul
 
 ![Climb and dive in Liftoff](liftoff_climbdive.gif)
 
+![Following a taught race lap in Liftoff, nose along the path](liftoff_race.gif)
+
 ## Files
 
 | file | what | use |
 |---|---|---|
-| `ftSmooth_best.pt` | recommended brain for Liftoff: fine-tuned with 50 ms extra latency and a smoothness penalty | `haltere liftoff fly ftSmooth_best.pt` |
+| `ftPath2_best.pt` | the smooth brain fine-tuned on moving targets (two stages): follows a taught race lap at 1.5 m/s | `haltere liftoff fly ftPath2_best.pt --waypoints-file track.yaml --path-speed 1.5 --face-travel 0.8` |
+| `ftSmooth_best.pt` | fine-tuned with 50 ms extra latency and a smoothness penalty: hover, orbit, climb-and-dive | `haltere liftoff fly ftSmooth_best.pt` |
 | `ftRobust_best.pt` | wide domain randomization; first brain that flew in Liftoff | |
 | `imJ_best.pt` | imitation of the MLP controller with the premotor readout | |
 | `mlp_baseline.pt` | the MLP teacher (no connectome) | control experiment |
@@ -55,7 +58,8 @@ checkpoints with optimizer state are on the
 | MLP baseline | 0.05 m mean error, 100% within 0.5 m | not flown |
 | `imJ_best` (imitation) | 0.22 m, 95% | drifts 1.4 m on the physics stand-in |
 | `ftRobust_best` (+ domain randomization) | 0.20 m, 99.6% | 2 m hover, 0.34 m mean error over 40 s; 3 m square pattern |
-| `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 2 m hover, 0.35 m mean error with a quarter of the stick jitter; orbit (0.75 m tracking error at 0.8 m/s) and climb-and-dive (1.1 m at about 1 m/s), no crashes |
+| `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 2 m hover, 0.35 m mean error with a quarter of the stick jitter; orbit (0.75 m tracking error at 0.8 m/s) and climb-and-dive (1.1 m at about 1 m/s), no crashes; taught lap at 1.2 m/s with 0.9-1.0 m error |
+| `ftPath2_best` (+ moving targets) | 0.37 m, 80% static; 0.76 m following a 1 m/s target, 3.1 m at 2 m/s | taught race lap at 1.5 m/s with 0.67 m mean error, 46% of the time within 0.5 m, flying through the gates nose first |
 
 Full difficulty: 25 degrees of tilt, 90 deg/s rotation, 1 m/s velocity and 1 m offset at the start,
 targets anywhere in a 6 x 6 x 2 m box, physics jittered by 35%.
@@ -86,4 +90,8 @@ neurons within two synapses of the flight senses and the wing motor neurons, plu
 complex and all descending neurons). Trained in a batched differentiable quadrotor simulator with
 Betaflight-style rates and rate PID (Liftoff's own Zetaflight gains) by imitation of an MLP
 controller, then fine-tuned by back-propagation through the simulator with domain randomization.
-Flown in Liftoff through its UDP telemetry and a virtual Xbox controller (ViGEmBus).
+Flown in Liftoff through its UDP telemetry and a virtual Xbox controller (ViGEmBus). The lap brain
+was fine-tuned on targets drifting at up to 3 m/s (`configs/train_path.yaml`), then on a mix with
+30% static targets, a Huber position cost and a stronger smoothness penalty (`train_path2.yaml`).
+The brain has no camera and no heading objective; the pilot's `--face-travel` yaws the nose toward
+the next point on the path so the FPV view looks where it flies.
