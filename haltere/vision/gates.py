@@ -140,8 +140,10 @@ def next_gate_index(pos: np.ndarray, gates: list[dict], passed_margin: float = 1
     return None if best is None else best[0]
 
 
-def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: Camera, next_only: bool = True) -> dict:
-    """Label for one frame: the next gate's pixel centre, apparent width and distance (if it is in the image).
+def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: Camera, next_only: bool = True,
+               max_dist_m: float = 45.0, min_width_px: float = 22.0) -> dict:
+    """Label for one frame: the next gate's pixel centre, apparent width and distance (if it is in the image and
+    close enough to be seen: within max_dist_m and at least min_width_px wide).
     Returns {'visible': 0/1, 'u', 'v' (pixels), 'width_px', 'dist_m', 'gate': index}."""
     i = next_gate_index(pos, gates)
     if i is None:
@@ -161,4 +163,5 @@ def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: C
     u, v = px[0]
     inside = -0.1 * cam.width <= u <= 1.1 * cam.width and -0.1 * cam.height <= v <= 1.1 * cam.height
     width_px = float(np.linalg.norm(px[1] - px[2]))
-    return {'visible': int(inside), 'u': float(u), 'v': float(v), 'width_px': width_px, 'dist_m': dist, 'gate': i}
+    visible = inside and dist <= max_dist_m and width_px >= min_width_px
+    return {'visible': int(visible), 'u': float(u), 'v': float(v), 'width_px': width_px, 'dist_m': dist, 'gate': i}

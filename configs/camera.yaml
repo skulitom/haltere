@@ -1,0 +1,9 @@
+width: 640
+height: 360
+f: 345.0
+tilt_deg: 30.0
+hfov_deg: 85.8
+error_deg: 0.6
+pairs: 150
+dataset: data/vision/run1
+note: calibrated 330-355 px (early/full); tilt from the .drone file
