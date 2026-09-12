@@ -117,6 +117,7 @@ class TelemetryPilot:
         self.last_pos = np.zeros(3)
         self.filtered = None
         self.path_progress = 0.0
+        self._last_t = None
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -124,10 +125,14 @@ class TelemetryPilot:
         if not self.waypoints:
             return self.offset
         if self.path_speed > 0:
-            # progress along the path only as fast as the drone keeps up: advance the carrot when the drone is near it
+            # progress along the path only as fast as the drone keeps up: the carrot slows down smoothly as the
+            # drone falls behind it (a hard stop/go gate excited a ~0.5 Hz pitch oscillation in Liftoff)
+            dt = 0.0 if self._last_t is None else float(np.clip(t - self._last_t, 0.0, 0.05))
+            self._last_t = t
             carrot = self.path_point(self.path_progress + self.path_lookahead)
-            if np.linalg.norm(self.last_pos - carrot) < self.path_lookahead + 1.0:
-                self.path_progress += self.path_speed * 0.01
+            gap = float(np.linalg.norm(self.last_pos - carrot)) - self.path_lookahead
+            keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
+            self.path_progress += self.path_speed * keep_up * dt
             self.wp_index = int(np.searchsorted(self.path_s, self.path_progress % self.path_s[-1], side='right') - 1)
             return carrot
         if self.advance_radius > 0:
