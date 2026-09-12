@@ -394,7 +394,12 @@ with a lateral offset of about 1.4 m; fine-tuning on the identified physics is t
   decisive change was not the brain but the heading: with `--face-travel 0.8` the same stage-2
   brain went from 1.30 m to **0.67 m mean error at 1.5 m/s** (46% of the time within 0.5 m, 3% of
   the time more than 2 m off), flying through the gates nose first (`docs/liftoff_race.mp4`). At
-  2 m/s it still keeps up, with 1.5 m mean error; the human lap on this track runs at 14 m/s.
+  2 m/s it still keeps up, with 1.5 m mean error; the human lap on this track runs at 14 m/s. A
+  third stage with moderate smoothing (`configs/train_path3.yaml`, run `ftPath3`) scored better
+  than stage 2 in the simulator on every count (hover 0.29 m, 0.61 m at 1 m/s, 2.3 m at 2 m/s,
+  same jitter) yet flew slightly worse in the game on the same lap segment (0.70 m against
+  0.59 m, with more stick movement): the simulator ranking does not transfer at this level of
+  detail, so the game decides which brain ships.
 
 ## Status
 
