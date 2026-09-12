@@ -112,6 +112,7 @@ class TelemetryPilot:
         self._no_gate_since = None             # when the drone last lost sight of every gate (search yaw after a while)
         self.vision_search_yaw = -0.12         # yaw stick while searching (negative = nose turns left)
         self.vision_fly_on = 4.0               # s to keep flying straight after passing a gate, then look around
+        self.vision_z_min, self.vision_z_max = 1.6, 3.5   # m above the start: the altitude band flown by sight
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
@@ -232,22 +233,29 @@ class TelemetryPilot:
                         dist = 0.5 * dist + 0.5 * float(np.linalg.norm(rel))
             cand = pos_w + dw * dist
         if cand is not None:
-            tol = max(1.5, 0.15 * float(np.linalg.norm(cand - pos_w)))   # tolerance grows with the distance
             self._cand_hist = [(t, c, q) for t, c, q in self._cand_hist if now - t < 2.5] + [(now, cand, pos_w.copy())]
+
+            def agrees(a, b):
+                """Two gate estimates agree when seen along nearly the same bearing from here; the distance along
+                the line of sight is allowed to differ a lot (the apparent-width range is rough)."""
+                ra, rb = a - pos_w, b - pos_w
+                na, nb = np.linalg.norm(ra), np.linalg.norm(rb)
+                if na < 0.3 or nb < 0.3:
+                    return False
+                ang = np.degrees(np.arccos(np.clip(ra @ rb / (na * nb), -1.0, 1.0)))
+                return ang < 6.0 and 0.4 < na / nb < 2.5
+
             if self.vision_gate_w is not None:
-                anchor, atol = self._gate_anchor
-                if np.linalg.norm(cand - self.vision_gate_w) < tol and np.linalg.norm(cand - anchor) < atol:
-                    self.vision_gate_w = 0.85 * self.vision_gate_w + 0.15 * cand      # refine the remembered position
+                if agrees(cand, self.vision_gate_w):
+                    self.vision_gate_w = 0.7 * self.vision_gate_w + 0.3 * cand       # slide toward the fresh estimate
                     self._agree_t = now
                 elif now - self._agree_t > 1.0:            # sightings have disagreed with the memory for a second
                     self.vision_gate_w = None
                     self._line = None
             if self.vision_gate_w is None:
                 for t, c, q in self._cand_hist:
-                    if now - t >= 0.7 and np.linalg.norm(cand - c) < tol:
-                        self.vision_gate_w = cand                                    # steady in the world: a gate
-                        # a real gate never moves: later refinements may not drift far from this first position
-                        self._gate_anchor = (cand.copy(), max(3.0, 0.2 * float(np.linalg.norm(cand - pos_w))))
+                    if now - t >= 0.7 and agrees(cand, c):
+                        self.vision_gate_w = cand                                    # steady bearing: a gate
                         break
                 if self.vision_gate_w is not None:
                     self._agree_t = now
@@ -258,7 +266,7 @@ class TelemetryPilot:
             start, _ = self._line
             gate = self.vision_gate_w
             to_gate_b = R.T @ (gate - pos_w)
-            if to_gate_b[0] < -0.5 or np.linalg.norm(gate - pos_w) < 0.7:     # passed (or reached) the gate
+            if to_gate_b[0] < -0.5:                                            # the gate is behind: passed it
                 self.vision_gate_w = None
                 self._line = None
                 self.vision_passed_t = now
@@ -271,10 +279,11 @@ class TelemetryPilot:
                 keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
                 self._line_s = min(self._line_s + self.vision_speed * keep_up * dt, L)
                 rel_w = carrot - pos_w
-                # the detector marks the gate's visual centre (1.5 m above the flight line): aim 1 m below it and
-                # do not climb or dive more than 1 m per goal (Liftoff's throttle map drifts upward otherwise)
-                rel_w[2] = float(np.clip(rel_w[2] - 1.0, -1.5, 1.0))
-                self._z_ref = float(pos_w[2] + rel_w[2])
+                # altitude: the arches are 4-5 m tall and the taught line passes them 1.2-1.8 m up; fly between
+                # vision_z_min and vision_z_max above the start rather than trusting the detection's elevation
+                z_goal = float(np.clip(carrot[2] - 1.0, self.vision_z_min, self.vision_z_max))
+                rel_w[2] = float(np.clip(z_goal - pos_w[2], -1.5, 1.0))
+                self._z_ref = z_goal
                 self._hold_w = None
                 self._no_gate_since = None
                 speed = float(np.linalg.norm(self.last_vel))
@@ -283,7 +292,7 @@ class TelemetryPilot:
                                       + (f' p={det.p_visible:.2f}' if plausible else ''))
                 return R.T @ rel_w
         if self._z_ref is None:
-            self._z_ref = float(pos_w[2]) + 1.5 if pos_w[2] < 0.5 else float(pos_w[2])
+            self._z_ref = float(np.clip(pos_w[2], self.vision_z_min, self.vision_z_max))
         dz = float(np.clip(self._z_ref - pos_w[2], -2.0, 2.0))
         if self.vision_passed_t is not None and now - self.vision_passed_t < self.vision_fly_on:
             self._hold_w = None
