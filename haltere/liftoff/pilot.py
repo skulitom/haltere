@@ -98,7 +98,7 @@ class TelemetryPilot:
         self.vision_thresh = 0.5
         self.vision_stale = 0.5                # s; older detections are not trusted
         self.vision_gate_w = None              # remembered position of the gate last seen (world, sim frame)
-        self.vision_max_dist = 8.0             # m; the goal never points further than this (the goal saturates anyway)
+        self.vision_max_dist = 2.5             # m; the goal is a direction: keep it as short as the path carrot
         self._vision_cand = None
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
@@ -194,14 +194,18 @@ class TelemetryPilot:
                 self.vision_gate_w = 0.7 * self.vision_gate_w + 0.3 * cand_w      # smooth the remembered position
             if self.vision_gate_w is not None:
                 rel_b = R.T @ (self.vision_gate_w - pos_w)
+                n = np.linalg.norm(rel_b)
+                if n > self.vision_max_dist:
+                    rel_b = rel_b / n * self.vision_max_dist
                 self.vision_passed_t = None
                 self.vision_status = f'gate seen p={det.p_visible:.2f} {det.dist_m:.1f} m'
                 return rel_b
         if self.vision_gate_w is not None:
             rel_b = R.T @ (self.vision_gate_w - pos_w)
-            if rel_b[0] > -0.5 and np.linalg.norm(rel_b) > 0.5:
-                self.vision_status = f'remembered gate {np.linalg.norm(rel_b):.1f} m'
-                return rel_b
+            n = np.linalg.norm(rel_b)
+            if rel_b[0] > -0.5 and n > 0.5:
+                self.vision_status = f'remembered gate {n:.1f} m'
+                return rel_b / n * min(n, self.vision_max_dist)
             self.vision_gate_w = None          # passed it: fly on a little so the next gate comes into view
             self.vision_passed_t = now
         if self.vision_passed_t is not None and now - self.vision_passed_t < 4.0:
