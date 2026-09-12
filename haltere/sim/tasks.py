@@ -44,12 +44,15 @@ class HoverTaskConfig:
 
 
 def observe_from_sensors(s: dict[str, torch.Tensor], target: torch.Tensor, motor_mean: torch.Tensor,
-                         c: HoverTaskConfig) -> dict[str, torch.Tensor]:
+                         c: HoverTaskConfig, rel_b: torch.Tensor | None = None) -> dict[str, torch.Tensor]:
     """Turn a sensor dict (see QuadSim.sensors; also produced from Liftoff telemetry) into the brain's
-    sensory channels. Shared by the simulator and the Liftoff runtime so both see identical inputs."""
-    rel = target - s['pos']
-    rel_b = rotate_inv(s['quat'], rel)
-    dist = rel.norm(dim=1, keepdim=True)
+    sensory channels. Shared by the simulator and the Liftoff runtime so both see identical inputs.
+    ``rel_b`` (B, 3), the goal vector already expressed in the body frame, replaces the target - position
+    computation: the vision pilot gets it from the gate detector instead of from telemetry positions."""
+    if rel_b is None:
+        rel = target - s['pos']
+        rel_b = rotate_inv(s['quat'], rel)
+    dist = rel_b.norm(dim=1, keepdim=True)
     goal = torch.cat([torch.tanh(rel_b / c.goal_scale), torch.tanh(dist / c.goal_scale)], dim=1)
     yaw = s['yaw']
     compass = torch.cat([torch.cos(yaw), torch.sin(yaw)], dim=1)

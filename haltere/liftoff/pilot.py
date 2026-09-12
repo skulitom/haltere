@@ -91,6 +91,13 @@ class TelemetryPilot:
         # has no camera and no heading objective, so on its own it flies sideways; this keeps the FPV view
         # looking along the path. Positive yaw stick = nose right (Betaflight convention, verified in the sim).
         self.face_gain, self.face_max = face_gain, face_max
+        # vision: a GateVision object supplies the goal instead of telemetry positions (see haltere.vision.runtime)
+        self.vision = None
+        self.vision_thresh = 0.5
+        self.vision_stale = 0.5                # s; older detections are not trusted
+        self.vision_gate_w = None              # remembered position of the gate last seen (world, sim frame)
+        self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
+        self.vision_status = 'no vision'
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
         if self.waypoints:
@@ -124,6 +131,8 @@ class TelemetryPilot:
         self.filtered = None
         self.path_progress = 0.0
         self._last_t = None
+        self.vision_gate_w = None
+        self.vision_passed_t = None
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -156,6 +165,32 @@ class TelemetryPilot:
         self.wp_index = i
         return self.waypoints[i]
 
+    def vision_goal(self, pos_w: np.ndarray) -> np.ndarray:
+        """Body-frame goal vector from the gate detector: the gate in view, else the remembered gate, else fly
+        on briefly after passing a gate, else hover in place."""
+        import time as _time
+        det = self.vision.get()
+        now = _time.time()
+        R = self.last_R
+        if det.p_visible >= self.vision_thresh and now - det.t < self.vision_stale and det.dist_m > 0.5:
+            rel_b = det.direction_body * det.dist_m
+            self.vision_gate_w = pos_w + R @ rel_b
+            self.vision_passed_t = None
+            self.vision_status = f'gate seen p={det.p_visible:.2f} {det.dist_m:.1f} m'
+            return rel_b
+        if self.vision_gate_w is not None:
+            rel_b = R.T @ (self.vision_gate_w - pos_w)
+            if rel_b[0] > -0.5 and np.linalg.norm(rel_b) > 0.5:
+                self.vision_status = f'remembered gate {np.linalg.norm(rel_b):.1f} m'
+                return rel_b
+            self.vision_gate_w = None          # passed it: fly on a little so the next gate comes into view
+            self.vision_passed_t = now
+        if self.vision_passed_t is not None and now - self.vision_passed_t < 4.0:
+            self.vision_status = 'flying on past the gate'
+            return np.array([2.5, 0.0, 0.0])
+        self.vision_status = 'no gate: hovering'
+        return np.zeros(3)
+
     def rates(self) -> np.ndarray | None:
         """Current firing rates of all neurons (for the live recorder)."""
         if 'v' not in self.state:
@@ -169,6 +204,7 @@ class TelemetryPilot:
         pos = unity_vec_to_sim(fr.position) - self.pos0
         vel = unity_vec_to_sim(fr.velocity)
         R = quat_wxyz_to_mat(q)
+        self.last_R = R
         gravity_body = R.T @ np.array([0.0, 0.0, -1.0])
         vel_body = R.T @ vel
         if self.map.use_quat_rates and self.prev_quat is not None and self.prev_t is not None:
@@ -191,19 +227,31 @@ class TelemetryPilot:
             self.reset(fr)
         self.last_timestamp = fr.timestamp
         s = self.sensors(fr)
-        target = torch.as_tensor(self.target_at(fr.timestamp - (self.t_start or 0.0)), dtype=torch.float32,
-                                 device=self.device)[None]
+        rel_b_t = None
+        if self.vision is not None:
+            rel_b = self.vision_goal(s['pos'][0].cpu().numpy())
+            rel_b_t = torch.as_tensor(rel_b, dtype=torch.float32, device=self.device)[None]
+            target = torch.as_tensor(s['pos'][0].cpu().numpy() + self.last_R @ rel_b, dtype=torch.float32,
+                                     device=self.device)[None]
+        else:
+            target = torch.as_tensor(self.target_at(fr.timestamp - (self.t_start or 0.0)), dtype=torch.float32,
+                                     device=self.device)[None]
         rpm = np.asarray(fr.motor_rpm, dtype=np.float64)
         motor_mean = float(np.clip(rpm.mean() / self.map.max_rpm, 0, 1)) if rpm.size else 0.5
-        obs = observe_from_sensors(s, target, torch.tensor([[motor_mean]], device=self.device), self.cfg)
+        obs = observe_from_sensors(s, target, torch.tensor([[motor_mean]], device=self.device), self.cfg, rel_b=rel_b_t)
         act, self.state, _ = self.brain(obs, self.state, self.W)
         a = act[0].cpu().numpy().astype(np.float64)
         a[1:] *= self.stick_gain
         if self.face_gain > 0:
-            rel = target[0].cpu().numpy() - s['pos'][0].cpu().numpy()
-            if np.hypot(rel[0], rel[1]) > 0.8:
-                err = np.angle(np.exp(1j * (np.arctan2(rel[1], rel[0]) - float(s['yaw'].flatten()[0]))))
-                a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))
+            if rel_b_t is not None:
+                rel_b = rel_b_t[0].cpu().numpy()
+                err = float(np.arctan2(rel_b[1], rel_b[0])) if np.hypot(rel_b[0], rel_b[1]) > 0.8 else 0.0
+            else:
+                rel = target[0].cpu().numpy() - s['pos'][0].cpu().numpy()
+                err = 0.0
+                if np.hypot(rel[0], rel[1]) > 0.8:
+                    err = np.angle(np.exp(1j * (np.arctan2(rel[1], rel[0]) - float(s['yaw'].flatten()[0]))))
+            a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))
         if self.stick_lpf > 0:
             dt = max(fr.timestamp - self.prev_t, 1e-3) if self.prev_t is not None else 0.01
             alpha = min(1.0, dt / self.stick_lpf)
@@ -220,6 +268,7 @@ class TelemetryPilot:
                 sticks[i] *= 0.97 / n
                 sticks[j] *= 0.97 / n
         self.last_obs = obs
+        self.last_quat = s['quat'][0].cpu().numpy()
         self.last_target = target[0].cpu().numpy()
         self.last_pos = s['pos'][0].cpu().numpy()
         return np.clip(sticks, -1.0, 1.0)

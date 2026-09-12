@@ -194,6 +194,34 @@ def cmd_liftoff(a):
     getattr(commands, f'cmd_{a.liftoff_cmd.replace("-", "_")}')(a)
 
 
+def cmd_vision(a):
+    import yaml
+    from .vision.camera import Camera
+    if a.vision_cmd == 'calibrate':
+        from .vision.calibrate import calibrate
+        tilts = [float(x) for x in a.tilts.split(',')] if a.tilts else None
+        r = calibrate(a.dataset, step=a.step, tilt_grid=tilts)
+        cam = {'width': r['width'], 'height': r['height'], 'f': r['f'], 'tilt_deg': r['tilt_deg'], 'hfov_deg': r['hfov_deg'],
+               'error_deg': r['error_deg'], 'pairs': r['pairs'], 'dataset': a.dataset}
+        Path(a.out).write_text(yaml.safe_dump(cam, sort_keys=False), encoding='utf-8')
+        print(f'camera written to {a.out}')
+    elif a.vision_cmd == 'gates':
+        from .vision.gates import passages_from_dataset, save_gates
+        passages = passages_from_dataset(a.dataset, thresh=a.thresh, min_gap_m=a.min_gap)
+        save_gates(passages, a.out)
+        print(f'{len(passages)} gates written to {a.out}')
+    elif a.vision_cmd == 'label':
+        from .vision.train import label_dataset
+        c = yaml.safe_load(Path(a.camera).read_text(encoding='utf-8'))
+        cam = Camera(int(c['width']), int(c['height']), float(c['f']), float(c['tilt_deg']))
+        for d in a.datasets:
+            label_dataset(d, a.gates, cam)
+    elif a.vision_cmd == 'train':
+        from .vision.train import train
+        out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, device=a.device)
+        print(f'gate detector saved in {out}')
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog='haltere', description='A fly brain that flies a drone in Liftoff.')
     sp = p.add_subparsers(dest='cmd', required=True)
@@ -287,6 +315,32 @@ def main(argv=None):
     s.add_argument('--rows', type=int, default=12)
     s.set_defaults(fn=cmd_summarize)
 
+    s = sp.add_parser('vision', help='gate vision: calibrate the FPV camera, find the gates, label frames, train GateNet')
+    vs = s.add_subparsers(dest='vision_cmd', required=True)
+    q = vs.add_parser('calibrate', help='focal length (and tilt) of the FPV camera from a flight dataset')
+    q.add_argument('dataset')
+    q.add_argument('--out', default='configs/camera.yaml')
+    q.add_argument('--step', type=int, default=2, help='frames between the two images of a pair')
+    q.add_argument('--tilts', default='', help='comma-separated camera tilts to try (deg); default: the 30 of the drone config')
+    q = vs.add_parser('gates', help='recover the gate positions from the passages in a lap flight dataset')
+    q.add_argument('dataset')
+    q.add_argument('--out', default='configs/gates_strawbale.json')
+    q.add_argument('--thresh', type=float, default=0.35, help='border-darkness threshold of a passage')
+    q.add_argument('--min-gap', type=float, default=8.0, help='minimum distance between gates (m)')
+    q = vs.add_parser('label', help='project the next gate into every frame of the datasets (labels.json)')
+    q.add_argument('datasets', nargs='+')
+    q.add_argument('--gates', default='configs/gates_strawbale.json')
+    q.add_argument('--camera', default='configs/camera.yaml')
+    q = vs.add_parser('train', help='train GateNet on labelled datasets')
+    q.add_argument('datasets', nargs='+')
+    q.add_argument('--out', default='runs/gatenet')
+    q.add_argument('--epochs', type=int, default=25)
+    q.add_argument('--batch', type=int, default=64)
+    q.add_argument('--lr', type=float, default=1e-3)
+    q.add_argument('--width', type=int, default=32)
+    q.add_argument('--device', default='cuda')
+    s.set_defaults(fn=cmd_vision)
+
     s = sp.add_parser('liftoff', help='Liftoff integration: setup, calibrate, record, fit, fly')
     ls = s.add_subparsers(dest='liftoff_cmd', required=True)
     q = ls.add_parser('setup', help='write Liftoff\'s TelemetryConfiguration.json and print the remaining manual steps')
@@ -362,6 +416,10 @@ def main(argv=None):
                    help='yaw the nose toward the target: stick per radian of heading error (0 = off; try 0.8). '
                         'The brain has no camera and no heading objective, so without this it flies sideways')
     q.add_argument('--face-max', type=float, default=0.25, help='cap on the facing yaw stick')
+    q.add_argument('--vision', default='', help='GateNet checkpoint: fly by sight (the goal comes from the gate detector '
+                                                'on the game view instead of from telemetry positions)')
+    q.add_argument('--camera', default='configs/camera.yaml', help='camera calibration for --vision')
+    q.add_argument('--vision-fps', type=float, default=15.0)
     q.add_argument('--stick-lpf', type=float, default=0.0, help='low-pass time constant on the sticks (s)')
     q.add_argument('--gyro', choices=['quat', 'telemetry'], default='quat',
                    help='body rates from attitude differences (quat) or from Liftoff\'s Gyro field (telemetry)')
@@ -371,6 +429,9 @@ def main(argv=None):
     q.add_argument('--reset-button', default='', help='virtual pad button that resets the drone in Liftoff (e.g. A, Y, BACK); pressed after a crash')
     q.add_argument('--reset-key', default='', help='keyboard key that resets the drone in Liftoff (R by default in the game); sent to the game window after a crash')
     q.add_argument('--record', default='', help='write an MP4 of the Liftoff window + live brain activity')
+    q.add_argument('--dataset', default='', help='vision dataset directory: save captured game frames (640x360 JPEG) '
+                                                 'with the pose and target of each frame (index.csv)')
+    q.add_argument('--dataset-every', type=int, default=2, help='save every Nth captured frame (20 fps capture)')
     q.add_argument('--capture', default='Liftoff', help='window title (substring) to capture for --record')
     q.add_argument('--capture-rect', default='', help='x,y,w,h screen region to capture instead of a window')
     q.add_argument('--fps', type=int, default=20)

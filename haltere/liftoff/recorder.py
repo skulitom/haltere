@@ -18,7 +18,8 @@ from pathlib import Path
 
 import numpy as np
 
-STATE_FIELDS = ['t', 'dist', 'thr', 'roll', 'pitch', 'yaw', 'px', 'py', 'pz', 'tx', 'ty', 'tz', 'waypoint', 'n_waypoints']
+STATE_FIELDS = ['t', 'dist', 'thr', 'roll', 'pitch', 'yaw', 'px', 'py', 'pz', 'tx', 'ty', 'tz', 'waypoint', 'n_waypoints',
+                'qw', 'qx', 'qy', 'qz', 'ts']   # attitude quaternion (sim frame) and the game timestamp, for datasets
 
 
 def find_window_rect(title_substring: str) -> tuple[int, int, int, int] | None:
@@ -76,7 +77,8 @@ def _resize_rows_cols(img: np.ndarray, new_h: int, new_w: int) -> np.ndarray:
 
 
 def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, capture: str | None,
-                   rect: tuple | None, fps: int, show: bool, panel_height: int):
+                   rect: tuple | None, fps: int, show: bool, panel_height: int, dataset: str | None = None,
+                   dataset_every: int = 2, dataset_size: tuple[int, int] = (640, 360)):
     from ..connectome.graph import BrainGraph
     from ..viz.fastpanel import FastBrainPanel
     from ..viz.render import neuron_layout
@@ -106,6 +108,19 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
     proc = None
     frame_h = frame_w = None
     ffmpeg = shutil.which('ffmpeg')
+    ds_dir = ds_index = None
+    n_ds = 0
+    if dataset:
+        # vision dataset: the game view (no brain panel) downscaled to JPEG + the pose and target for each frame
+        from PIL import Image
+        ds_dir = Path(dataset)
+        (ds_dir / 'frames').mkdir(parents=True, exist_ok=True)
+        new = not (ds_dir / 'index.csv').exists()
+        ds_index = open(ds_dir / 'index.csv', 'a', encoding='utf-8')
+        if new:
+            ds_index.write('file,wall_time,' + ','.join(STATE_FIELDS) + '\n')
+        print(f'recorder: saving every {dataset_every}th captured frame to {ds_dir} ({dataset_size[0]}x{dataset_size[1]})',
+              file=sys.stderr, flush=True)
     t_next = t0 = time.perf_counter()
     n_frames = 0
     t_report = time.perf_counter()
@@ -129,11 +144,21 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
                     region = {'left': mon['left'], 'top': mon['top'], 'width': mon['width'], 'height': mon['height']}
                     print(f'recorder: window "{capture}" not found, capturing the primary monitor', file=sys.stderr, flush=True)
             shot = np.asarray(sct.grab(region))[:, :, :3][:, :, ::-1]   # BGRA -> RGB
+            if ds_dir is not None and st['ts'] > 0 and n_frames % dataset_every == 0:
+                name = f'{n_ds:06d}.jpg'
+                Image.fromarray(np.ascontiguousarray(shot)).resize(dataset_size, Image.BILINEAR).save(
+                    ds_dir / 'frames' / name, quality=90)
+                ds_index.write(f'{name},{time.time():.4f},' + ','.join(f'{st[k]:.5f}' for k in STATE_FIELDS) + '\n')
+                n_ds += 1
+                if n_ds % 50 == 0:
+                    ds_index.flush()
             new_w = max(2, int(shot.shape[1] * panel.H / shot.shape[0]) // 2 * 2)
             shot = _resize_rows_cols(shot, panel.H, new_w)
             frame = np.concatenate([img_panel, shot], axis=1)
         if frame.shape[1] % 2:
             frame = frame[:, :-1]
+        if not (out and ffmpeg):
+            n_frames += 1
         if out and ffmpeg:
             if proc is None:
                 frame_h, frame_w = frame.shape[:2]
@@ -177,16 +202,20 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
         proc.stdin.close()
         proc.wait()
         print(f'recorder: finished {out}', file=sys.stderr, flush=True)
+    if ds_index is not None:
+        ds_index.close()
+        print(f'recorder: dataset {ds_dir}: {n_ds} frames', file=sys.stderr, flush=True)
 
 
 class FlightRecorder:
     """Starts/stops the recorder process; the pilot calls ``shared.publish`` every step."""
 
     def __init__(self, shared: SharedFlightState, graph_path: str, out: str | None = None, capture: str | None = 'Liftoff',
-                 rect: tuple | None = None, fps: int = 20, show: bool = False, panel_height: int = 720):
+                 rect: tuple | None = None, fps: int = 20, show: bool = False, panel_height: int = 720,
+                 dataset: str | None = None, dataset_every: int = 2):
         self.shared = shared
-        self.proc = mp.Process(target=_recorder_main, args=(shared, graph_path, out, capture, rect, fps, show, panel_height),
-                               daemon=True)
+        self.proc = mp.Process(target=_recorder_main, args=(shared, graph_path, out, capture, rect, fps, show, panel_height,
+                                                            dataset, dataset_every), daemon=True)
 
     def start(self) -> None:
         self.proc.start()

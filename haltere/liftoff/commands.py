@@ -518,6 +518,15 @@ def cmd_fly(a):
                            advance_radius=a.advance_radius, loop=not a.no_loop, pattern=a.pattern, radius=a.radius,
                            period=a.period, amplitude=a.amplitude, stick_gain=stick_gain, stick_lpf=a.stick_lpf,
                            face_gain=a.face_travel, face_max=a.face_max)
+    if a.vision:
+        import yaml
+        from ..vision.camera import Camera
+        from ..vision.runtime import GateVision
+        c = yaml.safe_load(Path(a.camera).read_text(encoding='utf-8'))
+        cam = Camera(int(c['width']), int(c['height']), float(c['f']), float(c['tilt_deg']))
+        pilot.vision = GateVision(a.vision, cam, window_title=a.capture or 'Liftoff', fps=a.vision_fps, device=a.device).start()
+        print(f'VISION: goal from the gate detector {a.vision} on the game view ({cam.hfov_deg:.0f} deg FOV, '
+              f'tilt {cam.tilt_deg:.0f} deg) at {a.vision_fps:.0f} fps; telemetry positions are not used for the goal')
     if a.pattern:
         print(f'pattern {a.pattern}: radius {a.radius} m, period {a.period} s, amplitude {a.amplitude} m')
     if a.path_speed > 0 and waypoints:
@@ -527,12 +536,13 @@ def cmd_fly(a):
               f'lookahead {a.lookahead} m')
     recorder = None
     shared = None
-    if a.record or a.show:
+    if a.record or a.show or a.dataset:
         from .recorder import FlightRecorder, SharedFlightState
         shared = SharedFlightState(brain.N)
         rect = tuple(int(x) for x in a.capture_rect.split(',')) if a.capture_rect else None
-        recorder = FlightRecorder(shared, cfg.train.graph, out=a.record or None, capture=(a.capture if a.record else None),
-                                  rect=rect, fps=a.fps, show=bool(a.show))
+        recorder = FlightRecorder(shared, cfg.train.graph, out=a.record or None,
+                                  capture=(a.capture if (a.record or a.dataset) else None), rect=rect, fps=a.fps,
+                                  show=bool(a.show), dataset=a.dataset or None, dataset_every=a.dataset_every)
         recorder.start()
     tcfg = read_config()
     stream = (tcfg or {}).get('StreamFormat', DEFAULT_STREAM)
@@ -567,6 +577,7 @@ def cmd_fly(a):
     game_active = True
     ignored_since = None    # the game reports mid throttle while we hold it low -> it dropped the pad
     last_reconnect = 0.0
+    last_reset_attempt = 0.0
     dists = []
     stick_hist = []
     armed_since = None      # Liftoff arms only after the throttle has been low; hold it low briefly, then ramp in
@@ -614,10 +625,17 @@ def cmd_fly(a):
                         pad.press(a.reset_button)
                     if a.reset_key:
                         press_key_in_window(a.reset_key, a.capture or 'Liftoff')
+                        last_reset_attempt = now
             else:
                 grounded_since = None
             if crashed:
                 sticks = np.array([-1.0, 0.0, 0.0, 0.0])
+                # the game did not reset (no timestamp jump): the key did not reach it (window not in front) -> retry
+                if a.reset_key and now - last_reset_attempt > 5.0:
+                    last_reset_attempt = now
+                    print(f'[{time.strftime("%H:%M:%S")}] still grounded after the reset key: sending {a.reset_key!r} again'
+                          + ('' if game_window_active(game_hwnd) else ' (the game window is not in front)'), flush=True)
+                    press_key_in_window(a.reset_key, a.capture or 'Liftoff')
             elif phase < a.arm_hold:
                 sticks = np.array([-1.0, 0.0, 0.0, 0.0])
             elif phase < a.arm_hold + a.arm_ramp:
@@ -646,15 +664,19 @@ def cmd_fly(a):
                                dist=dists[-1], thr=sticks[0], roll=sticks[1], pitch=sticks[2], yaw=sticks[3],
                                px=pilot.last_pos[0], py=pilot.last_pos[1], pz=pilot.last_pos[2],
                                tx=pilot.last_target[0], ty=pilot.last_target[1], tz=pilot.last_target[2],
-                               waypoint=pilot.wp_index, n_waypoints=len(pilot.waypoints))
+                               waypoint=pilot.wp_index, n_waypoints=len(pilot.waypoints),
+                               qw=pilot.last_quat[0], qx=pilot.last_quat[1], qy=pilot.last_quat[2], qz=pilot.last_quat[3],
+                               ts=fr.timestamp)
             if now - last_print > 0.5:
                 last_print = now
                 print(f't={fr.timestamp:7.2f}s pos={np.round(pilot.last_pos, 2)} target={np.round(pilot.last_target, 2)} '
                       f'dist={dists[-1]:.2f}m sticks thr={sticks[0]:+.2f} r={sticks[1]:+.2f} p={sticks[2]:+.2f} '
-                      f'y={sticks[3]:+.2f}', flush=True)
+                      f'y={sticks[3]:+.2f}' + (f' | {pilot.vision_status}' if pilot.vision is not None else ''), flush=True)
     except KeyboardInterrupt:
         pass
     finally:
+        if pilot.vision is not None:
+            pilot.vision.stop()
         if pad is not None:
             pad.close()
         rx.close()
