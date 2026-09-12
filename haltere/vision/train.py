@@ -59,14 +59,12 @@ class GateFrames(torch.utils.data.Dataset):
         img = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
         h, w = img.shape[:2]
         vis = float(lab['visible'])
-        u = (lab['u'] / w * 2 - 1) if vis else 0.0        # normalised to [-1, 1] over the image width
-        v = (lab['v'] / h * 2 - 1) if vis else 0.0
-        width_px = lab['width_px'] * IN_W / w if vis else 100.0
+        lu, lv, lw = (lab['u'], lab['v'], lab['width_px']) if vis else (0.0, 0.0, 100.0)   # label in pixels
         if self.augment:
             # photometric jitter (Liftoff's lighting and clouds change), small crop + resize, horizontal flip
             if random.random() < 0.5:
                 img = img[:, ::-1]
-                u = -u
+                lu = w - lu
             alpha = random.uniform(0.7, 1.3)
             beta = random.uniform(-25, 25)
             img = np.clip(img.astype(np.float32) * alpha + beta, 0, 255).astype(np.uint8)
@@ -75,13 +73,13 @@ class GateFrames(torch.utils.data.Dataset):
                 x0, y0 = int(fx * w * random.random()), int(fy * h * random.random())
                 x1, y1 = w - int(fx * w * random.random()), h - int(fy * h * random.random())
                 img = img[y0:y1, x0:x1]
-                if vis:
-                    cw, ch = x1 - x0, y1 - y0
-                    u = ((lab['u'] - x0) / cw * 2 - 1) * (1 if u == (lab['u'] / w * 2 - 1) else -1)
-                    v = (lab['v'] - y0) / ch * 2 - 1
-                    width_px = lab['width_px'] * IN_W / cw
-                    if abs(u) > 1.1 or abs(v) > 1.1:
-                        vis, u, v, width_px = 0.0, 0.0, 0.0, 100.0
+                lu, lv = lu - x0, lv - y0
+                w, h = x1 - x0, y1 - y0
+        u = (lu / w * 2 - 1) if vis else 0.0        # normalised to [-1, 1] over the (cropped) image width
+        v = (lv / h * 2 - 1) if vis else 0.0
+        width_px = lw * IN_W / w if vis else 100.0
+        if vis and (abs(u) > 1.1 or abs(v) > 1.1):
+            vis, u, v, width_px = 0.0, 0.0, 0.0, 100.0
         img = cv2.resize(np.ascontiguousarray(img), (IN_W, IN_H), interpolation=cv2.INTER_AREA)
         x = torch.from_numpy(img).permute(2, 0, 1).float() / 255.0
         y = torch.tensor([vis, u, v, float(np.log(max(width_px, 4.0) / 100.0))], dtype=torch.float32)
