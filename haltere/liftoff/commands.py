@@ -174,7 +174,8 @@ def cmd_pad(a):
 
     With --control-file, the pad also executes commands written to that file (one command, the file
     is emptied after it runs): ``sweep throttle|yaw|pitch|roll [seconds]``, ``hold AXIS VALUE``,
-    ``neutral``, ``quit``. This lets someone else (or a chat assistant) drive the wizard."""
+    ``neutral``, ``reconnect`` (re-plug the pad), ``quit``. This lets someone else (or a chat assistant) drive
+    the wizard."""
     import socket
     import struct
     from .gamepad import VirtualPad
@@ -232,6 +233,9 @@ def cmd_pad(a):
                 elif parts[0] == 'neutral':
                     held.update({'throttle': -1.0, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0})
                     script_until = 0.0
+                elif parts[0] == 'reconnect':
+                    pad.reconnect()
+                    print('virtual pad re-plugged', flush=True)
                 elif parts[0] == 'quit':
                     break
             if ramp is not None:
@@ -248,6 +252,11 @@ def cmd_pad(a):
                         data, _ = sock.recvfrom(64)
                     except (BlockingIOError, OSError):
                         break
+                    if data == b'RECONNECT':                           # the pilot noticed Liftoff dropped the pad
+                        pad.reconnect()
+                        print(f'[{time.strftime("%H:%M:%S")}] virtual pad re-plugged at the pilot request', flush=True)
+                        last_udp = time.time()
+                        continue
                     if data[:6] == b'PRESS ':                          # button press request from the pilot
                         try:
                             pad.press(data[6:].decode().strip() or 'A', seconds=0.15)
@@ -553,6 +562,8 @@ def cmd_fly(a):
     game_hwnd = 0 if a.dry_run else find_game_window(a.capture or 'Liftoff')
     last_focus_check = 0.0
     game_active = True
+    ignored_since = None    # the game reports mid throttle while we hold it low -> it dropped the pad
+    last_reconnect = 0.0
     dists = []
     stick_hist = []
     armed_since = None      # Liftoff arms only after the throttle has been low; hold it low briefly, then ramp in
@@ -612,6 +623,19 @@ def cmd_fly(a):
                 sticks[1:] *= f
             if pad is not None:
                 pad.send(sticks[0], sticks[1], sticks[2], sticks[3])
+                # Liftoff now and then stops reading the pad (its Input then sits at mid throttle whatever we
+                # send); re-plugging the virtual pad brings it back
+                if game_active and game_hwnd and sticks[0] <= -0.9 and float(fr.input[0]) > -0.5:
+                    ignored_since = ignored_since or now
+                    if now - ignored_since > 1.5 and now - last_reconnect > 8.0 and hasattr(pad, 'reconnect'):
+                        last_reconnect = now
+                        print(f'[{time.strftime("%H:%M:%S")}] Liftoff is not reading the pad (input {np.round(fr.input, 2)} '
+                              f'while sending throttle low): re-plugging the virtual pad', flush=True)
+                        pad.reconnect()
+                        armed_since = now + 1.0     # arm again once the new pad is seen
+                        ignored_since = None
+                else:
+                    ignored_since = None
             dists.append(float(np.linalg.norm(pilot.last_pos - pilot.last_target)))
             stick_hist.append(sticks.copy())
             if recorder is not None:

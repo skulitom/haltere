@@ -40,6 +40,10 @@ class UdpSticks:
     def press(self, button: str = 'A', seconds: float = 0.15) -> None:
         self.sock.sendto(b'PRESS ' + button.encode(), self.addr)
 
+    def reconnect(self) -> None:
+        """Ask the bridge to unplug and re-plug its virtual pad (Liftoff sometimes drops the binding)."""
+        self.sock.sendto(b'RECONNECT', self.addr)
+
     def close(self) -> None:
         self.sock.close()
 
@@ -84,6 +88,19 @@ class VirtualPad:
             vals[axis] = x
             self.send(**vals)
             time.sleep(1.0 / hz)
+        self.neutral()
+
+    def reconnect(self, pause: float = 1.0) -> None:
+        """Unplug the virtual pad and plug a fresh one in. Liftoff drops its binding to the pad now and then
+        (after the window lost the focus, it seems); a re-plug makes the game pick it up again."""
+        try:
+            self.pad.reset()
+            self.pad.update()
+        except Exception:
+            pass
+        del self.pad                      # vgamepad removes the ViGEm target on destruction
+        time.sleep(pause)
+        self.pad = self._vg.VX360Gamepad()
         self.neutral()
 
     def close(self) -> None:
