@@ -30,6 +30,10 @@ Code, training pipeline, Liftoff integration and videos: https://github.com/skul
 
 ![The fly brain flying the drone in Liftoff](liftoff_hover.gif)
 
+![Orbit in Liftoff](liftoff_orbit.gif)
+
+![Climb and dive in Liftoff](liftoff_climbdive.gif)
+
 ## Files
 
 | file | what | use |
@@ -51,7 +55,7 @@ checkpoints with optimizer state are on the
 | MLP baseline | 0.05 m mean error, 100% within 0.5 m | not flown |
 | `imJ_best` (imitation) | 0.22 m, 95% | drifts 1.4 m on the physics stand-in |
 | `ftRobust_best` (+ domain randomization) | 0.20 m, 99.6% | 2 m hover, 0.34 m mean error over 40 s; 3 m square pattern |
-| `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 4x smaller stick jitter at Liftoff-like latency |
+| `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 2 m hover, 0.35 m mean error with a quarter of the stick jitter; orbit (0.75 m tracking error at 0.8 m/s) and climb-and-dive (1.1 m at about 1 m/s), no crashes |
 
 Full difficulty: 25 degrees of tilt, 90 deg/s rotation, 1 m/s velocity and 1 m offset at the start,
 targets anywhere in a 6 x 6 x 2 m box, physics jittered by 35%.

@@ -421,6 +421,35 @@ def cmd_waypoints(a):
     print(f'  haltere liftoff fly runs/imJ_best.pt --waypoints-file {a.out} --advance-radius 1.0')
 
 
+def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
+    """Send a keystroke to the game window (brings it to the foreground first). Windows only."""
+    import ctypes
+    import ctypes.wintypes as wt
+    user32 = ctypes.windll.user32
+    found = []
+
+    def cb(hwnd, _):
+        if user32.IsWindowVisible(hwnd):
+            n = user32.GetWindowTextLengthW(hwnd)
+            if n:
+                buf = ctypes.create_unicode_buffer(n + 1)
+                user32.GetWindowTextW(hwnd, buf, n + 1)
+                if title_substring.lower() in buf.value.lower():
+                    found.append(hwnd)
+        return True
+
+    user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, wt.HWND, wt.LPARAM)(cb), 0)
+    if found:
+        user32.SetForegroundWindow(found[0])
+        time.sleep(0.15)
+    vk = user32.VkKeyScanW(ord(key[0])) & 0xFF
+    scan = user32.MapVirtualKeyW(vk, 0)
+    user32.keybd_event(vk, scan, 0, 0)
+    time.sleep(0.08)
+    user32.keybd_event(vk, scan, 2, 0)   # KEYEVENTF_KEYUP
+    return bool(found)
+
+
 def cmd_fly(a):
     import torch
     from ..train.bptt import load_checkpoint
@@ -472,6 +501,7 @@ def cmd_fly(a):
     last_frame_time = time.time()
     t_begin = time.time()
     dists = []
+    stick_hist = []
     armed_since = None      # Liftoff arms only after the throttle has been low; hold it low briefly, then ramp in
     last_reset_ts = None
     grounded_since = None
@@ -501,9 +531,12 @@ def cmd_fly(a):
                 if now - grounded_since > 1.5 and not crashed:
                     crashed = True
                     print(f'[{time.strftime("%H:%M:%S")}] drone appears crashed/grounded at {np.round(pilot.last_pos, 2)}; '
-                          f'holding throttle low' + (f', pressing {a.reset_button}' if a.reset_button else ''), flush=True)
+                          f'holding throttle low' + (f', pressing {a.reset_button}' if a.reset_button else '')
+                          + (f', sending key {a.reset_key}' if a.reset_key else ''), flush=True)
                     if a.reset_button and pad is not None and hasattr(pad, 'press'):
                         pad.press(a.reset_button)
+                    if a.reset_key:
+                        press_key_in_window(a.reset_key, a.capture or 'Liftoff')
             else:
                 grounded_since = None
             if crashed:
@@ -517,6 +550,7 @@ def cmd_fly(a):
             if pad is not None:
                 pad.send(sticks[0], sticks[1], sticks[2], sticks[3])
             dists.append(float(np.linalg.norm(pilot.last_pos - pilot.last_target)))
+            stick_hist.append(sticks.copy())
             if recorder is not None:
                 shared.publish(pilot.rates() if len(dists) % 2 == 0 else None, t=fr.timestamp - (pilot.t_start or 0.0),
                                dist=dists[-1], thr=sticks[0], roll=sticks[1], pitch=sticks[2], yaw=sticks[3],
@@ -541,6 +575,10 @@ def cmd_fly(a):
             half = d[len(d) // 2:]
             print(f'{len(d)} frames; distance to target: mean {d.mean():.2f} m, second half mean {half.mean():.2f} m, '
                   f'within 0.5 m {100 * (half < 0.5).mean():.0f}% of the time', flush=True)
+            if len(stick_hist) > 10:
+                S = np.asarray(stick_hist)[len(stick_hist) // 2:]
+                print(f'stick std [thr,roll,pitch,yaw] {np.round(S.std(0), 3)}; mean |change| per frame '
+                      f'{np.round(np.abs(np.diff(S, axis=0)).mean(0), 4)}', flush=True)
 
 
 def cmd_fake(a):

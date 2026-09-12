@@ -159,7 +159,9 @@ def cmd_publish_hf(a):
     repo = a.repo or f'{me["name"]}/haltere'
     api.create_repo(repo, repo_type='model', exist_ok=True, private=a.private)
     files = [('docs/hf_model_card.md', 'README.md'), ('docs/liftoff_hover.gif', 'liftoff_hover.gif'),
-             ('docs/liftoff_square.gif', 'liftoff_square.gif'), ('docs/flight.gif', 'flight.gif'),
+             ('docs/liftoff_square.gif', 'liftoff_square.gif'), ('docs/liftoff_orbit.gif', 'liftoff_orbit.gif'),
+             ('docs/liftoff_climbdive.gif', 'liftoff_climbdive.gif'), ('docs/flight.gif', 'flight.gif'),
+             ('configs/liftoff.yaml', 'liftoff.yaml'),
              ('data/built/flight.npz', 'flight.npz'), ('data/built/flight.nodes.parquet', 'flight.nodes.parquet'),
              ('data/built/flight.meta.json', 'flight.meta.json'), ('configs/flight.yaml', 'flight.yaml')]
     files += [(str(p), p.name) for p in sorted(Path('artifacts').glob('*.pt'))]
@@ -357,6 +359,7 @@ def main(argv=None):
     q.add_argument('--arm-hold', type=float, default=0.8, help='seconds of throttle-low before the brain gets control (arming)')
     q.add_argument('--arm-ramp', type=float, default=1.2, help='seconds over which the brain\'s sticks are ramped in')
     q.add_argument('--reset-button', default='', help='virtual pad button that resets the drone in Liftoff (e.g. A, Y, BACK); pressed after a crash')
+    q.add_argument('--reset-key', default='', help='keyboard key that resets the drone in Liftoff (R by default in the game); sent to the game window after a crash')
     q.add_argument('--record', default='', help='write an MP4 of the Liftoff window + live brain activity')
     q.add_argument('--capture', default='Liftoff', help='window title (substring) to capture for --record')
     q.add_argument('--capture-rect', default='', help='x,y,w,h screen region to capture instead of a window')

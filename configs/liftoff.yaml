@@ -12,7 +12,7 @@ mapping:
   - 1.0
   - -1.0
   use_quat_rates: true
-  max_rpm: 26049.09765625
+  max_rpm: 38900.0
   throttle_scale: 1.0
   notes:
     corr_roll: -0.911993398154584

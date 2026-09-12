@@ -15,6 +15,14 @@ Videos: [hover](docs/liftoff_hover.mp4), [a 3 m square pattern](docs/liftoff_squ
 
 ![Square pattern in Liftoff](docs/liftoff_square.gif)
 
+Freestyle patterns with the smoother brain (`artifacts/ftSmooth_best.pt`): an orbit
+([video](docs/liftoff_orbit.mp4)) and a climb-and-dive ([video](docs/liftoff_climbdive.mp4)),
+targets moving continuously while the brain follows.
+
+![Orbit in Liftoff](docs/liftoff_orbit.gif)
+
+![Climb and dive in Liftoff](docs/liftoff_climbdive.gif)
+
 The same brain in the training simulator, with the drone drawn in 3D:
 [docs/flight.gif](docs/flight.gif) / [docs/flight.mp4](docs/flight.mp4)
 (`haltere render runs/imJ_best.pt`, or `--live` for a window).
@@ -303,7 +311,8 @@ checkpoints with optimizer state and the videos, and the same artifacts with a m
 |---|---|---|
 | MLP baseline (`runs/mlp300/best.pt`) | 0.05 m, 100%, 0% | not tested |
 | **connectome brain**, imitation, premotor readout (`runs/imJ_best.pt`) | 0.22 m, 95%, 0% | 1.4 m, no crashes |
-| **connectome brain**, + wide domain randomization (`runs/ftRobust_best.pt`) | 0.20 m, 99.6%, 0% (physics jittered 35%) | **0.55 m, no crashes** |
+| **connectome brain**, + wide domain randomization (`runs/ftRobust_best.pt`) | 0.20 m, 99.6%, 0% (physics jittered 35%) | **0.55 m, no crashes**; in Liftoff: 0.34 m hover |
+| **connectome brain**, + latency and smoothness fine-tune (`runs/ftSmooth_best.pt`) | 0.30 m, 95%, 0% (50 ms delay) | in Liftoff: 0.35 m hover with a quarter of the stick jitter; orbit and climb-and-dive |
 | connectome brain, wing-motor-neuron readout only (`runs/imD2`) | 2.4 m, 0%, 1% | not tested |
 
 Difficulty 1.0 means every drone starts with up to 25 degrees of tilt, 90 deg/s of rotation,
@@ -330,6 +339,17 @@ with a lateral offset of about 1.4 m; fine-tuning on the identified physics is t
   reset and ramps the brain's sticks in over 1.2 s.
 - `runs/ftRobust_best.pt`, never fine-tuned on Liftoff's physics, hovered 2 m above the reset point
   for 40 s with 0.34 m mean error and flew a 3 m square pattern gate to gate on the first attempt.
+- Smoothness: the first flights alternated the sticks at about 1 Hz. An output low-pass made it
+  worse (any added lag on top of Liftoff's input latency turns into a runaway), lower stick gain
+  only weakened the corrections, but a brain fine-tuned with 50 ms of extra latency and a stronger
+  smoothness cost (`configs/train_premotor_smooth.yaml`, `artifacts/ftSmooth_best.pt`) cut the
+  throttle jitter four-fold in the game. One bias mattered as much: the motor-load sense scales the
+  motor RPM by `max_rpm`, and taking that from the RPM peak of the test climb instead of the true
+  maximum told the brain it was climbing at hover; mapping the measured hover RPM to the
+  simulator's hover command (`max_rpm: 38900` in `configs/liftoff.yaml`) removed a 0.5-1 m offset.
+- Moving targets: orbit at 0.8 m/s tracked with 0.75 m mean error, climb-and-dive at about 1 m/s
+  with 1.1 m; an orbit at 1.35 m/s was too fast (the brain fell behind and crashed). After a crash
+  Liftoff needs a reset before it arms again: `fly --reset-key R` sends the key to the game window.
 
 ## Status
 
