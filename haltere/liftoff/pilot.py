@@ -110,7 +110,7 @@ class TelemetryPilot:
         self._z_ref = None                     # altitude to hold while no gate is in sight
         self._hold_w = None                    # position to hold while no gate is in sight
         self._no_gate_since = None             # when the drone last lost sight of every gate (search yaw after a while)
-        self.vision_search_yaw = 0.12          # yaw stick while searching (nose turns right)
+        self.vision_search_yaw = -0.12         # yaw stick while searching (negative = nose turns left)
         self.vision_fly_on = 10.0              # s to keep flying straight after passing a gate (the next is ~30 m on)
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
@@ -271,8 +271,10 @@ class TelemetryPilot:
                 keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
                 self._line_s = min(self._line_s + self.vision_speed * keep_up * dt, L)
                 rel_w = carrot - pos_w
-                rel_w[2] = float(np.clip(rel_w[2], -2.5, 2.0))                   # gates are not far above or below
-                self._z_ref = float(carrot[2])
+                # the detector marks the gate's visual centre (1.5 m above the flight line): aim 1 m below it and
+                # do not climb or dive more than 1 m per goal (Liftoff's throttle map drifts upward otherwise)
+                rel_w[2] = float(np.clip(rel_w[2] - 1.0, -1.5, 1.0))
+                self._z_ref = float(pos_w[2] + rel_w[2])
                 self._hold_w = None
                 self._no_gate_since = None
                 speed = float(np.linalg.norm(self.last_vel))
