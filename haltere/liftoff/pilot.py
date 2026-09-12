@@ -101,6 +101,7 @@ class TelemetryPilot:
         self.vision_lookahead = 2.0            # m; the carrot runs this far ahead of the progress along the line
         self.vision_speed = 1.5                # m/s; how fast the carrot advances toward the gate
         self._cand_hist = []                   # (time, gate candidate, drone position) of recent sightings
+        self._rays = []                        # (time, origin, world direction) of recent sightings, for triangulation
         self._agree_t = 0.0                    # last time a sighting agreed with the remembered gate
         self._line = None                      # (start, gate) of the straight line the carrot runs along
         self._line_s = 0.0                     # progress along that line (m)
@@ -145,6 +146,7 @@ class TelemetryPilot:
         self.vision_gate_w = None
         self.vision_passed_t = None
         self._cand_hist = []
+        self._rays = []
         self._line = None
         self._line_s = 0.0
         self._last_goal_t = None
@@ -203,8 +205,26 @@ class TelemetryPilot:
         elevation = float(np.degrees(np.arctan2(d[2], np.hypot(d[0], d[1]))))
         plausible = (det.p_visible >= self.vision_thresh and now - det.t < self.vision_stale and det.dist_m > 0.5
                      and -35.0 < elevation < 25.0)         # gates are near the ground, never up in the sky
+        cand = None
         if plausible:
-            cand = pos_w + R @ (d * float(np.clip(det.dist_m, 1.0, 30.0)))
+            # where is the gate? Triangulate the recent sighting rays (the drone's motion gives the baseline); the
+            # apparent-width distance is only used before the drone has moved (it is unreliable: gates differ in size)
+            dw = R @ d
+            self._rays = [(t, o, r) for t, o, r in self._rays if now - t < 3.0] + [(now, pos_w.copy(), dw)]
+            if len(self._rays) >= 3:
+                origins = np.array([o for _, o, _ in self._rays])
+                dirs = np.array([r for _, _, r in self._rays])
+                perp = origins - origins[-1]
+                perp = perp - np.outer(perp @ dw, dw)                     # displacement across the line of sight
+                if np.linalg.norm(perp, axis=1).max() >= 0.8:
+                    from ..vision.triangulate import intersect_rays
+                    pt, rms = intersect_rays(origins, dirs)
+                    rel = pt - pos_w
+                    if rms < 1.5 and 1.0 < np.linalg.norm(rel) < 40.0 and rel @ dw > 0:
+                        cand = pt
+            if cand is None and float(np.linalg.norm(self.last_vel)) < 0.3:
+                cand = pos_w + dw * float(np.clip(det.dist_m, 1.0, 30.0))
+        if cand is not None:
             self._cand_hist = [(t, c, q) for t, c, q in self._cand_hist if now - t < 2.5] + [(now, cand, pos_w.copy())]
             if self.vision_gate_w is not None:
                 if np.linalg.norm(cand - self.vision_gate_w) < 2.0:
