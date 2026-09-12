@@ -518,6 +518,7 @@ def cmd_fly(a):
                            advance_radius=a.advance_radius, loop=not a.no_loop, pattern=a.pattern, radius=a.radius,
                            period=a.period, amplitude=a.amplitude, stick_gain=stick_gain, stick_lpf=a.stick_lpf,
                            face_gain=a.face_travel, face_max=a.face_max)
+    pilot.face_ahead = a.face_ahead
     if a.vision:
         import yaml
         from ..vision.camera import Camera

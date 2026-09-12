@@ -91,6 +91,8 @@ class TelemetryPilot:
         # has no camera and no heading objective, so on its own it flies sideways; this keeps the FPV view
         # looking along the path. Positive yaw stick = nose right (Betaflight convention, verified in the sim).
         self.face_gain, self.face_max = face_gain, face_max
+        self.face_ahead = 0.0                  # m; path mode: face the path this far beyond the carrot (0 = face the carrot)
+        self.face_target = None
         # vision: a GateVision object supplies the goal instead of telemetry positions (see haltere.vision.runtime)
         self.vision = None
         self.vision_thresh = 0.5
@@ -150,6 +152,8 @@ class TelemetryPilot:
             if self.last_pos[2] < 0.3:      # still on the ground (arming): hold the path
                 keep_up = 0.0
             self.path_progress += self.path_speed * keep_up * dt
+            if self.face_ahead > 0:
+                self.face_target = self.path_point(self.path_progress + self.path_lookahead + self.face_ahead)
             self.wp_index = int(np.searchsorted(self.path_s, self.path_progress % self.path_s[-1], side='right') - 1)
             return carrot
         if self.advance_radius > 0:
@@ -247,7 +251,8 @@ class TelemetryPilot:
                 rel_b = rel_b_t[0].cpu().numpy()
                 err = float(np.arctan2(rel_b[1], rel_b[0])) if np.hypot(rel_b[0], rel_b[1]) > 0.8 else 0.0
             else:
-                rel = target[0].cpu().numpy() - s['pos'][0].cpu().numpy()
+                aim = self.face_target if self.face_target is not None else target[0].cpu().numpy()
+                rel = aim - s['pos'][0].cpu().numpy()
                 err = 0.0
                 if np.hypot(rel[0], rel[1]) > 0.8:
                     err = np.angle(np.exp(1j * (np.arctan2(rel[1], rel[0]) - float(s['yaw'].flatten()[0]))))

@@ -63,6 +63,57 @@ def passages_from_dataset(dataset: str | Path, thresh: float = 0.35, min_gap_m: 
     return passages
 
 
+def gates_from_passage_frames(dataset: str | Path, frames: list[int], track_yaml: str | Path | None = None,
+                              verbose: bool = True, min_gap_m: float = 6.0) -> list[dict]:
+    """Gate positions from the frames in which the drone passes a gate (read off thumbnail sheets by eye).
+    The gate is placed at the taught path's point nearest the drone at that moment (the human flew through
+    the gate centres, so the path is more accurate than the brain's own line); its facing is the path
+    direction there. Without a track file the drone's own position and travel direction are used."""
+    from .calibrate import load_index
+    rows = load_index(dataset)
+    by_name = {r['file']: r for r in rows}
+    pos_all = np.array([[r['px'], r['py'], r['pz']] for r in rows])
+    path = None
+    if track_yaml:
+        import yaml
+        wps = np.array(yaml.safe_load(Path(track_yaml).read_text(encoding='utf-8'))['waypoints'], dtype=np.float64)
+        # densify the polyline to 0.25 m so the nearest point is precise
+        pts = [wps[0]]
+        for a, b in zip(wps[:-1], wps[1:]):
+            n = max(1, int(np.linalg.norm(b - a) / 0.25))
+            pts.extend(a + (b - a) * (k / n) for k in range(1, n + 1))
+        path = np.array(pts)
+    gates = []
+    for gi, fr in enumerate(frames):
+        name = f'{fr:06d}.jpg'
+        if name not in by_name:
+            if verbose:
+                print(f'frame {name} not in the dataset, skipped')
+            continue
+        i = rows.index(by_name[name])
+        pos = pos_all[i]
+        k0, k1 = max(0, i - 8), min(len(rows) - 1, i + 8)
+        travel = pos_all[k1] - pos_all[k0]
+        if path is not None:
+            j = int(np.argmin(np.linalg.norm(path - pos, axis=1)))
+            gpos = path[j]
+            j0, j1 = max(0, j - 8), min(len(path) - 1, j + 8)
+            travel = path[j1] - path[j0]
+        else:
+            gpos = pos
+        heading = float(np.arctan2(travel[1], travel[0])) if np.linalg.norm(travel[:2]) > 1e-3 else 0.0
+        if any(np.linalg.norm(np.asarray(g['pos']) - gpos) < min_gap_m for g in gates):
+            if verbose:
+                print(f'frame {name}: within {min_gap_m} m of a gate already listed, skipped')
+            continue
+        gates.append({'pos': gpos.tolist(), 'heading': heading, 'frame': name, 'gate': len(gates),
+                      'drone_offset_m': float(np.linalg.norm(gpos - pos))})
+        if verbose:
+            print(f'gate {gates[-1]["gate"]} at frame {name}: pos {np.round(gpos, 1)} heading {np.degrees(heading):.0f} deg '
+                  f'(drone was {gates[-1]["drone_offset_m"]:.1f} m from the path point)')
+    return gates
+
+
 def save_gates(passages: list[dict], out: str | Path) -> None:
     Path(out).write_text(json.dumps({'gate_width_m': GATE_WIDTH_M, 'gates': passages}, indent=1), encoding='utf-8')
 

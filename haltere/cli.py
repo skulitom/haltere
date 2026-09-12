@@ -210,6 +210,12 @@ def cmd_vision(a):
         passages = passages_from_dataset(a.dataset, thresh=a.thresh, min_gap_m=a.min_gap)
         save_gates(passages, a.out)
         print(f'{len(passages)} gates written to {a.out}')
+    elif a.vision_cmd == 'gates-from-frames':
+        from .vision.gates import gates_from_passage_frames, save_gates
+        frames = [int(x) for x in a.frames.split(',')]
+        gates = gates_from_passage_frames(a.dataset, frames, a.track or None)
+        save_gates(gates, a.out)
+        print(f'{len(gates)} gates written to {a.out}')
     elif a.vision_cmd == 'sheet':
         from .vision.calibrate import load_index
         from .vision.triangulate import sheet
@@ -346,6 +352,11 @@ def main(argv=None):
     q.add_argument('--out', default='configs/gates_strawbale.json')
     q.add_argument('--thresh', type=float, default=0.35, help='border-darkness threshold of a passage')
     q.add_argument('--min-gap', type=float, default=8.0, help='minimum distance between gates (m)')
+    q = vs.add_parser('gates-from-frames', help='gate positions from the frames where the drone passes each gate')
+    q.add_argument('dataset')
+    q.add_argument('--frames', required=True, help='comma-separated frame numbers of the passages, in course order')
+    q.add_argument('--track', default='configs/track_strawbale.yaml', help='taught path (gates snap to it); empty = none')
+    q.add_argument('--out', default='configs/gates_strawbale.json')
     q = vs.add_parser('sheet', help='contact sheet of dataset frames with a pixel grid (to read gate positions off)')
     q.add_argument('dataset')
     q.add_argument('--out', default='data/vision/sheet.png')
@@ -456,6 +467,9 @@ def main(argv=None):
                    help='yaw the nose toward the target: stick per radian of heading error (0 = off; try 0.8). '
                         'The brain has no camera and no heading objective, so without this it flies sideways')
     q.add_argument('--face-max', type=float, default=0.25, help='cap on the facing yaw stick')
+    q.add_argument('--face-ahead', type=float, default=0.0,
+                   help='path mode: face the path this many metres beyond the carrot instead of the carrot itself '
+                        '(keeps the camera on the course ahead)')
     q.add_argument('--vision', default='', help='GateNet checkpoint: fly by sight (the goal comes from the gate detector '
                                                 'on the game view instead of from telemetry positions)')
     q.add_argument('--camera', default='configs/camera.yaml', help='camera calibration for --vision')
