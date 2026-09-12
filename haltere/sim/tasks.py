@@ -37,6 +37,7 @@ class HoverTaskConfig:
     path_turn_deg_s: float = 30.0       # max heading turn rate of the moving target
     path_climb: float = 0.3             # vertical speed as a fraction of the horizontal speed
     path_z_range: tuple[float, float] = (1.2, 3.5)   # the moving target bounces between these altitudes
+    path_static_frac: float = 0.0       # fraction of episodes whose target does not move (keeps hover precise)
     control_dt: float = 0.01            # s per control step (target motion)
 
 
@@ -97,6 +98,8 @@ class HoverTask:
         """Random target motion: speed ~ U(0, d * path_speed), random heading, turn rate and climb."""
         c, dev = self.cfg, self.device
         speed = d * c.path_speed * torch.rand(n, device=dev)
+        if c.path_static_frac > 0:
+            speed = torch.where(torch.rand(n, device=dev) < c.path_static_frac, torch.zeros_like(speed), speed)
         heading = (2 * torch.rand(n, device=dev) - 1) * torch.pi
         climb = c.path_climb * (2 * torch.rand(n, device=dev) - 1)
         vel = torch.stack([speed * torch.cos(heading), speed * torch.sin(heading), speed * climb], dim=1)

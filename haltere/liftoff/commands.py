@@ -421,8 +421,10 @@ def cmd_waypoints(a):
     print(f'  haltere liftoff fly runs/imJ_best.pt --waypoints-file {a.out} --advance-radius 1.0')
 
 
-def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
-    """Send a keystroke to the game window (brings it to the foreground first). Windows only."""
+def focus_game_window(title_substring: str = 'Liftoff') -> bool:
+    """Restore and bring the game window to the foreground. Liftoff ignores the controller while its window
+    is unfocused and minimizes itself whenever it loses focus, so the pilot does this at start and before
+    every keystroke it sends. Windows only; returns False when no such window exists."""
     import ctypes
     import ctypes.wintypes as wt
     user32 = ctypes.windll.user32
@@ -439,9 +441,27 @@ def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
         return True
 
     user32.EnumWindows(ctypes.WINFUNCTYPE(ctypes.c_bool, wt.HWND, wt.LPARAM)(cb), 0)
-    if found:
-        user32.SetForegroundWindow(found[0])
-        time.sleep(0.15)
+    if not found:
+        return False
+    hwnd = found[0]
+    for _ in range(3):
+        if user32.IsIconic(hwnd):
+            user32.ShowWindow(hwnd, 9)          # SW_RESTORE
+            time.sleep(0.8)
+        if user32.GetForegroundWindow() != hwnd:
+            user32.SwitchToThisWindow(hwnd, True)   # allowed to steal the foreground, unlike SetForegroundWindow
+            time.sleep(0.5)
+        if user32.GetForegroundWindow() == hwnd and not user32.IsIconic(hwnd):
+            return True
+    return user32.GetForegroundWindow() == hwnd
+
+
+def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
+    """Send a keystroke to the game window (brings it to the foreground first). Windows only."""
+    import ctypes
+    user32 = ctypes.windll.user32
+    found = focus_game_window(title_substring)
+    time.sleep(0.15)
     vk = user32.VkKeyScanW(ord(key[0])) & 0xFF
     scan = user32.MapVirtualKeyW(vk, 0)
     user32.keybd_event(vk, scan, 0, 0)
@@ -502,6 +522,9 @@ def cmd_fly(a):
     else:
         mode = 'DRY RUN (no gamepad)'
     print(f'brain: {brain.N} neurons on {brain.device}; target offset {offset} m; {mode}. Ctrl+C to stop.')
+    if not a.dry_run:   # no-op when there is no game window (dry runs against the stand-in)
+        if focus_game_window(a.capture or 'Liftoff'):
+            print('game window restored and focused')
     last_print = 0.0
     last_frame_time = time.time()
     t_begin = time.time()
