@@ -202,7 +202,10 @@ follows the taught lap as a continuous path instead: a carrot moves along the po
 speed, 2 m ahead of the drone's progress, and slows down smoothly when the drone falls behind (a
 stop/go gate here excited a 0.5 Hz pitch oscillation). Path-following brains swing the throttle
 more than a hovering brain; `--throttle-scale 0.6` keeps those swings out of Liftoff's throttle
-deadband, which starts only 0.08 stick below the hover point. `--record` captures the Liftoff window
+deadband, which starts only 0.08 stick below the hover point. The brain has no camera and no
+heading objective (its goal is a vector in its own body frame), so left alone it flies sideways or
+backwards along the path; `--face-travel 0.8` adds a yaw command that keeps the nose, and the FPV
+camera, pointed at the carrot. `--stick-gain 1,0.7,1` scales roll, pitch and yaw separately. `--record` captures the Liftoff window
 from the screen and composes it with a live panel of the brain's activity into an MP4, encoded in a
 separate process so the 100 Hz control loop is never slowed down; `--show` opens that panel in a
 window while you watch the game. `--capture-rect x,y,w,h` records a screen region instead of a window.
@@ -370,7 +373,10 @@ with a lateral offset of about 1.4 m; fine-tuning on the identified physics is t
   Selectionner, "XInput Gamepad 1", Sauvegarder; the in-race pause menu has no controller page).
   The game also ignores all input while its window is unfocused and minimises itself whenever it
   loses focus, so `fly` now restores and focuses the window at start and before every keystroke.
-  Beware that the pad's throttle-low stick scrolls Liftoff's menus down to "Quitter".
+  Beware that the pad's throttle-low stick scrolls Liftoff's menus down to "Quitter". The binding
+  can also drop silently in the middle of a session (the game then reports mid throttle whatever the
+  pad sends); unplugging and re-plugging the virtual pad brings it back, so the pilot now detects
+  the symptom while holding the throttle low to arm and asks the bridge to re-plug the pad.
 - Racing: a lap of the "Field Day" infinite race on Straw Bale was flown once by hand, turned into
   174 waypoints 3 m apart (`configs/track_strawbale.yaml`, a 601 m loop) and followed as a path.
   The smooth brain keeps to the line within 0.9 m at 1.2 m/s but falls behind anything faster; the
