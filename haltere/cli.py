@@ -334,6 +334,7 @@ def main(argv=None):
     q.add_argument('--spacing', type=float, default=3.0, help='metres between waypoints along the flown path')
     q.add_argument('--min-alt', type=float, default=1.0, help='ignore samples below this altitude (take-off / landing)')
     q.add_argument('--min-z', type=float, default=1.0, help='clamp waypoint altitude to at least this (m above the reset point)')
+    q.add_argument('--max-z', type=float, default=1e9, help='clamp waypoint altitude to at most this (m above the reset point)')
     q.add_argument('--out', default='configs/track.yaml')
     q = ls.add_parser('fly', help='let the trained brain fly the drone in Liftoff')
     q.add_argument('ckpt')
@@ -346,6 +347,9 @@ def main(argv=None):
     q.add_argument('--advance-radius', type=float, default=0.0,
                    help='advance to the next waypoint when this close (m); 0 = timer mode. Use ~1.0 for racing')
     q.add_argument('--no-loop', action='store_true', help='stop at the last waypoint instead of looping')
+    q.add_argument('--path-speed', type=float, default=0.0,
+                   help='follow the waypoint polyline as a moving target at this speed (m/s) instead of hopping')
+    q.add_argument('--lookahead', type=float, default=1.5, help='path following: carrot distance ahead of the drone (m)')
     q.add_argument('--pattern', default='', choices=['', 'orbit', 'climbdive', 'figure8'],
                    help='moving target pattern around the offset point (freestyle)')
     q.add_argument('--radius', type=float, default=3.0, help='pattern radius (m)')

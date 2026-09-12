@@ -85,8 +85,24 @@ class TelemetryPilot:
         self.radius, self.period, self.amplitude = radius, period, amplitude
         self.stick_gain = stick_gain           # scales roll/pitch/yaw commands (smoothness / latency margin)
         self.stick_lpf = stick_lpf             # s; low-pass on the sticks sent to the game (0 = off)
+        self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
+        self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
+        if self.waypoints:
+            P = np.stack(self.waypoints)
+            seg = np.linalg.norm(np.diff(np.vstack([P, P[:1]]), axis=0), axis=1)
+            self.path_s = np.r_[0.0, np.cumsum(seg)]          # arc length at each vertex (closed loop)
+            self.path_pts = np.vstack([P, P[:1]])
         self.W = brain.weight_matrix().detach()
         self.reset(None)
+
+    def path_point(self, s: float) -> np.ndarray:
+        """Point on the closed waypoint polyline at arc length s."""
+        total = self.path_s[-1]
+        s = s % total if self.loop else min(s, total)
+        i = int(np.searchsorted(self.path_s, s, side='right') - 1)
+        i = min(max(i, 0), len(self.path_pts) - 2)
+        f = (s - self.path_s[i]) / max(self.path_s[i + 1] - self.path_s[i], 1e-6)
+        return self.path_pts[i] + f * (self.path_pts[i + 1] - self.path_pts[i])
 
     def reset(self, frame: TelemetryFrame | None) -> None:
         self.state = self.brain.init_state(1)
@@ -100,12 +116,20 @@ class TelemetryPilot:
         self.wp_since = None
         self.last_pos = np.zeros(3)
         self.filtered = None
+        self.path_progress = 0.0
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
             return pattern_target(self.pattern, t, self.offset, self.radius, self.period, self.amplitude)
         if not self.waypoints:
             return self.offset
+        if self.path_speed > 0:
+            # progress along the path only as fast as the drone keeps up: advance the carrot when the drone is near it
+            carrot = self.path_point(self.path_progress + self.path_lookahead)
+            if np.linalg.norm(self.last_pos - carrot) < self.path_lookahead + 1.0:
+                self.path_progress += self.path_speed * 0.01
+            self.wp_index = int(np.searchsorted(self.path_s, self.path_progress % self.path_s[-1], side='right') - 1)
+            return carrot
         if self.advance_radius > 0:
             if self.wp_index < len(self.waypoints):
                 d = np.linalg.norm(self.last_pos - self.waypoints[self.wp_index])

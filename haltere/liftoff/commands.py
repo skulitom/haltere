@@ -413,7 +413,7 @@ def cmd_waypoints(a):
     for i in airborne[1:]:
         if np.linalg.norm(pos[i] - pts[-1]) >= a.spacing:
             pts.append(pos[i])
-    pts = [np.array([p[0], p[1], max(p[2], a.min_z)]).round(2).tolist() for p in pts]
+    pts = [np.array([p[0], p[1], min(max(p[2], a.min_z), a.max_z)]).round(2).tolist() for p in pts]
     with open(a.out, 'w', encoding='utf-8') as f:
         yaml.safe_dump({'source': a.csv, 'spacing_m': a.spacing, 'frame': 'sim (x forward, y left, z up), relative to the reset point',
                         'waypoints': pts}, f, sort_keys=False)
@@ -472,6 +472,11 @@ def cmd_fly(a):
                            period=a.period, amplitude=a.amplitude, stick_gain=a.stick_gain, stick_lpf=a.stick_lpf)
     if a.pattern:
         print(f'pattern {a.pattern}: radius {a.radius} m, period {a.period} s, amplitude {a.amplitude} m')
+    if a.path_speed > 0 and waypoints:
+        pilot.path_speed = a.path_speed
+        pilot.path_lookahead = a.lookahead
+        print(f'path following: {len(waypoints)} waypoints, {pilot.path_s[-1]:.0f} m loop at {a.path_speed} m/s, '
+              f'lookahead {a.lookahead} m')
     recorder = None
     shared = None
     if a.record or a.show:
