@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# raw connectome download (570 MB, public on GCS) and everything derived except the built flight graph
+data/raw/
+data/liftoff/
+data/tools/
+data/built/*
+!data/built/flight.npz
+!data/built/flight.nodes.parquet
+!data/built/flight.meta.json
+
+# training runs (checkpoints with optimiser state); slim inference checkpoints live in artifacts/
+runs/
+*.log
+.torch-install.log
+.deps-install.log

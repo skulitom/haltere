@@ -1,0 +1,145 @@
+{
+  "config": {
+    "version": "v1.0",
+    "min_synapses": 3,
+    "status": [
+      "Traced"
+    ],
+    "exclude_superclass": [
+      "ol_intrinsic",
+      "ol_sensory"
+    ],
+    "populations": {
+      "haltere": [
+        {
+          "entry_nerve": [
+            "DMetaN"
+          ],
+          "superclass": [
+            "vnc_sensory",
+            "sensory_ascending"
+          ]
+        }
+      ],
+      "wing_cs": [
+        {
+          "subclass": [
+            "campaniform sensilla"
+          ],
+          "entry_nerve": [
+            "ADMN"
+          ]
+        }
+      ],
+      "lptc": [
+        {
+          "type_regex": "^(HSN|HSE|HSS|HST|VS|VSm|VST1|VST2|H1|H2|VCH|DCH)$"
+        }
+      ],
+      "ocelli": [
+        {
+          "entry_nerve": [
+            true
+          ]
+        },
+        {
+          "type_regex": "^OCG\\d"
+        }
+      ],
+      "jo": [
+        {
+          "subclass": [
+            "wind_gravity"
+          ]
+        }
+      ],
+      "compass": [
+        {
+          "types": [
+            "EPG",
+            "EPGt"
+          ]
+        }
+      ],
+      "goal": [
+        {
+          "type_regex": "^(PFL3|FC2A|FC2B|FC2C)$"
+        }
+      ],
+      "wing_mn": [
+        {
+          "superclass": [
+            "vnc_motor"
+          ],
+          "subclass": [
+            "wm",
+            "hm"
+          ]
+        }
+      ],
+      "descending": [
+        {
+          "superclass": [
+            "descending_neuron"
+          ]
+        }
+      ],
+      "cx": [
+        {
+          "class": [
+            "CX"
+          ]
+        }
+      ]
+    },
+    "include": [
+      "descending",
+      "cx"
+    ],
+    "sources": [
+      "haltere",
+      "wing_cs",
+      "lptc",
+      "ocelli",
+      "jo",
+      "compass",
+      "goal"
+    ],
+    "sinks": [
+      "wing_mn"
+    ],
+    "hops_forward": 2,
+    "hops_backward": 2,
+    "max_neurons": 30000,
+    "signs": {
+      "acetylcholine": 1,
+      "gaba": -1,
+      "glutamate": -1,
+      "histamine": -1,
+      "dopamine": 0,
+      "octopamine": 0,
+      "serotonin": 0,
+      "unclear": 0
+    },
+    "sign_min_confidence": 0.0,
+    "whole_cns": false,
+    "derived": {
+      "premotor": {
+        "presynaptic_of": "wing_mn",
+        "min_synapses": 5,
+        "exclude_sensory": true
+      },
+      "dn_wing": {
+        "presynaptic_of": "wing_mn",
+        "min_synapses": 5,
+        "superclass": [
+          "descending_neuron"
+        ]
+      }
+    }
+  },
+  "built": "2026-09-12 00:21:54",
+  "n_candidates": 71618,
+  "n_nodes": 30000,
+  "n_edges": 2767698
+}

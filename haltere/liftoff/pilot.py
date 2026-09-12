@@ -1,0 +1,183 @@
+"""Run the trained brain on live Liftoff telemetry and produce stick commands."""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import numpy as np
+import torch
+
+from ..sim.quad import G
+from ..sim.tasks import HoverTaskConfig, observe_from_sensors
+from .frames import omega_from_quats, quat_wxyz_to_mat, unity_quat_to_sim, unity_vec_to_sim, yaw_of
+from .telemetry import TelemetryFrame
+
+
+@dataclass
+class LiftoffMapping:
+    """How Liftoff's conventions relate to the simulator's (filled in by ``haltere liftoff fit``)."""
+    stick_sign: tuple[float, float, float] = (1.0, 1.0, 1.0)   # multiply brain (roll, pitch, yaw) before sending
+    gyro_axis: tuple[int, int, int] = (1, 0, 2)                # telemetry gyro index for body x, y, z (roll, pitch, yaw)
+    gyro_sign: tuple[float, float, float] = (1.0, 1.0, 1.0)
+    use_quat_rates: bool = True                                # derive body rates from attitude instead of Gyro
+    max_rpm: float = 30000.0
+    throttle_scale: float = 1.0                                # gain around the hover point
+    hover_stick_sim: float | None = None                       # brain's throttle stick at hover (from its training physics)
+    hover_stick_game: float | None = None                      # Liftoff's raw throttle stick at hover (measured by autotest)
+    hover_processed_game: float | None = None                  # Liftoff's processed throttle input at hover
+    stick_curves: object = None                                # StickCurves: undo Liftoff's deadband/expo per axis
+    notes: dict = field(default_factory=dict)
+
+    def map_throttle(self, a: float) -> float:
+        """Brain throttle stick -> raw game throttle stick: same hover point, scaled deviation, through the
+        game's throttle curve when it is known."""
+        if self.hover_stick_sim is None:
+            return a * self.throttle_scale
+        if self.stick_curves is not None and 'throttle' in self.stick_curves.inv and self.hover_processed_game is not None:
+            target = self.hover_processed_game + self.throttle_scale * (a - self.hover_stick_sim)
+            return self.stick_curves.raw_for('throttle', target)
+        if self.hover_stick_game is None:
+            return a * self.throttle_scale
+        return self.hover_stick_game + self.throttle_scale * (a - self.hover_stick_sim)
+
+    def map_axis(self, ax: str, value: float) -> float:
+        """Brain roll/pitch/yaw stick (the processed input the FC should see) -> raw pad axis."""
+        if self.stick_curves is None:
+            return value
+        return self.stick_curves.raw_for(ax, value)
+
+
+def pattern_target(name: str, t: float, offset: np.ndarray, radius: float, period: float,
+                   amplitude: float, ramp: float = 4.0) -> np.ndarray:
+    """Moving targets for freestyle-style flights (sim frame, relative to the reset point).
+
+    orbit: circle of `radius` around the offset point, one lap per `period`.
+    climbdive: sweep back and forth over `radius` m while the altitude swings by +-`amplitude`.
+    figure8: a figure of eight of `radius`, one figure per `period`.
+    The pattern fades in over `ramp` seconds after take-off."""
+    g = min(1.0, max(0.0, (t - 3.0) / ramp))       # fade in after take-off
+    w = 2 * np.pi * (t / period)
+    if name == 'orbit':
+        d = np.array([radius * np.cos(w) - radius, radius * np.sin(w), 0.0])
+    elif name == 'climbdive':
+        d = np.array([radius * np.sin(w), 0.0, amplitude * np.sin(2 * w)])
+    elif name == 'figure8':
+        d = np.array([radius * np.sin(w), radius * np.sin(2 * w) * 0.5, 0.0])
+    else:
+        raise ValueError(f'unknown pattern {name!r}')
+    return offset + g * d
+
+
+class TelemetryPilot:
+    def __init__(self, brain, task_cfg: HoverTaskConfig, mapping: LiftoffMapping, device,
+                 offset=(0.0, 0.0, 2.0), waypoints: list | None = None, dwell: float = 4.0,
+                 advance_radius: float = 0.0, loop: bool = True, pattern: str = '', radius: float = 3.0,
+                 period: float = 12.0, amplitude: float = 1.5, stick_gain: float = 1.0, stick_lpf: float = 0.0):
+        self.brain = brain
+        self.cfg = task_cfg
+        self.map = mapping
+        self.device = device
+        self.offset = np.asarray(offset, dtype=np.float64)
+        self.waypoints = [np.asarray(w, dtype=np.float64) for w in (waypoints or [])]
+        self.dwell = dwell
+        self.advance_radius = advance_radius   # > 0: advance to the next waypoint when this close (racing)
+        self.loop = loop
+        self.pattern = pattern
+        self.radius, self.period, self.amplitude = radius, period, amplitude
+        self.stick_gain = stick_gain           # scales roll/pitch/yaw commands (smoothness / latency margin)
+        self.stick_lpf = stick_lpf             # s; low-pass on the sticks sent to the game (0 = off)
+        self.W = brain.weight_matrix().detach()
+        self.reset(None)
+
+    def reset(self, frame: TelemetryFrame | None) -> None:
+        self.state = self.brain.init_state(1)
+        self.pos0 = None if frame is None else unity_vec_to_sim(frame.position)
+        self.prev_quat = None
+        self.prev_t = None
+        self.last_timestamp = -1.0
+        self.t_start = None if frame is None else frame.timestamp
+        self.omega = np.zeros(3)
+        self.wp_index = 0
+        self.wp_since = None
+        self.last_pos = np.zeros(3)
+        self.filtered = None
+
+    def target_at(self, t: float) -> np.ndarray:
+        if self.pattern:
+            return pattern_target(self.pattern, t, self.offset, self.radius, self.period, self.amplitude)
+        if not self.waypoints:
+            return self.offset
+        if self.advance_radius > 0:
+            if self.wp_index < len(self.waypoints):
+                d = np.linalg.norm(self.last_pos - self.waypoints[self.wp_index])
+                if d < self.advance_radius:
+                    self.wp_index += 1
+                    if self.wp_index >= len(self.waypoints):
+                        self.wp_index = 0 if self.loop else len(self.waypoints) - 1
+            return self.waypoints[self.wp_index]
+        i = int(t // self.dwell)
+        i = i % len(self.waypoints) if self.loop else min(i, len(self.waypoints) - 1)
+        self.wp_index = i
+        return self.waypoints[i]
+
+    def rates(self) -> np.ndarray | None:
+        """Current firing rates of all neurons (for the live recorder)."""
+        if 'v' not in self.state:
+            return None
+        return (self.brain.cfg.rate_max * torch.sigmoid(self.state['v'][:, 0])).float().cpu().numpy()
+
+    def sensors(self, fr: TelemetryFrame) -> dict[str, torch.Tensor]:
+        if self.pos0 is None:
+            self.reset(fr)
+        q = unity_quat_to_sim(fr.attitude)
+        pos = unity_vec_to_sim(fr.position) - self.pos0
+        vel = unity_vec_to_sim(fr.velocity)
+        R = quat_wxyz_to_mat(q)
+        gravity_body = R.T @ np.array([0.0, 0.0, -1.0])
+        vel_body = R.T @ vel
+        if self.map.use_quat_rates and self.prev_quat is not None and self.prev_t is not None:
+            dt = max(fr.timestamp - self.prev_t, 1e-3)
+            self.omega = 0.5 * self.omega + 0.5 * omega_from_quats(self.prev_quat, q, dt)
+        elif not self.map.use_quat_rates:
+            g = np.asarray(fr.gyro, dtype=np.float64)
+            self.omega = np.deg2rad(np.array([g[i] for i in self.map.gyro_axis]) * np.asarray(self.map.gyro_sign))
+        self.prev_quat, self.prev_t = q, fr.timestamp
+        t = lambda v: torch.as_tensor(np.asarray(v, dtype=np.float32), device=self.device)[None]  # noqa: E731
+        return {
+            'gyro': t(self.omega), 'gravity_body': t(gravity_body), 'vel_body': t(vel_body), 'vel_world': t(vel),
+            'pos': t(pos), 'quat': t(q), 'up': t([R[2, 2]])[0], 'altitude': t([pos[2]]), 'yaw': t([yaw_of(q)]),
+        }
+
+    @torch.no_grad()
+    def step(self, fr: TelemetryFrame) -> np.ndarray:
+        """Return sticks [throttle, roll, pitch, yaw] in [-1, 1] for the virtual pad."""
+        if fr.timestamp < self.last_timestamp - 0.5:  # the drone was reset in Liftoff
+            self.reset(fr)
+        self.last_timestamp = fr.timestamp
+        s = self.sensors(fr)
+        target = torch.as_tensor(self.target_at(fr.timestamp - (self.t_start or 0.0)), dtype=torch.float32,
+                                 device=self.device)[None]
+        rpm = np.asarray(fr.motor_rpm, dtype=np.float64)
+        motor_mean = float(np.clip(rpm.mean() / self.map.max_rpm, 0, 1)) if rpm.size else 0.5
+        obs = observe_from_sensors(s, target, torch.tensor([[motor_mean]], device=self.device), self.cfg)
+        act, self.state, _ = self.brain(obs, self.state, self.W)
+        a = act[0].cpu().numpy().astype(np.float64)
+        a[1:] *= self.stick_gain
+        if self.stick_lpf > 0:
+            dt = max(fr.timestamp - self.prev_t, 1e-3) if self.prev_t is not None else 0.01
+            alpha = min(1.0, dt / self.stick_lpf)
+            self.filtered = a.copy() if self.filtered is None else self.filtered + alpha * (a - self.filtered)
+            a = self.filtered
+        sticks = np.array([self.map.map_throttle(float(a[0])),
+                           self.map.map_axis('roll', float(a[1]) * self.map.stick_sign[0]),
+                           self.map.map_axis('pitch', float(a[2]) * self.map.stick_sign[1]),
+                           self.map.map_axis('yaw', float(a[3]) * self.map.stick_sign[2])])
+        # the game normalises each stick to the unit circle: keep (throttle, yaw) and (roll, pitch) inside it
+        for i, j in ((0, 3), (1, 2)):
+            n = float(np.hypot(sticks[i], sticks[j]))
+            if n > 0.97:
+                sticks[i] *= 0.97 / n
+                sticks[j] *= 0.97 / n
+        self.last_obs = obs
+        self.last_target = target[0].cpu().numpy()
+        self.last_pos = s['pos'][0].cpu().numpy()
+        return np.clip(sticks, -1.0, 1.0)

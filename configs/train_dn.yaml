@@ -1,0 +1,88 @@
+# Training configuration for `haltere train` (hover / waypoint task in the differentiable simulator).
+train:
+  graph: data/built/flight
+  B: 256                 # parallel drones
+  T: 64                  # BPTT window, steps of brain.dt (0.64 s)
+  iters: 2000
+  lr: 0.0005             # neuron biases, gains, time constants
+  lr_edges: 0.0003       # per-synapse gains (stay close to the connectome)
+  lr_readout: 0.01       # motor readout + sensory encoders
+  grad_clip: 1.0
+  delay_steps: 2         # 20 ms control latency, like the telemetry -> gamepad path in Liftoff
+  randomize: 0.15
+  difficulty_start: 0.15
+  difficulty_end: 1.0
+  difficulty_iters: 1200
+  eval_every: 50
+  eval_steps: 400
+  save_every: 100
+  seed: 0
+  device: cuda
+  substeps: 2            # physics/PID sub-steps per 10 ms control step
+  brain_detach_every: 8  # gradient flows through the brain's recurrence for at most 8 steps (80 ms)
+
+task:
+  height: 2.0
+  target_box: [3.0, 3.0, 1.0]
+  init_pos_jitter: 1.0
+  init_vel_jitter: 1.0
+  init_tilt_deg: 25.0
+  init_rate_deg_s: 90.0
+  episode_steps: 400
+  switch_target_every: 0   # >0 turns the task into waypoint hopping
+  w_pos: 1.0
+  w_vel: 0.05
+  w_rate: 0.02
+  w_up: 2.0
+  w_act: 0.02
+  w_dact: 0.2
+  w_floor: 5.0
+  w_crash: 20.0
+  goal_scale: 2.0        # m: goal vector saturates beyond this
+  vel_scale: 3.0         # m/s
+  rate_scale: 2.0        # rad/s (~115 deg/s)
+
+brain:
+  model: connectome      # or mlp (baseline that ignores the connectome)
+  dt: 0.01
+  tau_init: 0.012
+  gain_init: 3.0
+  bias_init: -1.0
+  encoder_gain: 12.0
+  action_tau: 0.03
+  readout_init: 0.0      # start from "hover, do nothing"
+  rate_max: 4.0          # rate = rate_max * sigmoid(v): unit slope at the operating point
+  readout_norm: batch    # whiten each motor neuron's rate over the batch before the readout (batch | layer | none)
+  learn_edges: true
+  learn_unknown_signs: true
+  edge_prior: 0.001
+  rate_penalty: 0.001
+  sensory: {haltere: haltere, wing_cs: wing_cs, lptc: lptc, ocelli: ocelli, jo: jo, compass: [compass, dn_wing], goal: [goal, dn_wing]}
+  motor: [wing_mn]
+
+quad:                    # nominal 5-inch quad; refine with `haltere liftoff fit`
+  mass: 0.62
+  inertia: [0.0035, 0.004, 0.007]
+  arm_x: 0.09
+  arm_y: 0.09
+  twr: 6.0
+  thrust_exp: 1.5
+  motor_tau: 0.03
+  yaw_coeff: 0.012
+  drag_lin: [0.05, 0.05, 0.10]
+  drag_quad: [0.25, 0.25, 0.45]
+  ang_damp: 0.005
+  gyro_noise: 0.02
+
+ctl:                     # Liftoff "Borrum 180 X" Zetaflight gains (Betaflight units)
+  P: [29, 29, 30]
+  I: [34, 36, 38]
+  D: [22, 22, 0]
+  axis_gain: [1.0, 1.0, 1.0]
+  idle: 0.04
+
+rates:                   # Liftoff Rate 100 / Expo 0 / SuperExpo 70 => 667 deg/s max
+  rc_rate: [1.0, 1.0, 1.0]
+  super_rate: [0.7, 0.7, 0.7]
+  expo: [0.0, 0.0, 0.0]
+  throttle: [0.0, 0.5, 1.0, 0.0]

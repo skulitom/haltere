@@ -1,0 +1,47 @@
+# Graph-building configuration for `haltere build`.
+# Which neurons of the male-CNS v1.0 connectome make up the "flight brain".
+version: v1.0
+min_synapses: 3                 # ignore connections weaker than this many synapses
+status: [Traced]
+exclude_superclass: [ol_intrinsic, ol_sensory]   # optic-lobe columnar circuits are replaced by direct optic-flow input to the LPTCs
+include: [descending, cx]       # circuits kept whole
+sources: [haltere, wing_cs, lptc, ocelli, jo, compass, goal]
+sinks: [wing_mn]
+hops_forward: 2                 # neurons reachable from a sense within this many synapses ...
+hops_backward: 2                # ... that also reach a wing motor neuron within this many synapses
+max_neurons: 30000
+sign_min_confidence: 0.0
+signs:
+  acetylcholine: 1
+  gaba: -1
+  glutamate: -1
+  histamine: -1
+  dopamine: 0        # 0 = sign unknown -> learnable
+  octopamine: 0
+  serotonin: 0
+  unclear: 0
+populations:
+  haltere:            # angular-rate sense: afferents of the haltere (dorsal metathoracic) nerve
+    - {entry_nerve: [DMetaN], superclass: [vnc_sensory, sensory_ascending]}
+  wing_cs:            # wing campaniform sensilla (wing load)
+    - {subclass: [campaniform sensilla], entry_nerve: [ADMN]}
+  lptc:               # lobula-plate tangential cells (optic flow)
+    - {type_regex: '^(HSN|HSE|HSS|HST|VS|VSm|VST1|VST2|H1|H2|VCH|DCH)$'}
+  ocelli:             # ocellar-nerve afferents + OCG interneurons (horizon)
+    - {entry_nerve: [ON]}
+    - {type_regex: '^OCG\d'}
+  jo:                 # Johnston's organ wind/gravity neurons (airflow)
+    - {subclass: [wind_gravity]}
+  compass:            # head-direction cells
+    - {types: [EPG, EPGt]}
+  goal:               # goal-direction cells
+    - {type_regex: '^(PFL3|FC2A|FC2B|FC2C)$'}
+  wing_mn:            # wing (wm) and haltere (hm) muscle motor neurons = the drone's sticks
+    - {superclass: [vnc_motor], subclass: [wm, hm]}
+  descending:
+    - {superclass: [descending_neuron]}
+  cx:
+    - {class: [CX]}
+derived:              # populations defined by connectivity, after node selection
+  premotor: {presynaptic_of: wing_mn, min_synapses: 5, exclude_sensory: true}   # interneurons/DNs/ANs onto wing MNs
+  dn_wing: {presynaptic_of: wing_mn, min_synapses: 5, superclass: [descending_neuron]}  # descending neurons driving wing MNs

@@ -1,0 +1,9 @@
+teacher: runs/mlp300/best.pt
+iters: 300
+lr_readout: 0.0003
+lr: 0.0001
+lr_edges: 0.0001
+freeze_internal: false
+student_frac: 0.0
+student_frac_final: 0.3
+brain_detach_every: 8

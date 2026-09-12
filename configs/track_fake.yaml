@@ -1,0 +1,28 @@
+source: data/liftoff/fake.csv
+spacing_m: 1.0
+frame: sim (x forward, y left, z up), relative to the reset point
+waypoints:
+- - -0.35
+  - 0.25
+  - 1.0
+- - 0.43
+  - 0.85
+  - 1.0
+- - -0.56
+  - 0.97
+  - 1.0
+- - 0.44
+  - 0.98
+  - 1.0
+- - -0.57
+  - 1.04
+  - 1.0
+- - 0.37
+  - 0.67
+  - 1.0
+- - -0.63
+  - 0.83
+  - 1.0
+- - 0.38
+  - 0.86
+  - 1.0
