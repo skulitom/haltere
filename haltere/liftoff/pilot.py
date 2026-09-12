@@ -102,6 +102,7 @@ class TelemetryPilot:
         self.vision_speed = 1.5                # m/s; how fast the carrot advances toward the gate
         self._cand_hist = []                   # (time, gate candidate, drone position) of recent sightings
         self._rays = []                        # (time, origin, world direction) of recent sightings, for triangulation
+        self._gate_anchor = (np.zeros(3), 3.0) # where the believed gate was first confirmed, and the allowed drift
         self._agree_t = 0.0                    # last time a sighting agreed with the remembered gate
         self._line = None                      # (start, gate) of the straight line the carrot runs along
         self._line_s = 0.0                     # progress along that line (m)
@@ -207,27 +208,29 @@ class TelemetryPilot:
                      and -35.0 < elevation < 25.0)         # gates are near the ground, never up in the sky
         cand = None
         if plausible:
-            # where is the gate? Triangulate the recent sighting rays (the drone's motion gives the baseline); the
-            # apparent-width distance is only used before the drone has moved (it is unreliable: gates differ in size)
+            # where is the gate? The apparent width gives a distance (right on average for the gates the detector
+            # was trained on); when the drone's motion has opened enough parallax on the sighting rays, their
+            # intersection refines it
             dw = R @ d
+            dist = float(np.clip(det.dist_m, 1.0, 40.0))
             self._rays = [(t, o, r) for t, o, r in self._rays if now - t < 3.0] + [(now, pos_w.copy(), dw)]
             if len(self._rays) >= 3:
                 origins = np.array([o for _, o, _ in self._rays])
                 dirs = np.array([r for _, _, r in self._rays])
-                perp = origins - origins[-1]
-                perp = perp - np.outer(perp @ dw, dw)                     # displacement across the line of sight
-                if np.linalg.norm(perp, axis=1).max() >= 0.8:
+                spread = float(np.degrees(np.arccos(np.clip((dirs @ dw).min(), -1.0, 1.0))))
+                if spread >= 4.0 and np.linalg.norm(origins - origins[-1], axis=1).max() >= 0.8:
                     from ..vision.triangulate import intersect_rays
                     pt, rms = intersect_rays(origins, dirs)
                     rel = pt - pos_w
                     if rms < 1.5 and 1.0 < np.linalg.norm(rel) < 40.0 and rel @ dw > 0:
-                        cand = pt
-            if cand is None and float(np.linalg.norm(self.last_vel)) < 0.3:
-                cand = pos_w + dw * float(np.clip(det.dist_m, 1.0, 30.0))
+                        dist = 0.5 * dist + 0.5 * float(np.linalg.norm(rel))
+            cand = pos_w + dw * dist
         if cand is not None:
+            tol = max(1.5, 0.15 * float(np.linalg.norm(cand - pos_w)))   # tolerance grows with the distance
             self._cand_hist = [(t, c, q) for t, c, q in self._cand_hist if now - t < 2.5] + [(now, cand, pos_w.copy())]
             if self.vision_gate_w is not None:
-                if np.linalg.norm(cand - self.vision_gate_w) < 2.0:
+                anchor, atol = self._gate_anchor
+                if np.linalg.norm(cand - self.vision_gate_w) < tol and np.linalg.norm(cand - anchor) < atol:
                     self.vision_gate_w = 0.85 * self.vision_gate_w + 0.15 * cand      # refine the remembered position
                     self._agree_t = now
                 elif now - self._agree_t > 1.0:            # sightings have disagreed with the memory for a second
@@ -235,12 +238,10 @@ class TelemetryPilot:
                     self._line = None
             if self.vision_gate_w is None:
                 for t, c, q in self._cand_hist:
-                    moved = float(np.linalg.norm(pos_w - q))
-                    if now - t >= 1.0 and moved >= 1.0 and np.linalg.norm(cand - c) < 1.5:
-                        self.vision_gate_w = cand                                    # stays put while we move: a gate
-                        break
-                    if now - t >= 1.5 and moved < 0.3 and np.linalg.norm(cand - c) < 1.0:
-                        self.vision_gate_w = cand                                    # at rest: a steady sighting
+                    if now - t >= 0.7 and np.linalg.norm(cand - c) < tol:
+                        self.vision_gate_w = cand                                    # steady in the world: a gate
+                        # a real gate never moves: later refinements may not drift far from this first position
+                        self._gate_anchor = (cand.copy(), max(3.0, 0.2 * float(np.linalg.norm(cand - pos_w))))
                         break
                 if self.vision_gate_w is not None:
                     self._agree_t = now
