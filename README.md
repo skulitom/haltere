@@ -391,7 +391,8 @@ with a lateral offset of about 1.4 m; fine-tuning on the identified physics is t
   hover at 0.37 m, giving up most of the speed (3.1 m at 2 m/s in the simulator). In the game the
   decisive change was not the brain but the heading: with `--face-travel 0.8` the same stage-2
   brain went from 1.30 m to **0.67 m mean error at 1.5 m/s** (46% of the time within 0.5 m, 3% of
-  the time more than 2 m off), flying through the gates nose first (`docs/liftoff_race.mp4`).
+  the time more than 2 m off), flying through the gates nose first (`docs/liftoff_race.mp4`). At
+  2 m/s it still keeps up, with 1.5 m mean error; the human lap on this track runs at 14 m/s.
 
 ## Status
 
