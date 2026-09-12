@@ -222,6 +222,38 @@ sign conventions, which the pilot needs, and for reading off how far Liftoff's d
 randomization range; if it is far outside, put the fitted values into the robust config's `quad`
 section and fine-tune again.
 
+### Flying by sight: the gate detector
+
+Everything above steers by coordinates taught from a manual lap; the brain never sees a gate. The
+vision pipeline (`haltere/vision/`) replaces the telemetry goal with one that comes from the FPV
+image, so the fly flies toward what it sees:
+
+```bash
+haltere liftoff fly runs/ftPath2_best.pt --waypoints-file configs/track_strawbale.yaml --path-speed 1.5         --face-travel 0.8 --face-ahead 6 --seconds 280 --dataset data/vision/run2   # frames + pose at 10 fps
+haltere vision calibrate data/vision/run2                # focal length from feature motion under the known attitude
+haltere vision gates-from-frames data/vision/run2 --frames 105,240,338,468,578,700,805   # passages -> gate list
+haltere vision label data/vision/run2                    # project the next gate into every frame
+haltere vision train data/vision/run2 --out runs/gatenet # GateNet: frame -> visible, centre, apparent width
+haltere vision inspect data/vision/run2 --ckpt runs/gatenet/best.pt    # labels (green) and predictions (red)
+haltere liftoff fly runs/ftPath2_best.pt --vision runs/gatenet/best.pt --face-travel 0.8   # fly by sight
+```
+
+How the pieces work. Liftoff stores neither the track layout nor the camera's field of view, so
+both are recovered from flights: the focal length by matching features between consecutive frames
+and asking which pinhole model makes the telemetry rotation explain their motion (345 px at
+640 wide, an 86 degree horizontal field; the 30 degree camera tilt comes from the drone file), and
+the gates by noting the frames in which the drone passes through one (read off thumbnail sheets)
+and snapping the drone's position at that moment to the taught path, which the human flew through
+the gate centres. Two passes over the course agreed within 6 m for every gate. With the gates known
+the next gate along the course is projected into each frame with the drone's attitude, which
+labels thousands of frames for free. GateNet is a small convolutional network (5 M parameters,
+320 x 180 input) that outputs whether a gate is in view, its centre and its apparent width; the
+pilot unprojects the centre into a body-frame direction, turns the width into a distance through
+the nominal gate size, and feeds that goal vector to the brain in place of the telemetry one,
+remembering the last gate briefly when it leaves the view and hovering when nothing is in sight.
+The drone's own senses (gyro, gravity, velocity, motor load) still come from telemetry, as a fly's
+would from its halteres and wings.
+
 ### Rehearsing without the game
 
 `haltere liftoff fake` is a stand-in for Liftoff: it simulates a drone with deliberately different

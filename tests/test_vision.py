@@ -27,14 +27,14 @@ def test_camera_conventions():
 def test_gate_labels_and_next_gate():
     cam = Camera(640, 360, 300.0, 30.0)
     gates = [{'pos': [10.0, 0.0, 1.5], 'heading': 0.0}, {'pos': [40.0, 5.0, 1.5], 'heading': 0.0}]
-    lab = gate_label(np.array([0.0, 0.0, 1.5]), np.array([1.0, 0, 0, 0]), gates, cam)
+    lab = gate_label(np.array([0.0, 0.0, 1.5]), np.array([1.0, 0, 0, 0]), gates, cam, up_m=0.0)
     assert lab['visible'] == 1 and abs(lab['u'] - 320) < 1e-6 and lab['v'] > 180 and abs(lab['dist_m'] - 10) < 1e-6
     yaw = np.deg2rad(20)
-    lab = gate_label(np.array([0.0, 0.0, 1.5]), np.array([np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]), gates, cam)
+    lab = gate_label(np.array([0.0, 0.0, 1.5]), np.array([np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]), gates, cam, up_m=0.0)
     assert lab['u'] > 320                                          # yawed left -> the gate moves right in the image
     assert next_gate_index(np.array([12.0, 0.0, 1.5]), gates) == 1
     assert next_gate_index(np.array([0.0, 0.0, 1.5]), gates) == 0
-    assert gate_label(np.array([50.0, 0.0, 1.5]), np.array([1.0, 0, 0, 0]), gates, cam)['visible'] == 0
+    assert gate_label(np.array([50.0, 0.0, 1.5]), np.array([1.0, 0, 0, 0]), gates, cam, up_m=0.0)['visible'] == 0
 
 
 def test_gatenet_shapes_and_loss():

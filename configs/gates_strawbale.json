@@ -1,5 +1,5 @@
 {
- "gate_width_m": 3.0,
+ "gate_width_m": 4.0,
  "gates": [
   {
    "pos": [
@@ -78,5 +78,6 @@
    "gate": 6,
    "drone_offset_m": 1.4013468135293576
   }
- ]
+ ],
+ "centre_up_m": 1.5
 }

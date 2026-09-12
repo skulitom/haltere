@@ -24,6 +24,7 @@ def overlay(dataset: str | Path, out: str | Path, every: int = 25, count: int = 
     for lab in picks:
         im = Image.open(d / 'frames' / lab['file']).convert('RGB')
         w, h = im.size
+        clean = np.asarray(im).copy()          # the network must see the frame without the overlay drawings
         dr = ImageDraw.Draw(im)
         if lab['visible']:
             u, v, s = lab['u'], lab['v'], lab['width_px'] / 2
@@ -33,7 +34,7 @@ def overlay(dataset: str | Path, out: str | Path, every: int = 25, count: int = 
             dr.text((5, 5), 'no gate label', fill=(255, 120, 0))
         if net is not None:
             import cv2
-            arr = cv2.resize(np.asarray(im), (IN_W, IN_H), interpolation=cv2.INTER_AREA)
+            arr = cv2.resize(clean, (IN_W, IN_H), interpolation=cv2.INTER_AREA)
             x = torch.from_numpy(arr).permute(2, 0, 1).float().div_(255.0)[None].to(dev)
             with torch.no_grad():
                 p, un, vn, wpx = decode(net(x))[0].cpu().numpy()

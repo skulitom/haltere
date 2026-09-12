@@ -98,6 +98,8 @@ class TelemetryPilot:
         self.vision_thresh = 0.5
         self.vision_stale = 0.5                # s; older detections are not trusted
         self.vision_gate_w = None              # remembered position of the gate last seen (world, sim frame)
+        self.vision_max_dist = 8.0             # m; the goal never points further than this (the goal saturates anyway)
+        self._vision_cand = None
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
@@ -135,6 +137,7 @@ class TelemetryPilot:
         self._last_t = None
         self.vision_gate_w = None
         self.vision_passed_t = None
+        self._vision_cand = None
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -176,12 +179,24 @@ class TelemetryPilot:
         det = self.vision.get()
         now = _time.time()
         R = self.last_R
-        if det.p_visible >= self.vision_thresh and now - det.t < self.vision_stale and det.dist_m > 0.5:
-            rel_b = det.direction_body * det.dist_m
-            self.vision_gate_w = pos_w + R @ rel_b
-            self.vision_passed_t = None
-            self.vision_status = f'gate seen p={det.p_visible:.2f} {det.dist_m:.1f} m'
-            return rel_b
+        d = det.direction_body
+        elevation = float(np.degrees(np.arctan2(d[2], np.hypot(d[0], d[1]))))
+        plausible = (det.p_visible >= self.vision_thresh and now - det.t < self.vision_stale and det.dist_m > 0.5
+                     and -35.0 < elevation < 25.0)         # gates are near the ground, never up in the sky
+        if plausible:
+            # a new gate (nothing remembered, or far from what is remembered) must be seen twice in a row
+            cand_w = pos_w + R @ (d * min(det.dist_m, self.vision_max_dist))
+            if self.vision_gate_w is None or np.linalg.norm(cand_w - self.vision_gate_w) > 4.0:
+                if self._vision_cand is not None and np.linalg.norm(cand_w - self._vision_cand) < 3.0:
+                    self.vision_gate_w = cand_w
+                self._vision_cand = cand_w
+            else:
+                self.vision_gate_w = 0.7 * self.vision_gate_w + 0.3 * cand_w      # smooth the remembered position
+            if self.vision_gate_w is not None:
+                rel_b = R.T @ (self.vision_gate_w - pos_w)
+                self.vision_passed_t = None
+                self.vision_status = f'gate seen p={det.p_visible:.2f} {det.dist_m:.1f} m'
+                return rel_b
         if self.vision_gate_w is not None:
             rel_b = R.T @ (self.vision_gate_w - pos_w)
             if rel_b[0] > -0.5 and np.linalg.norm(rel_b) > 0.5:

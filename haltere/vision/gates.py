@@ -16,7 +16,8 @@ import numpy as np
 
 from .camera import Camera, world_to_body
 
-GATE_WIDTH_M = 3.0      # nominal inner width of the truss gates (used to turn apparent size into distance)
+GATE_WIDTH_M = 4.0      # nominal width of a gate (arches on this course; turns apparent size into distance)
+CENTRE_UP_M = 1.5       # the gate's visual centre sits this far above the passage point of the flight path
 
 
 def border_darkness(gray: np.ndarray, band: float = 0.08) -> float:
@@ -114,13 +115,20 @@ def gates_from_passage_frames(dataset: str | Path, frames: list[int], track_yaml
     return gates
 
 
-def save_gates(passages: list[dict], out: str | Path) -> None:
-    Path(out).write_text(json.dumps({'gate_width_m': GATE_WIDTH_M, 'gates': passages}, indent=1), encoding='utf-8')
+def save_gates(passages: list[dict], out: str | Path, width_m: float = GATE_WIDTH_M, up_m: float = CENTRE_UP_M) -> None:
+    Path(out).write_text(json.dumps({'gate_width_m': width_m, 'centre_up_m': up_m, 'gates': passages}, indent=1),
+                         encoding='utf-8')
 
 
 def load_gates(path: str | Path) -> list[dict]:
     d = json.loads(Path(path).read_text(encoding='utf-8'))
     return d['gates']
+
+
+def load_gate_file(path: str | Path) -> tuple[list[dict], float, float]:
+    """(gates, nominal width in m, centre height above the passage point in m)."""
+    d = json.loads(Path(path).read_text(encoding='utf-8'))
+    return d['gates'], float(d.get('gate_width_m', GATE_WIDTH_M)), float(d.get('centre_up_m', CENTRE_UP_M))
 
 
 def next_gate_index(pos: np.ndarray, gates: list[dict], passed_margin: float = 1.0) -> int | None:
@@ -141,7 +149,8 @@ def next_gate_index(pos: np.ndarray, gates: list[dict], passed_margin: float = 1
 
 
 def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: Camera, next_only: bool = True,
-               max_dist_m: float = 45.0, min_width_px: float = 22.0) -> dict:
+               max_dist_m: float = 45.0, min_width_px: float = 22.0, width_m: float = GATE_WIDTH_M,
+               up_m: float = CENTRE_UP_M) -> dict:
     """Label for one frame: the next gate's pixel centre, apparent width and distance (if it is in the image and
     close enough to be seen: within max_dist_m and at least min_width_px wide).
     Returns {'visible': 0/1, 'u', 'v' (pixels), 'width_px', 'dist_m', 'gate': index}."""
@@ -149,11 +158,11 @@ def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: C
     if i is None:
         return {'visible': 0}
     g = gates[i]
-    centre = np.asarray(g['pos'], dtype=np.float64)
-    # gate corners: a square of GATE_WIDTH_M facing the heading, centred at the passage point
+    centre = np.asarray(g['pos'], dtype=np.float64) + np.array([0.0, 0.0, up_m])   # visual centre of the gate
+    # gate corners: a square of width_m facing the heading, centred there
     h = g['heading']
-    side = np.array([-np.sin(h), np.cos(h), 0.0]) * GATE_WIDTH_M / 2
-    up = np.array([0.0, 0.0, GATE_WIDTH_M / 2])
+    side = np.array([-np.sin(h), np.cos(h), 0.0]) * width_m / 2
+    up = np.array([0.0, 0.0, width_m / 2])
     corners = np.stack([centre + side + up, centre - side + up, centre - side - up, centre + side - up])
     pts_b = world_to_body(np.vstack([centre[None], corners]), pos, quat_wxyz)
     px, ok = cam.project_body(pts_b)
@@ -161,7 +170,8 @@ def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: C
     if not ok.all() or dist < 0.8:
         return {'visible': 0, 'gate': i}
     u, v = px[0]
-    inside = -0.1 * cam.width <= u <= 1.1 * cam.width and -0.1 * cam.height <= v <= 1.1 * cam.height
+    # 5% margin: the same tolerance the training loader applies in normalised coordinates (|u|, |v| <= 1.1)
+    inside = -0.05 * cam.width <= u <= 1.05 * cam.width and -0.05 * cam.height <= v <= 1.05 * cam.height
     width_px = float(np.linalg.norm(px[1] - px[2]))
     visible = inside and dist <= max_dist_m and width_px >= min_width_px
     return {'visible': int(visible), 'u': float(u), 'v': float(v), 'width_px': width_px, 'dist_m': dist, 'gate': i}

@@ -11,20 +11,21 @@ import torch
 
 from .calibrate import load_index
 from .camera import Camera
-from .gates import gate_label, load_gates
+from .gates import gate_label
 from .model import IN_H, IN_W, GateNet, decode
 
 
 def label_dataset(dataset: str | Path, gates_path: str | Path, cam: Camera, verbose: bool = True) -> Path:
     """Write labels.json next to index.csv: one entry per frame with the next gate's image position and size."""
+    from .gates import load_gate_file
     rows = load_index(dataset)
-    gates = load_gates(gates_path)
+    gates, width_m, up_m = load_gate_file(gates_path)
     labels = []
     n_vis = 0
     for r in rows:
         pos = np.array([r['px'], r['py'], r['pz']])
         q = np.array([r['qw'], r['qx'], r['qy'], r['qz']])
-        lab = gate_label(pos, q, gates, cam)
+        lab = gate_label(pos, q, gates, cam, width_m=width_m, up_m=up_m)
         lab['file'] = r['file']
         labels.append(lab)
         n_vis += lab['visible']
