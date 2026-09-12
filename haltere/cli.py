@@ -355,7 +355,12 @@ def main(argv=None):
     q.add_argument('--radius', type=float, default=3.0, help='pattern radius (m)')
     q.add_argument('--period', type=float, default=12.0, help='pattern period (s)')
     q.add_argument('--amplitude', type=float, default=1.5, help='climb/dive altitude swing (m)')
-    q.add_argument('--stick-gain', type=float, default=1.0, help='scale roll/pitch/yaw commands (smoothness)')
+    q.add_argument('--stick-gain', type=str, default='1.0',
+                   help='scale roll/pitch/yaw commands (smoothness): one number or roll,pitch,yaw')
+    q.add_argument('--face-travel', type=float, default=0.0,
+                   help='yaw the nose toward the target: stick per radian of heading error (0 = off; try 0.8). '
+                        'The brain has no camera and no heading objective, so without this it flies sideways')
+    q.add_argument('--face-max', type=float, default=0.25, help='cap on the facing yaw stick')
     q.add_argument('--stick-lpf', type=float, default=0.0, help='low-pass time constant on the sticks (s)')
     q.add_argument('--gyro', choices=['quat', 'telemetry'], default='quat',
                    help='body rates from attitude differences (quat) or from Liftoff\'s Gyro field (telemetry)')

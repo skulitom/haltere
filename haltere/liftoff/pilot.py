@@ -71,7 +71,8 @@ class TelemetryPilot:
     def __init__(self, brain, task_cfg: HoverTaskConfig, mapping: LiftoffMapping, device,
                  offset=(0.0, 0.0, 2.0), waypoints: list | None = None, dwell: float = 4.0,
                  advance_radius: float = 0.0, loop: bool = True, pattern: str = '', radius: float = 3.0,
-                 period: float = 12.0, amplitude: float = 1.5, stick_gain: float = 1.0, stick_lpf: float = 0.0):
+                 period: float = 12.0, amplitude: float = 1.5, stick_gain: float = 1.0, stick_lpf: float = 0.0,
+                 face_gain: float = 0.0, face_max: float = 0.25):
         self.brain = brain
         self.cfg = task_cfg
         self.map = mapping
@@ -83,8 +84,13 @@ class TelemetryPilot:
         self.loop = loop
         self.pattern = pattern
         self.radius, self.period, self.amplitude = radius, period, amplitude
-        self.stick_gain = stick_gain           # scales roll/pitch/yaw commands (smoothness / latency margin)
+        # scales roll/pitch/yaw commands (smoothness / latency margin): one number or one per axis
+        self.stick_gain = np.array(stick_gain if np.ndim(stick_gain) else [stick_gain] * 3, dtype=np.float64)
         self.stick_lpf = stick_lpf             # s; low-pass on the sticks sent to the game (0 = off)
+        # > 0: yaw the nose toward the target (stick per radian of heading error, capped at face_max). The brain
+        # has no camera and no heading objective, so on its own it flies sideways; this keeps the FPV view
+        # looking along the path. Positive yaw stick = nose right (Betaflight convention, verified in the sim).
+        self.face_gain, self.face_max = face_gain, face_max
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
         if self.waypoints:
@@ -193,6 +199,11 @@ class TelemetryPilot:
         act, self.state, _ = self.brain(obs, self.state, self.W)
         a = act[0].cpu().numpy().astype(np.float64)
         a[1:] *= self.stick_gain
+        if self.face_gain > 0:
+            rel = target[0].cpu().numpy() - s['pos'][0].cpu().numpy()
+            if np.hypot(rel[0], rel[1]) > 0.8:
+                err = np.angle(np.exp(1j * (np.arctan2(rel[1], rel[0]) - float(s['yaw'].flatten()[0]))))
+                a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))
         if self.stick_lpf > 0:
             dt = max(fr.timestamp - self.prev_t, 1e-3) if self.prev_t is not None else 0.01
             alpha = min(1.0, dt / self.stick_lpf)

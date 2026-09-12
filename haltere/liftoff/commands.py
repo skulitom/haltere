@@ -512,9 +512,12 @@ def cmd_fly(a):
     waypoints = load_waypoints(a.waypoints, a.waypoints_file)
     if a.gyro == 'telemetry':
         mapping.use_quat_rates = False
+    sg = [float(x) for x in str(a.stick_gain).split(',')]
+    stick_gain = sg[0] if len(sg) == 1 else sg
     pilot = TelemetryPilot(brain, cfg.task, mapping, brain.device, offset=offset, waypoints=waypoints, dwell=a.dwell,
                            advance_radius=a.advance_radius, loop=not a.no_loop, pattern=a.pattern, radius=a.radius,
-                           period=a.period, amplitude=a.amplitude, stick_gain=a.stick_gain, stick_lpf=a.stick_lpf)
+                           period=a.period, amplitude=a.amplitude, stick_gain=stick_gain, stick_lpf=a.stick_lpf,
+                           face_gain=a.face_travel, face_max=a.face_max)
     if a.pattern:
         print(f'pattern {a.pattern}: radius {a.radius} m, period {a.period} s, amplitude {a.amplitude} m')
     if a.path_speed > 0 and waypoints:
