@@ -106,7 +106,7 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
     proc = None
     frame_h = frame_w = None
     ffmpeg = shutil.which('ffmpeg')
-    t_next = time.perf_counter()
+    t_next = t0 = time.perf_counter()
     n_frames = 0
     t_report = time.perf_counter()
     while not shared.stop.value:
@@ -146,8 +146,13 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
                 h, w = min(frame_h, frame.shape[0]), min(frame_w, frame.shape[1])
                 fixed[:h, :w] = frame[:h, :w]
                 frame = fixed
-            proc.stdin.write(np.ascontiguousarray(frame).tobytes())
-            n_frames += 1
+            # keep the video in real time: when capture + rendering are slower than `fps` (a busy machine),
+            # repeat the current frame for the missed ticks instead of letting the video play fast
+            due = int((time.perf_counter() - t0) * fps) - n_frames
+            buf = np.ascontiguousarray(frame).tobytes()
+            for _ in range(max(1, min(due, 8))):
+                proc.stdin.write(buf)
+                n_frames += 1
         if viewer is not None:
             plt, vfig, im = viewer
             im.set_data(img_panel)

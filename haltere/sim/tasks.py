@@ -32,6 +32,12 @@ class HoverTaskConfig:
     vel_scale: float = 6.0              # m/s
     rate_scale: float = 6.0             # rad/s
     switch_target_every: int = 0        # steps; 0 = fixed target per episode (waypoint mode if > 0)
+    # moving target (path following): the target drifts at a random speed along a slowly turning heading
+    path_speed: float = 0.0             # m/s, ceiling of the target speed (0 = static targets)
+    path_turn_deg_s: float = 30.0       # max heading turn rate of the moving target
+    path_climb: float = 0.3             # vertical speed as a fraction of the horizontal speed
+    path_z_range: tuple[float, float] = (1.2, 3.5)   # the moving target bounces between these altitudes
+    control_dt: float = 0.01            # s per control step (target motion)
 
 
 def observe_from_sensors(s: dict[str, torch.Tensor], target: torch.Tensor, motor_mean: torch.Tensor,
@@ -78,10 +84,25 @@ class HoverTask:
         self.B = B
         self.device = device
         self.target = torch.zeros(B, 3, device=device)
+        self.target_vel = torch.zeros(B, 3, device=device)
+        self.turn_rate = torch.zeros(B, device=device)
         self.t = torch.zeros(B, dtype=torch.long, device=device)
         self.prev_action = torch.zeros(B, 4, device=device)
 
     # ------------------------------------------------------------------ resets
+    def _difficulty(self, difficulty: float | None) -> float:
+        return self.cfg.difficulty if difficulty is None else difficulty
+
+    def _sample_motion(self, n: int, d: float) -> tuple[torch.Tensor, torch.Tensor]:
+        """Random target motion: speed ~ U(0, d * path_speed), random heading, turn rate and climb."""
+        c, dev = self.cfg, self.device
+        speed = d * c.path_speed * torch.rand(n, device=dev)
+        heading = (2 * torch.rand(n, device=dev) - 1) * torch.pi
+        climb = c.path_climb * (2 * torch.rand(n, device=dev) - 1)
+        vel = torch.stack([speed * torch.cos(heading), speed * torch.sin(heading), speed * climb], dim=1)
+        turn = torch.deg2rad(torch.tensor(c.path_turn_deg_s, device=dev)) * (2 * torch.rand(n, device=dev) - 1)
+        return vel, turn
+
     def _sample_targets(self, n: int) -> torch.Tensor:
         box = torch.tensor(self.cfg.target_box, device=self.device)
         target = (2 * torch.rand(n, 3, device=self.device) - 1) * box
@@ -109,6 +130,7 @@ class HoverTask:
     def reset_all(self, difficulty: float | None = None) -> QuadState:
         st, target = self.sample_state(self.B, difficulty)
         self.target = target
+        self.target_vel, self.turn_rate = self._sample_motion(self.B, self._difficulty(difficulty))
         self.t = torch.zeros(self.B, dtype=torch.long, device=self.device)
         self.prev_action = torch.zeros(self.B, 4, device=self.device)
         return st
@@ -118,6 +140,9 @@ class HoverTask:
             return st
         new_st, new_target = self.sample_state(self.B, difficulty)
         self.target = torch.where(mask[:, None], new_target, self.target)
+        vel, turn = self._sample_motion(self.B, self._difficulty(difficulty))
+        self.target_vel = torch.where(mask[:, None], vel, self.target_vel)
+        self.turn_rate = torch.where(mask, turn, self.turn_rate)
         self.t = torch.where(mask, torch.zeros_like(self.t), self.t)
         self.prev_action = torch.where(mask[:, None], torch.zeros_like(self.prev_action), self.prev_action)
         return st.where(mask, new_st)
@@ -143,9 +168,24 @@ class HoverTask:
         return (c.w_pos * pos_err + c.w_vel * vel + c.w_rate * rate + c.w_up * tilt + c.w_act * act
                 + c.w_dact * dact + c.w_floor * floor + c.w_crash * crash)
 
+    def advance_target(self) -> None:
+        """Move the target one control step along its (slowly turning) heading; bounce off the altitude band."""
+        c = self.cfg
+        if c.path_speed <= 0:
+            return
+        a = self.turn_rate * c.control_dt
+        ca, sa = torch.cos(a), torch.sin(a)
+        vx, vy, vz = self.target_vel[:, 0], self.target_vel[:, 1], self.target_vel[:, 2]
+        z = self.target[:, 2]
+        bounce = ((z < c.path_z_range[0]) & (vz < 0)) | ((z > c.path_z_range[1]) & (vz > 0))
+        vz = torch.where(bounce, -vz, vz)
+        self.target_vel = torch.stack([ca * vx - sa * vy, sa * vx + ca * vy, vz], dim=1)
+        self.target = self.target + self.target_vel * c.control_dt
+
     def tick(self, st: QuadState) -> torch.Tensor:
-        """Advance episode clocks (and waypoints); return the mask of environments to reset."""
+        """Advance episode clocks (and waypoints / moving targets); return the mask of environments to reset."""
         self.t = self.t + 1
+        self.advance_target()
         if self.cfg.switch_target_every > 0:
             switch = (self.t % self.cfg.switch_target_every) == 0
             if bool(switch.any()):
@@ -155,4 +195,5 @@ class HoverTask:
     def metrics(self, st: QuadState) -> dict[str, float]:
         d = (st.pos - self.target).norm(dim=1)
         return {'dist_mean': float(d.mean()), 'within_0.5m': float((d < 0.5).float().mean()),
-                'crashed': float(st.crashed.float().mean()), 'speed': float(st.vel.norm(dim=1).mean())}
+                'crashed': float(st.crashed.float().mean()), 'speed': float(st.vel.norm(dim=1).mean()),
+                'target_speed': float(self.target_vel.norm(dim=1).mean())}

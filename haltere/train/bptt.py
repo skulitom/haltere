@@ -19,6 +19,7 @@ from ..sim.controller import RateControllerParams
 from ..sim.quad import QuadParams
 from ..sim.tasks import HoverTask, HoverTaskConfig
 from ..sim.vehicle import RatesConfig, Vehicle, VehicleState
+from .thermal import wait_if_hot
 
 
 @dataclass
@@ -48,6 +49,9 @@ class TrainConfig:
                                       # (the simulator keeps full-window credit assignment); 0 = never
     freeze_internal: bool = False     # reservoir mode: keep synaptic gains, neuron gains, biases, time constants fixed
     freeze_encoders: bool = False
+    max_gpu_temp: float = 0.0         # C; > 0 pauses training while the GPU is hotter than this (see thermal.py)
+    temp_check_every: int = 5         # iterations between temperature checks
+    iter_sleep: float = 0.0           # s of idle time after every iteration (caps average GPU power)
 
 
 @dataclass
@@ -115,6 +119,7 @@ def evaluate(brain: ConnectomeRNN, cfg: ExperimentConfig, steps: int, B: int, de
         total += task.cost(vs.quad, a)
         crashed_ever |= vs.quad.crashed
         task.t += 1
+        task.advance_target()
         if record:
             traj.append({'pos': vs.quad.pos[0].cpu().numpy(), 'target': task.target[0].cpu().numpy(),
                          'act': a[0].cpu().numpy(), 'quat': vs.quad.quat[0].cpu().numpy()})
@@ -199,6 +204,10 @@ def train(cfg: ExperimentConfig, resume: str | None = None) -> Path:
     best_eval = float('inf')
 
     for it in range(start_iter, tc.iters):
+        if tc.max_gpu_temp > 0 and it % max(tc.temp_check_every, 1) == 0:
+            wait_if_hot(tc.max_gpu_temp)
+        if tc.iter_sleep > 0:
+            time.sleep(tc.iter_sleep)
         diff = difficulty_at(it)
         W = brain.weight_matrix()
         total = torch.zeros((), device=device)
