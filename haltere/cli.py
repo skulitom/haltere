@@ -225,6 +225,10 @@ def cmd_vision(a):
         gates = gates_from_observations(a.dataset, load_observations(a.observations), cam)
         save_gates(gates, a.out)
         print(f'{len(gates)} gates written to {a.out}')
+    elif a.vision_cmd == 'inspect':
+        from .vision.inspect import overlay
+        out = overlay(a.dataset, a.out, every=a.every, count=a.count, cols=a.cols, ckpt=a.ckpt or None, device=a.device)
+        print(f'overlay written to {out}')
     elif a.vision_cmd == 'label':
         from .vision.train import label_dataset
         c = yaml.safe_load(Path(a.camera).read_text(encoding='utf-8'))
@@ -355,6 +359,14 @@ def main(argv=None):
     q.add_argument('--observations', required=True, help='JSON list of observations')
     q.add_argument('--camera', default='configs/camera.yaml')
     q.add_argument('--out', default='configs/gates_strawbale.json')
+    q = vs.add_parser('inspect', help='overlay the gate labels (and a GateNet checkpoint) on dataset frames')
+    q.add_argument('dataset')
+    q.add_argument('--out', default='data/vision/inspect.png')
+    q.add_argument('--every', type=int, default=25)
+    q.add_argument('--count', type=int, default=12)
+    q.add_argument('--cols', type=int, default=3)
+    q.add_argument('--ckpt', default='')
+    q.add_argument('--device', default='cuda')
     q = vs.add_parser('label', help='project the next gate into every frame of the datasets (labels.json)')
     q.add_argument('datasets', nargs='+')
     q.add_argument('--gates', default='configs/gates_strawbale.json')
