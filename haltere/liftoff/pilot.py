@@ -111,7 +111,7 @@ class TelemetryPilot:
         self._hold_w = None                    # position to hold while no gate is in sight
         self._no_gate_since = None             # when the drone last lost sight of every gate (search yaw after a while)
         self.vision_search_yaw = -0.12         # yaw stick while searching (negative = nose turns left)
-        self.vision_fly_on = 10.0              # s to keep flying straight after passing a gate (the next is ~30 m on)
+        self.vision_fly_on = 4.0               # s to keep flying straight after passing a gate, then look around
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
