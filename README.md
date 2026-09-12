@@ -114,6 +114,16 @@ haltere eval runs/hover/best.pt           # distance to target, crash rate, ...
 that keeps weights close to the connectome, and the drone physics live. The `ctl`/`rates` sections
 mirror a Liftoff drone configuration (Zetaflight P/I/D 29/34/22 etc., Rate 100 / SuperExpo 70).
 
+### Moving targets
+
+Hovering brains follow a moving target only at about 1 m/s: the goal vector saturates and nothing
+teaches them to lead it. `configs/train_path.yaml` and `train_path2.yaml` fine-tune a hovering
+brain on targets that drift along a slowly turning heading at a random speed (`path_speed` is the
+ceiling; `path_static_frac` keeps a share of static targets so hover precision survives;
+`pos_huber` makes the position cost linear beyond 1 m so far-behind targets do not drown the
+smoothness terms). `max_gpu_temp: 78` pauses training whenever `nvidia-smi` reports the GPU above
+that temperature (`haltere/train/thermal.py`), and `iter_sleep` caps the average power draw.
+
 ### Imitation first
 
 `haltere imitate` trains the brain to reproduce a working controller's commands on that
@@ -187,7 +197,12 @@ sends (Liftoff's input path adds latency the simulator did not have) and `--gyro
 the game's gyro instead of attitude differences.
 
 `--advance-radius` makes the brain move on to the next waypoint as soon as it gets within that
-distance (racing); without it waypoints change on a timer. `--record` captures the Liftoff window
+distance (racing); without it waypoints change on a timer. `--path-speed 1.5 --lookahead 2.0`
+follows the taught lap as a continuous path instead: a carrot moves along the polyline at that
+speed, 2 m ahead of the drone's progress, and slows down smoothly when the drone falls behind (a
+stop/go gate here excited a 0.5 Hz pitch oscillation). Path-following brains swing the throttle
+more than a hovering brain; `--throttle-scale 0.6` keeps those swings out of Liftoff's throttle
+deadband, which starts only 0.08 stick below the hover point. `--record` captures the Liftoff window
 from the screen and composes it with a live panel of the brain's activity into an MP4, encoded in a
 separate process so the 100 Hz control loop is never slowed down; `--show` opens that panel in a
 window while you watch the game. `--capture-rect x,y,w,h` records a screen region instead of a window.
@@ -350,15 +365,26 @@ with a lateral offset of about 1.4 m; fine-tuning on the identified physics is t
 - Moving targets: orbit at 0.8 m/s tracked with 0.75 m mean error, climb-and-dive at about 1 m/s
   with 1.1 m; an orbit at 1.35 m/s was too fast (the brain fell behind and crashed). After a crash
   Liftoff needs a reset before it arms again: `fly --reset-key R` sends the key to the game window.
+- Liftoff binds to the last controller profile that was used: after one manual lap with a radio the
+  virtual pad was ignored until it was re-selected (main menu, Options, Contrôles, Manette,
+  Selectionner, "XInput Gamepad 1", Sauvegarder; the in-race pause menu has no controller page).
+  The game also ignores all input while its window is unfocused and minimises itself whenever it
+  loses focus, so `fly` now restores and focuses the window at start and before every keystroke.
+  Beware that the pad's throttle-low stick scrolls Liftoff's menus down to "Quitter".
+- Racing: a lap of the "Field Day" infinite race on Straw Bale was flown once by hand, turned into
+  174 waypoints 3 m apart (`configs/track_strawbale.yaml`, a 601 m loop) and followed as a path.
+  The smooth brain keeps to the line within 0.9 m at 1.2 m/s but falls behind anything faster; the
+  moving-target fine-tune (`runs/ftPath`) tracks 2 m/s targets in the simulator with 1.2 m error
+  where the smooth brain lost them (4.8 m), at the price of a jittery throttle in the game, which a
+  second stage with a static-target share and a stronger smoothness cost addresses.
 
 ## Status
 
-Built and verified on this machine: connectome download and graph construction on the real data,
-the simulator (hover stability, gradient flow, stick conventions), the brain model (custom sparse
-backward, sign constraints, transmission probes), the telemetry codec, frame conversions, the
-system-identification pipeline and the live pilot loop (all against the stand-in), hover training
-with the MLP baseline, and a connectome brain that holds position in the simulator
-(`runs/imJ_best.pt`). Not yet exercised: the real Liftoff loop, which needs the manual driver and
-controller-wizard steps above. Fly `runs/imJ_best.pt` there after `haltere liftoff fit` and a
-short fine-tune on the fitted physics; `runs/mlp300/best.pt` is the fallback controller for
-checking the integration itself.
+Working end to end on this machine: connectome download and graph construction on the real data,
+the simulator, the brain model (custom sparse backward, sign constraints), imitation and flight-cost
+training, the Liftoff telemetry and virtual-pad loop, automated calibration, and connectome brains
+that hover, fly patterns and follow a taught race lap inside Liftoff, with the recorded videos
+above. Open: racing pace. The brain follows the lap at 1 to 2 m/s where a human lap on the same
+track runs at 14 m/s; the moving-target fine-tune is the current lever, and the next ones are a
+speed curriculum on the real track geometry and reading gate positions from the game instead of a
+taught lap. `runs/mlp300/best.pt` remains the non-connectome control for checking the integration.
