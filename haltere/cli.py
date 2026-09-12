@@ -324,6 +324,7 @@ def main(argv=None):
     q.add_argument('--throttle-scale', type=float, default=0.0, help='gain of the throttle remap around hover (0 = keep file value)')
     q.add_argument('--arm-hold', type=float, default=0.8, help='seconds of throttle-low before the brain gets control (arming)')
     q.add_argument('--arm-ramp', type=float, default=1.2, help='seconds over which the brain\'s sticks are ramped in')
+    q.add_argument('--reset-button', default='', help='virtual pad button that resets the drone in Liftoff (e.g. A, Y, BACK); pressed after a crash')
     q.add_argument('--record', default='', help='write an MP4 of the Liftoff window + live brain activity')
     q.add_argument('--capture', default='Liftoff', help='window title (substring) to capture for --record')
     q.add_argument('--capture-rect', default='', help='x,y,w,h screen region to capture instead of a window')

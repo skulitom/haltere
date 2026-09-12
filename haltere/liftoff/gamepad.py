@@ -37,6 +37,9 @@ class UdpSticks:
     def neutral(self) -> None:
         self.send(-1.0, 0.0, 0.0, 0.0)
 
+    def press(self, button: str = 'A', seconds: float = 0.15) -> None:
+        self.sock.sendto(b'PRESS ' + button.encode(), self.addr)
+
     def close(self) -> None:
         self.sock.close()
 

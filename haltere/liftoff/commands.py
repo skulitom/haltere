@@ -227,6 +227,8 @@ def cmd_pad(a):
                 elif parts[0] == 'hold' and len(parts) == 3 and parts[1] in held:
                     held[parts[1]] = max(-1.0, min(1.0, float(parts[2])))
                     script_until = now + 3600
+                elif parts[0] == 'press' and len(parts) >= 2:       # press BUTTON [seconds]  (A, B, X, Y, START, BACK, ...)
+                    pad.press(parts[1], seconds=float(parts[2]) if len(parts) > 2 else 0.15)
                 elif parts[0] == 'neutral':
                     held.update({'throttle': -1.0, 'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0})
                     script_until = 0.0
@@ -246,6 +248,12 @@ def cmd_pad(a):
                         data, _ = sock.recvfrom(64)
                     except (BlockingIOError, OSError):
                         break
+                    if data[:6] == b'PRESS ':                          # button press request from the pilot
+                        try:
+                            pad.press(data[6:].decode().strip() or 'A', seconds=0.15)
+                        except Exception as e:  # unknown button name
+                            print(f'press failed: {e}', flush=True)
+                        continue
                     if len(data) >= 16:
                         latest = struct.unpack_from('<4f', data, 0)
                 if latest is not None and now >= script_until:
@@ -466,6 +474,8 @@ def cmd_fly(a):
     dists = []
     armed_since = None      # Liftoff arms only after the throttle has been low; hold it low briefly, then ramp in
     last_reset_ts = None
+    grounded_since = None
+    crashed = False
     try:
         while a.seconds <= 0 or time.time() - t_begin < a.seconds:
             fr = rx.wait(0.05)
@@ -477,10 +487,28 @@ def cmd_fly(a):
             last_frame_time = now
             if last_reset_ts is None or fr.timestamp < last_reset_ts - 0.5:
                 armed_since = now
+                grounded_since = None
+                crashed = False
             last_reset_ts = fr.timestamp
             sticks = pilot.step(fr)
             phase = now - armed_since
-            if phase < a.arm_hold:
+            # crash detection: on the ground and not moving while the brain asks for thrust -> Liftoff will not
+            # arm again until the drone is reset; hold the throttle low (and press the reset button if configured)
+            alt = float(pilot.last_pos[2])
+            still = float(np.linalg.norm(fr.velocity)) < 0.05
+            if phase > a.arm_hold + a.arm_ramp + 1.0 and alt < 0.15 and still and sticks[0] > -0.5:
+                grounded_since = grounded_since or now
+                if now - grounded_since > 1.5 and not crashed:
+                    crashed = True
+                    print(f'[{time.strftime("%H:%M:%S")}] drone appears crashed/grounded at {np.round(pilot.last_pos, 2)}; '
+                          f'holding throttle low' + (f', pressing {a.reset_button}' if a.reset_button else ''), flush=True)
+                    if a.reset_button and pad is not None and hasattr(pad, 'press'):
+                        pad.press(a.reset_button)
+            else:
+                grounded_since = None
+            if crashed:
+                sticks = np.array([-1.0, 0.0, 0.0, 0.0])
+            elif phase < a.arm_hold:
                 sticks = np.array([-1.0, 0.0, 0.0, 0.0])
             elif phase < a.arm_hold + a.arm_ramp:
                 f = (phase - a.arm_hold) / a.arm_ramp
