@@ -108,6 +108,10 @@ class TelemetryPilot:
         self._line_s = 0.0                     # progress along that line (m)
         self._last_goal_t = None
         self._z_ref = None                     # altitude to hold while no gate is in sight
+        self._hold_w = None                    # position to hold while no gate is in sight
+        self._no_gate_since = None             # when the drone last lost sight of every gate (search yaw after a while)
+        self.vision_search_yaw = 0.12          # yaw stick while searching (nose turns right)
+        self.vision_fly_on = 10.0              # s to keep flying straight after passing a gate (the next is ~30 m on)
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
@@ -152,6 +156,8 @@ class TelemetryPilot:
         self._line_s = 0.0
         self._last_goal_t = None
         self._z_ref = None
+        self._hold_w = None
+        self._no_gate_since = None
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -267,6 +273,8 @@ class TelemetryPilot:
                 rel_w = carrot - pos_w
                 rel_w[2] = float(np.clip(rel_w[2], -2.5, 2.0))                   # gates are not far above or below
                 self._z_ref = float(carrot[2])
+                self._hold_w = None
+                self._no_gate_since = None
                 speed = float(np.linalg.norm(self.last_vel))
                 self.vision_status = (f'gate {"seen" if plausible else "remembered"} {np.linalg.norm(gate - pos_w):.1f} m, '
                                       f'carrot {self._line_s:.1f}/{L:.1f} m, speed {speed:.1f} m/s'
@@ -275,11 +283,18 @@ class TelemetryPilot:
         if self._z_ref is None:
             self._z_ref = float(pos_w[2]) + 1.5 if pos_w[2] < 0.5 else float(pos_w[2])
         dz = float(np.clip(self._z_ref - pos_w[2], -2.0, 2.0))
-        if self.vision_passed_t is not None and now - self.vision_passed_t < 4.0:
-            self.vision_status = 'flying on past the gate'
+        if self.vision_passed_t is not None and now - self.vision_passed_t < self.vision_fly_on:
+            self._hold_w = None
+            self.vision_status = 'flying on past the gate' + (f' (sighting p={det.p_visible:.2f})' if plausible else '')
             return R.T @ np.array([2.0, 0.0, dz])
-        self.vision_status = 'no gate: hovering' + (f' (unconfirmed sighting p={det.p_visible:.2f})' if plausible else '')
-        return R.T @ np.array([0.0, 0.0, dz])
+        if self._hold_w is None:                     # hold the spot where the drone lost sight of the course
+            self._hold_w = pos_w.copy()
+            self._no_gate_since = now
+        rel_w = self._hold_w - pos_w
+        rel_w[2] = dz
+        self.vision_status = ('no gate: holding position' + (', searching' if now - self._no_gate_since > 3.0 else '')
+                              + (f' (unconfirmed sighting p={det.p_visible:.2f})' if plausible else ''))
+        return R.T @ rel_w
 
     def rates(self) -> np.ndarray | None:
         """Current firing rates of all neurons (for the live recorder)."""
@@ -344,6 +359,9 @@ class TelemetryPilot:
                 if np.hypot(rel[0], rel[1]) > 0.8:
                     err = np.angle(np.exp(1j * (np.arctan2(rel[1], rel[0]) - float(s['yaw'].flatten()[0]))))
             a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))
+        if (self.vision is not None and self._no_gate_since is not None and self._hold_w is not None
+                and __import__('time').time() - self._no_gate_since > 3.0):
+            a[3] = self.vision_search_yaw            # nothing in sight for a while: turn slowly and look around
         if self.stick_lpf > 0:
             dt = max(fr.timestamp - self.prev_t, 1e-3) if self.prev_t is not None else 0.01
             alpha = min(1.0, dt / self.stick_lpf)
