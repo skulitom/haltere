@@ -132,6 +132,8 @@ class TelemetryPilot:
             carrot = self.path_point(self.path_progress + self.path_lookahead)
             gap = float(np.linalg.norm(self.last_pos - carrot)) - self.path_lookahead
             keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
+            if self.last_pos[2] < 0.3:      # still on the ground (arming): hold the path
+                keep_up = 0.0
             self.path_progress += self.path_speed * keep_up * dt
             self.wp_index = int(np.searchsorted(self.path_s, self.path_progress % self.path_s[-1], side='right') - 1)
             return carrot
