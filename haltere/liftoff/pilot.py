@@ -99,7 +99,9 @@ class TelemetryPilot:
         self.vision_stale = 0.5                # s; older detections are not trusted
         self.vision_gate_w = None              # remembered position of the gate last seen (world, sim frame)
         self.vision_max_dist = 2.5             # m; the goal is a direction: keep it as short as the path carrot
-        self._vision_cand = None
+        self.vision_speed = 1.5                # m/s; the goal shrinks when the drone flies faster than this
+        self._cand_hist = []                   # (time, world position) of recent sightings, for the consistency test
+        self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
@@ -137,7 +139,7 @@ class TelemetryPilot:
         self._last_t = None
         self.vision_gate_w = None
         self.vision_passed_t = None
-        self._vision_cand = None
+        self._cand_hist = []
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -173,8 +175,13 @@ class TelemetryPilot:
         return self.waypoints[i]
 
     def vision_goal(self, pos_w: np.ndarray) -> np.ndarray:
-        """Body-frame goal vector from the gate detector: the gate in view, else the remembered gate, else fly
-        on briefly after passing a gate, else hover in place."""
+        """Body-frame goal vector from the gate detector.
+
+        A sighting becomes the remembered gate only when its world position agrees with a sighting at least
+        one second earlier (a real gate stays put while the drone moves; a phantom detection travels with the
+        drone). The goal is a short vector toward the remembered gate, shortened further when the drone is
+        faster than ``vision_speed`` (the brain's goal channel is a direction, not a throttle). Without a gate
+        the drone flies on briefly after passing one, otherwise it hovers."""
         import time as _time
         det = self.vision.get()
         now = _time.time()
@@ -184,34 +191,30 @@ class TelemetryPilot:
         plausible = (det.p_visible >= self.vision_thresh and now - det.t < self.vision_stale and det.dist_m > 0.5
                      and -35.0 < elevation < 25.0)         # gates are near the ground, never up in the sky
         if plausible:
-            # a new gate (nothing remembered, or far from what is remembered) must be seen twice in a row
-            cand_w = pos_w + R @ (d * min(det.dist_m, self.vision_max_dist))
-            if self.vision_gate_w is None or np.linalg.norm(cand_w - self.vision_gate_w) > 4.0:
-                if self._vision_cand is not None and np.linalg.norm(cand_w - self._vision_cand) < 3.0:
-                    self.vision_gate_w = cand_w
-                self._vision_cand = cand_w
-            else:
-                self.vision_gate_w = 0.7 * self.vision_gate_w + 0.3 * cand_w      # smooth the remembered position
-            if self.vision_gate_w is not None:
-                rel_b = R.T @ (self.vision_gate_w - pos_w)
-                n = np.linalg.norm(rel_b)
-                if n > self.vision_max_dist:
-                    rel_b = rel_b / n * self.vision_max_dist
+            cand_w = pos_w + R @ (d * float(np.clip(det.dist_m, 1.0, 30.0)))
+            self._cand_hist = [(t, c) for t, c in self._cand_hist if now - t < 2.5] + [(now, cand_w)]
+            if self.vision_gate_w is not None and np.linalg.norm(cand_w - self.vision_gate_w) < 4.0:
+                self.vision_gate_w = 0.8 * self.vision_gate_w + 0.2 * cand_w      # refine the remembered position
+            elif any(now - t >= 1.0 and np.linalg.norm(cand_w - c) < 3.0 for t, c in self._cand_hist):
+                self.vision_gate_w = cand_w                                        # consistent for a second: a gate
                 self.vision_passed_t = None
-                self.vision_status = f'gate seen p={det.p_visible:.2f} {det.dist_m:.1f} m'
-                return rel_b
         if self.vision_gate_w is not None:
-            rel_b = R.T @ (self.vision_gate_w - pos_w)
-            n = np.linalg.norm(rel_b)
+            rel_w = self.vision_gate_w - pos_w
+            rel_w[2] = float(np.clip(rel_w[2], -2.5, 2.0))                   # gates are not far above or below
+            rel_b = R.T @ rel_w
+            n = float(np.linalg.norm(rel_b))
             if rel_b[0] > -0.5 and n > 0.5:
-                self.vision_status = f'remembered gate {n:.1f} m'
-                return rel_b / n * min(n, self.vision_max_dist)
+                speed = float(np.linalg.norm(self.last_vel))
+                length = float(np.clip(self.vision_max_dist - 1.5 * max(0.0, speed - self.vision_speed), 0.4, self.vision_max_dist))
+                self.vision_status = (f'gate {"seen" if plausible else "remembered"} {n:.1f} m, speed {speed:.1f} m/s'
+                                      + (f' p={det.p_visible:.2f}' if plausible else ''))
+                return rel_b / n * min(n, length)
             self.vision_gate_w = None          # passed it: fly on a little so the next gate comes into view
             self.vision_passed_t = now
         if self.vision_passed_t is not None and now - self.vision_passed_t < 4.0:
             self.vision_status = 'flying on past the gate'
-            return np.array([2.5, 0.0, 0.0])
-        self.vision_status = 'no gate: hovering'
+            return np.array([2.0, 0.0, 0.0])
+        self.vision_status = 'no gate: hovering' + (f' (unconfirmed sighting p={det.p_visible:.2f})' if plausible else '')
         return np.zeros(3)
 
     def rates(self) -> np.ndarray | None:
@@ -228,6 +231,7 @@ class TelemetryPilot:
         vel = unity_vec_to_sim(fr.velocity)
         R = quat_wxyz_to_mat(q)
         self.last_R = R
+        self.last_vel = vel
         gravity_body = R.T @ np.array([0.0, 0.0, -1.0])
         vel_body = R.T @ vel
         if self.map.use_quat_rates and self.prev_quat is not None and self.prev_t is not None:
