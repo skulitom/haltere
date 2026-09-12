@@ -78,7 +78,12 @@ class GateVision:
                 region = None
                 time.sleep(0.5)
                 continue
-            img = cv2.resize(np.ascontiguousarray(shot), (IN_W, IN_H), interpolation=cv2.INTER_AREA)
+            # the same path the training frames took: 640x360 bilinear, JPEG at quality 90, then the network's
+            # input size with area resampling (a direct 1920 -> 320 resize looks different to the network)
+            small = cv2.resize(np.ascontiguousarray(shot), (640, 360), interpolation=cv2.INTER_LINEAR)
+            ok, enc = cv2.imencode('.jpg', cv2.cvtColor(small, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 90])
+            small = cv2.cvtColor(cv2.imdecode(enc, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB) if ok else small
+            img = cv2.resize(small, (IN_W, IN_H), interpolation=cv2.INTER_AREA)
             x = torch.from_numpy(img).permute(2, 0, 1).float().div_(255.0)[None].to(self.device)
             with torch.no_grad():
                 d = decode(self.net(x))[0].cpu().numpy()

@@ -105,6 +105,7 @@ class TelemetryPilot:
         self._line = None                      # (start, gate) of the straight line the carrot runs along
         self._line_s = 0.0                     # progress along that line (m)
         self._last_goal_t = None
+        self._z_ref = None                     # altitude to hold while no gate is in sight
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
@@ -147,6 +148,7 @@ class TelemetryPilot:
         self._line = None
         self._line_s = 0.0
         self._last_goal_t = None
+        self._z_ref = None
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -243,16 +245,20 @@ class TelemetryPilot:
                 self._line_s = min(self._line_s + self.vision_speed * keep_up * dt, L)
                 rel_w = carrot - pos_w
                 rel_w[2] = float(np.clip(rel_w[2], -2.5, 2.0))                   # gates are not far above or below
+                self._z_ref = float(carrot[2])
                 speed = float(np.linalg.norm(self.last_vel))
                 self.vision_status = (f'gate {"seen" if plausible else "remembered"} {np.linalg.norm(gate - pos_w):.1f} m, '
                                       f'carrot {self._line_s:.1f}/{L:.1f} m, speed {speed:.1f} m/s'
                                       + (f' p={det.p_visible:.2f}' if plausible else ''))
                 return R.T @ rel_w
+        if self._z_ref is None:
+            self._z_ref = float(pos_w[2]) + 1.5 if pos_w[2] < 0.5 else float(pos_w[2])
+        dz = float(np.clip(self._z_ref - pos_w[2], -2.0, 2.0))
         if self.vision_passed_t is not None and now - self.vision_passed_t < 4.0:
             self.vision_status = 'flying on past the gate'
-            return np.array([2.0, 0.0, 0.0])
+            return R.T @ np.array([2.0, 0.0, dz])
         self.vision_status = 'no gate: hovering' + (f' (unconfirmed sighting p={det.p_visible:.2f})' if plausible else '')
-        return np.zeros(3)
+        return R.T @ np.array([0.0, 0.0, dz])
 
     def rates(self) -> np.ndarray | None:
         """Current firing rates of all neurons (for the live recorder)."""
