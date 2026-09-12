@@ -98,9 +98,13 @@ class TelemetryPilot:
         self.vision_thresh = 0.5
         self.vision_stale = 0.5                # s; older detections are not trusted
         self.vision_gate_w = None              # remembered position of the gate last seen (world, sim frame)
-        self.vision_max_dist = 2.5             # m; the goal is a direction: keep it as short as the path carrot
-        self.vision_speed = 1.5                # m/s; the goal shrinks when the drone flies faster than this
-        self._cand_hist = []                   # (time, world position) of recent sightings, for the consistency test
+        self.vision_lookahead = 2.0            # m; the carrot runs this far ahead of the progress along the line
+        self.vision_speed = 1.5                # m/s; how fast the carrot advances toward the gate
+        self._cand_hist = []                   # (time, gate candidate, drone position) of recent sightings
+        self._agree_t = 0.0                    # last time a sighting agreed with the remembered gate
+        self._line = None                      # (start, gate) of the straight line the carrot runs along
+        self._line_s = 0.0                     # progress along that line (m)
+        self._last_goal_t = None
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
@@ -140,6 +144,9 @@ class TelemetryPilot:
         self.vision_gate_w = None
         self.vision_passed_t = None
         self._cand_hist = []
+        self._line = None
+        self._line_s = 0.0
+        self._last_goal_t = None
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -177,40 +184,70 @@ class TelemetryPilot:
     def vision_goal(self, pos_w: np.ndarray) -> np.ndarray:
         """Body-frame goal vector from the gate detector.
 
-        A sighting becomes the remembered gate only when its world position agrees with a sighting at least
-        one second earlier (a real gate stays put while the drone moves; a phantom detection travels with the
-        drone). The goal is a short vector toward the remembered gate, shortened further when the drone is
-        faster than ``vision_speed`` (the brain's goal channel is a direction, not a throttle). Without a gate
-        the drone flies on briefly after passing one, otherwise it hovers."""
+        Sightings are turned into a world position of the gate (direction from the image, distance from the
+        apparent width). A gate is believed once two sightings at least a second apart agree while the drone
+        moved at least a metre between them: a real gate stays put, a phantom detection travels with the drone.
+        The goal is then a carrot that advances at ``vision_speed`` along the straight line from where the gate
+        was first believed to the gate (anchored in the world, like the path carrot; a goal that moves with the
+        drone makes the brain chase its motion). Without a gate the drone flies on briefly after passing one,
+        otherwise it hovers."""
         import time as _time
         det = self.vision.get()
         now = _time.time()
+        dt = 0.0 if self._last_goal_t is None else float(np.clip(now - self._last_goal_t, 0.0, 0.1))
+        self._last_goal_t = now
         R = self.last_R
         d = det.direction_body
         elevation = float(np.degrees(np.arctan2(d[2], np.hypot(d[0], d[1]))))
         plausible = (det.p_visible >= self.vision_thresh and now - det.t < self.vision_stale and det.dist_m > 0.5
                      and -35.0 < elevation < 25.0)         # gates are near the ground, never up in the sky
         if plausible:
-            cand_w = pos_w + R @ (d * float(np.clip(det.dist_m, 1.0, 30.0)))
-            self._cand_hist = [(t, c) for t, c in self._cand_hist if now - t < 2.5] + [(now, cand_w)]
-            if self.vision_gate_w is not None and np.linalg.norm(cand_w - self.vision_gate_w) < 4.0:
-                self.vision_gate_w = 0.8 * self.vision_gate_w + 0.2 * cand_w      # refine the remembered position
-            elif any(now - t >= 1.0 and np.linalg.norm(cand_w - c) < 3.0 for t, c in self._cand_hist):
-                self.vision_gate_w = cand_w                                        # consistent for a second: a gate
-                self.vision_passed_t = None
+            cand = pos_w + R @ (d * float(np.clip(det.dist_m, 1.0, 30.0)))
+            self._cand_hist = [(t, c, q) for t, c, q in self._cand_hist if now - t < 2.5] + [(now, cand, pos_w.copy())]
+            if self.vision_gate_w is not None:
+                if np.linalg.norm(cand - self.vision_gate_w) < 2.0:
+                    self.vision_gate_w = 0.85 * self.vision_gate_w + 0.15 * cand      # refine the remembered position
+                    self._agree_t = now
+                elif now - self._agree_t > 1.0:            # sightings have disagreed with the memory for a second
+                    self.vision_gate_w = None
+                    self._line = None
+            if self.vision_gate_w is None:
+                for t, c, q in self._cand_hist:
+                    moved = float(np.linalg.norm(pos_w - q))
+                    if now - t >= 1.0 and moved >= 1.0 and np.linalg.norm(cand - c) < 1.5:
+                        self.vision_gate_w = cand                                    # stays put while we move: a gate
+                        break
+                    if now - t >= 1.5 and moved < 0.3 and np.linalg.norm(cand - c) < 1.0:
+                        self.vision_gate_w = cand                                    # at rest: a steady sighting
+                        break
+                if self.vision_gate_w is not None:
+                    self._agree_t = now
+                    self._line = (pos_w.copy(), self.vision_gate_w.copy())
+                    self._line_s = 0.0
+                    self.vision_passed_t = None
         if self.vision_gate_w is not None:
-            rel_w = self.vision_gate_w - pos_w
-            rel_w[2] = float(np.clip(rel_w[2], -2.5, 2.0))                   # gates are not far above or below
-            rel_b = R.T @ rel_w
-            n = float(np.linalg.norm(rel_b))
-            if rel_b[0] > -0.5 and n > 0.5:
+            start, _ = self._line
+            gate = self.vision_gate_w
+            to_gate_b = R.T @ (gate - pos_w)
+            if to_gate_b[0] < -0.5 or np.linalg.norm(gate - pos_w) < 0.7:     # passed (or reached) the gate
+                self.vision_gate_w = None
+                self._line = None
+                self.vision_passed_t = now
+            else:
+                line = gate - start
+                L = float(np.linalg.norm(line))
+                u = line / max(L, 1e-6)
+                carrot = start + u * min(self._line_s + self.vision_lookahead, L)
+                gap = float(np.linalg.norm(pos_w - carrot)) - self.vision_lookahead
+                keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
+                self._line_s = min(self._line_s + self.vision_speed * keep_up * dt, L)
+                rel_w = carrot - pos_w
+                rel_w[2] = float(np.clip(rel_w[2], -2.5, 2.0))                   # gates are not far above or below
                 speed = float(np.linalg.norm(self.last_vel))
-                length = float(np.clip(self.vision_max_dist - 1.5 * max(0.0, speed - self.vision_speed), 0.4, self.vision_max_dist))
-                self.vision_status = (f'gate {"seen" if plausible else "remembered"} {n:.1f} m, speed {speed:.1f} m/s'
+                self.vision_status = (f'gate {"seen" if plausible else "remembered"} {np.linalg.norm(gate - pos_w):.1f} m, '
+                                      f'carrot {self._line_s:.1f}/{L:.1f} m, speed {speed:.1f} m/s'
                                       + (f' p={det.p_visible:.2f}' if plausible else ''))
-                return rel_b / n * min(n, length)
-            self.vision_gate_w = None          # passed it: fly on a little so the next gate comes into view
-            self.vision_passed_t = now
+                return R.T @ rel_w
         if self.vision_passed_t is not None and now - self.vision_passed_t < 4.0:
             self.vision_status = 'flying on past the gate'
             return np.array([2.0, 0.0, 0.0])
