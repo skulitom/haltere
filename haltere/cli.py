@@ -210,6 +210,21 @@ def cmd_vision(a):
         passages = passages_from_dataset(a.dataset, thresh=a.thresh, min_gap_m=a.min_gap)
         save_gates(passages, a.out)
         print(f'{len(passages)} gates written to {a.out}')
+    elif a.vision_cmd == 'sheet':
+        from .vision.calibrate import load_index
+        from .vision.triangulate import sheet
+        rows = load_index(a.dataset)
+        files = [r['file'] for r in rows][a.start:a.start + a.count * a.every:a.every]
+        out = sheet(a.dataset, files, a.out, cols=a.cols, grid=a.grid)
+        print(f'{len(files)} frames -> {out}: {", ".join(files)}')
+    elif a.vision_cmd == 'triangulate':
+        from .vision.gates import save_gates
+        from .vision.triangulate import gates_from_observations, load_observations
+        c = yaml.safe_load(Path(a.camera).read_text(encoding='utf-8'))
+        cam = Camera(int(c['width']), int(c['height']), float(c['f']), float(c['tilt_deg']))
+        gates = gates_from_observations(a.dataset, load_observations(a.observations), cam)
+        save_gates(gates, a.out)
+        print(f'{len(gates)} gates written to {a.out}')
     elif a.vision_cmd == 'label':
         from .vision.train import label_dataset
         c = yaml.safe_load(Path(a.camera).read_text(encoding='utf-8'))
@@ -327,6 +342,19 @@ def main(argv=None):
     q.add_argument('--out', default='configs/gates_strawbale.json')
     q.add_argument('--thresh', type=float, default=0.35, help='border-darkness threshold of a passage')
     q.add_argument('--min-gap', type=float, default=8.0, help='minimum distance between gates (m)')
+    q = vs.add_parser('sheet', help='contact sheet of dataset frames with a pixel grid (to read gate positions off)')
+    q.add_argument('dataset')
+    q.add_argument('--out', default='data/vision/sheet.png')
+    q.add_argument('--start', type=int, default=0)
+    q.add_argument('--every', type=int, default=10)
+    q.add_argument('--count', type=int, default=6)
+    q.add_argument('--cols', type=int, default=3)
+    q.add_argument('--grid', type=int, default=40)
+    q = vs.add_parser('triangulate', help='gate positions from pixel observations {file, u, v, gate} in posed frames')
+    q.add_argument('dataset')
+    q.add_argument('--observations', required=True, help='JSON list of observations')
+    q.add_argument('--camera', default='configs/camera.yaml')
+    q.add_argument('--out', default='configs/gates_strawbale.json')
     q = vs.add_parser('label', help='project the next gate into every frame of the datasets (labels.json)')
     q.add_argument('datasets', nargs='+')
     q.add_argument('--gates', default='configs/gates_strawbale.json')

@@ -48,3 +48,20 @@ def test_gatenet_shapes_and_loss():
     assert torch.isfinite(loss) and set(parts) == {'vis', 'pos', 'size'}
     d = decode(o)
     assert d.shape == (2, 4) and (0 <= d[:, 0]).all() and (d[:, 0] <= 1).all() and (d[:, 3] > 0).all()
+
+
+def test_triangulation_recovers_a_gate():
+    from haltere.vision.camera import world_to_body
+    from haltere.vision.triangulate import intersect_rays, ray_world
+    cam = Camera(640, 360, 300.0, 30.0)
+    gate = np.array([20.0, 3.0, 2.0])
+    origins, dirs = [], []
+    for i, x in enumerate([0.0, 4.0, 8.0, 12.0]):
+        row = {'px': x, 'py': 0.0, 'pz': 1.5, 'qw': 1.0, 'qx': 0.0, 'qy': 0.0, 'qz': 0.0}
+        px, ok = cam.project_body(world_to_body(gate[None], np.array([x, 0, 1.5]), np.array([1.0, 0, 0, 0])))
+        assert ok[0]
+        o, d = ray_world(row, px[0, 0] + 2.0, px[0, 1] - 2.0, cam)
+        origins.append(o)
+        dirs.append(d)
+    p, rms = intersect_rays(np.array(origins), np.array(dirs))
+    assert np.linalg.norm(p - gate) < 0.3 and rms < 0.2
