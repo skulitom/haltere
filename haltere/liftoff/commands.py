@@ -525,6 +525,12 @@ def cmd_fly(a):
     if not a.dry_run:   # no-op when there is no game window (dry runs against the stand-in)
         if focus_game_window(a.capture or 'Liftoff'):
             print('game window restored and focused')
+            if a.reset_key:
+                # start from the reset point in a clean pose: a drone left lying on its side after the previous
+                # run arms and tumbles instead of taking off
+                press_key_in_window(a.reset_key, a.capture or 'Liftoff')
+                print(f'sent the reset key {a.reset_key!r} to the game')
+                time.sleep(1.5)
     last_print = 0.0
     last_frame_time = time.time()
     t_begin = time.time()
