@@ -1,0 +1,8 @@
+width: 640
+height: 360
+f: 200.0
+tilt_deg: 30.0
+hfov_deg: 115.989233583833
+error_deg: 0.5900181862161169
+pairs: 150
+dataset: data/vision/run9

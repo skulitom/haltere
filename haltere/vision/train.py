@@ -13,6 +13,7 @@ from .calibrate import load_index
 from .camera import Camera
 from .gates import gate_label
 from .model import IN_H, IN_W, GateNet, decode
+from ..train.thermal import wait_if_hot
 
 
 def label_dataset(dataset: str | Path, gates_path: str | Path, cam: Camera, verbose: bool = True) -> Path:
@@ -88,7 +89,8 @@ class GateFrames(torch.utils.data.Dataset):
 
 
 def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, batch: int = 64, lr: float = 1e-3,
-          width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0) -> Path:
+          width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0,
+          max_gpu_temp: float = 80.0) -> Path:
     torch.manual_seed(seed)
     random.seed(seed)
     dev = torch.device(device if torch.cuda.is_available() else 'cpu')
@@ -111,6 +113,7 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
     print(f'GateNet width {width}: {sum(p.numel() for p in net.parameters())} parameters; '
           f'{len(train_ds)} training frames, {len(val_ds)} validation frames on {dev}', flush=True)
     t0 = time.time()
+    n_batches = 0
     for ep in range(epochs):
         net.train()
         tot = 0.0
@@ -122,6 +125,9 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
             opt.step()
             sched.step()
             tot += float(loss)
+            n_batches += 1
+            if max_gpu_temp > 0 and n_batches % 10 == 0:
+                wait_if_hot(max_gpu_temp)      # the GPU on this machine overheats easily
         net.eval()
         vtot, n, err_px, n_vis, vis_ok = 0.0, 0, 0.0, 0, 0
         with torch.no_grad():

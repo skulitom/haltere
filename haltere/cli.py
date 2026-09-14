@@ -243,7 +243,7 @@ def cmd_vision(a):
             label_dataset(d, a.gates, cam)
     elif a.vision_cmd == 'train':
         from .vision.train import train
-        out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, device=a.device)
+        out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, max_gpu_temp=a.max_gpu_temp, device=a.device)
         print(f'gate detector saved in {out}')
 
 
@@ -390,6 +390,7 @@ def main(argv=None):
     q.add_argument('--lr', type=float, default=1e-3)
     q.add_argument('--width', type=int, default=32)
     q.add_argument('--device', default='cuda')
+    q.add_argument('--max-gpu-temp', type=float, default=80.0, help='pause training while the GPU is hotter than this (C); 0 = off')
     s.set_defaults(fn=cmd_vision)
 
     s = sp.add_parser('liftoff', help='Liftoff integration: setup, calibrate, record, fit, fly')

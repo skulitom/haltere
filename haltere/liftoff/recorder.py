@@ -7,6 +7,19 @@ encodes video, so the control loop is never slowed down by drawing.
 """
 from __future__ import annotations
 
+import os
+import sys
+
+
+def _scrub_cv2_from_sys_path() -> None:
+    """OpenCV's loader puts its own package directory on sys.path while it imports; a process spawned at that
+    moment inherits it, and then the standard library's ``typing`` resolves to ``cv2/typing`` and numpy fails
+    to import. Runs at import time of this module (first thing a spawned recorder child imports)."""
+    sys.path[:] = [q for q in sys.path if os.path.basename(os.path.normpath(q)).lower() != 'cv2']
+
+
+_scrub_cv2_from_sys_path()
+
 import ctypes
 import ctypes.wintypes as wt
 import multiprocessing as mp
@@ -218,6 +231,7 @@ class FlightRecorder:
                                                             dataset, dataset_every), daemon=True)
 
     def start(self) -> None:
+        _scrub_cv2_from_sys_path()          # the child copies sys.path at spawn time
         self.proc.start()
 
     def stop(self) -> None:
