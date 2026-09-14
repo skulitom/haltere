@@ -93,6 +93,9 @@ class TelemetryPilot:
         self.face_gain, self.face_max = face_gain, face_max
         self.face_ahead = 0.0                  # m; path mode: face the path this far beyond the carrot (0 = face the carrot)
         self.face_target = None
+        self.face_wobble_deg = 0.0             # > 0: sweep the facing heading +-this many degrees (sinusoidal)
+        self.face_wobble_period = 10.0         # s; so datasets see the gates all over the image, not only centred
+        self._wobble_t0 = None
         # vision: a GateVision object supplies the goal instead of telemetry positions (see haltere.vision.runtime)
         self.vision = None
         self.vision_thresh = 0.5
@@ -376,6 +379,10 @@ class TelemetryPilot:
                 err = 0.0
                 if np.hypot(rel[0], rel[1]) > 0.8:
                     err = np.angle(np.exp(1j * (np.arctan2(rel[1], rel[0]) - float(s['yaw'].flatten()[0]))))
+            if self.face_wobble_deg > 0:
+                now = __import__('time').time()
+                self._wobble_t0 = now if self._wobble_t0 is None else self._wobble_t0
+                err += np.radians(self.face_wobble_deg) * np.sin(2 * np.pi * (now - self._wobble_t0) / self.face_wobble_period)
             a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))
         if (self.vision is not None and self._no_gate_since is not None and self._hold_w is not None
                 and __import__('time').time() - self._no_gate_since > 3.0):

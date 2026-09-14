@@ -91,7 +91,13 @@ class GateVision:
             u = (u_n + 1) / 2 * IN_W
             v = (v_n + 1) / 2 * IN_H
             direction = self.cam.unproject_body(np.array([[u, v]]))[0]
-            dist = self.cam.f * GATE_WIDTH_M / max(width_px, 4.0)
+            # range from the apparent width. Off the optical axis a rectilinear image stretches things: a gate
+            # seen at horizontal offset du and radial offset (du, dv) appears wider by
+            # sqrt(f^2 + du^2) * sqrt(f^2 + du^2 + dv^2) / f^2, a factor 2.5 at the edge of a 116 deg view
+            f = self.cam.f
+            du, dv = u - IN_W / 2, v - IN_H / 2
+            stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
+            dist = f * GATE_WIDTH_M * stretch / max(width_px, 4.0)
             n += 1
             det = Detection(time.time(), p, u, v, width_px, direction, float(dist), n)
             with self._lock:

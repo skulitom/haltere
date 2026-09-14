@@ -471,6 +471,10 @@ def main(argv=None):
     q.add_argument('--face-ahead', type=float, default=0.0,
                    help='path mode: face the path this many metres beyond the carrot instead of the carrot itself '
                         '(keeps the camera on the course ahead)')
+    q.add_argument('--face-wobble', type=float, default=0.0,
+                   help='sweep the facing heading +- this many degrees (sinusoidal, --face-wobble-period): '
+                        'viewpoint variety when collecting vision datasets')
+    q.add_argument('--face-wobble-period', type=float, default=10.0)
     q.add_argument('--vision', default='', help='GateNet checkpoint: fly by sight (the goal comes from the gate detector '
                                                 'on the game view instead of from telemetry positions)')
     q.add_argument('--camera', default='configs/camera.yaml', help='camera calibration for --vision')

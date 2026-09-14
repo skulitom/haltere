@@ -519,6 +519,7 @@ def cmd_fly(a):
                            period=a.period, amplitude=a.amplitude, stick_gain=stick_gain, stick_lpf=a.stick_lpf,
                            face_gain=a.face_travel, face_max=a.face_max)
     pilot.face_ahead = a.face_ahead
+    pilot.face_wobble_deg, pilot.face_wobble_period = a.face_wobble, a.face_wobble_period
     if a.vision:
         import yaml
         from ..vision.camera import Camera
