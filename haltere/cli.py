@@ -241,6 +241,12 @@ def cmd_vision(a):
         cam = Camera(int(c['width']), int(c['height']), float(c['f']), float(c['tilt_deg']))
         for d in a.datasets:
             label_dataset(d, a.gates, cam)
+    elif a.vision_cmd == 'eval':
+        from .vision.evaluate import evaluate
+        evaluate(a.ckpt, a.datasets, device=a.device)
+    elif a.vision_cmd == 'passes':
+        from .vision.evaluate import gate_passes
+        gate_passes(a.dataset, a.gates)
     elif a.vision_cmd == 'train':
         from .vision.train import train
         out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, max_gpu_temp=a.max_gpu_temp, device=a.device)
@@ -382,6 +388,13 @@ def main(argv=None):
     q.add_argument('datasets', nargs='+')
     q.add_argument('--gates', default='configs/gates_strawbale.json')
     q.add_argument('--camera', default='configs/camera.yaml')
+    q = vs.add_parser('eval', help='measure a GateNet checkpoint on labelled datasets (accuracy, false positives, bias per range)')
+    q.add_argument('ckpt')
+    q.add_argument('datasets', nargs='+')
+    q.add_argument('--device', default='cuda')
+    q = vs.add_parser('passes', help='which gates a recorded flight (dataset with poses) flew through')
+    q.add_argument('dataset')
+    q.add_argument('--gates', default='configs/gates_strawbale.json')
     q = vs.add_parser('train', help='train GateNet on labelled datasets')
     q.add_argument('datasets', nargs='+')
     q.add_argument('--out', default='runs/gatenet')
