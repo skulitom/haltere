@@ -229,13 +229,15 @@ vision pipeline (`haltere/vision/`) replaces the telemetry goal with one that co
 image, so the fly flies toward what it sees:
 
 ```bash
-haltere liftoff fly runs/ftPath2_best.pt --waypoints-file configs/track_strawbale.yaml --path-speed 1.5         --face-travel 0.8 --face-ahead 6 --seconds 280 --dataset data/vision/run2   # frames + pose at 10 fps
-haltere vision calibrate data/vision/run2                # focal length from feature motion under the known attitude
-haltere vision gates-from-frames data/vision/run2 --frames 105,240,338,468,578,700,805   # passages -> gate list
-haltere vision label data/vision/run2                    # project the next gate into every frame
-haltere vision train data/vision/run2 --out runs/gatenet # GateNet: frame -> visible, centre, apparent width
-haltere vision inspect data/vision/run2 --ckpt runs/gatenet/best.pt    # labels (green) and predictions (red)
-haltere liftoff fly runs/ftPath2_best.pt --vision runs/gatenet/best.pt --face-travel 0.8   # fly by sight
+haltere liftoff fly runs/ftPath2_best.pt --waypoints-file configs/track_strawbale.yaml --path-speed 1.5     --face-travel 0.8 --face-ahead 6 --face-wobble 35 --seconds 280 --dataset data/vision/run11   # lap frames + pose, camera sweeping
+haltere vision calibrate data/vision/run11 --tilts 20,25,30,35 --out configs/camera_seat.yaml    # focal length and tilt of the FPV camera
+haltere vision gates-from-frames data/vision/run2 --frames 105,240,338,468,578,700,805    # passage frames -> gate list
+haltere vision label data/vision/run11 --camera configs/camera_seat.yaml   # project the next gate into every frame
+haltere vision train data/vision/run9 data/vision/run10 data/vision/run11 --out runs/gatenet --max-gpu-temp 70
+haltere vision eval runs/gatenet/best.pt data/vision/run10       # accuracy, false positives, centre/range bias per distance
+haltere vision inspect data/vision/run10 --ckpt runs/gatenet/best.pt     # labels (green) and predictions (red) on frames
+haltere liftoff fly runs/ftPath2_best.pt --vision runs/gatenet/best.pt --camera configs/camera_seat.yaml     --face-travel 0.8 --dataset data/vision/run12   # fly by sight, recording the frames for the next round
+haltere vision passes data/vision/run12                          # which gates that flight went through
 ```
 
 How the pieces work. Liftoff stores neither the track layout nor the camera's field of view, so
@@ -253,6 +255,33 @@ the nominal gate size, and feeds that goal vector to the brain in place of the t
 remembering the last gate briefly when it leaves the view and hovering when nothing is in sight.
 The drone's own senses (gyro, gravity, velocity, motor load) still come from telemetry, as a fly's
 would from its halteres and wings.
+
+![the fly flying through a gate it sees](docs/liftoff_sight.gif)
+
+*Flight by sight: the detector picks the arch out of the view, the pilot turns its centre and
+width into a goal, the brain flies through it (gate 1 of the Straw Bale lap, first flight).*
+
+Where it stands. The detector is only as good as the viewpoints it has seen. Trained on lap
+frames alone, where the camera always looked along the course and every gate sat near the middle
+of the image, it put off-centre gates far too close to the centre (up to 84 px) and read them as
+twice too wide, so the first flight by sight aimed 3 m to the right of the first gate and missed
+it, flew through the second (1.2 m from its centre) and then lost the course chasing phantoms.
+Two fixes followed: the path pilot now sweeps its camera 35 degrees either way while it records
+frames (`--face-wobble`), and the range from the apparent width accounts for the stretch of a
+wide-angle image away from its centre (a 116 degree camera shows a gate at the edge 2.5 times
+wider than at the centre). Retrained on the flight's own frames plus a sweeping lap, the detector
+agrees with the projected labels on 97% of a held-out tenth of the frames (centre error 7 px at
+320 wide), no longer hallucinates gates on that flight's gate-less views and keeps a 15 px centre
+bias, which the next flight will test. Every flight by sight records its frames with
+the pose, and the gate list labels them, so each round of flying adds exactly the views the last
+round got wrong.
+
+The flights run inside an [Anode](https://github.com/skulitom/Anode) seat, a second Windows
+session with its own screen and input, so the desktop stays free while the fly practises. The
+sandboxed game there keeps its own video settings, hence the second camera file next to the
+desktop's: 200 px focal length and a 116 degree field at 640 wide (`configs/camera_seat.yaml`)
+against 345 px and 86 degrees (`configs/camera.yaml`). Pass the one that matches the game you
+capture; the detector itself is shared.
 
 ### Rehearsing without the game
 
@@ -291,7 +320,7 @@ and the connectome brain does not, the problem is the brain's parameterisation, 
 
 ## Trained brains and where to get them
 
-`artifacts/` holds slim inference checkpoints (parameters only, 12 MB each) that work with the
+`artifacts/` holds slim inference checkpoints (parameters only, 12 MB each; the gate detector 20 MB) that work with the
 committed flight graph in `data/built/`; the GitHub releases
 ([v0.1.0](https://github.com/skulitom/haltere/releases/tag/v0.1.0): hover, patterns;
 [v0.2.0](https://github.com/skulitom/haltere/releases/tag/v0.2.0): the lap brain, the race video and
@@ -306,6 +335,7 @@ artifacts with a model card are on Hugging Face:
 | `artifacts/ftRobust_best.pt` | imitation, then flight cost with wide domain randomization | the first brain that flew in Liftoff |
 | `artifacts/imJ_best.pt` | imitation of the MLP with the premotor readout | best simulator accuracy |
 | `artifacts/mlp_baseline.pt` | the MLP teacher, no connectome | control experiment |
+| `artifacts/gatenet_best.pt` | GateNet, 5 M parameters, on 8.7k labelled frames from lap and by-sight flights in both camera setups | flying by sight (`--vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml`) |
 
 ## Prior art
 
@@ -437,9 +467,10 @@ with a lateral offset of about 1.4 m; fine-tuning on the identified physics is t
 
 Working end to end on this machine: connectome download and graph construction on the real data,
 the simulator, the brain model (custom sparse backward, sign constraints), imitation and flight-cost
-training, the Liftoff telemetry and virtual-pad loop, automated calibration, and connectome brains
-that hover, fly patterns and follow a taught race lap inside Liftoff, with the recorded videos
-above. Open: racing pace. The brain follows the lap at 1 to 2 m/s where a human lap on the same
-track runs at 14 m/s; the moving-target fine-tune is the current lever, and the next ones are a
-speed curriculum on the real track geometry and reading gate positions from the game instead of a
-taught lap. `runs/mlp300/best.pt` remains the non-connectome control for checking the integration.
+training, the Liftoff telemetry and virtual-pad loop, automated calibration, connectome brains that
+hover, fly patterns and follow a taught race lap inside Liftoff, and a first flight by sight: the
+gate detector, trained on frames the flights label themselves, steers the same brain through a gate
+it sees. Open: a whole lap by sight (the detector still loses gates when the drone turns hard, and
+the pilot then hovers and looks around), and racing pace. The brain follows the lap at 1.5 m/s
+where a human lap on the same track runs at 14 m/s; a brain fine-tuned on 2.5 m/s targets
+(`runs/ftPath3`) is the next one to fly, then a speed curriculum on the real track geometry.

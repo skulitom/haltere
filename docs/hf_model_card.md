@@ -60,6 +60,7 @@ checkpoints with optimizer state are on the
 | `ftRobust_best` (+ domain randomization) | 0.20 m, 99.6% | 2 m hover, 0.34 m mean error over 40 s; 3 m square pattern |
 | `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 2 m hover, 0.35 m mean error with a quarter of the stick jitter; orbit (0.75 m tracking error at 0.8 m/s) and climb-and-dive (1.1 m at about 1 m/s), no crashes; taught lap at 1.2 m/s with 0.9-1.0 m error |
 | `ftPath2_best` (+ moving targets) | 0.37 m, 80% static; 0.76 m following a 1 m/s target, 3.1 m at 2 m/s | taught race lap at 1.5 m/s with 0.67 m mean error, 46% of the time within 0.5 m, flying through the gates nose first |
+| `gatenet_best` (gate detector, 5 M parameters) | agrees with the projected gate labels on 97% of a held-out tenth of 8.7k flight frames, centre error 7 px at 320 wide; no false positives left on the by-sight flight's gate-less views | flies by sight: with `--vision` the goal comes from this network's view of the game, and the brain flew through a gate it saw on the first such flight |
 
 Full difficulty: 25 degrees of tilt, 90 deg/s rotation, 1 m/s velocity and 1 m offset at the start,
 targets anywhere in a 6 x 6 x 2 m box, physics jittered by 35%.
