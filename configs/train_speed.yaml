@@ -1,6 +1,8 @@
-# Speed fine-tune of the lap brain: resume runs/ftPath2/last.pt (iteration 2300) and follow 4.5 m/s targets for
-# 1200 more iterations. Heat-limited: the GPU pauses above 68 C and idles 0.8 s per iteration (this PC shut
-# down from heat once). Launch: haltere train --config configs/train_speed.yaml --run runs/ftSpeed --resume runs/ftPath2/last.pt
+# Speed fine-tune of the lap brain: resume runs/ftPath2/last.pt (iteration 2300) and follow 3.5 m/s targets for
+# 1200 more iterations, with the tilt and stick-effort penalties halved (w_up 1, w_act 0.06, w_dact 1.5) so the
+# brain is allowed to fly harder. A first attempt at 4.5 m/s with the lap brain's penalties made no progress in
+# 450 iterations. Heat-limited: the GPU pauses above 68 C and idles 0.8 s per iteration.
+# Launch: haltere train --config configs/train_speed.yaml --run runs/ftSpeed35 --resume runs/ftPath2/last.pt
 train:
   graph: data/built/flight
   B: 96
@@ -38,9 +40,9 @@ task:
   init_rate_deg_s: 90.0
   episode_steps: 500
   switch_target_every: 0
-  path_speed: 4.5
+  path_speed: 3.5
   path_static_frac: 0.15
-  path_turn_deg_s: 35.0
+  path_turn_deg_s: 30.0
   path_climb: 0.3
   path_z_range:
   - 1.2
@@ -49,9 +51,9 @@ task:
   w_pos: 1.0
   w_vel: 0.05
   w_rate: 0.05
-  w_up: 2.0
-  w_act: 0.1
-  w_dact: 3.0
+  w_up: 1.0
+  w_act: 0.06
+  w_dact: 1.5
   w_floor: 5.0
   w_crash: 20.0
   pos_huber: 1.0
