@@ -430,7 +430,7 @@ flight, scored by `haltere vision passes` and the distance to the taught line):
 
 ![the lap at the 4.0 m/s setting](docs/liftoff_lap4.gif)
 
-*Gates 2 and 3 of the lap at the 4.0 m/s setting, flown from telemetry (left: the brain's activity).*
+*Gates 2 and 3 of the lap at the 4.0 m/s setting with stick gain 1.6, flown from telemetry (left: the brain's activity).*
 
 Up to a 4.5 m carrot the brain simply flies faster with the same accuracy, 1.6 times quicker than
 the 1.5 m/s setting the lap was first flown at; the goal channel saturates (tanh of the offset over
