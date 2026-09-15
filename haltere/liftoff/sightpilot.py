@@ -119,6 +119,8 @@ class SightParams:
     switch_s: float = 0.3
     lock_s: tuple = (0.3, 0.6)            # on the latest ray up to a, blended to the filter until b
     bisector_cap: float = 45.0
+    next_min_hits: int = 10               # sightings a confirmed track needs before it can set the approach bisector
+                                          # (a briefly seen track swung gate 4's axis by 40 deg in the game)
     turn_rot_min: float = 12.0            # no next gate: rotate the axis by min(0.5 |alpha|, turn_rot_max) beyond this
     turn_rot_max: float = 20.0
     turn_gate_alpha: float = 25.0
@@ -191,9 +193,9 @@ class SightParams:
     # --- altitude
     z_start: float = 1.5
     z_pass0: float = 1.2
-    z_aim: float = 0.3
+    z_aim: float = 0.0                    # 0.3 in the spec: in the game the drone crossed gate 4 1.2 m high, into its top
     z_min: float = 1.2
-    up_bias: float = 0.5                  # + min(up_bias, up_bias * sigma_z)
+    up_bias: float = 0.0                  # + min(up_bias, up_bias * sigma_z)
     climb_front: float = 0.5
     vz_frac: float = 0.35
     vz_min: float = 0.4
@@ -822,8 +824,8 @@ class SightPilot:
         cx, cy = math.cos(a_cin), math.sin(a_cin)
         nxt, nxt_d = None, math.inf
         for o in self.tracks:
-            if o is T or o.passed or not o.confirmed:
-                continue
+            if o is T or o.passed or not o.confirmed or o.hits < P.next_min_hits:
+                continue                  # a briefly seen phantom beside the course would swing the approach axis
             vx, vy = float(o.m[0]) - gx, float(o.m[1]) - gy
             dv = math.hypot(vx, vy)
             # any arch not well behind the target along the course (turns up to about 107 deg; gate 2 turns 87)
@@ -1364,7 +1366,7 @@ def add_cli_args(q, yaw_rate_default: float = 2.3) -> None:
     g.add_argument('--sight-range-corr', default='default',
                    help="range correction table 'd:k,d:k,...', 'default' (measured on GateNet), 'spec' (the prototype's) "
                         "or 'none'")
-    g.add_argument('--sight-z-aim', type=float, default=0.3, help='fly this far above the passage point (m)')
+    g.add_argument('--sight-z-aim', type=float, default=0.0, help='fly this far above the passage point (m)')
     g.add_argument('--sight-climb-front', type=float, default=0.5, help='climbs finish by this fraction of the time to go')
     g.add_argument('--sight-snap-start', type=float, default=9.0,
                    help='pull the goal onto the gate bearing within this distance (m)')
