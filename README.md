@@ -423,6 +423,9 @@ flight, scored by `haltere vision passes` and the distance to the taught line):
 | 3.0 / 3.5 | 2.4 m/s | 0.58 m (1.00) | 7/7 | 92 s |
 | **4.0 / 4.5** | **2.9 m/s** | **0.65 m (1.15)** | **7/7** | **87 s** |
 | 6.0 / 6.0 | about 3 m/s | 0.83 m (1.79) | 4, then flew into gate 5 | crashed at 71 s |
+| 4.0 / 4.5, `--stick-gain 1.3,1.3,1` | 2.7 m/s | 0.58 m (1.13) | 7/7 | 84 s |
+| **4.0 / 4.5, `--stick-gain 1.6,1.6,1`** | **2.7 m/s** | **0.48 m (0.94)** | **7/7** | **82 s** |
+| 4.0 / 4.5, `--stick-gain 2,2,1` | 5.2 m/s, overshooting everything | 5.1 m (9.7) | 4/7 | never |
 
 ![the lap at the 4.0 m/s setting](docs/liftoff_lap4.gif)
 
@@ -431,8 +434,15 @@ flight, scored by `haltere vision passes` and the distance to the taught line):
 Up to a 4.5 m carrot the brain simply flies faster with the same accuracy, 1.6 times quicker than
 the 1.5 m/s setting the lap was first flown at; the goal channel saturates (tanh of the offset over
 2 m), so a longer lead does not change what the brain sees, and its own top speed of about 3 m/s
-is the ceiling. Past that the line gets rough and the drone clips gates. The next step in speed
-is a fine-tune on 4.5 m/s targets (`configs/train_speed.yaml`, resumed from the lap brain).
+is the ceiling. Past that the line gets rough and the drone clips gates. Two things were tried
+against that ceiling. A fine-tune in the simulator on 3.5 m/s targets with the tilt and effort
+penalties halved (`configs/train_speed.yaml`, 1200 iterations from the lap brain) did track faster
+targets in the simulator (1.9 m against 2.5 m) but did not transfer: in the game it flew the line
+more precisely (0.50 m) yet slower (2.1 m/s average against 2.5 m/s) and crashed on the climb to the
+13 m gate in both runs, so the lap brain stays. Scaling the brain's roll and pitch commands
+(`--stick-gain`) works: the brain's sticks are under-authoritative in the game compared with the
+simulator it learned in, and 1.6 times its roll and pitch makes it both quicker and more accurate,
+while 2 times sends it overshooting. The bold row is the current lap setting.
 
 ## In Liftoff: what actually happened
 
@@ -498,6 +508,6 @@ hover, fly patterns and follow a taught race lap inside Liftoff, and a first fli
 gate detector, trained on frames the flights label themselves, steers the same brain through a gate
 it sees. Open: a whole lap by sight (the detector still loses gates when the drone turns hard, and
 the pilot then hovers and looks around), and racing pace. The lap brain flies the course at up to
-2.9 m/s with `--path-speed 4 --lookahead 4.5` (7 gates in 87 s) where a human lap on the same
-track runs at 14 m/s; its own top speed is the limit now, and a fine-tune on faster targets
-(`configs/train_speed.yaml`) is the next lever.
+3 m/s with `--path-speed 4 --lookahead 4.5 --stick-gain 1.6,1.6,1` (7 gates in 82 s) where a human lap on the same
+track runs at 14 m/s; its own top speed is the limit now; a simulator fine-tune on faster targets did not transfer, so the
+next lever is training on the identified game physics rather than the generic quad.
