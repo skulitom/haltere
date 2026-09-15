@@ -308,8 +308,8 @@ class TelemetryPilot:
                     course[2] = 0.0
                     if np.linalg.norm(course) > 3.0:
                         course /= np.linalg.norm(course)
-                        entry = gate - 6.0 * course              # 6 m before the gate, on the course line through it
-                if entry is not None and (pos_w - gate) @ (entry - gate) > 0:
+                        entry = gate - 5.0 * course              # 5 m before the gate, on the course line through it
+                if entry is not None and dist_gate > 8.0 and (pos_w - gate) @ (entry - gate) > 0:
                     # a gate on a turn: fly to the entry point first, then through the gate along the course
                     start = entry
                     line = gate - start
@@ -350,8 +350,13 @@ class TelemetryPilot:
                 keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
                 self._line_s = min(self._line_s + self.vision_speed * keep_up * dt, L_run)
                 rel_w = carrot - pos_w
-                # altitude: the visual centre sits 1.5 m above the line through the arch; aim 1.2 m below it
-                z_goal = float(np.clip(gate[2] - 1.2, self.vision_z_min, self.vision_z_max))
+                # altitude: the visual centre sits 1.5 m above the line through the arch; aim 1.2 m below it. The
+                # height of a far sighting is rough, so the band sits around the last gate passed (or the start)
+                # and climbs above it only on close sightings (the sixth gate of this lap is 5 m up a hill)
+                z_ref = self._passed[-1][1][2] - 1.2 if self._passed else 1.4
+                z_lo = max(self.vision_z_min, z_ref - 1.0)
+                z_hi = min(self.vision_z_max, z_ref + (5.0 if dist_gate < 8.0 else 1.5))
+                z_goal = float(np.clip(gate[2] - 1.2, z_lo, z_hi))
                 rel_w[2] = float(np.clip(z_goal - pos_w[2], -1.5, 1.0))
                 self._z_ref = z_goal
                 self._hold_w = None
