@@ -113,9 +113,9 @@ class TelemetryPilot:
         self._z_ref = None                     # altitude to hold while no gate is in sight
         self._hold_w = None                    # position to hold while no gate is in sight
         self._no_gate_since = None             # when the drone last lost sight of every gate (search yaw after a while)
-        self.vision_search_yaw = -0.12         # yaw stick while searching (negative = nose turns left)
+        self.vision_search_yaw = -0.2          # yaw stick while searching (negative = nose turns left)
         self.vision_fly_on = 4.0               # s to keep flying straight after passing a gate, then look around
-        self.vision_z_min, self.vision_z_max = 1.6, 3.5   # m above the start: the altitude band flown by sight
+        self.vision_z_min, self.vision_z_max = 1.6, 3.0   # m above the start: the altitude band flown by sight (the arches are low)
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
@@ -252,7 +252,9 @@ class TelemetryPilot:
                 if agrees(cand, self.vision_gate_w):
                     self.vision_gate_w = 0.7 * self.vision_gate_w + 0.3 * cand       # slide toward the fresh estimate
                     self._agree_t = now
-                elif now - self._agree_t > 1.0:            # sightings have disagreed with the memory for a second
+                elif now - self._agree_t > 1.0 and np.linalg.norm(self.vision_gate_w - pos_w) > 6.0:
+                    # sightings have disagreed with the memory for a second: drop it, unless the remembered gate is
+                    # close ahead (then the detector is probably picking up the NEXT gate; keep flying through this one)
                     self.vision_gate_w = None
                     self._line = None
             if self.vision_gate_w is None:
@@ -313,7 +315,7 @@ class TelemetryPilot:
             self._no_gate_since = now
         rel_w = self._hold_w - pos_w
         rel_w[2] = dz
-        self.vision_status = ('no gate: holding position' + (', searching' if now - self._no_gate_since > 3.0 else '')
+        self.vision_status = ('no gate: holding position' + (', searching' if now - self._no_gate_since > 2.0 else '')
                               + (f' (unconfirmed sighting p={det.p_visible:.2f})' if plausible else ''))
         return R.T @ rel_w
 
@@ -385,7 +387,7 @@ class TelemetryPilot:
                 err += np.radians(self.face_wobble_deg) * np.sin(2 * np.pi * (now - self._wobble_t0) / self.face_wobble_period)
             a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))
         if (self.vision is not None and self._no_gate_since is not None and self._hold_w is not None
-                and __import__('time').time() - self._no_gate_since > 3.0):
+                and __import__('time').time() - self._no_gate_since > 2.0):
             a[3] = self.vision_search_yaw            # nothing in sight for a while: turn slowly and look around
         if self.stick_lpf > 0:
             dt = max(fr.timestamp - self.prev_t, 1e-3) if self.prev_t is not None else 0.01

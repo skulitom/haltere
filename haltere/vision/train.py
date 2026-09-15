@@ -90,7 +90,7 @@ class GateFrames(torch.utils.data.Dataset):
 
 def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, batch: int = 64, lr: float = 1e-3,
           width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0,
-          max_gpu_temp: float = 70.0, batch_sleep: float = 0.15) -> Path:
+          max_gpu_temp: float = 70.0, batch_sleep: float = 0.15, init: str = '') -> Path:
     torch.manual_seed(seed)
     random.seed(seed)
     dev = torch.device(device if torch.cuda.is_available() else 'cpu')
@@ -105,6 +105,10 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
     tl = torch.utils.data.DataLoader(train_ds, batch_size=batch, shuffle=True, num_workers=0, drop_last=True)
     vl = torch.utils.data.DataLoader(val_ds, batch_size=batch, shuffle=False, num_workers=0)
     net = GateNet(width).to(dev)
+    if init:
+        ck = torch.load(init, map_location=dev, weights_only=False)
+        net.load_state_dict(ck['model'])
+        print(f'initialised from {init} (epoch {ck.get("epoch")})', flush=True)
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=max(1, epochs * len(tl)))
     out = Path(out_dir)
