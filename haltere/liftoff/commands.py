@@ -616,11 +616,16 @@ def cmd_fly(a):
             # arm again until the drone is reset; hold the throttle low (and press the reset button if configured)
             alt = float(pilot.last_pos[2])
             still = float(np.linalg.norm(fr.velocity)) < 0.05
-            if game_active and phase > a.arm_hold + a.arm_ramp + 1.0 and alt < 0.15 and still and sticks[0] > -0.5:
+            grounded = alt < 0.15 and still and sticks[0] > -0.5
+            # wedged in a gate frame or a hay bale: in the air, not moving, while the brain pushes hard (a fast
+            # lap flew into gate 4 and hung there with the sticks saturated; only a fall was detected before)
+            stuck = alt >= 0.15 and still and (abs(sticks[1]) > 0.4 or abs(sticks[2]) > 0.4 or sticks[0] > 0.6)
+            if game_active and phase > a.arm_hold + a.arm_ramp + 1.0 and (grounded or stuck):
                 grounded_since = grounded_since or now
-                if now - grounded_since > 1.5 and not crashed:
+                if now - grounded_since > (1.5 if grounded else 3.0) and not crashed:
                     crashed = True
-                    print(f'[{time.strftime("%H:%M:%S")}] drone appears crashed/grounded at {np.round(pilot.last_pos, 2)}; '
+                    print(f'[{time.strftime("%H:%M:%S")}] drone appears {"crashed/grounded" if grounded else "stuck in the air"} '
+                          f'at {np.round(pilot.last_pos, 2)}; '
                           f'holding throttle low' + (f', pressing {a.reset_button}' if a.reset_button else '')
                           + (f', sending key {a.reset_key}' if a.reset_key else ''), flush=True)
                     if a.reset_button and pad is not None and hasattr(pad, 'press'):

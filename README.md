@@ -408,6 +408,28 @@ sign conventions differ from training, the un-adapted brain stays airborne at th
 with a lateral offset of about 1.4 m; fine-tuning on the identified physics is the intended remedy
 (`configs/train_premotor_fakefit.yaml`, run `ftFake`).
 
+### Lap speed
+
+The lap brain was trained on targets moving at 2.5 m/s, and the path pilot only advances its carrot
+as fast as the drone keeps up, so the speed setting is a cap, not a command. Pushing the cap and
+the carrot's lead on the Straw Bale Field Day lap (seven gates in the first 250 m; each row one
+flight, scored by `haltere vision passes` and the distance to the taught line):
+
+| `--path-speed` / `--lookahead` | speed flown (median) | mean path error (90th pct) | gates flown through | time to gate 7 |
+|---|---|---|---|---|
+| 1.5 / 2.0 | 1.6 m/s | 0.59 m (1.19) | 7/7 | 142 s |
+| 2.0 / 2.5 | 1.9 m/s | 0.60 m (1.05) | 7/7 | 112 s |
+| 2.5 / 3.0 | 2.2 m/s | 0.63 m (1.18) | 7/7 | 99 s |
+| 3.0 / 3.5 | 2.4 m/s | 0.58 m (1.00) | 7/7 | 92 s |
+| **4.0 / 4.5** | **2.9 m/s** | **0.65 m (1.15)** | **7/7** | **87 s** |
+| 6.0 / 6.0 | about 3 m/s | 0.83 m (1.79) | 4, then flew into gate 5 | crashed at 71 s |
+
+Up to a 4.5 m carrot the brain simply flies faster with the same accuracy, 1.6 times quicker than
+the 1.5 m/s setting the lap was first flown at; the goal channel saturates (tanh of the offset over
+2 m), so a longer lead does not change what the brain sees, and its own top speed of about 3 m/s
+is the ceiling. Past that the line gets rough and the drone clips gates. The next step in speed
+is a fine-tune on 4.5 m/s targets (`configs/train_speed.yaml`, resumed from the lap brain).
+
 ## In Liftoff: what actually happened
 
 - Liftoff's Xbox 360 profile mapped the virtual pad by itself. Its input processing, measured with
@@ -471,6 +493,7 @@ training, the Liftoff telemetry and virtual-pad loop, automated calibration, con
 hover, fly patterns and follow a taught race lap inside Liftoff, and a first flight by sight: the
 gate detector, trained on frames the flights label themselves, steers the same brain through a gate
 it sees. Open: a whole lap by sight (the detector still loses gates when the drone turns hard, and
-the pilot then hovers and looks around), and racing pace. The brain follows the lap at 1.5 m/s
-where a human lap on the same track runs at 14 m/s; a brain fine-tuned on 2.5 m/s targets
-(`runs/ftPath3`) is the next one to fly, then a speed curriculum on the real track geometry.
+the pilot then hovers and looks around), and racing pace. The lap brain flies the course at up to
+2.9 m/s with `--path-speed 4 --lookahead 4.5` (7 gates in 87 s) where a human lap on the same
+track runs at 14 m/s; its own top speed is the limit now, and a fine-tune on faster targets
+(`configs/train_speed.yaml`) is the next lever.
