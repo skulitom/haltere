@@ -622,7 +622,9 @@ def cmd_fly(a):
             # lap flew into gate 4 and hung there with the sticks saturated; only a fall was detected before)
             stuck = alt >= 0.15 and still and (abs(sticks[1]) > 0.4 or abs(sticks[2]) > 0.4 or sticks[0] > 0.6)
             still_since = still_since if (still and still_since is not None) else (now if still else None)
-            stuck = stuck or (alt >= 0.15 and still and now - still_since > 5.0)   # airborne drones are never this still
+            # perfectly still for 5 s while the goal is elsewhere: sitting on something (a hovering brain that has
+            # reached its goal can be this still, so the goal distance decides)
+            stuck = stuck or (alt >= 0.15 and still and now - still_since > 5.0 and len(dists) > 0 and dists[-1] > 1.0)
             if game_active and phase > a.arm_hold + a.arm_ramp + 1.0 and (grounded or stuck):
                 grounded_since = grounded_since or now
                 if now - grounded_since > (1.5 if grounded else 3.0) and not crashed:

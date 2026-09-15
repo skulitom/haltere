@@ -279,10 +279,19 @@ round got wrong. The detector is no longer the weak part; the pilot's habits are
 exposed two of them: the leg flown straight on after a gate was computed along the world's x axis
 rather than the nose (every turn sent the drone east), and after passing an arch the search sweep
 would find the same arch from behind and fly back into it (an arch looks the same from both sides,
-so passed gates are now remembered for a minute). With those fixed the best flight went through
-the first three gates in sequence (0.6, 0.1 and 1.0 m from their centres), but flight to flight the
-outcome still varies from three gates to one, with long hovers between them: a whole lap by sight
-is the open problem.
+so passed gates are now remembered for a minute). The pilot's estimate was then rebuilt around what a
+detection is good at: its bearing is exact, its range is rough. The remembered gate sits on the latest
+sighting ray at a range smoothed over sightings (and by parallax when the drone's own motion has
+opened enough of it); sightings agree in metres, not degrees; when two arches line up the wider one
+wins; passing is judged by the arch filling the view and vanishing rather than by the range; after a
+gate the drone flies on, then creeps along the course direction (last gate to this one) sweeping its
+view, and enters the next gate square-on along that direction; its height follows the last gate it
+passed and climbs only on close sightings. The best flight since then went through gates 1, 2, 5
+and 7 of the lap, including the last one 13 m up its hill, missing gates 3, 4 and 6 by 3, 12 and
+3 m, in 74 s from the start; another went through the first three in sequence at 15, 31 and 42 s.
+Flight to flight the outcome still varies, and the gate on the sharp turn (gate 3, seen obliquely on
+the approach) is missed most often: a clean lap by sight is the open problem, now a matter of the
+approach to obliquely seen arches rather than of perception.
 
 The flights run inside an [Anode](https://github.com/skulitom/Anode) seat, a second Windows
 session with its own screen and input, so the desktop stays free while the fly practises. The
@@ -515,8 +524,9 @@ the simulator, the brain model (custom sparse backward, sign constraints), imita
 training, the Liftoff telemetry and virtual-pad loop, automated calibration, connectome brains that
 hover, fly patterns and follow a taught race lap inside Liftoff, and flights by sight: the gate
 detector, trained on frames the flights label themselves, steers the same brain through gates it
-sees, three in sequence on the best flight. Open: a whole lap by sight (the pilot still hovers and
-looks around between gates, and flights vary a lot), and racing pace. The lap brain flies the course at up to
+sees: four of the seven gates on the best flight, including the one 13 m up a hill, following the
+whole course in 74 s. Open: a clean lap by sight (obliquely seen gates on the turns are still missed
+by a few metres, and flights vary), and racing pace. The lap brain flies the course at up to
 3 m/s with `--path-speed 4 --lookahead 4.5 --stick-gain 1.6,1.6,1` (7 gates in 82 s) where a human lap on the same
 track runs at 14 m/s; its own top speed is the limit now; a simulator fine-tune on faster targets did not transfer, so the
 next lever is training on the identified game physics rather than the generic quad.
