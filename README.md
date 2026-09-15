@@ -424,6 +424,10 @@ flight, scored by `haltere vision passes` and the distance to the taught line):
 | **4.0 / 4.5** | **2.9 m/s** | **0.65 m (1.15)** | **7/7** | **87 s** |
 | 6.0 / 6.0 | about 3 m/s | 0.83 m (1.79) | 4, then flew into gate 5 | crashed at 71 s |
 
+![the lap at the 4.0 m/s setting](docs/liftoff_lap4.gif)
+
+*Gates 2 and 3 of the lap at the 4.0 m/s setting, flown from telemetry (left: the brain's activity).*
+
 Up to a 4.5 m carrot the brain simply flies faster with the same accuracy, 1.6 times quicker than
 the 1.5 m/s setting the lap was first flown at; the goal channel saturates (tanh of the offset over
 2 m), so a longer lead does not change what the brain sees, and its own top speed of about 3 m/s
