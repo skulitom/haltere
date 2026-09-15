@@ -2,8 +2,8 @@
 
 Two kinds of numbers. Progress: gates flown through (the gate list's crossing test), time and average speed between
 the first and last gate, ground speed, distance to the taught line. Wobble, i.e. what makes the FPV view shake:
-the horizon's roll and pitch above 1 Hz (degrees RMS; the drone's slow, deliberate banking is below it), the body
-rates above 1 Hz (deg/s RMS), the per-frame change of the processed input the flight controller received, and
+the horizon's roll and pitch above 1 Hz (degrees RMS; the drone's slow, deliberate banking is below it), the roll
+and pitch rates above 1 Hz (deg/s RMS; the yaw rate is reported separately), the per-frame change of the processed input the flight controller received, and
 vertical speed jitter. A flight that crashes is split at every reset; each attempt is scored on its own.
 """
 from __future__ import annotations

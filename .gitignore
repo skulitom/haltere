@@ -18,3 +18,6 @@ runs/
 *.log
 .torch-install.log
 .deps-install.log
+
+# agent worktrees
+.claude/worktrees/

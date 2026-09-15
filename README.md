@@ -3,15 +3,36 @@
 A fruit-fly brain, wired exactly as in the newest fly connectome, trained to fly an FPV drone in
 [Liftoff](https://store.steampowered.com/app/410340/Liftoff_FPV_Drone_Racing/).
 
-![The fly brain flying the drone in Liftoff](docs/liftoff_hover.gif)
+![The fly brain racing the Straw Bale lap in Liftoff](docs/liftoff_fast_lap.gif)
 
 *Left: the 30,000 neurons of the flight circuit drawn at their real positions in the male CNS
 (brain on top, nerve cord below), brightening as they fire, live on Liftoff's telemetry. Right:
-Liftoff's own FPV view of the drone they are flying, through a virtual Xbox controller. This is the
-first flight: take-off and a hover 2 m above the reset point, mean error 0.34 m over 40 s.
-Videos: [hover](docs/liftoff_hover.mp4), [a 3 m square pattern](docs/liftoff_square.mp4)
-(GIF: [docs/liftoff_square.gif](docs/liftoff_square.gif)). Recorded with
-`haltere liftoff fly runs/ftRobust_best.pt --record ...`.*
+Liftoff's own FPV view of the drone they are flying, through a virtual Xbox controller. The lap
+brain on the taught Straw Bale Field Day line: gates 0 to 6 in 38 s, 4.8 m/s on average with peaks
+of 8.0 m/s and no contact, where the same brain took 69 s before; the horizon's shake above 1 Hz is
+0.37 degrees against 1.36 before, and the roll and pitch rate shake 2 deg/s against 26
+([the stick path and the speed senses](#smooth-and-fast-the-stick-path-and-the-speed-senses)).
+[Video of the whole loop](https://github.com/skulitom/haltere/releases/tag/v0.4.0).*
+
+![The fly brain flying by sight through the two hill gates](docs/liftoff_sight_hill.gif)
+
+*Flying by sight: gates 5 and 6 of the lap, the last one 13 m up the hill, found by the gate
+detector in the FPV image and flown through by the brain behind the
+[rabbit pilot](#the-rabbit-pilot---sight-rabbit). This flight went through six of the seven gates
+in one 139 s run (gate 3 crossed 2.0 m from its centre, just outside the arch), each within 0.8 m of
+the arch's centre.*
+
+![The same stretch of the lap before and after the stick-path fix](docs/liftoff_stickfix.gif)
+
+*The same stretch of the lap and the same brain, before (left) and after (right) the pilot learned how
+Liftoff really processes a gamepad stick.*
+
+Earlier flights. The first one, take-off and a hover 2 m above the reset point, mean error 0.34 m
+over 40 s ([video](docs/liftoff_hover.mp4), recorded with
+`haltere liftoff fly runs/ftRobust_best.pt --record ...`), and a 3 m square pattern
+([video](docs/liftoff_square.mp4)):
+
+![The fly brain flying the drone in Liftoff](docs/liftoff_hover.gif)
 
 ![Square pattern in Liftoff](docs/liftoff_square.gif)
 
@@ -198,6 +219,18 @@ brain follows it. `--stick-gain 0.7 --stick-lpf 0.12` scale and low-pass the sti
 sends (Liftoff's input path adds latency the simulator did not have) and `--gyro telemetry` uses
 the game's gyro instead of attitude differences.
 
+The lap as it is flown now (the first clip above), and the same brain by sight:
+
+```bash
+haltere liftoff fly artifacts/ftPath2_best.pt --waypoints-file configs/track_strawbale.yaml \
+        --path-speed 8 --lookahead 6 --z-lead 1.5 --flow-gain 0.5 --face-travel 0.8 --face-ahead 6 \
+        --throttle-scale 0.8 --gyro telemetry --reset-key R --log data/liftoff/logs/lap.csv
+haltere liftoff fly artifacts/ftPath2_best.pt --vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml \
+        --sight rabbit --sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8 \
+        --sight-flow-min 0.6 --sight-flow-alt ground --throttle-scale 0.8 --gyro telemetry --reset-key R
+haltere liftoff score data/liftoff/logs/lap.csv --track configs/track_strawbale.yaml
+```
+
 `--advance-radius` makes the brain move on to the next waypoint as soon as it gets within that
 distance (racing); without it waypoints change on a timer. `--path-speed 1.5 --lookahead 2.0`
 follows the taught lap as a continuous path instead: a carrot moves along the polyline at that
@@ -292,6 +325,33 @@ and 7 of the lap, including the last one 13 m up its hill, missing gates 3, 4 an
 Flight to flight the outcome still varies, and the gate on the sharp turn (gate 3, seen obliquely on
 the approach) is missed most often: a clean lap by sight is the open problem, now a matter of the
 approach to obliquely seen arches rather than of perception.
+
+Since then the pilot by sight has been rebuilt twice over, once from the game's side (the stick
+path, below) and once from the pilot's: flight logs showed the old pilot handing the brain carrots up
+to 25 m away (it sprinted and climbed), jumping its goal 25 times a minute, aiming its nose at a point
+2 m ahead (the yaw stick sat at its limit for 16-45% of the approach time) and spending up to 43% of
+its airborne time flying on, creeping or hovering after gates. The [rabbit pilot](#the-rabbit-pilot---sight-rabbit)
+replaces it: tracked arches, a virtual lead vehicle with bounded speed and curvature, and a nose
+that follows the lead's heading. In the game, on the same lap (`haltere liftoff score` on
+`fly --log`; lateral = distance from the arch's centre where the drone crossed its plane):
+
+| pilot, flight | gates through | laterals (m) | gate 0 to last | horizon / roll-pitch-rate shake | contacts |
+|---|---|---|---|---|---|
+| old pilot, radial sticks (w6, best attempt) | 1, 2 | 1.7, 1.5 | - | 1.4 deg / 11 deg/s | 2 |
+| rabbit, 2.5 m/s (w17) | 0, 1, 2, 5 | 0.2, 0.4, 1.2, 0.6 | 75 s to gate 5 | 0.70 deg / 5.1 deg/s | 4 |
+| rabbit, 3.5 m/s (w18, attempt 2) | 0, 1, 2, 3, 4 | 0.2, 0.4, 0.0, 0.2, 0.2 | 46 s to gate 4 | 0.56 deg / 3.4 deg/s | 1 |
+| rabbit, 3.5 m/s, flow height above ground (w19) | 0, 1, 2, 4, 5, 6 | 0.1, 0.6, 0.5, 0.8, 0.7, 0.5 | 72 s to gate 6 | 0.49 deg / 6.3 deg/s | 1 |
+
+Gate 2, the obliquely seen turn most earlier flights by sight missed, has been passed in every rabbit
+flight, within about half a metre (0.53 m at most) in both flights at 3.5 m/s. Two lessons came from the game rather than
+the rehearsal. Aiming 0.3 m above the passage point plus an upward bias put the drone into gate 4's
+round top, so the pilot now aims at the passage height. And on the hill the brain speeds up by
+itself: its optic-flow sense is speed over height, and the height it is given is above the start, so
+6 m up the slope that sense reads about a fifth of what it would over flat ground (the airflow sense is
+unchanged), and it flew into gate 5 at 5.4 m/s instead of 3.2;
+`--sight-flow-alt ground` measures that height above the ground under the pilot's altitude
+reference, and gates 5 and 6 followed. Open: gates 3 and 4 are sometimes seen as several arches at
+once, the tracker splits them, and the drone passes wide.
 
 The flights run inside an [Anode](https://github.com/skulitom/Anode) seat, a second Windows
 session with its own screen and input, so the desktop stays free while the fly practises. The
@@ -421,6 +481,11 @@ and the connectome brain does not, the problem is the brain's parameterisation, 
   through the simulator on windows of your recording.
 - `haltere/sim/tasks.py::observe_from_sensors` is the single place that turns physical quantities into
   the brain's sensory channels; both the simulator and the live pilot go through it.
+- `haltere/liftoff/stickcal.py::RadialSticks` models and inverts Liftoff's per-stick radial deadzone;
+  `haltere/liftoff/flightlog.py` scores `fly --log` CSVs (gates, contacts, speed, path error, shake).
+- `haltere/liftoff/pathfollow.py` is the speed-profiled path follower with the tangent control frame;
+  `haltere/liftoff/sightpilot.py` is the rabbit pilot by sight, and `haltere/vision/rehearse.py` its
+  closed-loop rehearsal in the simulator.
 
 ## Trained brains and where to get them
 
@@ -428,13 +493,15 @@ and the connectome brain does not, the problem is the brain's parameterisation, 
 committed flight graph in `data/built/`; the GitHub releases
 ([v0.1.0](https://github.com/skulitom/haltere/releases/tag/v0.1.0): hover, patterns;
 [v0.2.0](https://github.com/skulitom/haltere/releases/tag/v0.2.0): the lap brain, the race video and
-the taught track) add the full checkpoints with optimizer state and the videos, and the same
+the taught track; [v0.3.0](https://github.com/skulitom/haltere/releases/tag/v0.3.0): the gate detector;
+[v0.4.0](https://github.com/skulitom/haltere/releases/tag/v0.4.0): the smooth and fast lap, the rabbit
+pilot by sight, and their videos) add the full checkpoints with optimizer state and the videos, and the same
 artifacts with a model card are on Hugging Face:
 [huggingface.co/Skulitom/haltere](https://huggingface.co/Skulitom/haltere) (`haltere publish-hf` mirrors them).
 
 | checkpoint | trained by | pick it when |
 |---|---|---|
-| `artifacts/ftPath2_best.pt` | the smooth brain fine-tuned on moving targets (two stages: speed, then smoothness back) | following a lap in Liftoff (`--path-speed 1.5 --face-travel 0.8`) |
+| `artifacts/ftPath2_best.pt` | the smooth brain fine-tuned on moving targets (two stages: speed, then smoothness back) | following a lap in Liftoff (`--path-speed 8 --lookahead 6 --z-lead 1.5 --flow-gain 0.5 --face-travel 0.8 --face-ahead 6`), and flying by sight (`--sight rabbit`) |
 | `artifacts/ftSmooth_best.pt` | imitation, then flight cost with 50 ms extra latency and a smoothness penalty | hovering and patterns in Liftoff |
 | `artifacts/ftRobust_best.pt` | imitation, then flight cost with wide domain randomization | the first brain that flew in Liftoff |
 | `artifacts/imJ_best.pt` | imitation of the MLP with the premotor readout | best simulator accuracy |
@@ -512,12 +579,67 @@ sign conventions differ from training, the un-adapted brain stays airborne at th
 with a lateral offset of about 1.4 m; fine-tuning on the identified physics is the intended remedy
 (`configs/train_premotor_fakefit.yaml`, run `ftFake`).
 
+### Smooth and fast: the stick path and the speed senses
+
+**The wobble was in the stick path.** A 100 Hz flight log (`fly --log`: pose, body rates, the
+processed input the game applied, the brain's output and the raw sticks sent, every telemetry frame)
+showed one oscillation at 2.4 Hz on every axis at once, throttle, roll, pitch and yaw, already in
+the brain's output. A ground test (`haltere liftoff sticktest`: stick combinations held through the
+pad bridge while the telemetry reports what the game made of them) found why. Liftoff (its
+Rewired profile) applies the 0.25 deadzone to each stick's two-axis vector, not to each axis:
+`processed = raw / |raw| * clip((|raw| - 0.25) / 0.75, 0, 1)`, then clamps to the unit circle
+(fit error 0.002 over 4961 samples; `stick_model` in `configs/liftoff.yaml`). The pilot inverted
+the axes one at a time, which is exact only when the other axis of the stick is at rest. During a
+0.3 pitch cruise a zero roll arrived as 0.14, a 0.05 roll correction one way as 0.21 and the other way
+with its sign flipped, and any yaw lifted the throttle: near the centre the brain's small corrections
+were distorted many times over. `LiftoffMapping.to_raw` now inverts each stick as one vector. On the same lap with the same
+brain the roll and pitch input chatter fell from 0.026 to 0.002 per frame (take-off to gate 6, w1
+against w7; throttle 0.026 to 0.006) and the 2.4 Hz peak vanished.
+The old finding below that 1.6 times the brain's roll and pitch helps was a symptom of this mapping;
+with the exact inverse the brain flies at gain 1.
+
+**Speed comes from the brain's own speed senses.** With its goal saturated the brain cruises at the
+speed it senses, about 2.45 m/s: a longer carrot changes nothing (6 m/s and a 6 m lead flew the lap
+at 2.5 m/s). It senses speed through two channels, the lobula plate tangential cells (optic flow,
+body velocity over height) and Johnston's organ (airflow). `--flow-gain K` writes K times the
+horizontal velocity into both, and the brain flies faster, somewhat less than 1/K times (1.4 times at
+0.7, 1.8 at 0.5, 2.2 at 0.4), the way a fly in a flight arena speeds up when its visual feedback gain
+is turned down. `--z-lead` takes the carrot's height
+from just ahead of the drone, so a carrot 6 m up a climbing line no longer lifts it into the top of a
+round arch. On the lap (`liftoff score`, from take-off to 2 s after gate 6; the rate shake is of the
+roll and pitch rates):
+
+| stick path, speed setting (flight) | median speed | gate 0 to 6 | gates, contacts | rate shake | horizon shake |
+|---|---|---|---|---|---|
+| per-axis inverse, gain 1.6, path speed 4 / lookahead 4.5 (w1, the published setting) | 2.4 m/s | 69 s | 7/7, none | 26 deg/s | 1.36 deg |
+| radial inverse, gain 1, path speed 6 / lookahead 6 (w7) | 2.4 m/s | 69 s | 6/7, gate 5 clipped | 7 deg/s | 0.38 deg |
+| radial, path speed 6 / lookahead 6, flow gain 0.7 (w8) | 3.3 m/s | 51 s | 6/7, gate 5 clipped | 18 deg/s | 0.80 deg |
+| radial, path speed 8 / lookahead 6, flow gain 0.5, `--z-lead 1.5` (w12, the first clip) | 4.4 m/s | 38 s | 7/7, none | 2 deg/s | 0.37 deg |
+| radial, path speed 10 / lookahead 6, flow gain 0.4, `--z-lead 1.5` (w11) | 5.4 m/s | 32 s | 7/7, none | 3 deg/s | 0.50 deg |
+
+Flow gain 0.5 is the setting: the lap brain flies the seven gates 1.8 times faster than before and
+steadier than it ever hovered, and keeps a median 5.7 m/s over the whole loop (w12, take-off back to
+gate 0), though it struck obstacles twice beyond gate 6. Flow gain 0.4 is faster still to gate 6, but
+at 10 m/s on the hill beyond it the drone strayed 1.7 m from the line into an obstacle; at 0.5 the
+drone also struck an obstacle on that hill at 8.8 m/s (w12, 4 s after gate 6), and the first flight
+at 0.5 (w10) clipped gate 5. `fly --follow` goes one step further (`haltere/liftoff/pathfollow.py`): progress by projecting
+the drone onto the line, a speed profile from the line's curvature commanded through the flow gain,
+and the line's tangent as the brain's control frame (its horizontal senses rotated into it, its roll
+and pitch rotated back), because with the nose looking into a bend the brain reads the carrot as lying
+on the outside and drifts wide. It crossed the gates within 0.45 m of their centres (w13) at 4.3 m/s
+with 3.7 deg/s of roll and pitch rate shake, but a thin obstacle beside gate 2 still caught it, and bending the line away
+from learned impact points made things worse, so the lap setting above stays. The taught lap also
+turned out to run 33 m past its own start; the follower closes the loop where it passes the start
+instead of reversing. `liftoff score` counts a crossing with a contact (a 3-frame acceleration above
+20 m/s^2 within a second and 5 m) as a hit, not a pass.
+
 ### Lap speed
 
 The lap brain was trained on targets moving at 2.5 m/s, and the path pilot only advances its carrot
 as fast as the drone keeps up, so the speed setting is a cap, not a command. Pushing the cap and
 the carrot's lead on the Straw Bale Field Day lap (seven gates in the first 250 m; each row one
-flight, scored by `haltere vision passes` and the distance to the taught line):
+flight, scored by `haltere vision passes` and the distance to the taught line; all of these used the
+per-axis stick inverse, before the fix above, and the bold rows were the lap setting then):
 
 | `--path-speed` / `--lookahead` | speed flown (median) | mean path error (90th pct) | gates flown through | time to gate 7 |
 |---|---|---|---|---|
@@ -532,10 +654,6 @@ flight, scored by `haltere vision passes` and the distance to the taught line):
 | 4.0 / 4.5, `--stick-gain 2,2,1` | 5.2 m/s, overshooting everything | 5.1 m (9.7) | 4/7 | never |
 | 5.0 / 5.5, `--stick-gain 1.6,1.6,1` | 2.3 m/s | 0.61 m (1.63) | missed gate 3 by 2 m, crashed at 43 s | never |
 
-![the lap at the 4.0 m/s setting](docs/liftoff_lap4.gif)
-
-*Gates 2 and 3 of the lap at the 4.0 m/s setting with stick gain 1.6, flown from telemetry (left: the brain's activity).*
-
 Up to a 4.5 m carrot the brain simply flies faster with the same accuracy, 1.6 times quicker than
 the 1.5 m/s setting the lap was first flown at; the goal channel saturates (tanh of the offset over
 2 m), so a longer lead does not change what the brain sees, and its own top speed of about 3 m/s
@@ -545,19 +663,21 @@ penalties halved (`configs/train_speed.yaml`, 1200 iterations from the lap brain
 targets in the simulator (1.9 m against 2.5 m) but did not transfer: in the game it flew the line
 more precisely (0.50 m) yet slower (2.1 m/s average against 2.5 m/s) and crashed on the climb to the
 13 m gate in both runs, so the lap brain stays. Scaling the brain's roll and pitch commands
-(`--stick-gain`) works: the brain's sticks are under-authoritative in the game compared with the
-simulator it learned in, and 1.6 times its roll and pitch makes it both quicker and more accurate,
-while 2 times sends it overshooting. The bold row is the current lap setting.
+(`--stick-gain`) seemed to work: 1.6 times its roll and pitch made it both quicker and more
+accurate, while 2 times sent it overshooting. That was the stick-path bug talking (see above). The
+speed fine-tune and the third path stage were retested with the exact inverse and are still worse
+than the lap brain.
 
 ## In Liftoff: what actually happened
 
 - Liftoff's Xbox 360 profile mapped the virtual pad by itself. Its input processing, measured with
   `haltere liftoff stickcal` (ramps on the ground) and `haltere liftoff autotest` (an automated
-  lift-off, altitude hold, six pulses and landing): a 0.25 centre deadband followed by a linear
-  rescale on roll, pitch and throttle, roll inverted, a milder curve on yaw, and each stick
-  normalised to the unit circle. Above the deadband, Liftoff's processed input maps to angular
-  rate exactly as the Betaflight formula the simulator uses (a 0.13 input gave 27 deg/s; the
-  formula says 29). The pilot inverts these curves (`configs/liftoff.yaml`) and remaps the throttle
+  lift-off, altitude hold, six pulses and landing), read at first as a 0.25 centre deadband on
+  each axis, and corrected later by `haltere liftoff sticktest`: the deadzone is radial, applied to
+  each stick's two-axis vector, with a linear rescale beyond it, roll inverted and the unit-circle
+  clamp. Above the deadzone, Liftoff's processed input maps to angular rate exactly as the
+  Betaflight formula the simulator uses (a 0.13 input gave 27 deg/s; the formula says 29). The
+  pilot inverts the radial model (`stick_model` in `configs/liftoff.yaml`) and remaps the throttle
   around the measured hover point (raw stick +0.33, processed +0.11).
 - With no controller connected, Liftoff's throttle sits at mid-stick and the drone climbs, so a
   pad process must stay alive: `haltere liftoff pad --udp-in 9003 --control-file ... --log ...` is
@@ -608,12 +728,13 @@ while 2 times sends it overshooting. The bold row is the current lap setting.
 
 Working end to end on this machine: connectome download and graph construction on the real data,
 the simulator, the brain model (custom sparse backward, sign constraints), imitation and flight-cost
-training, the Liftoff telemetry and virtual-pad loop, automated calibration, connectome brains that
-hover, fly patterns and follow a taught race lap inside Liftoff, and flights by sight: the gate
-detector, trained on frames the flights label themselves, steers the same brain through gates it
-sees: four of the seven gates on the best flight, including the one 13 m up a hill, following the
-whole course in 74 s. Open: a clean lap by sight (obliquely seen gates on the turns are still missed
-by a few metres, and flights vary), and racing pace. The lap brain flies the course at up to
-3 m/s with `--path-speed 4 --lookahead 4.5 --stick-gain 1.6,1.6,1` (7 gates in 82 s) where a human lap on the same
-track runs at 14 m/s; its own top speed is the limit now; a simulator fine-tune on faster targets did not transfer, so the
-next lever is training on the identified game physics rather than the generic quad.
+training, the Liftoff telemetry and virtual-pad loop, automated calibration, and connectome brains
+that hover, fly patterns, race a taught lap and fly by sight inside Liftoff. The lap brain flies the
+Straw Bale gates at 4.8 m/s (gate 0 to 6 in 38 s, peaks of 8.0 m/s) with a steady horizon, now that the
+pilot inverts Liftoff's radial stick deadzone exactly and commands speed through the brain's own
+speed senses; a human lap on the same track runs at 14 m/s. By sight, the rabbit pilot has flown six
+of the seven gates in one run, both hill gates included, each within 0.8 m of the arch's centre.
+Open: a clean lap by sight (arches the detector sees as several at once split the tracker, and gate 3
+or 4 is passed wide), contacts with thin obstacles near the line at speed, and faster flight by sight
+(the rabbit has flown at a 3.5 m/s setting, about 3 m/s in practice; the lap brain flies the taught line
+at a median 5.7 m/s).

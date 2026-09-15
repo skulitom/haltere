@@ -28,7 +28,20 @@ neuron gains, biases, time constants, sensory encoders and the readout are train
 
 Code, training pipeline, Liftoff integration and videos: https://github.com/skulitom/haltere
 
-![The fly brain flying the drone in Liftoff](liftoff_hover.gif)
+![The fly brain racing the Straw Bale lap in Liftoff](liftoff_fast_lap.gif)
+
+*The lap brain on a taught race line in Liftoff: gates 0 to 6 in 38 s at 4.8 m/s, peaks of 8.0 m/s,
+with a steady horizon (roll and pitch rate shake 2 deg/s, against 26 before the pilot inverted Liftoff's
+radial stick deadzone exactly).*
+
+![Flying by sight through the two hill gates](liftoff_sight_hill.gif)
+
+*By sight: the gate detector finds the arches in the FPV image and the rabbit pilot turns them into a
+smooth line the brain follows; six of the seven gates in one run, both hill gates included.*
+
+![The same stretch before and after the stick-path fix](liftoff_stickfix.gif)
+
+![The first flight: a hover in Liftoff](liftoff_hover.gif)
 
 ![Orbit in Liftoff](liftoff_orbit.gif)
 
@@ -40,16 +53,22 @@ Code, training pipeline, Liftoff integration and videos: https://github.com/skul
 
 | file | what | use |
 |---|---|---|
-| `ftPath2_best.pt` | the smooth brain fine-tuned on moving targets (two stages): follows a taught race lap at 1.5 m/s | `haltere liftoff fly ftPath2_best.pt --waypoints-file track.yaml --path-speed 1.5 --face-travel 0.8` |
+| `ftPath2_best.pt` | the smooth brain fine-tuned on moving targets (two stages): races a taught lap at 4.8 m/s and flies by sight | `haltere liftoff fly ftPath2_best.pt --liftoff-config liftoff.yaml --waypoints-file track_strawbale.yaml --path-speed 8 --lookahead 6 --z-lead 1.5 --flow-gain 0.5 --face-travel 0.8 --face-ahead 6 --throttle-scale 0.8 --gyro telemetry` |
 | `ftSmooth_best.pt` | fine-tuned with 50 ms extra latency and a smoothness penalty: hover, orbit, climb-and-dive | `haltere liftoff fly ftSmooth_best.pt` |
 | `ftRobust_best.pt` | wide domain randomization; first brain that flew in Liftoff | |
 | `imJ_best.pt` | imitation of the MLP controller with the premotor readout | |
 | `mlp_baseline.pt` | the MLP teacher (no connectome) | control experiment |
+| `gatenet_best.pt` | gate detector (5 M parameters) on the FPV image | `--vision gatenet_best.pt --camera camera_seat.yaml --sight rabbit` |
+| `liftoff.yaml` | the Liftoff mapping: stick and gyro signs, hover point, and the radial stick-deadzone model | `--liftoff-config liftoff.yaml` |
+| `track_strawbale.yaml` | the taught Straw Bale Field Day lap (174 waypoints) | `--waypoints-file`, `liftoff score --track` |
+| `gates_strawbale.json` | the lap's seven gates (position, heading) | `liftoff score --gates` |
+| `camera_seat.yaml` | FPV camera calibration (focal length, tilt) | `--camera` with `--vision` |
 | `flight.npz`, `flight.nodes.parquet`, `flight.meta.json` | the built flight graph: 30,000 neurons, signed synapse counts, named populations | required by every brain checkpoint |
 
 The checkpoints are slim (parameters only, about 12 MB); the graph is loaded next to them. Full
 checkpoints with optimizer state are on the
-[GitHub release](https://github.com/skulitom/haltere/releases/tag/v0.1.0).
+[GitHub releases](https://github.com/skulitom/haltere/releases) (v0.4.0 has the videos of the fast lap and of
+the flight by sight).
 
 ## Results
 
@@ -59,7 +78,7 @@ checkpoints with optimizer state are on the
 | `imJ_best` (imitation) | 0.22 m, 95% | drifts 1.4 m on the physics stand-in |
 | `ftRobust_best` (+ domain randomization) | 0.20 m, 99.6% | 2 m hover, 0.34 m mean error over 40 s; 3 m square pattern |
 | `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 2 m hover, 0.35 m mean error with a quarter of the stick jitter; orbit (0.75 m tracking error at 0.8 m/s) and climb-and-dive (1.1 m at about 1 m/s), no crashes; taught lap at 1.2 m/s with 0.9-1.0 m error |
-| `ftPath2_best` (+ moving targets) | 0.37 m, 80% static; 0.76 m following a 1 m/s target, 3.1 m at 2 m/s | taught race lap at 1.5 m/s with 0.67 m mean error, 46% of the time within 0.5 m, flying through the gates nose first |
+| `ftPath2_best` (+ moving targets) | 0.37 m, 80% static; 0.76 m following a 1 m/s target, 3.1 m at 2 m/s | taught race lap: the seven gates in 38 s at 4.8 m/s (peaks 8.0 m/s) with `--flow-gain 0.5`, no contact, roll and pitch rate shake 2 deg/s; by sight with the rabbit pilot, six of seven gates in one run, each within 0.8 m of the arch's centre |
 | `gatenet_best` (gate detector, 5 M parameters) | agrees with the projected gate labels on 98% of a held-out tenth of 17k flight frames, centre error 4 px at 320 wide; 0.1-0.2% false positives on the by-sight flights' gate-less views | flies by sight: with `--vision` the goal comes from this network's view of the game, and the brain flew through a gate it saw on the first such flight |
 
 Full difficulty: 25 degrees of tilt, 90 deg/s rotation, 1 m/s velocity and 1 m offset at the start,
@@ -95,4 +114,9 @@ Flown in Liftoff through its UDP telemetry and a virtual Xbox controller (ViGEmB
 was fine-tuned on targets drifting at up to 3 m/s (`configs/train_path.yaml`), then on a mix with
 30% static targets, a Huber position cost and a stronger smoothness penalty (`train_path2.yaml`).
 The brain has no camera and no heading objective; the pilot's `--face-travel` yaws the nose toward
-the next point on the path so the FPV view looks where it flies.
+the next point on the path so the FPV view looks where it flies. Two pilot-side findings made the
+flight smooth and fast without retraining: Liftoff applies its gamepad deadzone to each stick's
+two-axis vector, so the sticks are now inverted as vectors (the per-axis inverse had distorted the
+brain's small corrections into a 2.4 Hz wobble); and the brain cruises at the speed its optic-flow
+and airflow senses report, so scaling the horizontal velocity written into those senses
+(`--flow-gain`) sets its speed, much as a fly speeds up when its visual feedback gain is lowered.

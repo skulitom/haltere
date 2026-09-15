@@ -162,7 +162,9 @@ def cmd_publish_hf(a):
              ('docs/liftoff_square.gif', 'liftoff_square.gif'), ('docs/liftoff_orbit.gif', 'liftoff_orbit.gif'),
              ('docs/liftoff_climbdive.gif', 'liftoff_climbdive.gif'), ('docs/liftoff_race.gif', 'liftoff_race.gif'),
              ('docs/flight.gif', 'flight.gif'), ('docs/liftoff_sight.gif', 'liftoff_sight.gif'),
-             ('docs/liftoff_lap4.gif', 'liftoff_lap4.gif'),
+             ('docs/liftoff_fast_lap.gif', 'liftoff_fast_lap.gif'), ('docs/liftoff_sight_hill.gif', 'liftoff_sight_hill.gif'),
+             ('docs/liftoff_stickfix.gif', 'liftoff_stickfix.gif'), ('configs/camera_seat.yaml', 'camera_seat.yaml'),
+             ('configs/gates_strawbale.json', 'gates_strawbale.json'), ('configs/track_strawbale.yaml', 'track_strawbale.yaml'),
              ('configs/liftoff.yaml', 'liftoff.yaml'),
              ('data/built/flight.npz', 'flight.npz'), ('data/built/flight.nodes.parquet', 'flight.nodes.parquet'),
              ('data/built/flight.meta.json', 'flight.meta.json'), ('configs/flight.yaml', 'flight.yaml')]
