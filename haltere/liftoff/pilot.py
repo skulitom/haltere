@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
+
+IN_W_PX = 320                              # GateNet input width: detections' pixel units
 import torch
 
 from ..sim.quad import G
@@ -105,6 +107,7 @@ class TelemetryPilot:
         self.vision_speed = 2.0                # m/s; how fast the carrot advances toward the gate
         self._cand_hist = []                   # (time, gate candidate, drone position) of recent sightings
         self._sightings = []                   # (time, apparent width) of recent plausible detections
+        self._last_wide_t = None               # when the arch last filled the view (about to fly through)
         self._passed = []                      # (time, world position) of gates already passed: an arch looks the same from behind
         self._rays = []                        # (time, origin, world direction) of recent sightings, for triangulation
         self._gate_anchor = (np.zeros(3), 3.0) # where the believed gate was first confirmed, and the allowed drift
@@ -117,7 +120,7 @@ class TelemetryPilot:
         self._no_gate_since = None             # when the drone last lost sight of every gate (search yaw after a while)
         self.vision_search_yaw = -0.2          # yaw stick while searching (negative = nose turns left)
         self.vision_fly_on = 4.0               # s to keep flying straight after passing a gate, then look around
-        self.vision_creep = 15.0               # s to creep ahead sweeping the view after that, before hovering and turning
+        self.vision_creep = 8.0                # s to creep ahead sweeping the view after that, before hovering and turning
         self._yaw_override = None
         self.vision_z_min, self.vision_z_max = 1.4, 2.6   # m above the start: the altitude band flown by sight (the arches are low)
         self.last_vel = np.zeros(3)
@@ -160,6 +163,8 @@ class TelemetryPilot:
         self.vision_passed_t = None
         self._cand_hist = []
         self._sightings = []
+        self._last_wide_t = None
+        self._rays = []
         self._passed = []
         self._rays = []
         self._line = None
@@ -236,6 +241,21 @@ class TelemetryPilot:
                 # last moment, i.e. follow the nearest arch
                 self._sightings = [(t, w) for t, w in self._sightings if now - t < 0.7] + [(now, det.width_px)]
                 if det.width_px >= 0.75 * max(w for _, w in self._sightings):
+                    if det.width_px >= 0.35 * IN_W_PX:
+                        self._last_wide_t = now      # the arch fills the view: we are within a few metres of it
+                    # the apparent width misjudges the range of an arch seen obliquely; when the drone's motion
+                    # has opened a few degrees of parallax, the sighting rays' intersection is a better range
+                    self._rays = [(t, o, r) for t, o, r in self._rays if now - t < 3.0] + [(now, pos_w.copy(), dw)]
+                    if len(self._rays) >= 3:
+                        origins = np.array([o for _, o, _ in self._rays])
+                        dirs = np.array([r for _, _, r in self._rays])
+                        spread = float(np.degrees(np.arccos(np.clip((dirs @ dw).min(), -1.0, 1.0))))
+                        if spread >= 4.0 and np.linalg.norm(origins - origins[-1], axis=1).max() >= 0.8:
+                            from ..vision.triangulate import intersect_rays
+                            pt, rms = intersect_rays(origins, dirs)
+                            rel = pt - pos_w
+                            if rms < 1.5 and 1.0 < np.linalg.norm(rel) < 40.0 and rel @ dw > 0:
+                                rng = 0.4 * rng + 0.6 * float(np.linalg.norm(rel))
                     ray = (dw, rng)
 
         def near(point, dw, rng):
@@ -272,8 +292,11 @@ class TelemetryPilot:
             gate = self.vision_gate_w
             to_gate_b = R.T @ (gate - pos_w)
             dist_gate = float(np.linalg.norm(gate - pos_w))
-            if to_gate_b[0] < -0.5:                                            # the gate is behind: passed it
+            flew_through = (ray is None and self._last_wide_t is not None and 0.7 < now - self._last_wide_t < 2.5
+                            and now - self._agree_t > 0.7)
+            if to_gate_b[0] < -0.5 or flew_through:                            # the gate is behind: passed it
                 self._passed.append((now, gate.copy()))
+                self._last_wide_t = None
                 self.vision_gate_w = None
                 self._line = None
                 self.vision_passed_t = now
@@ -320,6 +343,12 @@ class TelemetryPilot:
         fwd = R @ np.array([1.0, 0.0, 0.0])
         fwd[2] = 0.0
         fwd /= max(float(np.linalg.norm(fwd)), 1e-6)
+        if len(self._passed) >= 2:
+            # the course direction at the last gate: the next gate is usually on from there, not along the nose
+            course = self._passed[-1][1] - self._passed[-2][1]
+            course[2] = 0.0
+            if np.linalg.norm(course) > 3.0:
+                fwd = course / np.linalg.norm(course)
         seen = f' (unconfirmed sighting p={det.p_visible:.2f})' if plausible else ''
         if self.vision_passed_t is not None and now - self.vision_passed_t < self.vision_fly_on:
             self._hold_w = None
@@ -331,7 +360,7 @@ class TelemetryPilot:
             phase = now - self.vision_passed_t - self.vision_fly_on
             self._yaw_override = 0.2 * (1.0 if np.sin(2 * np.pi * phase / 6.0) >= 0 else -1.0) * np.sign(self.vision_search_yaw)
             self.vision_status = 'creeping ahead, sweeping' + seen
-            return R.T @ (1.2 * fwd + np.array([0.0, 0.0, dz]))
+            return R.T @ (1.0 * fwd + np.array([0.0, 0.0, dz]))
         if self._hold_w is None:                     # hold the spot where the drone lost sight of the course
             self._hold_w = pos_w.copy()
             self._no_gate_since = now
