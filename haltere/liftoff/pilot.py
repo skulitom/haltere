@@ -158,6 +158,8 @@ class TelemetryPilot:
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
         self.flow_gain = 1.0                   # scale on the horizontal speed the brain senses (< 1: it flies faster)
+        self.clock = __import__('time').time   # wall clock (a simulated one in rehearsals)
+        self._pose_hist = []                   # (wall time, position, attitude) of the last second of telemetry
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
         self.path_z_lead = None                # m; the carrot's height is taken this far ahead (None: at the carrot)
@@ -437,6 +439,13 @@ class TelemetryPilot:
         self.vision_status = 'no gate: holding position' + (', searching' if now - self._no_gate_since > 2.0 else '') + seen
         return R.T @ rel_w
 
+    def pose_at(self, t: float) -> tuple[np.ndarray, np.ndarray]:
+        """Drone position and attitude matrix at wall time t (nearest recorded telemetry frame of the last second)."""
+        if not self._pose_hist:
+            return self.last_pos.copy(), self.last_R
+        i = int(np.argmin([abs(tt - t) for tt, _, _ in self._pose_hist]))
+        return self._pose_hist[i][1], self._pose_hist[i][2]
+
     def rates(self) -> np.ndarray | None:
         """Current firing rates of all neurons (for the live recorder)."""
         if 'v' not in self.state:
@@ -452,6 +461,12 @@ class TelemetryPilot:
         R = quat_wxyz_to_mat(q)
         self.last_R = R
         self.last_vel = vel
+        # the last second of poses, so a detection can be placed with the pose at its screen grab (vision runs ~15 fps,
+        # its frames are 60-100 ms old by the time the pilot sees them)
+        now = self.clock()
+        self._pose_hist.append((now, pos.copy(), R.copy()))
+        while self._pose_hist and now - self._pose_hist[0][0] > 1.0:
+            self._pose_hist.pop(0)
         gravity_body = R.T @ np.array([0.0, 0.0, -1.0])
         # the brain senses its horizontal speed through optic flow and airflow; like a fly in a flight arena whose
         # visual feedback gain is turned down, it flies faster when that sense reports less than the truth

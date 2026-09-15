@@ -23,7 +23,7 @@ from .train import load_gatenet
 
 @dataclass
 class Detection:
-    t: float = 0.0                 # wall time of the frame
+    t: float = 0.0                 # wall time of the screen grab
     p_visible: float = 0.0
     u: float = 0.0                 # pixel coordinates in the network's input frame
     v: float = 0.0
@@ -73,6 +73,7 @@ class GateVision:
                     time.sleep(0.5)
                     continue
                 region = {'left': rr[0], 'top': rr[1], 'width': rr[2], 'height': rr[3]}
+            t_grab = time.time()                        # the detection describes this moment, not the end of inference
             shot = np.asarray(sct.grab(region))[:, :, :3][:, :, ::-1]
             if shot.shape[0] < 64:                      # minimized window: re-find it
                 region = None
@@ -99,7 +100,7 @@ class GateVision:
             stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
             dist = f * GATE_WIDTH_M * stretch / max(width_px, 4.0)
             n += 1
-            det = Detection(time.time(), p, u, v, width_px, direction, float(dist), n)
+            det = Detection(t_grab, p, u, v, width_px, direction, float(dist), n)
             with self._lock:
                 self.latest = det
             t_next += 1.0 / self.fps
