@@ -155,3 +155,46 @@ def test_sysid_recovers_signs_and_parameters(tmp_path):
     hover_fit = (1 / res['quad']['twr']) ** (1 / res['quad']['thrust_exp'])
     hover_start = (1 / 6.5) ** (1 / 1.6)
     assert abs(hover_fit - hover_true) < 0.5 * abs(hover_start - hover_true)
+
+
+def test_radial_sticks_invert_the_game_processing():
+    from haltere.liftoff.pilot import LiftoffMapping
+    from haltere.liftoff.stickcal import RadialSticks
+    m = RadialSticks(0.25, {'roll': -1.0})
+    rng = np.random.default_rng(0)
+    for _ in range(500):
+        p = rng.uniform(-1, 1, 2) * rng.uniform(0, 1)
+        if np.hypot(*p) > 1:
+            continue
+        raw = m.raw_for('roll', 'pitch', *p)
+        assert np.hypot(*raw) <= 1 + 1e-9
+        assert np.allclose(m.processed('roll', 'pitch', *raw), p, atol=1e-9)
+    # a small roll correction during a pitch cruise must arrive as commanded (a per-axis inverse made it 4x larger)
+    mp = LiftoffMapping(stick_sign=(-1.0, 1.0, 1.0), hover_stick_sim=-0.43, hover_processed_game=0.111,
+                        throttle_scale=0.8, stick_model=m)
+    raw = mp.to_raw(np.array([-0.43, 0.05, 0.3, 0.2]))
+    roll_p, pitch_p = m.processed('roll', 'pitch', raw[1], raw[2])
+    thr_p, yaw_p = m.processed('throttle', 'yaw', raw[0], raw[3])
+    assert np.allclose([roll_p, pitch_p, thr_p, yaw_p], [-0.05, 0.3, 0.111, 0.2], atol=1e-9)
+
+
+def test_flight_log_scoring(tmp_path):
+    from haltere.liftoff.flightlog import score_log
+    cols = ['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz', 'wx', 'wy', 'wz', 'in_thr',
+            'in_yaw', 'in_pitch', 'in_roll', 'rpm', 'b_thr', 'b_roll', 'b_pitch', 'b_yaw', 'c_thr', 'c_roll',
+            'c_pitch', 'c_yaw', 's_thr', 's_roll', 's_pitch', 's_yaw', 'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase',
+            'crashed', 'det_p', 'det_w', 'det_age', 'status']
+    path = tmp_path / 'log.csv'
+    with open(path, 'w', newline='') as f:
+        w = csv.writer(f)
+        w.writerow(cols)
+        for k in range(3000):             # 30 s straight along x at 2 m/s, 2 m up, through a gate at x = 30
+            t = k * 0.01
+            row = dict.fromkeys(cols, 0.0)
+            row.update(ts=t, px=2.0 * t, pz=2.0, vx=2.0, qw=1.0, phase=t + 5.0, status='')
+            w.writerow([row[c] for c in cols])
+    gates = tmp_path / 'gates.json'
+    gates.write_text('{"gates": [{"pos": [30.0, 0.0, 1.2], "heading": 0.0}]}')
+    (r,) = score_log(str(path), str(gates))
+    assert r['gates_through'] == [0]
+    assert abs(r['speed_median'] - 2.0) < 1e-6 and r['rate_shake_dps'] < 1e-6

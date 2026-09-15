@@ -388,3 +388,15 @@ stick_curves:
     - 0.8208
     sign: 1.0
     samples: 1849
+stick_model:
+  type: radial
+  deadzone: 0.25
+  sign:
+    throttle: 1.0
+    yaw: 1.0
+    roll: -1.0
+    pitch: 1.0
+  fit:
+    csv: data/liftoff/sticktest.csv
+    rms: 0.00177
+    samples: 4961

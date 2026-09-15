@@ -374,13 +374,68 @@ def load_mapping(path: str):
         from .stickcal import StickCurves
         curves = StickCurves(d['stick_curves'])
         print('stick curves loaded:\n' + curves.describe())
+    radial = None
+    if d.get('stick_model', {}).get('type') == 'radial':
+        from .stickcal import RadialSticks
+        sm = d['stick_model']
+        radial = RadialSticks(float(sm.get('deadzone', 0.25)), sm.get('sign'))
+        print('stick model loaded: ' + radial.describe())
     hp = m.get('hover_processed')
     return LiftoffMapping(stick_sign=tuple(m.get('stick_sign', (1, 1, 1))), gyro_axis=tuple(m.get('gyro_axis', (1, 0, 2))),
                           gyro_sign=tuple(m.get('gyro_sign', (1, 1, 1))), use_quat_rates=bool(m.get('use_quat_rates', True)),
                           max_rpm=float(m.get('max_rpm', 30000.0)), throttle_scale=float(m.get('throttle_scale', 1.0)),
                           hover_stick_game=(float(hs) if hs is not None else None),
                           hover_processed_game=(float(hp) if hp is not None else None),
-                          stick_curves=curves, notes=m.get('notes', {}))
+                          stick_curves=curves, stick_model=radial, notes=m.get('notes', {}))
+
+
+def cmd_sticktest(a):
+    """Measure how the game processes the pad's sticks in 2D: hold raw stick combinations through the pad bridge
+    (``pad --udp-in``) with the drone on the ground and record the telemetry's processed Input. Throttle stays below
+    the deadzone, so the drone does not lift. With --fit, the radial model is fitted and stored in the mapping file."""
+    import socket
+    import struct
+    from .stickcal import AXES, fit_radial
+    if not a.fit_only:
+        rx = TelemetryReceiver(port=a.port, stream=(read_config() or {}).get('StreamFormat', DEFAULT_STREAM))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        host, port = a.udp_out.split(':')
+        sweep = np.round(np.linspace(-1, 1, 41), 3)
+        steps = [(-1.0, v, 0.0, 0.0) for v in sweep] + [(-1.0, 0.0, v, 0.0) for v in sweep] + \
+                [(-1.0, 0.0, 0.0, v) for v in sweep]
+        steps += [(-1.0, r, v, 0.0) for r in (0.15, 0.3, 0.5) for v in sweep]           # roll held, pitch swept
+        steps += [(th, 0.0, 0.0, v) for th in (-0.6, -0.35, -0.2, 0.0) for v in sweep]  # throttle held, yaw swept
+        steps += [(v, 0.0, 0.0, y) for y in (0.0, 0.4) for v in np.round(np.linspace(-1, 0.1, 23), 3)]
+        print(f'{len(steps)} stick combinations, {a.hold:.2f} s each ({len(steps) * a.hold:.0f} s); keep the game '
+              f'focused with the drone on the ground', flush=True)
+        with open(a.out, 'w', newline='', encoding='utf-8') as f:
+            w = csv.writer(f)
+            w.writerow(['t', *AXES, *[f'p_{x}' for x in AXES]])
+            t0 = time.time()
+            for k, (thr, roll, pitch, yaw) in enumerate(steps):
+                t_end = time.time() + a.hold
+                while time.time() < t_end:
+                    sock.sendto(struct.pack('<4f', thr, yaw, pitch, roll), (host, int(port)))
+                    fr = rx.wait(0.01)
+                    if fr is not None and time.time() > t_end - 0.4 * a.hold:     # the settled part of the hold
+                        p_thr, p_yaw, p_pitch, p_roll = (float(x) for x in fr.input)
+                        w.writerow([f'{time.time() - t0:.3f}', thr, roll, pitch, yaw, f'{p_thr:.4f}', f'{p_roll:.4f}',
+                                    f'{p_pitch:.4f}', f'{p_yaw:.4f}'])
+                if k % 50 == 0:
+                    print(f'  {k}/{len(steps)}', flush=True)
+            for _ in range(20):
+                sock.sendto(struct.pack('<4f', -1.0, 0.0, 0.0, 0.0), (host, int(port)))
+                time.sleep(0.02)
+        rx.close()
+    model, info = fit_radial(a.out)
+    print(f'{model.describe()}; rms error {info["rms"]:.4f} over {info["samples"]} samples')
+    if a.fit:
+        d = yaml.safe_load(open(a.liftoff_config, encoding='utf-8')) if os.path.exists(a.liftoff_config) else {}
+        d['stick_model'] = {'type': 'radial', 'deadzone': info['deadzone'], 'sign': model.sign,
+                            'fit': {'csv': a.out, 'rms': round(info['rms'], 5), 'samples': info['samples']}}
+        with open(a.liftoff_config, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(d, f, sort_keys=False)
+        print(f'stick model written to {a.liftoff_config}')
 
 
 def cmd_stickcal(a):
@@ -498,9 +553,13 @@ def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
 def cmd_fly(a):
     import torch
     from ..train.bptt import load_checkpoint
+    from .frames import unity_vec_to_sim
     from .pilot import TelemetryPilot
     brain, cfg, graph = load_checkpoint(a.ckpt, a.device)
     mapping = load_mapping(a.liftoff_config)
+    if a.stick_model == 'curves' and mapping.stick_model is not None:
+        mapping.stick_model = None
+        print('stick model: per-axis curves (the radial model is ignored)')
     if mapping.hover_stick_game is not None:
         hover_cmd = (1.0 / cfg.quad.twr) ** (1.0 / cfg.quad.thrust_exp)
         mapping.hover_stick_sim = 2.0 * hover_cmd - 1.0
@@ -587,6 +646,17 @@ def cmd_fly(a):
     grounded_since = None
     still_since = None
     crashed = False
+    flog = None
+    if a.log:
+        # every telemetry frame: the pilot's pose, the processed input the game applied, what the brain asked for and
+        # what was sent, and the goal (the 0.5 s console lines alias anything faster than 1 Hz)
+        Path(a.log).parent.mkdir(parents=True, exist_ok=True)
+        flog_f = open(a.log, 'w', newline='', encoding='utf-8')
+        flog = csv.writer(flog_f)
+        flog.writerow(['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz', 'wx', 'wy', 'wz',
+                       'in_thr', 'in_yaw', 'in_pitch', 'in_roll', 'rpm', 'b_thr', 'b_roll', 'b_pitch', 'b_yaw',
+                       'c_thr', 'c_roll', 'c_pitch', 'c_yaw', 's_thr', 's_roll', 's_pitch', 's_yaw',
+                       'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age', 'status'])
     try:
         while a.seconds <= 0 or time.time() - t_begin < a.seconds:
             fr = rx.wait(0.05)
@@ -671,6 +741,17 @@ def cmd_fly(a):
                     ignored_since = None
             dists.append(float(np.linalg.norm(pilot.last_pos - pilot.last_target)))
             stick_hist.append(sticks.copy())
+            if flog is not None:
+                det = pilot.vision.get() if pilot.vision is not None else None
+                v = unity_vec_to_sim(fr.velocity)
+                flog.writerow([f'{now:.4f}', f'{fr.timestamp:.4f}', *np.round(pilot.last_pos, 4), *np.round(v, 4),
+                               *np.round(pilot.last_quat, 5), *np.round(pilot.omega, 4), *np.round(fr.input, 4),
+                               round(float(np.mean(fr.motor_rpm)), 1), *np.round(pilot.last_brain, 4),
+                               *np.round(pilot.last_cmd, 4), *np.round(sticks, 4), *np.round(pilot.last_rel_b, 3),
+                               *np.round(pilot.last_target, 3), round(phase, 3), int(crashed),
+                               round(det.p_visible, 3) if det else '', round(det.width_px, 1) if det else '',
+                               round(now - det.t, 3) if det else '',
+                               pilot.vision_status.replace(',', ';') if pilot.vision is not None else ''])
             if recorder is not None:
                 shared.publish(pilot.rates() if len(dists) % 2 == 0 else None, t=fr.timestamp - (pilot.t_start or 0.0),
                                dist=dists[-1], thr=sticks[0], roll=sticks[1], pitch=sticks[2], yaw=sticks[3],
@@ -689,6 +770,8 @@ def cmd_fly(a):
     finally:
         if pilot.vision is not None:
             pilot.vision.stop()
+        if flog is not None:
+            flog_f.close()
         if pad is not None:
             pad.close()
         rx.close()
@@ -703,6 +786,18 @@ def cmd_fly(a):
                 S = np.asarray(stick_hist)[len(stick_hist) // 2:]
                 print(f'stick std [thr,roll,pitch,yaw] {np.round(S.std(0), 3)}; mean |change| per frame '
                       f'{np.round(np.abs(np.diff(S, axis=0)).mean(0), 4)}', flush=True)
+
+
+def cmd_score(a):
+    from .flightlog import describe, score_log
+    out = {}
+    for path in a.logs:
+        res = score_log(path, a.gates or None, a.track or None)
+        out[path] = res
+        print(describe(Path(path).stem, res))
+    if a.json:
+        with open(a.json, 'w', encoding='utf-8') as f:
+            json.dump(out, f, indent=1)
 
 
 def cmd_fake(a):

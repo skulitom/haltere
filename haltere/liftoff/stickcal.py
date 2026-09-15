@@ -76,6 +76,63 @@ def fit_curves(pad_log: str, telemetry_csv: str, n_bins: int = 41, latency: floa
     return curves
 
 
+class RadialSticks:
+    """Liftoff's (Rewired's) processing of a gamepad stick, measured with ``haltere liftoff sticktest``: the deadzone
+    is applied to each stick's 2D vector, the magnitude beyond it is rescaled to [0, 1], the result is clamped to the
+    unit circle, and the profile may invert an axis. Per stick (a, b) and per-axis sign s:
+
+        processed = s * raw / |raw| * clip((|raw| - dz) / (1 - dz), 0, 1)
+
+    ``raw_for`` inverts it exactly for one stick, so the flight controller sees what the brain commanded."""
+
+    def __init__(self, deadzone: float = 0.25, sign: dict | None = None):
+        self.dz = float(deadzone)
+        self.sign = {'throttle': 1.0, 'yaw': 1.0, 'roll': 1.0, 'pitch': 1.0, **(sign or {})}
+
+    def processed(self, ax_a: str, ax_b: str, raw_a: float, raw_b: float) -> tuple[float, float]:
+        m = float(np.hypot(raw_a, raw_b))
+        if m <= self.dz:
+            return 0.0, 0.0
+        k = min((m - self.dz) / (1.0 - self.dz), 1.0) / m
+        return self.sign[ax_a] * raw_a * k, self.sign[ax_b] * raw_b * k
+
+    def raw_for(self, ax_a: str, ax_b: str, p_a: float, p_b: float) -> tuple[float, float]:
+        a, b = self.sign[ax_a] * p_a, self.sign[ax_b] * p_b
+        m = float(np.hypot(a, b))
+        if m < 1e-6:
+            return 0.0, 0.0
+        if m > 1.0:                        # beyond the unit circle the game would clamp it: keep the direction
+            a, b, m = a / m, b / m, 1.0
+        k = (self.dz + (1.0 - self.dz) * m) / m
+        return a * k, b * k
+
+    def describe(self) -> str:
+        return (f'radial deadzone {self.dz:.3f} per stick (throttle+yaw, roll+pitch), unit-circle clamp, signs '
+                + ', '.join(f'{k} {v:+.0f}' for k, v in self.sign.items()))
+
+
+def fit_radial(csv_path: str) -> tuple[RadialSticks, dict]:
+    """Fit the radial model to a ``sticktest`` recording (raw pad axes and the telemetry's processed input)."""
+    rows = list(csv.DictReader(open(csv_path, newline='', encoding='utf-8')))
+    raw = {k: np.array([float(r[k]) for r in rows]) for k in AXES}
+    proc = {k: np.array([float(r['p_' + k]) for r in rows]) for k in AXES}
+    sign = {}
+    for ax in AXES:
+        big = np.abs(raw[ax]) > 0.5
+        sign[ax] = 1.0 if np.sum(raw[ax][big] * proc[ax][big]) >= 0 else -1.0
+    best = None
+    for dz in np.arange(0.0, 0.401, 0.005):
+        model = RadialSticks(dz, sign)
+        err = []
+        for a, b in (('throttle', 'yaw'), ('roll', 'pitch')):
+            pa, pb = np.array([model.processed(a, b, x, y) for x, y in zip(raw[a], raw[b])]).T
+            err += [pa - proc[a], pb - proc[b]]
+        rms = float(np.sqrt(np.mean(np.concatenate(err) ** 2)))
+        if best is None or rms < best[1]:
+            best = (dz, rms)
+    return RadialSticks(best[0], sign), {'deadzone': round(float(best[0]), 3), 'rms': best[1], 'samples': len(rows)}
+
+
 class StickCurves:
     """Inverse curves: processed (what the FC should see, i.e. the simulator's stick) -> raw pad axis.
     The game's own axis inversion (``sign``) is undone here, so callers pass the *intended* processed value."""

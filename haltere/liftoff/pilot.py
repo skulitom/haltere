@@ -27,7 +27,38 @@ class LiftoffMapping:
     hover_stick_game: float | None = None                      # Liftoff's raw throttle stick at hover (measured by autotest)
     hover_processed_game: float | None = None                  # Liftoff's processed throttle input at hover
     stick_curves: object = None                                # StickCurves: undo Liftoff's deadband/expo per axis
+    stick_model: object = None                                 # RadialSticks: undo Liftoff's per-stick radial deadzone
     notes: dict = field(default_factory=dict)
+
+    def processed_throttle(self, a: float) -> float | None:
+        """Brain throttle stick -> the processed throttle input the game should see (None when unknown)."""
+        if self.hover_stick_sim is None or self.hover_processed_game is None:
+            return None
+        return self.hover_processed_game + self.throttle_scale * (a - self.hover_stick_sim)
+
+    def to_raw(self, cmd: np.ndarray) -> np.ndarray:
+        """Brain commands [throttle, roll, pitch, yaw] -> raw pad axes [throttle, roll, pitch, yaw].
+
+        With the radial stick model, each physical stick (throttle+yaw, roll+pitch) is inverted as one 2D vector,
+        which is how the game applies its deadzone: inverting the axes one at a time over-drives both whenever both
+        are active (a 0.05 roll correction during a 0.3 pitch cruise arrived as 0.21)."""
+        roll = float(cmd[1]) * self.stick_sign[0]
+        pitch = float(cmd[2]) * self.stick_sign[1]
+        yaw = float(cmd[3]) * self.stick_sign[2]
+        thr_p = self.processed_throttle(float(cmd[0]))
+        if self.stick_model is not None and thr_p is not None:
+            thr, yaw_r = self.stick_model.raw_for('throttle', 'yaw', thr_p, yaw)
+            roll_r, pitch_r = self.stick_model.raw_for('roll', 'pitch', roll, pitch)
+            return np.array([thr, roll_r, pitch_r, yaw_r])
+        sticks = np.array([self.map_throttle(float(cmd[0])), self.map_axis('roll', roll),
+                           self.map_axis('pitch', pitch), self.map_axis('yaw', yaw)])
+        # the game normalises each stick to the unit circle: keep (throttle, yaw) and (roll, pitch) inside it
+        for i, j in ((0, 3), (1, 2)):
+            n = float(np.hypot(sticks[i], sticks[j]))
+            if n > 0.97:
+                sticks[i] *= 0.97 / n
+                sticks[j] *= 0.97 / n
+        return sticks
 
     def map_throttle(self, a: float) -> float:
         """Brain throttle stick -> raw game throttle stick: same hover point, scaled deviation, through the
@@ -451,6 +482,9 @@ class TelemetryPilot:
         obs = observe_from_sensors(s, target, torch.tensor([[motor_mean]], device=self.device), self.cfg, rel_b=rel_b_t)
         act, self.state, _ = self.brain(obs, self.state, self.W)
         a = act[0].cpu().numpy().astype(np.float64)
+        self.last_brain = a.copy()
+        self.last_rel_b = (rel_b_t[0].cpu().numpy() if rel_b_t is not None
+                           else self.last_R.T @ (target[0].cpu().numpy() - s['pos'][0].cpu().numpy()))
         a[1:] *= self.stick_gain
         if self.face_gain > 0:
             if rel_b_t is not None:
@@ -474,16 +508,8 @@ class TelemetryPilot:
             alpha = min(1.0, dt / self.stick_lpf)
             self.filtered = a.copy() if self.filtered is None else self.filtered + alpha * (a - self.filtered)
             a = self.filtered
-        sticks = np.array([self.map.map_throttle(float(a[0])),
-                           self.map.map_axis('roll', float(a[1]) * self.map.stick_sign[0]),
-                           self.map.map_axis('pitch', float(a[2]) * self.map.stick_sign[1]),
-                           self.map.map_axis('yaw', float(a[3]) * self.map.stick_sign[2])])
-        # the game normalises each stick to the unit circle: keep (throttle, yaw) and (roll, pitch) inside it
-        for i, j in ((0, 3), (1, 2)):
-            n = float(np.hypot(sticks[i], sticks[j]))
-            if n > 0.97:
-                sticks[i] *= 0.97 / n
-                sticks[j] *= 0.97 / n
+        self.last_cmd = a.copy()
+        sticks = self.map.to_raw(a)
         self.last_obs = obs
         self.last_quat = s['quat'][0].cpu().numpy()
         self.last_target = target[0].cpu().numpy()
