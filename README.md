@@ -426,6 +426,7 @@ flight, scored by `haltere vision passes` and the distance to the taught line):
 | 4.0 / 4.5, `--stick-gain 1.3,1.3,1` | 2.7 m/s | 0.58 m (1.13) | 7/7 | 84 s |
 | **4.0 / 4.5, `--stick-gain 1.6,1.6,1`** | **2.7 m/s** | **0.48 m (0.94)** | **7/7** | **82 s** |
 | 4.0 / 4.5, `--stick-gain 2,2,1` | 5.2 m/s, overshooting everything | 5.1 m (9.7) | 4/7 | never |
+| 5.0 / 5.5, `--stick-gain 1.6,1.6,1` | 2.3 m/s | 0.61 m (1.63) | missed gate 3 by 2 m, crashed at 43 s | never |
 
 ![the lap at the 4.0 m/s setting](docs/liftoff_lap4.gif)
 
