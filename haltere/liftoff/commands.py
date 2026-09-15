@@ -585,6 +585,7 @@ def cmd_fly(a):
     armed_since = None      # Liftoff arms only after the throttle has been low; hold it low briefly, then ramp in
     last_reset_ts = None
     grounded_since = None
+    still_since = None
     crashed = False
     try:
         while a.seconds <= 0 or time.time() - t_begin < a.seconds:
@@ -620,6 +621,8 @@ def cmd_fly(a):
             # wedged in a gate frame or a hay bale: in the air, not moving, while the brain pushes hard (a fast
             # lap flew into gate 4 and hung there with the sticks saturated; only a fall was detected before)
             stuck = alt >= 0.15 and still and (abs(sticks[1]) > 0.4 or abs(sticks[2]) > 0.4 or sticks[0] > 0.6)
+            still_since = still_since if (still and still_since is not None) else (now if still else None)
+            stuck = stuck or (alt >= 0.15 and still and now - still_since > 5.0)   # airborne drones are never this still
             if game_active and phase > a.arm_hold + a.arm_ramp + 1.0 and (grounded or stuck):
                 grounded_since = grounded_since or now
                 if now - grounded_since > (1.5 if grounded else 3.0) and not crashed:

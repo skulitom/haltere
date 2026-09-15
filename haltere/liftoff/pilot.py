@@ -122,7 +122,7 @@ class TelemetryPilot:
         self.vision_fly_on = 4.0               # s to keep flying straight after passing a gate, then look around
         self.vision_creep = 8.0                # s to creep ahead sweeping the view after that, before hovering and turning
         self._yaw_override = None
-        self.vision_z_min, self.vision_z_max = 1.4, 2.6   # m above the start: the altitude band flown by sight (the arches are low)
+        self.vision_z_min, self.vision_z_max = 1.4, 9.0   # m above the start: the altitude band flown by sight (gates sit on hills too)
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
@@ -250,12 +250,13 @@ class TelemetryPilot:
                         origins = np.array([o for _, o, _ in self._rays])
                         dirs = np.array([r for _, _, r in self._rays])
                         spread = float(np.degrees(np.arccos(np.clip((dirs @ dw).min(), -1.0, 1.0))))
-                        if spread >= 4.0 and np.linalg.norm(origins - origins[-1], axis=1).max() >= 0.8:
+                        if spread >= 6.0 and np.linalg.norm(origins - origins[-1], axis=1).max() >= 2.5:
                             from ..vision.triangulate import intersect_rays
                             pt, rms = intersect_rays(origins, dirs)
                             rel = pt - pos_w
-                            if rms < 1.5 and 1.0 < np.linalg.norm(rel) < 40.0 and rel @ dw > 0:
-                                rng = 0.4 * rng + 0.6 * float(np.linalg.norm(rel))
+                            r_par = float(np.linalg.norm(rel))
+                            if rms < 1.0 and 1.0 < r_par < 40.0 and rel @ dw > 0 and 0.5 < r_par / rng < 2.0:
+                                rng = 0.5 * rng + 0.5 * r_par
                     ray = (dw, rng)
 
         def near(point, dw, rng):
@@ -301,22 +302,45 @@ class TelemetryPilot:
                 self._line = None
                 self.vision_passed_t = now
             else:
-                if self._line is None:
-                    self._line = (pos_w.copy(), gate.copy())
-                    self._line_s = 0.0
-                start, _ = self._line
-                if dist_gate > 12.0 and np.linalg.norm(pos_w - start) > 6.0:
-                    # far from the gate the line is re-anchored every few metres so it always runs straight from
-                    # near the drone to the gate; inside 12 m it stays put so the final approach is straight
-                    self._line = (pos_w.copy(), gate.copy())
-                    self._line_s = 0.0
-                    start = pos_w.copy()
-                self._line = (start, gate.copy())
-                line = gate - start
-                L = float(np.linalg.norm(line))
-                u = line / max(L, 1e-6)
-                L_run = L + 4.0                      # the carrot runs past the estimate; passing is judged by the gate falling behind
-                carrot = start + u * min(self._line_s + self.vision_lookahead, L_run)
+                entry = None
+                if self._passed:
+                    course = gate - self._passed[-1][1]
+                    course[2] = 0.0
+                    if np.linalg.norm(course) > 3.0:
+                        course /= np.linalg.norm(course)
+                        entry = gate - 6.0 * course              # 6 m before the gate, on the course line through it
+                if entry is not None and (pos_w - gate) @ (entry - gate) > 0:
+                    # a gate on a turn: fly to the entry point first, then through the gate along the course
+                    start = entry
+                    line = gate - start
+                    L = float(np.linalg.norm(line))
+                    u = line / max(L, 1e-6)
+                    along_drone = float((pos_w - start) @ u)
+                    if along_drone < -1.0 or np.linalg.norm((pos_w - start) - along_drone * u) > 2.5:
+                        carrot = entry.copy()                    # not on the line yet: head for its start
+                        self._line_s = 0.0
+                    else:
+                        self._line_s = max(self._line_s, along_drone)
+                        carrot = start + u * min(self._line_s + self.vision_lookahead, L + 4.0)
+                    self._line = (start, gate.copy())
+                    L_run = L + 4.0
+                else:
+                    if self._line is None:
+                        self._line = (pos_w.copy(), gate.copy())
+                        self._line_s = 0.0
+                    start, _ = self._line
+                    if dist_gate > 12.0 and np.linalg.norm(pos_w - start) > 6.0:
+                        # far from the gate the line is re-anchored every few metres so it always runs straight from
+                        # near the drone to the gate; inside 12 m it stays put so the final approach is straight
+                        self._line = (pos_w.copy(), gate.copy())
+                        self._line_s = 0.0
+                        start = pos_w.copy()
+                    self._line = (start, gate.copy())
+                    line = gate - start
+                    L = float(np.linalg.norm(line))
+                    u = line / max(L, 1e-6)
+                    L_run = L + 4.0                  # the carrot runs past the estimate; passing is judged by the gate falling behind
+                    carrot = start + u * min(self._line_s + self.vision_lookahead, L_run)
                 if self._line_s >= L_run - 0.5:                                   # ran out of line without passing it
                     self._passed.append((now, gate.copy()))
                     self.vision_gate_w = None
