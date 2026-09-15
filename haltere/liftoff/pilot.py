@@ -104,6 +104,7 @@ class TelemetryPilot:
         self.vision_lookahead = 2.0            # m; the carrot runs this far ahead of the progress along the line
         self.vision_speed = 1.5                # m/s; how fast the carrot advances toward the gate
         self._cand_hist = []                   # (time, gate candidate, drone position) of recent sightings
+        self._passed = []                      # (time, world position) of gates already passed: an arch looks the same from behind
         self._rays = []                        # (time, origin, world direction) of recent sightings, for triangulation
         self._gate_anchor = (np.zeros(3), 3.0) # where the believed gate was first confirmed, and the allowed drift
         self._agree_t = 0.0                    # last time a sighting agreed with the remembered gate
@@ -155,6 +156,7 @@ class TelemetryPilot:
         self.vision_gate_w = None
         self.vision_passed_t = None
         self._cand_hist = []
+        self._passed = []
         self._rays = []
         self._line = None
         self._line_s = 0.0
@@ -235,6 +237,9 @@ class TelemetryPilot:
                     if rms < 1.5 and 1.0 < np.linalg.norm(rel) < 40.0 and rel @ dw > 0:
                         dist = 0.5 * dist + 0.5 * float(np.linalg.norm(rel))
             cand = pos_w + dw * dist
+        self._passed = [(t, g) for t, g in self._passed if now - t < 60.0]
+        if cand is not None and any(np.linalg.norm(cand - g) < 6.0 for _, g in self._passed):
+            cand = None                                  # that is a gate already flown through, seen from behind
         if cand is not None:
             self._cand_hist = [(t, c, q) for t, c, q in self._cand_hist if now - t < 2.5] + [(now, cand, pos_w.copy())]
 
@@ -272,6 +277,7 @@ class TelemetryPilot:
             gate = self.vision_gate_w
             to_gate_b = R.T @ (gate - pos_w)
             if to_gate_b[0] < -0.5:                                            # the gate is behind: passed it
+                self._passed.append((now, gate.copy()))
                 self.vision_gate_w = None
                 self._line = None
                 self.vision_passed_t = now
@@ -284,6 +290,7 @@ class TelemetryPilot:
                 L_run = 1.6 * L + 4.0
                 carrot = start + u * min(self._line_s + self.vision_lookahead, L_run)
                 if self._line_s >= L_run - 0.5:                                   # ran out of line without passing it
+                    self._passed.append((now, gate.copy()))
                     self.vision_gate_w = None
                     self._line = None
                     self.vision_passed_t = now
