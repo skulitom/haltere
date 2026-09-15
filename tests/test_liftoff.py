@@ -198,3 +198,37 @@ def test_flight_log_scoring(tmp_path):
     (r,) = score_log(str(path), str(gates))
     assert r['gates_through'] == [0]
     assert abs(r['speed_median'] - 2.0) < 1e-6 and r['rate_shake_dps'] < 1e-6
+
+
+def test_path_follower_profile_projection_and_frame():
+    from haltere.liftoff.pathfollow import PathFollower, rotate_commands, rotate_senses, wrap
+    # a 40 m straight, a 90 degree left turn of radius 5 m, another straight; the taught lap overlaps its start
+    straight = [[x, 0.0, 1.2] for x in np.arange(0.0, 40.0, 1.0)]
+    turn = [[40 + 5 * np.sin(a), 5 - 5 * np.cos(a), 1.2] for a in np.linspace(0, np.pi / 2, 9)[1:]]
+    back = [[45.0, y, 1.2] for y in np.arange(6.0, 40.0, 1.0)]
+    f = PathFollower(np.array(straight + turn + back), loop=False, v_max=5.0, a_lat=1.5)
+    i_turn = f._i(42.0)
+    assert f.v_ref[f._i(10.0)] == 5.0 and f.v_ref[i_turn] < 3.0         # slow in the bend, braking before it
+    assert f.v_ref[f._i(36.0)] < 4.5                                     # braking starts about 9 m before it
+    assert abs(f.project(np.array([12.0, 0.4, 1.2])) - 12.0) < 0.6
+    assert abs(f.project(np.array([17.0, -0.3, 1.2])) - 17.0) < 0.6       # forward search from the last projection
+    # overlap trimming: a closed lap that runs 10 m past its start closes at the start, not with a U-turn
+    lap = [[20 * np.cos(a), 20 * np.sin(a), 1.2] for a in np.linspace(0, 2 * np.pi + 0.5, 140)]
+    g = PathFollower(np.array(lap), loop=True)
+    assert g.kappa.max() < 0.2 and abs(g.length - 2 * np.pi * 20) < 3.0
+    # frame rotation: a tilt request made in the tangent frame arrives in the body frame rotated by delta
+    delta = 0.7
+    roll, pitch = rotate_commands(0.1, 0.3, delta)
+    body = np.array([pitch, -roll])
+    frame = np.array([0.3, -0.1])
+    assert np.allclose(body, [np.cos(delta) * frame[0] - np.sin(delta) * frame[1],
+                              np.sin(delta) * frame[0] + np.cos(delta) * frame[1]])
+    s = {'gyro': torch.tensor([[0.2, -0.1, 0.3]]), 'gravity_body': torch.tensor([[0.1, 0.0, -0.99]]),
+         'vel_body': torch.tensor([[2.0, 1.0, 0.0]]), 'yaw': torch.tensor([[0.0]])}
+    s2, rel = rotate_senses(s, np.array([3.0, 0.0, 0.0]), delta, 1.0, torch)
+    c, sn = np.cos(delta), np.sin(delta)
+    assert np.allclose(s2['vel_body'][0, :2].numpy(), [c * 2 + sn * 1, -sn * 2 + c * 1], atol=1e-6)
+    assert np.allclose(rel[:2], [3 * c, -3 * sn]) and float(s2['yaw']) == 1.0 and abs(abs(wrap(3 * np.pi)) - np.pi) < 1e-9
+    # obstacle clearance: an obstacle 0.8 m right of the straight pushes the line 1.8 m away from it, smoothly
+    h = PathFollower(np.array(straight + turn + back), loop=False, obstacles=[[20.0, -0.8, 1.4]], clearance=1.8)
+    assert abs(h.point(20.0)[1] - 1.0) < 0.05 and abs(h.point(5.0)[1]) < 1e-9

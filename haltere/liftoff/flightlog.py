@@ -71,6 +71,23 @@ def gate_crossings(P: np.ndarray, t: np.ndarray, gates: list[dict], half_width: 
     return sorted(out, key=lambda p: p['t'])
 
 
+def collisions(P: np.ndarray, V: np.ndarray, t: np.ndarray, airborne: np.ndarray, threshold: float = 20.0) -> list[dict]:
+    """Impacts: the velocity changing faster than ``threshold`` m/s^2 (3-frame mean) while airborne. Clean flight stays
+    under about 14 m/s^2 at the 99th percentile; bumping an arch or a bale gives 20-400."""
+    acc = np.linalg.norm(np.diff(V, axis=0), axis=1) / np.maximum(np.diff(t), 1e-3)
+    acc = np.convolve(acc, np.ones(3) / 3, mode='same')
+    out, last = [], -1e9
+    for e in np.where(airborne[1:] & (acc > threshold))[0]:
+        if t[e] - last < 1.0:
+            out[-1]['peak'] = max(out[-1]['peak'], float(acc[e]))
+            continue
+        last = t[e]
+        out.append({'t': float(t[e]), 'pos': [round(float(x), 1) for x in P[e]], 'peak': float(acc[e]),
+                    'speed_before': float(np.linalg.norm(V[max(e - 10, 0)])),
+                    'speed_after': float(np.linalg.norm(V[min(e + 10, len(V) - 1)]))})
+    return out
+
+
 def path_error(P: np.ndarray, W: np.ndarray) -> np.ndarray:
     a, b = W[:-1], W[1:]
     ab = b - a
@@ -111,8 +128,14 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
     if track is not None:
         e = path_error(P[sl], track)
         res.update({'path_err_mean': float(e.mean()), 'path_err_p90': float(np.percentile(e, 90))})
+    hits = collisions(P, V, ts, air)
+    res['collisions'] = hits
     if gates is not None:
         cr = gate_crossings(P, ts, gates)
+        for c in cr:                                   # a bounce off the arch is not a pass
+            g = np.asarray(gates[c['gate']]['pos'], dtype=float)
+            c['hit'] = any(abs(h['t'] - c['t']) < 1.0 and np.linalg.norm(np.asarray(h['pos'])[:2] - g[:2]) < 5.0 for h in hits)
+            c['through'] = c['through'] and not c['hit']
         res['crossings'] = cr
         through = [c for c in cr if c['through']]
         res['gates_through'] = sorted({c['gate'] for c in through})
@@ -147,6 +170,9 @@ def describe(name: str, results: list[dict]) -> str:
              f'(p90 {r["speed_p90"]:.2f}) m/s | shake: horizon {r["horizon_shake_deg"]:.2f} deg, rates '
              f'{r["rate_shake_dps"]:.1f} deg/s, yaw {r["yaw_shake_dps"]:.1f} deg/s, vz {r["vz_shake"]:.2f} m/s, '
              f'input chatter thr/roll/pitch/yaw {r["input_chatter"]}')
+        s += f' | collisions {len(r.get("collisions", []))}' + ''.join(
+            f' @{h["t"]:.0f}s({h["pos"][0]:.0f},{h["pos"][1]:.0f},{h["pos"][2]:.0f}) {h["speed_before"]:.1f}->{h["speed_after"]:.1f}m/s'
+            for h in r.get('collisions', [])[:6])
         if 'path_err_mean' in r:
             s += f' | path error {r["path_err_mean"]:.2f} m (p90 {r["path_err_p90"]:.2f})'
         if 'gates_through' in r:
@@ -154,7 +180,7 @@ def describe(name: str, results: list[dict]) -> str:
             if 'gate_span_s' in r:
                 g0, g1 = r['first_last_gate']
                 s += f', gate {g0} -> {g1} in {r["gate_span_s"]:.0f} s at {r["gate_span_speed"]:.2f} m/s'
-            s += '; ' + ', '.join(f'g{c["gate"]}@{c["t"]:.0f}s {c["lateral_m"]:+.1f}m{"" if c["through"] else " miss"}'
+            s += '; ' + ', '.join(f'g{c["gate"]}@{c["t"]:.0f}s {c["lateral_m"]:+.1f}m{"" if c["through"] else (" hit" if c.get("hit") else " miss")}'
                                   for c in r['crossings'])
         lines.append(s)
     return '\n'.join(lines)

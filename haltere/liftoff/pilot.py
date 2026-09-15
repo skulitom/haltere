@@ -158,6 +158,12 @@ class TelemetryPilot:
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
         self.flow_gain = 1.0                   # scale on the horizontal speed the brain senses (< 1: it flies faster)
+        self.follower = None                   # PathFollower: projection, speed profile, tangent control frame (lap mode)
+        self.follow_frame = True               # give the brain the line's tangent as its control frame
+        self.follow_line_alt = True            # optic flow scaled by the height above the taught line, not above the start
+        self.follow_info = None
+        self.frame_delta = 0.0
+        self.prev_step_t = None
         self.clock = __import__('time').time   # wall clock (a simulated one in rehearsals)
         self._pose_hist = []                   # (wall time, position, attitude) of the last second of telemetry
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
@@ -208,6 +214,11 @@ class TelemetryPilot:
         self._z_ref = None
         self._hold_w = None
         self._no_gate_since = None
+        self.prev_step_t = None
+        self._pose_hist = []
+        if getattr(self, 'follower', None) is not None:
+            self.follower.s_p = None
+            self.follower.flow = 1.0
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -498,9 +509,31 @@ class TelemetryPilot:
             rel_b_t = torch.as_tensor(rel_b, dtype=torch.float32, device=self.device)[None]
             target = torch.as_tensor(s['pos'][0].cpu().numpy() + self.last_R @ rel_b, dtype=torch.float32,
                                      device=self.device)[None]
+        elif self.follower is not None:
+            pos = s['pos'][0].cpu().numpy()
+            dt = 0.0 if self.prev_step_t is None else float(np.clip(fr.timestamp - self.prev_step_t, 0.0, 0.05))
+            info = self.follower.update(pos, self.last_vel, dt)
+            self.follow_info = info
+            if pos[2] < 0.3:                          # arming on the ground: aim just above the start
+                info = dict(info, carrot=np.array([pos[0], pos[1], 1.2]))
+            target = torch.as_tensor(info['carrot'], dtype=torch.float32, device=self.device)[None]
+            self.flow_gain = info['flow']              # used by sensors() from the next frame on
+            if self.face_ahead > 0:
+                self.face_target = self.follower.point(info['s'] + info['d_c'] + self.face_ahead)
+            if self.follow_line_alt:
+                s['altitude'] = torch.full_like(s['altitude'], info['alt'])
+            if self.follow_frame and pos[2] > 0.3:
+                from .pathfollow import rotate_senses, wrap
+                self.frame_delta = wrap(info['psi_c'] - float(s['yaw'].flatten()[0]))
+                rel = self.last_R.T @ (info['carrot'] - pos)
+                s, rel = rotate_senses(s, rel, self.frame_delta, info['psi_c'], torch)
+                rel_b_t = torch.as_tensor(rel, dtype=torch.float32, device=self.device)[None]
+            else:
+                self.frame_delta = 0.0
         else:
             target = torch.as_tensor(self.target_at(fr.timestamp - (self.t_start or 0.0)), dtype=torch.float32,
                                      device=self.device)[None]
+        self.prev_step_t = fr.timestamp
         rpm = np.asarray(fr.motor_rpm, dtype=np.float64)
         motor_mean = float(np.clip(rpm.mean() / self.map.max_rpm, 0, 1)) if rpm.size else 0.5
         obs = observe_from_sensors(s, target, torch.tensor([[motor_mean]], device=self.device), self.cfg, rel_b=rel_b_t)
@@ -509,9 +542,12 @@ class TelemetryPilot:
         self.last_brain = a.copy()
         self.last_rel_b = (rel_b_t[0].cpu().numpy() if rel_b_t is not None
                            else self.last_R.T @ (target[0].cpu().numpy() - s['pos'][0].cpu().numpy()))
+        if self.follower is not None and self.vision is None and self.frame_delta:
+            from .pathfollow import rotate_commands
+            a[1], a[2] = rotate_commands(a[1], a[2], self.frame_delta)
         a[1:] *= self.stick_gain
         if self.face_gain > 0:
-            if rel_b_t is not None:
+            if rel_b_t is not None and self.follower is None:
                 rel_b = rel_b_t[0].cpu().numpy()
                 err = float(np.arctan2(rel_b[1], rel_b[0])) if np.hypot(rel_b[0], rel_b[1]) > 0.8 else 0.0
             else:

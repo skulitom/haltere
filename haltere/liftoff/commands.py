@@ -595,6 +595,23 @@ def cmd_fly(a):
         pilot.path_speed = a.path_speed
         pilot.path_lookahead = a.lookahead
         pilot.path_z_lead = a.z_lead if a.z_lead >= 0 else None
+    if a.follow and waypoints:
+        from .pathfollow import PathFollower
+        gates = None
+        if a.v_gate > 0 and a.gates and os.path.exists(a.gates):
+            gates = [g['pos'] for g in json.load(open(a.gates, encoding='utf-8'))['gates']]
+        obstacles = None
+        if a.obstacles and os.path.exists(a.obstacles):
+            obstacles = [o['pos'] for o in json.load(open(a.obstacles, encoding='utf-8'))['obstacles']]
+        pilot.follower = PathFollower(np.asarray(waypoints), loop=not a.no_loop, v_max=a.v_max, a_lat=a.a_lat,
+                                      a_brake=a.a_brake, a_acc=a.a_acc, gates=gates, v_gate=a.v_gate, flow_min=a.flow_min,
+                                      obstacles=obstacles, clearance=a.clearance)
+        pilot.follow_frame = not a.no_frame
+        pilot.follow_line_alt = not a.no_line_alt
+        v = pilot.follower.v_ref
+        print(f'follow: {len(obstacles or [])} obstacles kept {a.clearance} m away (line moved up to {pilot.follower.shift.max():.1f} m); '
+              f'{pilot.follower.length:.0f} m line, speed profile {v.min():.1f}-{v.max():.1f} m/s (mean {v.mean():.1f}), '
+              f'control frame {"line tangent" if pilot.follow_frame else "nose"}, flow height {"above the line" if pilot.follow_line_alt else "above the start"}')
         print(f'path following: {len(waypoints)} waypoints, {pilot.path_s[-1]:.0f} m loop at {a.path_speed} m/s, '
               f'lookahead {a.lookahead} m')
     recorder = None
@@ -658,7 +675,8 @@ def cmd_fly(a):
         flog.writerow(['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz', 'wx', 'wy', 'wz',
                        'in_thr', 'in_yaw', 'in_pitch', 'in_roll', 'rpm', 'b_thr', 'b_roll', 'b_pitch', 'b_yaw',
                        'c_thr', 'c_roll', 'c_pitch', 'c_yaw', 's_thr', 's_roll', 's_pitch', 's_yaw',
-                       'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age', 'status'])
+                       'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age', 'flow',
+                       'v_ref', 'frame_delta', 'path_s', 'status'])
     try:
         while a.seconds <= 0 or time.time() - t_begin < a.seconds:
             fr = rx.wait(0.05)
@@ -752,7 +770,9 @@ def cmd_fly(a):
                                *np.round(pilot.last_cmd, 4), *np.round(sticks, 4), *np.round(pilot.last_rel_b, 3),
                                *np.round(pilot.last_target, 3), round(phase, 3), int(crashed),
                                round(det.p_visible, 3) if det else '', round(det.width_px, 1) if det else '',
-                               round(now - det.t, 3) if det else '',
+                               round(now - det.t, 3) if det else '', round(pilot.flow_gain, 4),
+                               round(pilot.follow_info['v_ref'], 3) if pilot.follow_info else '',
+                               round(pilot.frame_delta, 4), round(pilot.follow_info['s'], 2) if pilot.follow_info else '',
                                pilot.vision_status.replace(',', ';') if pilot.vision is not None else ''])
             if recorder is not None:
                 shared.publish(pilot.rates() if len(dists) % 2 == 0 else None, t=fr.timestamp - (pilot.t_start or 0.0),

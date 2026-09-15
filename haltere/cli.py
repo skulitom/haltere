@@ -531,6 +531,20 @@ def main(argv=None):
     q.add_argument('--seconds', type=float, default=0.0, help='stop after this long (0 = until Ctrl+C)')
     q.add_argument('--device', default='cuda')
     q.add_argument('--log', default='', help='CSV of every telemetry frame: pose, processed input, brain output, sticks, goal')
+    q.add_argument('--follow', action='store_true',
+                   help='path following with projection, a curvature speed profile commanded through the speed senses, '
+                        'and the line tangent as the control frame of the brain (use with --waypoints-file)')
+    q.add_argument('--v-max', type=float, default=5.0, help='--follow: top speed on straights (m/s)')
+    q.add_argument('--a-lat', type=float, default=1.5, help='--follow: lateral acceleration allowed in bends (m/s^2)')
+    q.add_argument('--a-brake', type=float, default=1.0, help='--follow: braking before bends (m/s^2)')
+    q.add_argument('--a-acc', type=float, default=0.8, help='--follow: acceleration out of bends (m/s^2)')
+    q.add_argument('--v-gate', type=float, default=0.0, help='--follow: speed cap from 8 m before to 3 m after each gate of --gates (0 = none)')
+    q.add_argument('--gates', default='configs/gates_strawbale.json', help='--follow: gate list for --v-gate')
+    q.add_argument('--obstacles', default='', help='--follow: JSON of impact points to keep clear of (configs/obstacles_strawbale.json)')
+    q.add_argument('--clearance', type=float, default=1.8, help='--follow: horizontal clearance from --obstacles (m)')
+    q.add_argument('--flow-min', type=float, default=0.4, help='--follow: lowest speed-sense gain the speed profile may use')
+    q.add_argument('--no-frame', action='store_true', help='--follow: keep the nose as the control frame of the brain')
+    q.add_argument('--no-line-alt', action='store_true', help='--follow: optic flow over the height above the start, as trained')
     q.add_argument('--flow-gain', type=float, default=1.0,
                    help='scale on the horizontal speed written into the optic-flow and airflow senses (< 1: the brain flies faster)')
     q.add_argument('--stick-model', choices=['auto', 'curves'], default='auto',

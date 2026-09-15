@@ -1,0 +1,146 @@
+{
+ "note": "impact points learned from fly --log flights (liftoff score collisions with a peak >= 100 m/s^2 within 2.5 m of the taught line): arch legs and obstacles the follower keeps its clearance from; by-sight flights (off the line) are not used",
+ "obstacles": [
+  {
+   "pos": [
+    -36.2,
+    178.1,
+    26.2
+   ],
+   "impacts": 1,
+   "flights": [
+    "w10_lap_flow05_zlead.csv"
+   ]
+  },
+  {
+   "pos": [
+    30.43,
+    149.13,
+    19.0
+   ],
+   "impacts": 3,
+   "flights": [
+    "w11_lap_flow04_zlead.csv",
+    "w13_follow.csv",
+    "w7_lap_radial_s60.csv"
+   ]
+  },
+  {
+   "pos": [
+    29.4,
+    159.3,
+    20.2
+   ],
+   "impacts": 1,
+   "flights": [
+    "w12_lap_flow05_repeat.csv"
+   ]
+  },
+  {
+   "pos": [
+    -37.4,
+    95.9,
+    6.4
+   ],
+   "impacts": 1,
+   "flights": [
+    "w12_lap_flow05_repeat.csv"
+   ]
+  },
+  {
+   "pos": [
+    32.2,
+    144.6,
+    16.9
+   ],
+   "impacts": 1,
+   "flights": [
+    "w12_lap_flow05_repeat.csv"
+   ]
+  },
+  {
+   "pos": [
+    80.22,
+    15.32,
+    1.58
+   ],
+   "impacts": 6,
+   "flights": [
+    "w13_follow.csv",
+    "w2_lap_radial_g10.csv",
+    "w3_lap_radial_g13.csv",
+    "w4_lap_speed35_g10.csv",
+    "w5_lap_path3_g10.csv"
+   ]
+  },
+  {
+   "pos": [
+    33.8,
+    123.75,
+    12.88
+   ],
+   "impacts": 4,
+   "flights": [
+    "w2_lap_radial_g10.csv",
+    "w9_lap_flow05.csv"
+   ]
+  },
+  {
+   "pos": [
+    22.5,
+    -0.62,
+    1.57
+   ],
+   "impacts": 6,
+   "flights": [
+    "w5_lap_path3_g10.csv"
+   ]
+  },
+  {
+   "pos": [
+    60.6,
+    43.9,
+    1.7
+   ],
+   "impacts": 1,
+   "flights": [
+    "w5_lap_path3_g10.csv"
+   ]
+  },
+  {
+   "pos": [
+    42.4,
+    66.13,
+    2.0
+   ],
+   "impacts": 3,
+   "flights": [
+    "w5_lap_path3_g10.csv",
+    "w9_lap_flow05.csv"
+   ]
+  },
+  {
+   "pos": [
+    60.6,
+    0.6,
+    1.9
+   ],
+   "impacts": 1,
+   "flights": [
+    "w5_lap_path3_g10.csv"
+   ]
+  },
+  {
+   "pos": [
+    36.4,
+    98.8,
+    8.15
+   ],
+   "impacts": 2,
+   "flights": [
+    "w7_lap_radial_s60.csv",
+    "w8_lap_flow07.csv"
+   ]
+  }
+ ]
+}
