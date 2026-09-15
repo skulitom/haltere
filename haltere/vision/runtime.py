@@ -8,6 +8,7 @@ goal vector from this instead of from telemetry positions.
 """
 from __future__ import annotations
 
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -80,40 +81,54 @@ class GateVision:
         sct = mss.mss()
         region = None
         n = 0
+        errors = 0
         t_next = time.perf_counter()
         while not self._stop:
-            if region is None:
-                rr = find_window_rect(self.title)
-                if rr is None or rr[2] < 64:
+            try:
+                if region is None:
+                    rr = find_window_rect(self.title)
+                    if rr is None or rr[2] < 64:
+                        time.sleep(0.5)
+                        continue
+                    region = {'left': rr[0], 'top': rr[1], 'width': rr[2], 'height': rr[3]}
+                t_grab = time.time()                    # the detection describes this moment, not the end of inference
+                shot = np.asarray(sct.grab(region))[:, :, :3][:, :, ::-1]
+                if shot.shape[0] < 64:                      # minimized window: re-find it
+                    region = None
                     time.sleep(0.5)
                     continue
-                region = {'left': rr[0], 'top': rr[1], 'width': rr[2], 'height': rr[3]}
-            t_grab = time.time()                        # the detection describes this moment, not the end of inference
-            shot = np.asarray(sct.grab(region))[:, :, :3][:, :, ::-1]
-            if shot.shape[0] < 64:                      # minimized window: re-find it
+                # the same path the training frames took: 640x360 bilinear, JPEG at quality 90, then the network's
+                # input size with area resampling (a direct 1920 -> 320 resize looks different to the network)
+                small = cv2.resize(np.ascontiguousarray(shot), (640, 360), interpolation=cv2.INTER_LINEAR)
+                ok, enc = cv2.imencode('.jpg', cv2.cvtColor(small, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 90])
+                small = cv2.cvtColor(cv2.imdecode(enc, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB) if ok else small
+                img = cv2.resize(small, (IN_W, IN_H), interpolation=cv2.INTER_AREA)
+                x = torch.from_numpy(img).permute(2, 0, 1).float().div_(255.0)[None].to(self.device)
+                with torch.no_grad():
+                    d = decode(self.net(x))[0].cpu().numpy()
+                p, u_n, v_n, width_px = float(d[0]), float(d[1]), float(d[2]), float(d[3])
+                u = (u_n + 1) / 2 * IN_W
+                v = (v_n + 1) / 2 * IN_H
+                direction, dist = detection_geometry(self.cam, u, v, width_px)
+                n += 1
+                det = Detection(t_grab, p, u, v, width_px, direction, dist, n)
+                with self._lock:
+                    self.latest = det
+                t_next += 1.0 / self.fps
+                rem = t_next - time.perf_counter()
+                if rem > 0:
+                    time.sleep(rem)
+                else:
+                    t_next = time.perf_counter()
+            except Exception as e:                   # noqa: BLE001 - a dead thread would freeze the detections
+                errors += 1
+                if errors == 1 or errors % 50 == 0:
+                    print(f'VISION: capture/inference error #{errors} ({type(e).__name__}: {e}); retrying',
+                          file=sys.stderr, flush=True)
                 region = None
+                try:
+                    sct = mss.mss()
+                except Exception:                    # noqa: BLE001
+                    pass
                 time.sleep(0.5)
-                continue
-            # the same path the training frames took: 640x360 bilinear, JPEG at quality 90, then the network's
-            # input size with area resampling (a direct 1920 -> 320 resize looks different to the network)
-            small = cv2.resize(np.ascontiguousarray(shot), (640, 360), interpolation=cv2.INTER_LINEAR)
-            ok, enc = cv2.imencode('.jpg', cv2.cvtColor(small, cv2.COLOR_RGB2BGR), [cv2.IMWRITE_JPEG_QUALITY, 90])
-            small = cv2.cvtColor(cv2.imdecode(enc, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB) if ok else small
-            img = cv2.resize(small, (IN_W, IN_H), interpolation=cv2.INTER_AREA)
-            x = torch.from_numpy(img).permute(2, 0, 1).float().div_(255.0)[None].to(self.device)
-            with torch.no_grad():
-                d = decode(self.net(x))[0].cpu().numpy()
-            p, u_n, v_n, width_px = float(d[0]), float(d[1]), float(d[2]), float(d[3])
-            u = (u_n + 1) / 2 * IN_W
-            v = (v_n + 1) / 2 * IN_H
-            direction, dist = detection_geometry(self.cam, u, v, width_px)
-            n += 1
-            det = Detection(t_grab, p, u, v, width_px, direction, dist, n)
-            with self._lock:
-                self.latest = det
-            t_next += 1.0 / self.fps
-            rem = t_next - time.perf_counter()
-            if rem > 0:
-                time.sleep(rem)
-            else:
                 t_next = time.perf_counter()

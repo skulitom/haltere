@@ -350,8 +350,10 @@ what a detection is good for from what the brain needs:
   is cropped by the image edge); association is in metres across the ray and in log-range along it, so
   two arches lined up on one bearing stay two tracks. An arch confirms after three sightings at a
   plausible height (bale-height phantoms do not), an estimate the camera should see but does not
-  for 2 s is dropped, passed arches absorb their sightings, and a pass can be undone within 1.5 s if
-  the arch is still seen ahead.
+  for 2 s while frames arrive is dropped, passed arches absorb their sightings, and a pass can be
+  undone within 1.5 s if the arch is still seen ahead. With no fresh detector frame for 1 s (a dead
+  capture thread, a hidden window, inference slower than 0.35 s) the detector counts as stalled: a
+  remembered target is flown at 2 m/s, and without one the rabbit parks and the drone holds.
 - **Guidance.** A virtual lead vehicle, the rabbit, flies a world-frame course with bounded speed,
   acceleration, curvature and curvature rate: onto the target gate's approach axis (along the course,
   turned toward the next gate when it is known, pivoting onto the exact bearing close up), through the
@@ -372,10 +374,12 @@ haltere liftoff fly runs/ftPath2/best.pt --vision runs/gatenet8/best.pt --camera
 
 `fly --log` and the rehearsal log add the rabbit's numeric columns: the detection (`det_u`, `det_v`,
 `det_t`), the rabbit (`rb_*`), the heading reference (`look`, `yaw_ref`, `sight_yaw`), the target
-(`tgt_*`, `axis_deg`, `next_id`), `mode` (0 ground, 1 flying on, 2 target, 3 search), `n_passes`,
+(`tgt_*`, `axis_deg`, `next_id`), `mode` (0 ground, 1 flying on, 2 target, 3 search, 4 hold with the
+detector stalled), `det_gap` (seconds since the last fresh detector frame), `n_passes`,
 `pass_kind` (1 crossed, 2 travelled through, 3 beside, 4 ghost, 5 un-pass), `flow_gain` and the
 tracker's counters; `liftoff score` reads them as before. Every tunable is a `SightParams` field
-(`--sight-set name=value`).
+(`--sight-set name=value`); values the pilot cannot fly with (a zero it divides by, a wrong type, an
+unsorted range table) are refused at startup, after a short smoke flight on a stand-in drone.
 
 Rehearsed with `runs/ftPath2/best.pt`, 150 s per run. The stress detector misses 40% of frames,
 reports the second arch 35% of the time and puts 8% phantoms, 8 px centre noise and 25% width noise

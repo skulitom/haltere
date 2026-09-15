@@ -583,8 +583,8 @@ def summarize(result: dict, gates: list[dict], track: np.ndarray | None = None, 
             pk = log['pass_kind'][idx]
             last['pass_kinds'] = {n: int((pk == v).sum()) for n, v in (('cross', 1), ('travel', 2), ('beside', 3),
                                                                       ('ghost', 4), ('unpass', 5))}
-            last['mode_s'] = {n: round(float((mode == v).sum() * dt), 1) for v, n in ((0, 'ground'), (1, 'cruise'),
-                                                                                     (2, 'target'), (3, 'search'))}
+            last['mode_s'] = {n: round(float((mode == v).sum() * dt), 1)
+                              for v, n in ((0, 'ground'), (1, 'cruise'), (2, 'target'), (3, 'search'), (4, 'hold'))}
             last['flow_gain_median'] = float(np.nanmedian(log['flow_gain'][idx][air])) if air.any() else float('nan')
             last['rabbit_speed_median'] = float(np.nanmedian(log['rb_v'][idx][air])) if air.any() else float('nan')
             r['sight'] = last

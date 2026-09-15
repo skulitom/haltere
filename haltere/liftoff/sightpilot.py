@@ -26,8 +26,14 @@ scheduled as flow_ref / v_nom with a slow integral trim on the measured speed, b
 (the fly command's --flow-gain).
 
 Everything is in the pilot's world frame (x forward at the reset, y left, z up, metres from the reset point);
-angles in the log are degrees. ``step`` never raises: an internal error is reported once and the goal holds the last
-carrot while the yaw stick returns to centre.
+angles in the log are degrees. ``goal`` never raises: an internal error is reported once and the goal holds the last
+carrot computed by a tick without an error while the yaw stick returns to centre; after 20 failed ticks in a row the
+pilot starts over and the goal holds the drone's position until a tick succeeds.
+
+Detector liveness. Every detector frame counts, whether it holds an arch or not; with no fresh frame for ``stall_s``
+the detector is stalled (a dead capture thread, a hidden window, inference slower than ``stale_s``): an arch that is
+not seen then is not a ghost, a remembered target is still flown at ``v_blind``, and without one the rabbit parks and
+the drone holds its position (no launch leg, no search) until frames arrive again.
 """
 from __future__ import annotations
 
@@ -56,9 +62,9 @@ LOG_COLUMNS = ['det_u', 'det_v', 'det_t',
                'tgt_id', 'tgt_x', 'tgt_y', 'tgt_z', 'tgt_sdlat', 'tgt_hits', 'tgt_age', 'axis_deg', 'next_id',
                'n_conf', 'n_tent', 'mode', 'n_passes', 'pass_kind',
                'flow_gain', 'rej_elev', 'rej_stale', 'absorbed', 'low', 'reseeds',
-               'ghosts', 'unpasses', 'behind', 'goal_clips', 'sight_errors']
+               'ghosts', 'unpasses', 'behind', 'goal_clips', 'sight_errors', 'det_gap']
 PASS_KIND = {'cross': 1, 'travel': 2, 'beside': 3, 'ghost': 4, 'unpass': 5}
-MODE_NAMES = {0: 'ground', 1: 'cruise', 2: 'target', 3: 'search'}
+MODE_NAMES = {0: 'ground', 1: 'cruise', 2: 'target', 3: 'search', 4: 'hold'}
 
 
 def wrap(a: float) -> float:
@@ -75,6 +81,8 @@ class SightParams:
     # --- perception
     p_min: float = 0.5
     stale_s: float = 0.35                 # older detections (grab time) are not used
+    stall_s: float = 1.0                  # no fresh detector frame (with or without an arch) for this long: stalled
+    unseen_live_s: float = 0.2            # an arch in view counts as unseen only while a frame came this recently
     vision_lag: float = 0.0               # s subtracted from det.t before pairing with a pose
     elev_deg: tuple = (-40.0, 35.0)       # world elevation window of a sighting (attitude at the grab)
     range_corr: tuple | None = RANGE_CORR  # range from width -> multiplied by interp(range, table); None = off
@@ -225,6 +233,72 @@ class SightParams:
         lo = min(0.7, 0.9 * self.flow_ref / top) if self.flow_min is None else self.flow_min
         return min(lo, self.flow_max), self.flow_max
 
+    def validate(self) -> None:
+        """Raise ValueError on values the pilot cannot fly with: a wrong type, a zero it divides by, a bad table."""
+        bad = []
+
+        def num(x) -> bool:
+            return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+
+        optional = {'range_corr', 'turn_hints', 'flow_min', 'v_exit'}
+        choices = {'flow_mode': ('global', 'along'), 'flow_alt': ('start', 'ground')}
+        for f in fields(self):
+            v, d = getattr(self, f.name), f.default
+            if f.name in optional:
+                continue
+            if isinstance(d, bool):
+                ok = isinstance(v, bool)
+            elif isinstance(d, (int, float)):
+                ok = num(v)
+            elif isinstance(d, tuple):
+                ok = isinstance(v, (tuple, list)) and len(v) == len(d) and all(num(x) for x in v)
+            elif isinstance(d, str):
+                ok = v in choices.get(f.name, (v,))
+            else:
+                ok = True
+            if not ok:
+                bad.append(f'{f.name}={v!r}')
+        if bad:
+            raise ValueError('wrong type or value: ' + ', '.join(bad))
+        for k in ('stale_s', 'stall_s', 'yaw_rate', 'yaw_db', 'yaw_rate_tau', 'yaw_slew', 'yaw_max', 'flow_ref',
+                  'flow_max', 'flow_tau', 'look_tau', 'look_kappa', 'pivot_tau', 'bump_tau', 'bump_vmax', 'sweep_period',
+                  'sweep_ramp', 'lead_band', 'log_gate', 'log_gate_tent', 'search_radius', 'search_radius_wide', 'a_lat',
+                  'a_acc', 'a_brk', 'sharp', 'kappa_max', 'goal_max', 'goal_z', 'crop_mult', 'v_cruise', 'v_gate',
+                  'v_gate_turn'):
+            if not getattr(self, k) > 0:
+                bad.append(f'{k}={getattr(self, k)!r} (must be > 0)')
+        for k in ('sig_along', 'sig_cross'):
+            a, b = getattr(self, k)
+            if a < 0 or b <= 0:
+                bad.append(f'{k}={getattr(self, k)!r} (a >= 0, b > 0)')
+        if self.perp_gate[0] <= 0:
+            bad.append(f'perp_gate={self.perp_gate!r} (a > 0)')
+        for k in ('elev_deg', 'ghost_range', 'flow_trim_range'):
+            lo, hi = getattr(self, k)
+            if not lo < hi:
+                bad.append(f'{k}={getattr(self, k)!r} (low < high)')
+        if self.flow_trim_range[0] <= 0:
+            bad.append(f'flow_trim_range={self.flow_trim_range!r} (low > 0)')
+        for k in ('flow_min', 'v_exit'):
+            v = getattr(self, k)
+            if v is not None and not (num(v) and v > 0):
+                bad.append(f'{k}={v!r} (None or > 0)')
+        rc = self.range_corr
+        if rc is not None:
+            try:
+                d, kk = zip(*rc)
+                ok = (len(d) >= 2 and all(num(x) for x in d + kk) and all(x > 0 for x in kk) and d[0] > 0
+                      and all(b > a for a, b in zip(d, d[1:])))
+            except (TypeError, ValueError):
+                ok = False
+            if not ok:
+                bad.append(f'range_corr={rc!r} (pairs (distance, factor), distances increasing, factors > 0)')
+        if self.turn_hints is not None and not (isinstance(self.turn_hints, (tuple, list))
+                                                and all(num(x) for x in self.turn_hints)):
+            bad.append(f'turn_hints={self.turn_hints!r}')
+        if bad:
+            raise ValueError(', '.join(bad))
+
     def describe(self) -> str:
         lo, hi = self.flow_bounds()
         return (f'cruise {self.v_cruise} m/s, gate {self.v_gate} (turn {self.v_gate_turn}), lead {self.lead} m, '
@@ -275,6 +349,8 @@ class SightPilot:
         self.errors = 0
         self._err_logged = False
         self._consec_err = 0
+        self.t_frame = -math.inf               # when the last fresh detector frame (arch or not) was consumed
+        self.stalled = True
         self.reset()
 
     # ------------------------------------------------------------------ state
@@ -292,7 +368,9 @@ class SightPilot:
             setattr(self, k, 0)
         self._next_id = 0
         self.pass_kind = 0
-        self.carrot = None
+        self.carrot = None                    # the goal's world point of the last tick without an error
+        self._carrot_new = None
+        self._hold = None                     # world point held after repeated errors, until a tick succeeds
         self._last_rel = None
         self._full_init(np.zeros(3), 0.0, 0.0)
         self._init = False
@@ -343,6 +421,7 @@ class SightPilot:
         self.psi_dot = 0.0
         self.yaw_ref = psi_n
         self.lead_now = 0.0
+        self.t_launch = now                   # the launch leg runs launch_t from here (pushed on while holding)
 
     @property
     def ready(self) -> bool:
@@ -352,29 +431,38 @@ class SightPilot:
     # ------------------------------------------------------------------ public tick
     def goal(self, pos_w) -> np.ndarray:
         """Body-frame goal vector for the brain. Never raises."""
+        p = np.asarray(pos_w, dtype=np.float64)
         try:
-            rel_b = self._goal(np.asarray(pos_w, dtype=np.float64))
-            if not np.all(np.isfinite(rel_b)):
-                raise FloatingPointError(f'non-finite goal {rel_b}')
+            self._carrot_new = None
+            rel_b = self._goal(p)
+            c = self._carrot_new
+            if not (np.all(np.isfinite(rel_b)) and c is not None and np.all(np.isfinite(c))):
+                raise FloatingPointError(f'non-finite goal {rel_b} / carrot {self._carrot_new}')
+            self.carrot = self._carrot_new                    # committed only by a tick that went all the way through
             self._consec_err = 0
+            self._hold = None
             return rel_b
         except Exception:                                    # noqa: BLE001 - the 100 Hz loop must go on
             self.errors += 1
             self._consec_err += 1
             if not self._err_logged:
                 self._err_logged = True
-                print('SIGHT PILOT ERROR (reported once; holding the last carrot):\n' + traceback.format_exc(),
-                      file=sys.stderr, flush=True)
+                print('SIGHT PILOT ERROR (reported once; holding the last carrot, then the drone position):\n'
+                      + traceback.format_exc(), file=sys.stderr, flush=True)
             if self._consec_err >= 20:
-                self._init = False                            # start over on the next tick
-            return self._safe_goal(np.asarray(pos_w, dtype=np.float64))
+                # start over on the next tick, and meanwhile hold where the drone is (never a new point ahead of it)
+                if self._hold is None and np.all(np.isfinite(p)):
+                    self._hold = np.array([p[0], p[1], clip(float(p[2]), self.params.z_min, 30.0)])
+                self._init = False
+            return self._safe_goal(p)
 
     def _safe_goal(self, p: np.ndarray) -> np.ndarray:
         try:
             R = self.host.last_R
             P = self.params
-            if self.carrot is not None and np.all(np.isfinite(self.carrot)):
-                rel = np.asarray(self.carrot, dtype=np.float64) - p
+            point = self._hold if self._hold is not None else self.carrot
+            if point is not None and np.all(np.isfinite(point)):
+                rel = np.asarray(point, dtype=np.float64) - p
             else:
                 rel = np.array([0.0, 0.0, P.z_start - float(p[2])])
             h = math.hypot(rel[0], rel[1])
@@ -407,20 +495,26 @@ class SightPilot:
         if not self._init or (on_ground and (self.t_air is None or self.grounded_for > 1.5)):
             self._full_init(p, psi_n, now)
             self.t_air = None
+            if self._hold is not None:            # restarted after errors: the goal leaves the hold point smoothly
+                self.o_bump = self._hold - self._carrot_world()
         elif self.t_air is None and p[2] > 0.8:
-            self.t_air = now
+            self.t_air = self.t_launch = now
 
         # 1 intake: each detector frame once
         det = h.vision.get()
         if det.frames != self.det_seen:
             self.det_seen = det.frames
+            tg = float(det.t) - P.vision_lag
+            fresh = det.frames > 0 and now - tg <= P.stale_s
+            if fresh:
+                self.t_frame = now                # the detector is alive, whatever this frame holds
             if det.frames > 0 and det.p_visible >= P.p_min and det.dist_m > 0.5:
-                tg = float(det.t) - P.vision_lag
-                pose = h.pose_at(tg) if now - tg <= P.stale_s else None
+                pose = h.pose_at(tg) if fresh else None
                 if pose is None:
                     self.rej_stale += 1
                 else:
                     self._intake(now, det, pose, p)
+        self.stalled = now - self.t_frame > P.stall_s
 
         # 2 maintenance
         self._maintain(now, dt, p, R)
@@ -452,7 +546,7 @@ class SightPilot:
         self._integrate(now, dt, p, vel, R)
         # altitude reference
         self._altitude(dt)
-        # goal vector
+        # goal vector (its world point is committed by goal() once the whole tick has gone through)
         rel = self._goal_vector(dt, p, on_ground)
         # yaw and speed sense
         self._yaw(now, dt, psi_n, on_ground)
@@ -595,8 +689,8 @@ class SightPilot:
                 d = float(np.linalg.norm(T.m - p))
                 if d < near_d and self._in_view(T, p, R, cam):
                     near, near_d = T, d
-        if near is not None:
-            near.unseen_in_view += dt
+        if near is not None and now - self.t_frame < P.unseen_live_s:
+            near.unseen_in_view += dt                 # only while frames arrive: a stalled detector sees nothing
         keep = []
         for T in self.tracks:
             if T.passed:
@@ -665,7 +759,9 @@ class SightPilot:
             lat = float(np.linalg.norm(np.cross(va / ra, vb)))
         else:
             lat = float(np.linalg.norm(np.cross(vb / rb, va)))
-        return lat < max(P.merge_lat[0], P.merge_lat[1] * min(ra, rb)) and abs(math.log(ra / rb)) < P.merge_log
+        # never wider in range than the association gate: two arches kept apart there must not be fused here
+        return (lat < max(P.merge_lat[0], P.merge_lat[1] * min(ra, rb))
+                and abs(math.log(ra / rb)) < min(P.merge_log, P.log_gate))
 
     # ------------------------------------------------------------------ 3 target
     def _select(self, now: float, p: np.ndarray) -> None:
@@ -730,7 +826,8 @@ class SightPilot:
                 continue
             vx, vy = float(o.m[0]) - gx, float(o.m[1]) - gy
             dv = math.hypot(vx, vy)
-            if 3.0 < dv < 45.0 and vx * cx + vy * cy > 3.0 and dv < nxt_d:
+            # any arch not well behind the target along the course (turns up to about 107 deg; gate 2 turns 87)
+            if 3.0 < dv < 45.0 and vx * cx + vy * cy > -0.3 * dv and dv < nxt_d:
                 nxt, nxt_d = o, dv
         self.next = nxt
         hints = P.turn_hints
@@ -902,9 +999,15 @@ class SightPilot:
             v_des = min(P.v_cruise, math.sqrt(P.a_lat / max(k_req, 1e-3)), v_brake)
             if self.d_gate < 10.0 and self.sd_lat > 0.7:
                 v_des = min(v_des, P.v_unsure)
-            if now - T.t_last > 2.5:
+            if now - T.t_last > 2.5 or self.stalled:
                 v_des = min(v_des, P.v_blind)
-        elif (lp is not None and self.s - lp['s'] < P.d_on) or (lp is None and now - self.t_air < P.launch_t):
+        elif self.stalled:
+            # no detector frames: no launch leg, no search; the rabbit parks and the drone holds
+            self.mode = 4
+            v_des, k_des = 0.0, 0.0
+            if lp is None:
+                self.t_launch = now
+        elif (lp is not None and self.s - lp['s'] < P.d_on) or (lp is None and now - self.t_launch < P.launch_t):
             self.mode = 1
             h_ref = math.atan2(lp['n'][1], lp['n'][0]) if lp is not None else self.psi_launch
             hints = P.turn_hints
@@ -1060,7 +1163,7 @@ class SightPilot:
             snap_des = clip(-w * (ox * lx + oy * ly), -P.snap_max, P.snap_max)
         self.o_snap += clip(snap_des - self.o_snap, -P.snap_rate * dt, P.snap_rate * dt)
         carrot = self._carrot_world()
-        self.carrot = carrot
+        self._carrot_new = carrot
         rel = carrot - p
         hh = math.hypot(float(rel[0]), float(rel[1]))
         if hh > P.goal_max:
@@ -1106,7 +1209,10 @@ class SightPilot:
         f_ff = P.flow_ref / max(self.v_nom, P.flow_ref)
         if self.t_air is not None and now - self.t_air > 3.0 and self.v_nom > 1.0 and abs(self.v_des - self.v_nom) < 0.2:
             vh = math.hypot(float(vel[0]), float(vel[1]))
-            self.flow_trim = clip(self.flow_trim + dt * P.flow_ki * (vh - self.v_nom) / self.v_nom, *P.flow_trim_range)
+            trim = self.flow_trim + dt * P.flow_ki * (vh - self.v_nom) / self.v_nom
+            # anti-windup: no trim beyond what the clipped output can use (a search below flow_ref pinned it at 1.3)
+            trim = clip(trim, lo / f_ff, hi / f_ff)
+            self.flow_trim = clip(trim, *P.flow_trim_range)
         self.flow_f += (clip(f_ff * self.flow_trim, lo, hi) - self.flow_f) * min(1.0, dt / P.flow_tau)
         self.host.flow_gain = self.flow_f
 
@@ -1120,8 +1226,14 @@ class SightPilot:
             s = 'flying on'
         elif self.mode == 3:
             s = 'no gate: searching'
+        elif self.mode == 4:
+            s = 'holding'
         else:
             s = 'on the ground'
+        if self.stalled:
+            gap = now - self.t_frame
+            s = (f'DETECTOR STALLED ({gap:.1f} s without a fresh frame)' if math.isfinite(gap)
+                 else 'DETECTOR STALLED (no frame yet)') + f'; {s}'
         self.host.vision_status = (f'{s}; rabbit v {self.v:.1f}/{self.v_nom:.1f} lead {self.lead_now:.1f}; '
                                    f'passes {self.n_passes}; flow {self.flow_f:.2f}')
 
@@ -1151,13 +1263,67 @@ class SightPilot:
                 *tgt,
                 n_conf, n_tent, self.mode, self.n_passes, self.pass_kind,
                 self.flow_f, self.rej_elev, self.rej_stale, self.absorbed, self.low, self.reseeds,
-                self.ghosts, self.unpasses, self.behind, self.goal_clips, self.errors]
+                self.ghosts, self.unpasses, self.behind, self.goal_clips, self.errors,
+                now - self.t_frame if math.isfinite(self.t_frame) else nan]
 
     @staticmethod
     def empty_log_values(det=None) -> list[float]:
         nan = math.nan
         du, dv, dtt = ((float(det.u), float(det.v), float(det.t)) if det is not None and det.frames else (nan, nan, nan))
         return [du, dv, dtt] + [nan] * (len(LOG_COLUMNS) - 3)
+
+
+def smoke_test(params: SightParams, seconds: float = 14.0) -> int:
+    """Fly the pilot on a kinematic stand-in for ``seconds`` (take-off, an arch ahead, its pass, the search, and a
+    detector stall at the end) and let any exception through: bad parameters fail here instead of in the air. Returns
+    the number of ticks flown."""
+    from types import SimpleNamespace
+    dt, arch = 0.01, np.array([14.0, 0.0, 2.7])
+
+    class Host:
+        def __init__(self):
+            self.t, self.yaw = 1000.0, 0.0
+            self.pos, self.last_vel, self.omega, self.last_R = np.zeros(3), np.zeros(3), np.zeros(3), np.eye(3)
+            self.flow_gain, self.vision_gate_w, self.vision_passed_t, self.vision_status = 1.0, None, None, ''
+            self._passed = []
+            self.vision = SimpleNamespace(cam=None, get=lambda: self.det)
+            self.det = SimpleNamespace(t=0.0, p_visible=0.0, u=160.0, v=90.0, width_px=30.0,
+                                       direction_body=np.array([1.0, 0.0, 0.0]), dist_m=0.0, frames=0)
+
+        def clock(self):
+            return self.t
+
+        def pose_at(self, t):
+            return (self.pos.copy(), self.last_R.copy()) if abs(t - self.t) < 0.5 else None
+
+    h = Host()
+    sp = SightPilot(h, params)
+    n = int(seconds / dt)
+    for k in range(n):
+        if k % 7 == 0 and k < n - 250:                   # 14 Hz frames, then the detector stalls
+            rel = h.last_R.T @ (arch - h.pos)
+            d = float(np.linalg.norm(rel))
+            seen = rel[0] > 0.3 * d and d > 1.0
+            h.det = SimpleNamespace(t=h.t - 0.05, p_visible=0.99 if seen else 0.05, u=160.0, v=90.0,
+                                    width_px=max(4.0, 320.0 * 4.0 / max(d, 1.0) / 2.0),
+                                    direction_body=rel / max(d, 1e-9), dist_m=d, frames=h.det.frames + 1)
+        rel_b = sp._goal(h.pos.copy())
+        if not (np.all(np.isfinite(rel_b)) and math.isfinite(sp.sight_yaw) and math.isfinite(float(h.flow_gain))):
+            raise FloatingPointError(f'non-finite output at tick {k}: goal {rel_b}, yaw {sp.sight_yaw}, '
+                                     f'flow {h.flow_gain}')
+        gw = h.last_R @ rel_b
+        g = float(np.linalg.norm(gw))
+        v_des = gw / g * min(g, 2.5) if g > 1e-6 else np.zeros(3)
+        h.last_vel = h.last_vel + (v_des - h.last_vel) * (dt / 0.5)
+        h.pos = h.pos + h.last_vel * dt
+        h.pos[2] = max(h.pos[2], 0.0)
+        wz = -sp.sight_yaw * params.yaw_rate
+        h.omega = np.array([0.0, 0.0, wz])
+        h.yaw += wz * dt
+        c, si = math.cos(h.yaw), math.sin(h.yaw)
+        h.last_R = np.array([[c, -si, 0.0], [si, c, 0.0], [0.0, 0.0, 1.0]])
+        h.t += dt
+    return n
 
 
 # ---------------------------------------------------------------------------------------------------- CLI helpers
@@ -1238,4 +1404,9 @@ def params_from_args(a, flow_gain: float = 1.0) -> SightParams:
         if isinstance(val, list):
             val = tuple(tuple(x) if isinstance(x, list) else x for x in val)
         setattr(P, k, val)
+    try:
+        P.validate()
+        smoke_test(P)                     # the pilot would swallow its errors in the air (and fly on a stale goal)
+    except Exception as e:                # noqa: BLE001
+        raise SystemExit(f'--sight rabbit: these parameters do not fly: {type(e).__name__}: {e}') from e
     return P

@@ -8,7 +8,7 @@ import pytest
 import torch
 
 from haltere.liftoff.pilot import LiftoffMapping, TelemetryPilot
-from haltere.liftoff.sightpilot import LOG_COLUMNS, SightParams, SightPilot, Track, params_from_args
+from haltere.liftoff.sightpilot import LOG_COLUMNS, SightParams, SightPilot, Track, add_cli_args, params_from_args
 from haltere.sim.tasks import HoverTaskConfig
 from haltere.vision.camera import Camera, quat_wxyz_to_mat
 from haltere.vision.model import IN_H, IN_W
@@ -29,7 +29,7 @@ class DummyBrain:
 
 class ScriptVision:
     """Detections of world points picked by a script: grabbed at 15 Hz with the drone's pose, delivered 80 ms later,
-    stamped with the grab time, only when the point projects inside the image."""
+    stamped with the grab time; a frame whose point is not in the image holds no arch (p 0.01), like the detector's."""
 
     def __init__(self, where, rate=15.0, latency=0.08):
         self.cam = CAM.scaled(IN_W, IN_H)
@@ -49,6 +49,7 @@ class ScriptVision:
         if now >= self.next_t - 1e-9:
             self.next_t += 1.0 / self.rate
             c = self.where(now)
+            det = None
             if c is not None:
                 rel = quat_wxyz_to_mat(quat).T @ (np.asarray(c, dtype=float) - pos)
                 d = float(np.linalg.norm(rel))
@@ -60,8 +61,14 @@ class ScriptVision:
                     stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
                     width = f * 4.0 * stretch / d
                     direction, dist = detection_geometry(self.cam, u, v, width)
-                    self.n += 1
-                    self.queue.append((now + self.latency, Detection(now, 0.99, u, v, width, direction, dist, self.n)))
+                    det = Detection(now, 0.99, u, v, width, direction, dist)
+            if det is None:
+                w, h = self.cam.width, self.cam.height
+                direction, dist = detection_geometry(self.cam, w / 2, h / 2, 30.0)
+                det = Detection(now, 0.01, w / 2, h / 2, 30.0, direction, dist)
+            self.n += 1
+            det.frames = self.n
+            self.queue.append((now + self.latency, det))
         while self.queue and self.queue[0][0] <= now + 1e-9:
             self.latest = self.queue.pop(0)[1]
 
@@ -321,3 +328,155 @@ def test_cli_parameters():
     assert P.v_cruise == 4.0 and P.elev_deg == (-30.0, 40.0) and P.range_corr is None and P.turn_hints == (0.0, 45.0)
     assert P.v_blind == 2.5 and P.search_side == -1.0 and P.flow_max == 0.8 and P.yaw_rate == 2.3
     assert len(SightPilot(type('H', (), {})(), P).log_values()) == len(LOG_COLUMNS)
+
+
+def test_lined_up_arches_inside_the_old_merge_window_are_not_fused():
+    # 20 m and 36 m on one bearing (ln 0.59: apart for the association gate, inside the old merge window of 0.7)
+    near, far = np.array([20.0, 0.0, 2.7]), np.array([36.0, 0.0, 2.7])
+    count = {'n': 0}
+
+    def where(t):
+        count['n'] += 1
+        return far if count['n'] % 3 == 0 else near
+
+    rig = Rig(ScriptVision(where), SightParams(yaw_rate=3.8, range_corr=None))
+    rig.hover_at((0.0, 0.0, 2.7))
+    for _ in range(400):
+        rig.tick()
+    conf = sorted((t for t in rig.sp.tracks if t.confirmed and not t.passed), key=lambda t: t.m[0])
+    assert len(conf) == 2 and np.linalg.norm(conf[0].m - near) < 1.0 and np.linalg.norm(conf[1].m - far) < 3.0
+    assert rig.sp.target is conf[0]
+
+
+def test_a_sharp_turn_keeps_the_next_gate_for_the_bisector():
+    # the strawbale course at gate 2: gate 3 is 34 m away but only 1.9 m along the gate 1 -> 2 direction (87 deg turn)
+    g1, g2, g3 = np.array([60.93, 1.575, 2.7]), np.array([79.32, 16.48, 2.7]), np.array([59.44, 44.0, 2.7])
+    sp = SightPilot(type('H', (), {})(), SightParams())
+    tracks = []
+    for i, m in enumerate((g2, g3)):
+        T = Track(i, 0.0, m, np.eye(3) * 0.2, np.array([1.0, 0.0, 0.0]), g1, 10.0)
+        T.confirmed, T.hits = True, 20
+        tracks.append(T)
+    sp.tracks = tracks
+    sp.last_pass = {'t': 0.0, 'm': tuple(g1), 'n': (1.0, 0.0), 's': 0.0, 'kind': 'cross', 'track': None}
+    c = (g2 - g1)[:2] / np.linalg.norm((g2 - g1)[:2])
+    p = np.r_[g2[:2] - 15.0 * c, 2.0]
+    sp._axis(tracks[0], g2, p, 1.0, 0.01)
+    assert sp.next is tracks[1] and sp.turn_gate
+    assert abs(math.degrees(sp.n_ang) - 86.5) < 6.0                   # the arch's heading (it was 54: 32 deg off)
+
+
+def test_the_speed_sense_trim_does_not_wind_up_while_its_output_is_clipped():
+    # the game's brain holds a sensed 2.45 m/s: true speed = 2.45 / flow_gain, never below 2.45 with flow_max 1
+    P = SightParams(v_cruise=3.0, v_gate=3.0)
+    host = type('H', (), {'flow_gain': 1.0})()
+    sp = SightPilot(host, P)
+    sp.t_air = 0.0
+    now, dt = 5.0, 0.01
+    speed = lambda: 2.45 / host.flow_gain                                # noqa: E731
+    sp.v_nom = sp.v_des = 2.0                                           # 15 s of search at 2 m/s
+    for _ in range(1500):
+        sp._flow(now, dt, np.array([speed(), 0.0, 0.0]))
+        now += dt
+    assert sp.flow_trim <= 1.0 + 1e-9
+    sp.v_nom = sp.v_des = 3.0
+    for _ in range(400):
+        sp._flow(now, dt, np.array([speed(), 0.0, 0.0]))
+        now += dt
+    assert abs(speed() - 3.0) < 0.15                                    # at cruise within 4 s (14 s with the windup)
+
+
+def test_a_stalled_detector_keeps_the_target_and_holds_without_one():
+    arch = np.array([30.0, 0.0, 2.7])
+    vis = ScriptVision(lambda t: arch)
+    rig = Rig(vis)
+    for _ in range(600):
+        rig.tick()
+    sp = rig.sp
+    T = sp.target
+    assert T is not None and sp.mode == 2 and not sp.stalled
+    x_stall = rig.pos[0]
+    assert 30.0 - x_stall > 12.0                                         # the arch is well ahead and in view
+    vis.next_t, vis.queue = 1e9, []                                      # the capture thread dies
+    for _ in range(300):
+        rig.tick()
+    assert sp.stalled and sp.ghosts == 0 and sp.target is T and sp.mode == 2   # not a ghost: nothing looked
+    assert sp.v_des <= sp.params.v_blind + 1e-9 and 'STALLED' in rig.pilot.vision_status
+    for _ in range(1500):                                                # flown through blind, then no target: hold
+        rig.tick()
+    assert sp.target is None and sp.mode == 4
+    p0 = rig.pos.copy()
+    for _ in range(500):
+        rig.tick()
+    assert np.linalg.norm((rig.pos - p0)[:2]) < 0.5 and sp.mode == 4
+    # no frame ever: take off and hold, no launch leg and no search
+    vis2 = ScriptVision(lambda t: arch)
+    vis2.next_t = 1e9
+    rig2 = Rig(vis2)
+    far = 0.0
+    for _ in range(3000):
+        rig2.tick()
+        far = max(far, float(np.linalg.norm(rig2.pos[:2])))
+    assert rig2.sp.mode == 4 and far < 4.0 and rig2.pos[2] > 1.0
+    assert rig2.sp.log_values()[LOG_COLUMNS.index('mode')] == 4
+
+
+def test_a_failing_tick_holds_the_drone_instead_of_flying_on():
+    rig = Rig(ScriptVision(lambda t: np.array([60.0, 0.0, 2.7])))
+    for _ in range(500):
+        rig.tick()
+    sp = rig.sp
+    assert sp.mode in (1, 2) and np.linalg.norm(rig.vel[:2]) > 1.0
+
+    def broken(*args, **kwargs):
+        raise ZeroDivisionError('late in the tick')
+
+    sp._yaw = broken                                                     # after the rabbit, altitude and goal steps
+    p0 = rig.pos.copy()
+    for _ in range(1200):
+        g = rig.tick()
+        assert np.isfinite(g).all()
+    assert sp.errors == 1200
+    assert np.linalg.norm((rig.pos - p0)[:2]) < 4.0                      # it crept 28 m before
+    p1 = rig.pos.copy()
+    for _ in range(500):
+        rig.tick()
+    assert np.linalg.norm((rig.pos - p1)[:2]) < 0.3
+    n_err = sp.errors
+    del sp._yaw                                                      # recovers: flies again, the goal moves smoothly
+    prev = None
+    for _ in range(600):
+        rig.tick()
+        if prev is not None:
+            assert np.linalg.norm(sp.carrot - prev) < 0.1
+        prev = sp.carrot.copy()
+    assert sp._hold is None and sp.errors == n_err and sp.mode in (1, 2, 3)
+
+
+def test_parameters_the_pilot_cannot_fly_with_are_refused():
+    q = __import__('argparse').ArgumentParser()
+    add_cli_args(q)
+    for argv in (['--sight-yaw-rate', '0'], ['--sight-set', 'elev_deg=5'], ['--sight-set', 'flow_ref=0'],
+                 ['--sight-set', 'yaw_db=0'], ['--sight-range-corr', '10:1,5:1'], ['--sight-set', 'look_tau=0']):
+        with pytest.raises(SystemExit):
+            params_from_args(q.parse_args(['--sight', 'rabbit', *argv]))
+    params_from_args(q.parse_args(['--sight', 'rabbit', '--sight-set', 'v_blind=2.5']))
+
+
+def test_fly_log_header_and_rows_have_the_same_columns():
+    from haltere.liftoff.commands import _fly_log_header, _fly_log_row
+    for sight in ('legacy', 'rabbit'):
+        rig = Rig(ScriptVision(lambda t: np.array([20.0, 0.0, 2.7])))
+        for _ in range(50 if sight == 'rabbit' else 0):
+            rig.tick()
+        rig.pilot.sight = sight
+        q = quat_from_yaw(rig.yaw)
+        fr = frame_from_sim(1.0, rig.pos, rig.vel, q, np.zeros(3), np.full(4, 0.5), np.zeros(4), rig.clock())
+        rig.pilot.sensors(fr)
+        pl = rig.pilot                                                   # what step() leaves behind
+        pl.last_brain, pl.last_cmd, pl.last_rel_b, pl.last_target = np.zeros(4), np.zeros(4), np.zeros(3), np.zeros(3)
+        pl.last_quat = q
+        head = _fly_log_header(rig.pilot)
+        row = _fly_log_row(rig.pilot, fr, rig.clock(), np.zeros(4), 1.0, False)
+        assert len(head) == len(row) and head[-1] == 'status'
+        assert ('sight_yaw' in head) == (sight == 'rabbit')
