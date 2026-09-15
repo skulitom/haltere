@@ -486,6 +486,8 @@ def main(argv=None):
     q.add_argument('--path-speed', type=float, default=0.0,
                    help='follow the waypoint polyline as a moving target at this speed (m/s) instead of hopping')
     q.add_argument('--lookahead', type=float, default=1.5, help='path following: carrot distance ahead of the drone (m)')
+    q.add_argument('--z-lead', type=float, default=-1.0,
+                   help='path following: take the carrot height this far ahead instead of at the carrot (m; < 0: at the carrot)')
     q.add_argument('--pattern', default='', choices=['', 'orbit', 'climbdive', 'figure8'],
                    help='moving target pattern around the offset point (freestyle)')
     q.add_argument('--radius', type=float, default=3.0, help='pattern radius (m)')
@@ -529,6 +531,8 @@ def main(argv=None):
     q.add_argument('--seconds', type=float, default=0.0, help='stop after this long (0 = until Ctrl+C)')
     q.add_argument('--device', default='cuda')
     q.add_argument('--log', default='', help='CSV of every telemetry frame: pose, processed input, brain output, sticks, goal')
+    q.add_argument('--flow-gain', type=float, default=1.0,
+                   help='scale on the horizontal speed written into the optic-flow and airflow senses (< 1: the brain flies faster)')
     q.add_argument('--stick-model', choices=['auto', 'curves'], default='auto',
                    help='auto: the radial stick model when the mapping file has one; curves: the per-axis curves')
     q = ls.add_parser('fake', help='run a stand-in for Liftoff (telemetry out, sticks in over UDP) to rehearse the loop')

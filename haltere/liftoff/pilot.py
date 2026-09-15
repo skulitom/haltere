@@ -157,8 +157,10 @@ class TelemetryPilot:
         self.last_vel = np.zeros(3)
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
+        self.flow_gain = 1.0                   # scale on the horizontal speed the brain senses (< 1: it flies faster)
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
+        self.path_z_lead = None                # m; the carrot's height is taken this far ahead (None: at the carrot)
         if self.waypoints:
             P = np.stack(self.waypoints)
             seg = np.linalg.norm(np.diff(np.vstack([P, P[:1]]), axis=0), axis=1)
@@ -216,6 +218,10 @@ class TelemetryPilot:
             dt = 0.0 if self._last_t is None else float(np.clip(t - self._last_t, 0.0, 0.05))
             self._last_t = t
             carrot = self.path_point(self.path_progress + self.path_lookahead)
+            if self.path_z_lead is not None:
+                # the height comes from just ahead: a carrot far up a climbing line pulls the drone above the line, into
+                # the top of a round arch sitting on the slope
+                carrot[2] = self.path_point(self.path_progress + min(self.path_z_lead, self.path_lookahead))[2]
             gap = float(np.linalg.norm(self.last_pos - carrot)) - self.path_lookahead
             keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
             if self.last_pos[2] < 0.3:      # still on the ground (arming): hold the path
@@ -447,6 +453,9 @@ class TelemetryPilot:
         self.last_R = R
         self.last_vel = vel
         gravity_body = R.T @ np.array([0.0, 0.0, -1.0])
+        # the brain senses its horizontal speed through optic flow and airflow; like a fly in a flight arena whose
+        # visual feedback gain is turned down, it flies faster when that sense reports less than the truth
+        vel = vel * np.array([self.flow_gain, self.flow_gain, 1.0])
         vel_body = R.T @ vel
         if self.map.use_quat_rates and self.prev_quat is not None and self.prev_t is not None:
             dt = max(fr.timestamp - self.prev_t, 1e-3)

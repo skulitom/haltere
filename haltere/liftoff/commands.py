@@ -578,6 +578,7 @@ def cmd_fly(a):
                            period=a.period, amplitude=a.amplitude, stick_gain=stick_gain, stick_lpf=a.stick_lpf,
                            face_gain=a.face_travel, face_max=a.face_max)
     pilot.face_ahead = a.face_ahead
+    pilot.flow_gain = a.flow_gain
     pilot.face_wobble_deg, pilot.face_wobble_period = a.face_wobble, a.face_wobble_period
     if a.vision:
         import yaml
@@ -593,6 +594,7 @@ def cmd_fly(a):
     if a.path_speed > 0 and waypoints:
         pilot.path_speed = a.path_speed
         pilot.path_lookahead = a.lookahead
+        pilot.path_z_lead = a.z_lead if a.z_lead >= 0 else None
         print(f'path following: {len(waypoints)} waypoints, {pilot.path_s[-1]:.0f} m loop at {a.path_speed} m/s, '
               f'lookahead {a.lookahead} m')
     recorder = None
