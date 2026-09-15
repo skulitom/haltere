@@ -510,6 +510,7 @@ def main(argv=None):
                                                 'on the game view instead of from telemetry positions)')
     q.add_argument('--camera', default='configs/camera.yaml', help='camera calibration for --vision')
     q.add_argument('--vision-fps', type=float, default=15.0)
+    q.add_argument('--vision-goal-max', type=float, default=0.0, help='clip the horizontal by-sight goal to this length (m; 0 = off)')
     q.add_argument('--stick-lpf', type=float, default=0.0, help='low-pass time constant on the sticks (s)')
     q.add_argument('--gyro', choices=['quat', 'telemetry'], default='quat',
                    help='body rates from attitude differences (quat) or from Liftoff\'s Gyro field (telemetry)')

@@ -579,6 +579,7 @@ def cmd_fly(a):
                            face_gain=a.face_travel, face_max=a.face_max)
     pilot.face_ahead = a.face_ahead
     pilot.flow_gain = a.flow_gain
+    pilot.vision_goal_max = a.vision_goal_max
     pilot.face_wobble_deg, pilot.face_wobble_period = a.face_wobble, a.face_wobble_period
     if a.vision:
         import yaml

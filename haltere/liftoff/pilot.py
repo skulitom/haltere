@@ -158,6 +158,7 @@ class TelemetryPilot:
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
         self.flow_gain = 1.0                   # scale on the horizontal speed the brain senses (< 1: it flies faster)
+        self.vision_goal_max = 0.0             # m; > 0: clip the horizontal by-sight goal to this length
         self.follower = None                   # PathFollower: projection, speed profile, tangent control frame (lap mode)
         self.follow_frame = True               # give the brain the line's tangent as its control frame
         self.follow_line_alt = True            # optic flow scaled by the height above the taught line, not above the start
@@ -506,6 +507,11 @@ class TelemetryPilot:
         rel_b_t = None
         if self.vision is not None:
             rel_b = self.vision_goal(s['pos'][0].cpu().numpy())
+            if self.vision_goal_max > 0:
+                # never hand the brain a goal far outside its training (a far entry carrot made it sprint and climb)
+                h = float(np.hypot(rel_b[0], rel_b[1]))
+                if h > self.vision_goal_max:
+                    rel_b = rel_b * np.array([self.vision_goal_max / h, self.vision_goal_max / h, 1.0])
             rel_b_t = torch.as_tensor(rel_b, dtype=torch.float32, device=self.device)[None]
             target = torch.as_tensor(s['pos'][0].cpu().numpy() + self.last_R @ rel_b, dtype=torch.float32,
                                      device=self.device)[None]
