@@ -522,6 +522,12 @@ def main(argv=None):
     q.add_argument('--gates', default='configs/gates_strawbale.json')
     q.add_argument('--track', default='', help='taught track YAML: also report the distance to its line')
     q.add_argument('--json', default='', help='write the scores to this JSON file')
+    from .liftoff.sightreplay import add_cli_args as add_replay_args
+    from .liftoff.sightreplay import replay_epilog
+    q = ls.add_parser('replay-sight', help='replay the rabbit pilot\'s tracker offline on a `fly --log` CSV '
+                                           '(validate it against the log, score it against the true gates)',
+                      epilog=replay_epilog(), formatter_class=argparse.RawDescriptionHelpFormatter)
+    add_replay_args(q)
     q = ls.add_parser('record', help='record telemetry (fly manually) to a CSV for system identification')
     q.add_argument('--port', type=int, default=9001)
     q.add_argument('--seconds', type=float, default=120.0)

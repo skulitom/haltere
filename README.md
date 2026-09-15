@@ -464,6 +464,67 @@ read 23% long at 6 m, correct at 13 m and 7-9% short beyond 18 m. Replaying the 
 flights (runs 17-21), its estimate lies 0.65 m (median) across the gate's axis from the arch 3 to
 12 m out, with no bias along it.
 
+### Replaying the tracker from a flight log (`liftoff replay-sight`)
+
+A `fly --log` holds every telemetry frame the pilot stepped on and the detector's latest output at each
+of them, so the tracker can be run again offline, without the game:
+
+```bash
+haltere liftoff replay-sight data/liftoff/logs/w17_rabbit_a2.csv --preset w17 \
+    --camera configs/camera_seat.yaml --gates configs/gates_strawbale.json --json data/replay/w17.json
+```
+
+`haltere/liftoff/sightreplay.py` rebuilds a `Detection` for every new detector frame (a change of
+`det_t`, the grab time) out of `det_u`, `det_v`, `det_w` and `det_p` with the live geometry
+(`vision.runtime.detection_geometry` on the camera scaled to the network's input), rebuilds the pose
+history from the logged frames and steps a real `SightPilot` row by row through a host that looks like
+`TelemetryPilot` to it. The flight's own trajectory is played back (open loop), so what the replay
+shows is perception and the choices that follow from it: tracks, target, approach axis, passes and the
+rabbit that would have been flown. Every parameter is a `SightParams` field (`--set name=value`, the
+`--sight-*` flags), so a fix can be A/B tested on a real flight before the next one.
+
+Which step a detection reached the pilot in is in the log: the logger reads the detector *after* the
+step, so a frame first seen in row k was used in step k or k+1, and the step that consumed a fresh
+frame is the one whose `det_gap` is exactly 0 (`--sync log`, the default; `first` and `next` are the
+two naive alternatives). The flags of the four game flights of 15 Sep 2026 are `--preset w16 … w19`:
+
+| flight | flags |
+|---|---|
+| `w16_rabbit_a1` | `--sight-speed 2.5 --sight-z-aim 0.3 --set up_bias=0.5 --set next_min_hits=0` (the defaults it flew on) |
+| `w17_rabbit_a2` | `--sight-speed 2.5 --sight-z-aim 0 --set up_bias=0 --set next_min_hits=10 --set bisector_cap=35` |
+| `w18_rabbit_b1` | `--sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8 --sight-flow-min 0.6` |
+| `w19_rabbit_b2_ground` | the w18 flags and `--sight-flow-alt ground` |
+
+Replayed against the logs those flights wrote, the target id agrees on 100.0% (w16), 87.1% (w17),
+99.9% (w18) and 100.0% (w19) of rows, the target's estimate to 4-7 mm (median), and every pass is
+declared within five rows of the logged one (10, 7, 13 and 5 of them). The tracker has no random
+draws; what is left is knife-edge decisions under the log's own rounding (the detector's width is
+logged to 0.1 px, positions to 0.1 mm) and the sub-millisecond difference between the logged wall
+stamp and the pilot's own clock: shifting the replay clock by -1 ms, well inside the loop's own
+jitter, takes w17 to 97.0% and costs w18 2 points, which is how tight those decisions are. In w17 one
+confirmation at 75 s falls on the other side of the height-plausibility test, and the two tracks it
+makes of gate 6 swap places from there on.
+
+Scored against the true arches (`--gates`, whose visual centre is 1.5 m above the passage point), the
+replay prints a line per approach — the fragments, the target's estimate error across and along the
+arch's own axis by range, the approach-axis error 3-12 m out, the target switches and the pass the
+tracker declared — then what each arch's tracks were, and the confirmed phantoms. A track belongs to
+an arch by position (within `--assoc-m`), failing that by what its sightings actually saw (the arches
+are projected into the frame each sighting was grabbed in) or by sharing an arch's bearing
+(`--ray-deg`): the bearing is the accurate part of a sighting, so a track on an arch's bearing at a
+third of its range is that arch badly placed, not a phantom. The replay also measures the detector
+itself, since it knows which arch each sighting really saw: on these four flights a sighting's bearing
+is good to 1-4 degrees at every range, and the range it is placed at runs x1.1-1.5 inside 5 m, x1.0-1.2
+out to 30 m and **x0.41-0.61 beyond 30 m** — a far arch is reported far too wide, so its first sightings
+land at about half its true range.
+
+That is the recurring failure. Inside 10 m the estimate is worth flying at (0.2-0.6 m across the arch's
+axis, 0.2-2 m along it), but an arch first seen at 30-40 m collects two to six confirmed tracks strung
+out along its bearing before one of them settles on it, and where two arches line up — gates 3 and 4 of
+this course — a track's sightings mix the two and its estimate settles between them. That is how w19
+missed gate 3 by 2 m while flying at an estimate 8 m past it, and how w17 lost gate 4: after gate 3 its
+target was mostly badly-ranged estimates of gate 5 sitting where gate 4 should have been.
+
 ### Baseline
 
 `brain.model: mlp` in the training config swaps the connectome for a small MLP on the same
@@ -484,8 +545,9 @@ and the connectome brain does not, the problem is the brain's parameterisation, 
 - `haltere/liftoff/stickcal.py::RadialSticks` models and inverts Liftoff's per-stick radial deadzone;
   `haltere/liftoff/flightlog.py` scores `fly --log` CSVs (gates, contacts, speed, path error, shake).
 - `haltere/liftoff/pathfollow.py` is the speed-profiled path follower with the tangent control frame;
-  `haltere/liftoff/sightpilot.py` is the rabbit pilot by sight, and `haltere/vision/rehearse.py` its
-  closed-loop rehearsal in the simulator.
+  `haltere/liftoff/sightpilot.py` is the rabbit pilot by sight, `haltere/vision/rehearse.py` its
+  closed-loop rehearsal in the simulator, and `haltere/liftoff/sightreplay.py` its offline replay from
+  a flight log (the tracker run again, and scored against the true arches).
 
 ## Trained brains and where to get them
 

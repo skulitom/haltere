@@ -858,6 +858,11 @@ def cmd_score(a):
             json.dump(out, f, indent=1)
 
 
+def cmd_replay_sight(a):
+    from .sightreplay import run_from_args
+    run_from_args(a)
+
+
 def cmd_fake(a):
     from .fake_liftoff import FakeLiftoff
     from ..sim.quad import QuadParams
