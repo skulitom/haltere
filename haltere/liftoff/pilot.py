@@ -309,7 +309,11 @@ class TelemetryPilot:
         if self.vision_passed_t is not None and now - self.vision_passed_t < self.vision_fly_on:
             self._hold_w = None
             self.vision_status = 'flying on past the gate' + (f' (sighting p={det.p_visible:.2f})' if plausible else '')
-            return R.T @ np.array([2.0, 0.0, dz])
+            # straight ahead along the nose's heading (a world-x vector here sent the drone east after every turn)
+            fwd = R @ np.array([1.0, 0.0, 0.0])
+            fwd[2] = 0.0
+            fwd /= max(float(np.linalg.norm(fwd)), 1e-6)
+            return R.T @ (2.0 * fwd + np.array([0.0, 0.0, dz]))
         if self._hold_w is None:                     # hold the spot where the drone lost sight of the course
             self._hold_w = pos_w.copy()
             self._no_gate_since = now
