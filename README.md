@@ -317,6 +317,93 @@ haltere liftoff fly runs/hover/best.pt --udp-out 127.0.0.1:9002 --liftoff-config
 `fit` should report `stick_sign (1, -1, -1)` and `gyro_axis (1, 0, 2)` with `gyro_sign (-1, 1, 1)`
 for the fake, which is how it was built.
 
+The by-sight pilot has its own rehearsal, entirely inside the simulator and faster than real time:
+
+```bash
+haltere vision rehearse runs/ftPath2/best.pt --camera configs/camera_seat.yaml \
+    --gates configs/gates_strawbale.json --seconds 120 --log data/rehearse/sight.csv
+haltere vision rehearse runs/ftPath2/best.pt --set vision_speed=3 --seed 1   # a pilot change, another noise draw
+```
+
+The brain flies the simulated drone (its training physics and 60 ms latency) through the real
+`TelemetryPilot` on a simulated clock, and GateNet is replaced by a synthetic detector that projects
+the course's arches into the FPV camera with the drone's attitude and reports what the network
+would: the widest arch in view, 15 Hz and 80 ms late, with the misses (more for arches seen at an
+angle or far away), range-dependent width bias, flips between two arches in view and phantoms that
+`haltere.vision.rehearse.DetectorModel` measured for gatenet8 on recorded flights (`--clean` for
+a perfect detector). The log has the `fly --log` columns, so `haltere liftoff score` rates it like a
+game flight; the rehearsal adds time spent slow, goal jumps, time in each pilot mode, the error of
+the pilot's gate estimate, what it believed it passed, and how long the goal sat beyond 8 m (a far
+goal ahead of a pitched-down drone points up in its body frame, and the brain climbs). The ground
+is flat and only the arch posts and top bars are solid. Detections are stamped with the moment their
+frame was grabbed, as the live detector stamps them.
+
+### The rabbit pilot (`--sight rabbit`)
+
+`haltere/liftoff/sightpilot.py` is a second by-sight pilot, selected with `--sight rabbit` on both
+`liftoff fly` and `vision rehearse` (`--sight legacy`, the default, keeps the one above). It splits
+what a detection is good for from what the brain needs:
+
+- **Perception.** Each detector frame is used once and placed with the pose at its screen grab
+  (`TelemetryPilot.pose_at` interpolates the last second of telemetry). A sighting updates one of
+  several per-arch Kalman filters, tight across the ray and loose along it (looser still when the arch
+  is cropped by the image edge); association is in metres across the ray and in log-range along it, so
+  two arches lined up on one bearing stay two tracks. An arch confirms after three sightings at a
+  plausible height (bale-height phantoms do not), an estimate the camera should see but does not
+  for 2 s while frames arrive is dropped, passed arches absorb their sightings, and a pass can be
+  undone within 1.5 s if the arch is still seen ahead. With no fresh detector frame for 1 s (a dead
+  capture thread, a hidden window, inference slower than 0.35 s) the detector counts as stalled: a
+  remembered target is flown at 2 m/s, and without one the rabbit parks and the drone holds.
+- **Guidance.** A virtual lead vehicle, the rabbit, flies a world-frame course with bounded speed,
+  acceleration, curvature and curvature rate: onto the target gate's approach axis (along the course,
+  turned toward the next gate when it is known, pivoting onto the exact bearing close up), through the
+  gate, straight on for 4 m, and around a search circle when nothing is in sight. It waits for the
+  drone, 3 m ahead along its own trail. The brain's goal is the rabbit (clipped to 5 m horizontally and
+  1.2 m vertically); a new target or a moved estimate only bends the rabbit, so the goal cannot jump.
+- **Heading and speed.** The yaw stick follows the rabbit's heading with a feed-forward of its turn
+  rate and a phase lead from the measured heading rate. The speed sense is scheduled as
+  `flow_ref / speed` with a slow trim on the measured speed, between `--sight-flow-min` and
+  `--flow-gain`: `--sight-speed 4` gives a gain of about 0.6, since the brain holds about 2.45 m/s of
+  sensed speed in the game.
+
+```bash
+haltere vision rehearse runs/ftPath2/best.pt --sight rabbit --seed 1 --log data/rehearse/rabbit.csv
+haltere liftoff fly runs/ftPath2/best.pt --vision runs/gatenet8/best.pt --camera configs/camera_seat.yaml \
+    --sight rabbit --sight-speed 2.5 --log data/liftoff/logs/rabbit1.csv ...
+```
+
+`fly --log` and the rehearsal log add the rabbit's numeric columns: the detection (`det_u`, `det_v`,
+`det_t`), the rabbit (`rb_*`), the heading reference (`look`, `yaw_ref`, `sight_yaw`), the target
+(`tgt_*`, `axis_deg`, `next_id`), `mode` (0 ground, 1 flying on, 2 target, 3 search, 4 hold with the
+detector stalled), `det_gap` (seconds since the last fresh detector frame), `n_passes`,
+`pass_kind` (1 crossed, 2 travelled through, 3 beside, 4 ghost, 5 un-pass), `flow_gain` and the
+tracker's counters; `liftoff score` reads them as before. Every tunable is a `SightParams` field
+(`--sight-set name=value`); values the pilot cannot fly with (a zero it divides by, a wrong type, an
+unsorted range table) are refused at startup, after a short smoke flight on a stand-in drone.
+
+Rehearsed with `runs/ftPath2/best.pt`, 150 s per run. The stress detector misses 40% of frames,
+reports the second arch 35% of the time and puts 8% phantoms, 8 px centre noise and 25% width noise
+into frames. "Largest lateral" is over the gates flown through. Yaw flips are reversals of the yaw
+stick beyond ±0.02 per airborne minute, including the search sweep after the last gate.
+
+| run | gates through | largest lateral | gate 0 → 6 | goal steps > 0.5 m | yaw flips/min | passes counted |
+|---|---|---|---|---|---|---|
+| rabbit, seed 0 | 7/7 | 0.30 m | 105 s | 0 | 15.4 | 7 |
+| rabbit, seed 1 | 7/7 | 0.47 m | 106 s | 0 | 12.5 | 7 |
+| rabbit, seed 2 | 7/7 | 0.59 m | 106 s | 0 | 17.4 | 7 |
+| rabbit, seed 3 | 7/7 | 0.42 m | 107 s | 0 | 15.0 | 7 |
+| rabbit, stress detector, seeds 4 / 5 | 7/7, 7/7 | 0.82 / 0.60 m | 127 / 113 s | 0 | 14.2 / 14.2 | 7 / 7 |
+| legacy, seed 0 | 0/7 | - | - | 113 | 79.3 | 3 |
+
+The simulator brain cruises at about 1.9 m/s whatever the speed sense says, so these runs say
+nothing about higher speeds or the flow-gain schedule; the game does. Two things were measured
+rather than assumed. The simulated yaw-rate response lags about 0.3 s and overshoots, and a heading
+gain of 2.5/s limit-cycled against it at 0.85 Hz (33 flips/min), hence gain 1.5 with a 0.15 s lead.
+The width-to-range correction comes from 2036 real GateNet detections matched to the arches: ranges
+read 23% long at 6 m, correct at 13 m and 7-9% short beyond 18 m. Replaying the tracker on those
+flights (runs 17-21), its estimate lies 0.65 m (median) across the gate's axis from the arch 3 to
+12 m out, with no bias along it.
+
 ### Baseline
 
 `brain.model: mlp` in the training config swaps the connectome for a small MLP on the same

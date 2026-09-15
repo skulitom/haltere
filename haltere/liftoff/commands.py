@@ -553,7 +553,6 @@ def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
 def cmd_fly(a):
     import torch
     from ..train.bptt import load_checkpoint
-    from .frames import unity_vec_to_sim
     from .pilot import TelemetryPilot
     brain, cfg, graph = load_checkpoint(a.ckpt, a.device)
     mapping = load_mapping(a.liftoff_config)
@@ -580,6 +579,15 @@ def cmd_fly(a):
     pilot.face_ahead = a.face_ahead
     pilot.flow_gain = a.flow_gain
     pilot.vision_goal_max = a.vision_goal_max
+    if getattr(a, 'sight', 'legacy') == 'rabbit':
+        from .sightpilot import params_from_args
+        if not a.vision:
+            raise SystemExit('--sight rabbit flies by sight: give --vision')
+        if a.stick_lpf > 0:
+            raise SystemExit('--sight rabbit does not run with --stick-lpf (its dt is wrong and any stick lag hurts)')
+        pilot.sight = 'rabbit'
+        pilot.sight_params = params_from_args(a, flow_gain=a.flow_gain)
+        print(f'SIGHT: rabbit pilot; {pilot.sight_params.describe()}')
     pilot.face_wobble_deg, pilot.face_wobble_period = a.face_wobble, a.face_wobble_period
     if a.vision:
         import yaml
@@ -667,18 +675,14 @@ def cmd_fly(a):
     still_since = None
     crashed = False
     flog = None
-    if a.log:
-        # every telemetry frame: the pilot's pose, the processed input the game applied, what the brain asked for and
-        # what was sent, and the goal (the 0.5 s console lines alias anything faster than 1 Hz)
-        Path(a.log).parent.mkdir(parents=True, exist_ok=True)
-        flog_f = open(a.log, 'w', newline='', encoding='utf-8')
-        flog = csv.writer(flog_f)
-        flog.writerow(['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz', 'wx', 'wy', 'wz',
-                       'in_thr', 'in_yaw', 'in_pitch', 'in_roll', 'rpm', 'b_thr', 'b_roll', 'b_pitch', 'b_yaw',
-                       'c_thr', 'c_roll', 'c_pitch', 'c_yaw', 's_thr', 's_roll', 's_pitch', 's_yaw',
-                       'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age', 'flow',
-                       'v_ref', 'frame_delta', 'path_s', 'status'])
     try:
+        if a.log:
+            # every telemetry frame: the pilot's pose, the processed input the game applied, what the brain asked for
+            # and what was sent, and the goal (the 0.5 s console lines alias anything faster than 1 Hz)
+            Path(a.log).parent.mkdir(parents=True, exist_ok=True)
+            flog_f = open(a.log, 'w', newline='', encoding='utf-8')
+            flog = csv.writer(flog_f)
+            flog.writerow(_fly_log_header(pilot))
         while a.seconds <= 0 or time.time() - t_begin < a.seconds:
             fr = rx.wait(0.05)
             now = time.time()
@@ -763,18 +767,7 @@ def cmd_fly(a):
             dists.append(float(np.linalg.norm(pilot.last_pos - pilot.last_target)))
             stick_hist.append(sticks.copy())
             if flog is not None:
-                det = pilot.vision.get() if pilot.vision is not None else None
-                v = unity_vec_to_sim(fr.velocity)
-                flog.writerow([f'{now:.4f}', f'{fr.timestamp:.4f}', *np.round(pilot.last_pos, 4), *np.round(v, 4),
-                               *np.round(pilot.last_quat, 5), *np.round(pilot.omega, 4), *np.round(fr.input, 4),
-                               round(float(np.mean(fr.motor_rpm)), 1), *np.round(pilot.last_brain, 4),
-                               *np.round(pilot.last_cmd, 4), *np.round(sticks, 4), *np.round(pilot.last_rel_b, 3),
-                               *np.round(pilot.last_target, 3), round(phase, 3), int(crashed),
-                               round(det.p_visible, 3) if det else '', round(det.width_px, 1) if det else '',
-                               round(now - det.t, 3) if det else '', round(pilot.flow_gain, 4),
-                               round(pilot.follow_info['v_ref'], 3) if pilot.follow_info else '',
-                               round(pilot.frame_delta, 4), round(pilot.follow_info['s'], 2) if pilot.follow_info else '',
-                               pilot.vision_status.replace(',', ';') if pilot.vision is not None else ''])
+                flog.writerow(_fly_log_row(pilot, fr, now, sticks, phase, crashed))
             if recorder is not None:
                 shared.publish(pilot.rates() if len(dists) % 2 == 0 else None, t=fr.timestamp - (pilot.t_start or 0.0),
                                dist=dists[-1], thr=sticks[0], roll=sticks[1], pitch=sticks[2], yaw=sticks[3],
@@ -809,6 +802,48 @@ def cmd_fly(a):
                 S = np.asarray(stick_hist)[len(stick_hist) // 2:]
                 print(f'stick std [thr,roll,pitch,yaw] {np.round(S.std(0), 3)}; mean |change| per frame '
                       f'{np.round(np.abs(np.diff(S, axis=0)).mean(0), 4)}', flush=True)
+
+
+FLY_LOG_COLUMNS = ['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz', 'wx', 'wy', 'wz',
+                   'in_thr', 'in_yaw', 'in_pitch', 'in_roll', 'rpm', 'b_thr', 'b_roll', 'b_pitch', 'b_yaw',
+                   'c_thr', 'c_roll', 'c_pitch', 'c_yaw', 's_thr', 's_roll', 's_pitch', 's_yaw',
+                   'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age', 'flow', 'v_ref',
+                   'frame_delta', 'path_s']
+
+
+def _fly_log_header(pilot) -> list[str]:
+    """Column names of fly --log (the rabbit's columns only under --sight rabbit); _fly_log_row writes them."""
+    from .sightpilot import LOG_COLUMNS as SIGHT_LOG_COLUMNS
+    return [*FLY_LOG_COLUMNS, *(SIGHT_LOG_COLUMNS if pilot.sight == 'rabbit' else []), 'status']
+
+
+def _fly_log_row(pilot, fr, now: float, sticks, phase: float, crashed: bool) -> list:
+    """One fly --log row for a telemetry frame, in the order of _fly_log_header."""
+    from .frames import unity_vec_to_sim
+    det = pilot.vision.get() if pilot.vision is not None else None
+    v = unity_vec_to_sim(fr.velocity)
+    return [f'{now:.4f}', f'{fr.timestamp:.4f}', *np.round(pilot.last_pos, 4), *np.round(v, 4),
+            *np.round(pilot.last_quat, 5), *np.round(pilot.omega, 4), *np.round(fr.input, 4),
+            round(float(np.mean(fr.motor_rpm)), 1), *np.round(pilot.last_brain, 4),
+            *np.round(pilot.last_cmd, 4), *np.round(sticks, 4), *np.round(pilot.last_rel_b, 3),
+            *np.round(pilot.last_target, 3), round(phase, 3), int(crashed),
+            round(det.p_visible, 3) if det else '', round(det.width_px, 1) if det else '',
+            round(now - det.t, 3) if det else '', round(pilot.flow_gain, 4),
+            round(pilot.follow_info['v_ref'], 3) if pilot.follow_info else '', round(pilot.frame_delta, 4),
+            round(pilot.follow_info['s'], 2) if pilot.follow_info else '',
+            *(_sight_log_cells(pilot, det) if pilot.sight == 'rabbit' else []),
+            pilot.vision_status.replace(',', ';') if pilot.vision is not None else '']
+
+
+def _sight_log_cells(pilot, det) -> list[str]:
+    """The rabbit pilot's numeric log columns as CSV cells (blank for NaN, so liftoff score reads them)."""
+    from .sightpilot import SightPilot
+    vals = pilot.sightpilot.log_values(det) if pilot.sightpilot is not None else SightPilot.empty_log_values(det)
+    out = []
+    for v in vals:
+        v = float(v)
+        out.append('' if not np.isfinite(v) else (f'{v:.4f}' if abs(v) >= 1e5 else f'{v:.4g}' if v != int(v) else str(int(v))))
+    return out
 
 
 def cmd_score(a):

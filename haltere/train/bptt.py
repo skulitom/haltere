@@ -273,6 +273,13 @@ def load_checkpoint(path: str | Path, device='cuda'):
     ck = torch.load(path, map_location=device)
     cfg = ExperimentConfig.from_dict(ck['config'])
     cfg.train.graph = ck['graph']
+    if cfg.brain.model != 'mlp' and not Path(cfg.train.graph).with_suffix('.npz').exists():
+        # the stored graph path is relative to the repository the brain was trained in: from another working
+        # directory (a git worktree, a script elsewhere) look for it next to the checkpoint's ancestors
+        for base in Path(path).resolve().parents:
+            if (base / cfg.train.graph).with_suffix('.npz').exists():
+                cfg.train.graph = str(base / cfg.train.graph)
+                break
     brain, graph = build_brain(cfg, ck['channels'], device)
     from ..brain.model import migrate_state_dict
     brain.load_state_dict(migrate_state_dict(ck['model'], brain), strict=not ck.get('slim', False))
