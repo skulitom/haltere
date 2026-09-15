@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import time
+from bisect import bisect_left
 from dataclasses import dataclass, field
+from operator import itemgetter
 
 import numpy as np
 
@@ -163,6 +165,11 @@ class TelemetryPilot:
         self.vision_status = 'no vision'
         self.flow_gain = 1.0                   # scale on the horizontal speed the brain senses (< 1: it flies faster)
         self._pose_hist = []                   # (wall time, position, attitude) of the last second of telemetry
+        # which by-sight pilot runs vision_goal: 'legacy' (below) or 'rabbit' (haltere.liftoff.sightpilot: gate tracks
+        # and a virtual lead vehicle; it also commands the yaw stick and schedules flow_gain)
+        self.sight = 'legacy'
+        self.sight_params = None               # SightParams for the rabbit (None: defaults)
+        self.sightpilot = None
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
         self.path_z_lead = None                # m; the carrot's height is taken this far ahead (None: at the carrot)
@@ -211,6 +218,15 @@ class TelemetryPilot:
         self._z_ref = None
         self._hold_w = None
         self._no_gate_since = None
+        self._pose_hist = []                   # poses of the previous reset frame would place sightings wrongly
+        self._yaw_override = None
+        if self.sightpilot is not None:
+            self.sightpilot.reset()
+
+    @property
+    def rabbit(self) -> bool:
+        """The rabbit by-sight pilot is flying (vision on and sight == 'rabbit')."""
+        return self.vision is not None and self.sight == 'rabbit'
 
     def target_at(self, t: float) -> np.ndarray:
         if self.pattern:
@@ -258,7 +274,14 @@ class TelemetryPilot:
         A sighting agrees with the memory when its ray passes within 2 m (or 15% of the range) of it; two
         agreeing sightings establish a gate, and sightings that disagree for a while replace it. The goal is a
         carrot along the straight line from where the approach began to the gate. After passing a gate the drone
-        flies on along its nose for a moment, then creeps ahead sweeping its view, then hovers and turns."""
+        flies on along its nose for a moment, then creeps ahead sweeping its view, then hovers and turns.
+
+        With ``sight == 'rabbit'`` the goal comes from ``SightPilot`` instead (haltere.liftoff.sightpilot)."""
+        if self.sight == 'rabbit':
+            if self.sightpilot is None:
+                from .sightpilot import SightPilot
+                self.sightpilot = SightPilot(self, self.sight_params)
+            return self.sightpilot.goal(pos_w)
         det = self.vision.get()
         now = self.clock()
         dt = 0.0 if self._last_goal_t is None else float(np.clip(now - self._last_goal_t, 0.0, 0.1))
@@ -441,12 +464,22 @@ class TelemetryPilot:
         self.vision_status = 'no gate: holding position' + (', searching' if now - self._no_gate_since > 2.0 else '') + seen
         return R.T @ rel_w
 
-    def pose_at(self, t: float) -> tuple[np.ndarray, np.ndarray]:
-        """Drone position and attitude matrix at wall time t (nearest recorded telemetry frame of the last second)."""
-        if not self._pose_hist:
-            return self.last_pos.copy(), self.last_R
-        i = int(np.argmin([abs(tt - t) for tt, _, _ in self._pose_hist]))
-        return self._pose_hist[i][1], self._pose_hist[i][2]
+    def pose_at(self, t: float, tol: float = 0.015) -> tuple[np.ndarray, np.ndarray] | None:
+        """Drone position and attitude matrix at wall time t from the last second of telemetry: the position
+        interpolated between the two neighbouring frames, the attitude of the nearer one. None when t lies outside
+        the history (by more than ``tol``, about one telemetry frame)."""
+        h = self._pose_hist
+        if not h or t < h[0][0] - tol or t > h[-1][0] + tol:
+            return None
+        i = bisect_left(h, t, key=itemgetter(0))
+        if i <= 0:
+            return h[0][1].copy(), h[0][2]
+        if i >= len(h):
+            return h[-1][1].copy(), h[-1][2]
+        t0, p0, R0 = h[i - 1]
+        t1, p1, R1 = h[i]
+        f = (t - t0) / max(t1 - t0, 1e-9)
+        return p0 + f * (p1 - p0), (R0 if f < 0.5 else R1)
 
     def rates(self) -> np.ndarray | None:
         """Current firing rates of all neurons (for the live recorder)."""
@@ -472,7 +505,18 @@ class TelemetryPilot:
         gravity_body = R.T @ np.array([0.0, 0.0, -1.0])
         # the brain senses its horizontal speed through optic flow and airflow; like a fly in a flight arena whose
         # visual feedback gain is turned down, it flies faster when that sense reports less than the truth
-        vel = vel * np.array([self.flow_gain, self.flow_gain, 1.0])
+        sp = self.sightpilot if self.rabbit and self.sightpilot is not None and self.sightpilot.ready else None
+        altitude = pos[2]
+        if sp is not None and sp.params.flow_mode == 'along':
+            # only the speed along the rabbit's heading is scaled: the sensed drift direction stays true
+            u = np.array([np.cos(sp.psi), np.sin(sp.psi), 0.0])
+            along = float(vel @ u)
+            vel = vel + (self.flow_gain - 1.0) * along * u
+        else:
+            vel = vel * np.array([self.flow_gain, self.flow_gain, 1.0])
+        if sp is not None and sp.params.flow_alt == 'ground':
+            # height above the ground under the altitude reference, not above the reset point (13 m up the hill)
+            altitude = float(np.clip(pos[2] - (sp.z_c - sp.params.z_aim - sp.params.z_pass0), 0.3, 6.0))
         vel_body = R.T @ vel
         if self.map.use_quat_rates and self.prev_quat is not None and self.prev_t is not None:
             dt = max(fr.timestamp - self.prev_t, 1e-3)
@@ -484,7 +528,7 @@ class TelemetryPilot:
         t = lambda v: torch.as_tensor(np.asarray(v, dtype=np.float32), device=self.device)[None]  # noqa: E731
         return {
             'gyro': t(self.omega), 'gravity_body': t(gravity_body), 'vel_body': t(vel_body), 'vel_world': t(vel),
-            'pos': t(pos), 'quat': t(q), 'up': t([R[2, 2]])[0], 'altitude': t([pos[2]]), 'yaw': t([yaw_of(q)]),
+            'pos': t(pos), 'quat': t(q), 'up': t([R[2, 2]])[0], 'altitude': t([altitude]), 'yaw': t([yaw_of(q)]),
         }
 
     @torch.no_grad()
@@ -512,7 +556,8 @@ class TelemetryPilot:
         self.last_rel_b = (rel_b_t[0].cpu().numpy() if rel_b_t is not None
                            else self.last_R.T @ (target[0].cpu().numpy() - s['pos'][0].cpu().numpy()))
         a[1:] *= self.stick_gain
-        if self.face_gain > 0:
+        rabbit = self.rabbit
+        if self.face_gain > 0 and not rabbit:
             if rel_b_t is not None:
                 rel_b = rel_b_t[0].cpu().numpy()
                 err = float(np.arctan2(rel_b[1], rel_b[0])) if np.hypot(rel_b[0], rel_b[1]) > 0.8 else 0.0
@@ -527,9 +572,11 @@ class TelemetryPilot:
                 self._wobble_t0 = now if self._wobble_t0 is None else self._wobble_t0
                 err += np.radians(self.face_wobble_deg) * np.sin(2 * np.pi * (now - self._wobble_t0) / self.face_wobble_period)
             a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))
-        if self.vision is not None and self._yaw_override is not None:
+        if self.vision is not None and self._yaw_override is not None and not rabbit:
             a[3] = float(self._yaw_override)            # searching: the by-sight logic steers the nose
-        if self.stick_lpf > 0:
+        if rabbit:
+            a[3] = float(self.sightpilot.sight_yaw) if self.sightpilot is not None else 0.0   # the nose follows the rabbit
+        if self.stick_lpf > 0 and not rabbit:
             dt = max(fr.timestamp - self.prev_t, 1e-3) if self.prev_t is not None else 0.01
             alpha = min(1.0, dt / self.stick_lpf)
             self.filtered = a.copy() if self.filtered is None else self.filtered + alpha * (a - self.filtered)

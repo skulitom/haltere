@@ -30,6 +30,8 @@ import numpy as np
 import torch
 
 from ..liftoff.frames import sim_quat_to_unity, sim_vec_to_unity
+from ..liftoff.sightpilot import LOG_COLUMNS as SIGHT_LOG_COLUMNS
+from ..liftoff.sightpilot import SightPilot
 from ..liftoff.telemetry import TelemetryFrame
 from .camera import Camera, quat_wxyz_to_mat, world_to_body
 from .gates import CENTRE_UP_M, GATE_WIDTH_M
@@ -43,7 +45,9 @@ LOG_COLUMNS = ['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy
                'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age',
                # rehearsal only: which arch the synthetic detector reported (-1 none, -2 phantom), its pixel centre,
                # the pilot's gate estimate (world) and the yaw override of the search modes
-               'det_gate', 'det_u', 'det_v', 'est_x', 'est_y', 'est_z', 'yaw_ovr', 'status']
+               'det_gate', 'det_u', 'det_v', 'est_x', 'est_y', 'est_z', 'yaw_ovr',
+               # the rabbit pilot's columns (haltere.liftoff.sightpilot.LOG_COLUMNS; empty for the legacy pilot)
+               *[c for c in SIGHT_LOG_COLUMNS if c not in ('det_u', 'det_v')], 'status']
 
 
 # ----------------------------------------------------------------------------- synthetic detector
@@ -140,8 +144,8 @@ class SyntheticGateVision:
     """Stands in for ``runtime.GateVision``: same ``get()`` / ``Detection``, driven by the rehearsal loop.
 
     ``update(now, pos, quat)`` is called every simulation step with the drone's pose: when a frame is due the arches
-    are projected with that pose, and the detection is handed out ``latency_s`` later (stamped with the delivery
-    time, like the live detector stamps its detections after inference)."""
+    are projected with that pose, and the detection is handed out ``latency_s`` later, stamped with the capture time
+    (like the live detector, which stamps the screen grab)."""
 
     def __init__(self, gates: list[dict], cam: Camera, model: DetectorModel | None = None,
                  rng: np.random.Generator | None = None, width_m: float = GATE_WIDTH_M, up_m: float = CENTRE_UP_M):
@@ -224,6 +228,7 @@ class SyntheticGateVision:
             lat = max(0.01, m.latency_s + m.latency_jitter_s * self.rng.normal())
             deliver = max(self._last_delivery, now + lat)
             self._last_delivery = deliver
+            det.t = now                                      # the moment the frame shows (the screen grab)
             self._pending.append((deliver, det, gate))
             period = 1.0 / m.rate_hz
             self._next_capture += period * (1.0 + m.rate_jitter * self.rng.uniform(-1, 1))
@@ -231,7 +236,6 @@ class SyntheticGateVision:
                 self._next_capture = now + period
         while self._pending and self._pending[0][0] <= now + 1e-9:
             deliver, det, gate = self._pending.popleft()
-            det.t = deliver
             self.latest, self.latest_gate = det, gate
 
 
@@ -303,6 +307,9 @@ class RehearsalOptions:
     crash_hold: float = 1.5           # s on the ground after a crash before the reset (a new attempt)
     pilot_set: dict = field(default_factory=dict)   # TelemetryPilot attributes to override (e.g. vision_speed)
     physics_jitter: float = 0.0       # +- fraction of mass/thrust/drag/motor-lag randomization (0 = nominal physics)
+    sight: str = 'legacy'             # by-sight pilot: 'legacy' or 'rabbit' (haltere.liftoff.sightpilot)
+    sight_params: object = None       # SightParams for the rabbit (None: defaults with the simulator's yaw rate)
+    flow_gain: float = 1.0            # the fly command's --flow-gain (the rabbit's highest speed-sense gain)
     max_gpu_temp: float = 70.0        # C; pause (and wait for it to cool) above this; 0 = never check
     burst_s: float = 100.0            # wall seconds of GPU work between cool-down pauses (0 = no pauses)
     cool_s: float = 20.0
@@ -329,6 +336,15 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
     pilot = TelemetryPilot(brain, cfg.task, LiftoffMapping(), brain.device, stick_gain=opts.stick_gain,
                            stick_lpf=opts.stick_lpf, face_gain=opts.face_travel, face_max=opts.face_max)
     pilot.clock = clock
+    pilot.flow_gain = opts.flow_gain
+    pilot.sight = opts.sight
+    if opts.sight == 'rabbit':
+        from ..liftoff.sightpilot import SightParams
+        if opts.stick_lpf > 0:
+            raise ValueError('the rabbit pilot does not run with a stick low-pass (stick_lpf)')
+        sp_params = opts.sight_params or SightParams(yaw_rate=3.8)
+        sp_params.flow_max = opts.flow_gain
+        pilot.sight_params = sp_params
     vision = SyntheticGateVision(gates, cam, detector, rng, width_m, up_m)
     pilot.vision = vision
     for k, v in opts.pilot_set.items():
@@ -439,6 +455,7 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
                      now - det.t if det.frames else np.nan, vision.latest_gate, det.u, det.v,
                      *(est if est is not None else (np.nan, np.nan, np.nan)),
                      np.nan if pilot._yaw_override is None else float(pilot._yaw_override),
+                     *_sight_values(pilot, det, start),
                      pilot.vision_status.replace(',', ';')])
         vs = new
         ts += dt
@@ -463,6 +480,12 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
                 w.writerow([_fmt(x) for x in r])
     return {'rows': rows, 'events': events, 'detector': dict(vision.stats), 'wall_s': time.time() - wall0,
             'steps': n_steps, 'dt': dt, 'delay_steps': delay_steps}
+
+
+def _sight_values(pilot, det, start) -> list:
+    vals = (pilot.sightpilot.log_values(det, start) if pilot.sight == 'rabbit' and pilot.sightpilot is not None
+            else SightPilot.empty_log_values(det))
+    return [v for c, v in zip(SIGHT_LOG_COLUMNS, vals) if c not in ('det_u', 'det_v')]
 
 
 def _fmt(x) -> str:
@@ -546,6 +569,25 @@ def summarize(result: dict, gates: list[dict], track: np.ndarray | None = None, 
                                   'per_gate_median_m': {int(g): round(float(np.median(e[near == g])), 2) for g in np.unique(near)}}
         dg = log['det_gate'][idx]
         r['detections'] = {'arch_reported_s': float((dg >= 0).sum() * dt), 'phantom_s': float((dg == -2).sum() * dt)}
+        # the view: yaw stick reversals (beyond +-0.02) per airborne minute
+        cy = log['c_yaw'][idx][air]
+        sg = np.sign(cy[np.abs(cy) > 0.02])
+        r['yaw_flips_per_min'] = float((np.diff(sg) != 0).sum() / max(air.sum() * dt / 60.0, 1e-6)) if len(sg) > 1 else 0.0
+        through = [c for c in r.get('crossings', []) if c['through']]
+        r['lateral_max_through'] = float(max(abs(c['lateral_m']) for c in through)) if through else float('nan')
+        mode = log['mode'][idx]
+        if np.isfinite(mode).any():
+            last = {k: float(np.nanmax(log[k][idx])) for k in ('n_passes', 'ghosts', 'unpasses', 'reseeds', 'goal_clips',
+                                                              'rej_elev', 'rej_stale', 'absorbed', 'low', 'behind',
+                                                              'sight_errors')}
+            pk = log['pass_kind'][idx]
+            last['pass_kinds'] = {n: int((pk == v).sum()) for n, v in (('cross', 1), ('travel', 2), ('beside', 3),
+                                                                      ('ghost', 4), ('unpass', 5))}
+            last['mode_s'] = {n: round(float((mode == v).sum() * dt), 1) for v, n in ((0, 'ground'), (1, 'cruise'),
+                                                                                     (2, 'target'), (3, 'search'))}
+            last['flow_gain_median'] = float(np.nanmedian(log['flow_gain'][idx][air])) if air.any() else float('nan')
+            last['rabbit_speed_median'] = float(np.nanmedian(log['rb_v'][idx][air])) if air.any() else float('nan')
+            r['sight'] = last
         out['attempts'].append(r)
     ev = result['events']
     out['crashes'] = [e for e in ev if e['kind'].startswith('crash')]
@@ -580,6 +622,14 @@ def describe(summary: dict, name: str = 'rehearsal') -> str:
              f'{gj["encoded_gt_0.25"]} (p99 {gj["encoded_p99"]:.3f}), goal distance median {gj["body_goal_median_m"]:.1f} m | '
              f'goal beyond 8 m for {fg["s"]:.1f} s (target height {fg["target_dz_mean"]:+.1f} m relative to the drone, body goal z '
              f'{fg["body_gz_mean"]:+.1f} m, climb {fg["vz_mean"]:+.2f} m/s) | modes (s) {r["mode_s"]}')
+        s += f' | yaw flips {r["yaw_flips_per_min"]:.1f}/min, largest |lateral| through {r["lateral_max_through"]:.2f} m'
+        if 'sight' in r:
+            sg = r['sight']
+            s += (f' | rabbit: passes {sg["n_passes"]:.0f} {sg["pass_kinds"]}, ghosts {sg["ghosts"]:.0f}, unpasses '
+                  f'{sg["unpasses"]:.0f}, reseeds {sg["reseeds"]:.0f}, goal clips {sg["goal_clips"]:.0f}, rejected '
+                  f'elev/stale {sg["rej_elev"]:.0f}/{sg["rej_stale"]:.0f}, absorbed {sg["absorbed"]:.0f}, low {sg["low"]:.0f}, '
+                  f'errors {sg["sight_errors"]:.0f}, modes {sg["mode_s"]}, flow median {sg["flow_gain_median"]:.2f}, '
+                  f'rabbit speed median {sg["rabbit_speed_median"]:.2f}')
         if 'gate_estimate' in r:
             ge = r['gate_estimate']
             s += f' | gate estimate error median {ge["err_median_m"]:.1f} m (p90 {ge["err_p90_m"]:.1f}), per gate {ge["per_gate_median_m"]}'

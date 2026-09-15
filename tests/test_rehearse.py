@@ -64,7 +64,8 @@ def test_synthetic_detector_timing_and_geometry():
         now += 0.01
     assert len(deliveries) in (14, 15)
     det = vis.get()
-    assert abs(det.t - (1000.0 + 0.08 + (det.frames - 1) / 15.0)) < 0.011          # delivered 80 ms after capture
+    assert abs(det.t - (1000.0 + (det.frames - 1) / 15.0)) < 0.011                 # stamped with the capture time ...
+    assert abs(deliveries[-1][0] - det.t - 0.08) < 0.011                             # ... and delivered 80 ms later
     assert vis.latest_gate == 0 and det.p_visible > 0.5                              # the nearer, wider arch
     centre = np.asarray(GATES[0]['pos']) + [0.0, 0.0, 1.5]
     to_gate = (centre - pos) / np.linalg.norm(centre - pos)
@@ -117,6 +118,46 @@ def test_rehearsal_loop_runs_the_real_pilot(tmp_path):
     assert len(d['ts']) == 400 and np.nanmax(d['pz']) > 0.3                 # took off from the ground
     assert any(s.startswith('gate seen') for s in d['status'])              # the pilot followed the synthetic arch
     ages = d['det_age'][np.isfinite(d['det_age'])]
-    assert ages.min() >= 0.0 and ages.max() < 0.15                         # sim clock: detections are 0-70 ms old
+    assert ages.min() >= 0.075 and ages.max() < 0.16                       # sim clock: grabbed 80-150 ms ago
+    assert np.allclose(d['det_t'][np.isfinite(d['det_t'])], (d['wall'] - d['det_age'])[np.isfinite(d['det_t'])], atol=2e-4)
+    assert np.isnan(d['rb_x']).all()                                        # the legacy pilot leaves the rabbit columns empty
     s = summarize(res, GATES)
     assert s['detector']['detected'] > 40 and 'goal_jumps' in s['attempts'][0]
+
+
+def test_rehearsal_loop_runs_the_rabbit_pilot(tmp_path):
+    from haltere.brain.baselines import MLPPolicy
+    from haltere.liftoff.commands import _sight_log_cells
+    from haltere.liftoff.flightlog import load_log
+    from haltere.liftoff.sightpilot import LOG_COLUMNS, SightParams
+    from haltere.sim.tasks import HoverTask
+    from haltere.train.bptt import ExperimentConfig
+
+    class TinyBrain(MLPPolicy):
+        def weight_matrix(self):
+            return torch.zeros(1)
+
+    torch.manual_seed(0)
+    cfg = ExperimentConfig.from_dict({'brain': {'model': 'mlp'}, 'train': {'delay_steps': 6}})
+    brain = TinyBrain(HoverTask.channels, 4, 16, cfg.brain.dt, cfg.brain.action_tau)
+    hover = 2 * (1.0 / cfg.quad.twr) ** (1.0 / cfg.quad.thrust_exp) - 1
+    with torch.no_grad():
+        brain.readout.bias[0] = float(np.arctanh(hover + 0.1))
+    log = tmp_path / 'rabbit.csv'
+    res = run_rehearsal(brain, cfg, GATES, CAM, log,
+                        RehearsalOptions(seconds=5.0, verbose=False, sight='rabbit', sight_params=SightParams(yaw_rate=3.8),
+                                         flow_gain=0.9), DetectorModel.clean())
+    d = load_log(str(log))                                                  # every rabbit column is numeric
+    assert len(d['ts']) == 500 and all(c in d for c in LOG_COLUMNS)
+    assert np.nanmax(d['tgt_hits']) >= 3 and np.nanmax(d['mode']) == 2       # it tracked the arch and targeted it
+    assert np.allclose(d['c_yaw'], d['sight_yaw'], atol=1e-4)                # the yaw stick is the rabbit's
+    assert np.nanmax(d['flow_gain']) <= 0.9 + 1e-6                          # --flow-gain caps the speed sense
+    s = summarize(res, GATES)
+    assert 'sight' in s['attempts'][0] and s['attempts'][0]['sight']['sight_errors'] == 0
+    # the fly command writes the same values as CSV cells that load_log reads back
+    pilot = type('P', (), {})()
+    from haltere.liftoff.sightpilot import SightPilot
+    host = type('H', (), {})()
+    pilot.sightpilot = SightPilot(host, SightParams())
+    cells = _sight_log_cells(pilot, None)
+    assert len(cells) == len(LOG_COLUMNS) and all(c == '' or float(c) == float(c) for c in cells)

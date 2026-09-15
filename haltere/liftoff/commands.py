@@ -579,6 +579,15 @@ def cmd_fly(a):
                            face_gain=a.face_travel, face_max=a.face_max)
     pilot.face_ahead = a.face_ahead
     pilot.flow_gain = a.flow_gain
+    if getattr(a, 'sight', 'legacy') == 'rabbit':
+        from .sightpilot import params_from_args
+        if not a.vision:
+            raise SystemExit('--sight rabbit flies by sight: give --vision')
+        if a.stick_lpf > 0:
+            raise SystemExit('--sight rabbit does not run with --stick-lpf (its dt is wrong and any stick lag hurts)')
+        pilot.sight = 'rabbit'
+        pilot.sight_params = params_from_args(a, flow_gain=a.flow_gain)
+        print(f'SIGHT: rabbit pilot; {pilot.sight_params.describe()}')
     pilot.face_wobble_deg, pilot.face_wobble_period = a.face_wobble, a.face_wobble_period
     if a.vision:
         import yaml
@@ -658,7 +667,8 @@ def cmd_fly(a):
         flog.writerow(['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz', 'wx', 'wy', 'wz',
                        'in_thr', 'in_yaw', 'in_pitch', 'in_roll', 'rpm', 'b_thr', 'b_roll', 'b_pitch', 'b_yaw',
                        'c_thr', 'c_roll', 'c_pitch', 'c_yaw', 's_thr', 's_roll', 's_pitch', 's_yaw',
-                       'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age', 'status'])
+                       'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age',
+                       *(SIGHT_LOG_COLUMNS if pilot.sight == 'rabbit' else []), 'status'])
     try:
         while a.seconds <= 0 or time.time() - t_begin < a.seconds:
             fr = rx.wait(0.05)
@@ -753,6 +763,7 @@ def cmd_fly(a):
                                *np.round(pilot.last_target, 3), round(phase, 3), int(crashed),
                                round(det.p_visible, 3) if det else '', round(det.width_px, 1) if det else '',
                                round(now - det.t, 3) if det else '',
+                               *(_sight_log_cells(pilot, det) if pilot.sight == 'rabbit' else []),
                                pilot.vision_status.replace(',', ';') if pilot.vision is not None else ''])
             if recorder is not None:
                 shared.publish(pilot.rates() if len(dists) % 2 == 0 else None, t=fr.timestamp - (pilot.t_start or 0.0),
@@ -788,6 +799,17 @@ def cmd_fly(a):
                 S = np.asarray(stick_hist)[len(stick_hist) // 2:]
                 print(f'stick std [thr,roll,pitch,yaw] {np.round(S.std(0), 3)}; mean |change| per frame '
                       f'{np.round(np.abs(np.diff(S, axis=0)).mean(0), 4)}', flush=True)
+
+
+def _sight_log_cells(pilot, det) -> list[str]:
+    """The rabbit pilot's numeric log columns as CSV cells (blank for NaN, so liftoff score reads them)."""
+    from .sightpilot import SightPilot
+    vals = pilot.sightpilot.log_values(det) if pilot.sightpilot is not None else SightPilot.empty_log_values(det)
+    out = []
+    for v in vals:
+        v = float(v)
+        out.append('' if not np.isfinite(v) else (f'{v:.4f}' if abs(v) >= 1e5 else f'{v:.4g}' if v != int(v) else str(int(v))))
+    return out
 
 
 def cmd_score(a):

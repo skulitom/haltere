@@ -260,11 +260,19 @@ def cmd_vision(a):
             k, _, v = kv.partition('=')
             sets[k.strip()] = yaml.safe_load(v)
         sg = [float(x) for x in str(a.stick_gain).split(',')]
+        sight_params = None
+        if a.sight == 'rabbit':
+            from .liftoff.sightpilot import params_from_args
+            if a.stick_lpf > 0:
+                raise SystemExit('--sight rabbit does not run with --stick-lpf')
+            sight_params = params_from_args(a, flow_gain=a.flow_gain)
+            print(f'rabbit pilot: {sight_params.describe()}')
         opts = RehearsalOptions(seconds=a.seconds, seed=a.seed, face_travel=a.face_travel, face_max=a.face_max,
                                 stick_gain=sg[0] if len(sg) == 1 else sg, stick_lpf=a.stick_lpf,
                                 delay_steps=a.delay_steps, start=tuple(float(x) for x in a.start.split(',')),
                                 collide=not a.no_collide, pilot_set=sets, physics_jitter=a.physics_jitter,
-                                max_gpu_temp=a.max_gpu_temp, burst_s=a.burst, cool_s=a.cool)
+                                max_gpu_temp=a.max_gpu_temp, burst_s=a.burst, cool_s=a.cool, sight=a.sight,
+                                sight_params=sight_params, flow_gain=a.flow_gain)
         rehearse(a.ckpt, a.camera, a.gates, a.log or None, a.track or None, a.device, opts, det, a.json or None)
     elif a.vision_cmd == 'train':
         from .vision.train import train
@@ -448,6 +456,10 @@ def main(argv=None):
     q.add_argument('--max-gpu-temp', type=float, default=70.0, help='pause while the GPU is hotter than this (C); 0 = off')
     q.add_argument('--burst', type=float, default=100.0, help='wall seconds of GPU work between cool-down pauses (0 = none)')
     q.add_argument('--cool', type=float, default=20.0, help='length of a cool-down pause (s)')
+    q.add_argument('--flow-gain', type=float, default=1.0,
+                   help='scale on the sensed horizontal speed (legacy: constant; rabbit: its highest value)')
+    from .liftoff.sightpilot import add_cli_args as add_sight_args
+    add_sight_args(q, yaw_rate_default=3.8)
     q = vs.add_parser('train', help='train GateNet on labelled datasets')
     q.add_argument('datasets', nargs='+')
     q.add_argument('--out', default='runs/gatenet')
@@ -587,6 +599,7 @@ def main(argv=None):
                    help='scale on the horizontal speed written into the optic-flow and airflow senses (< 1: the brain flies faster)')
     q.add_argument('--stick-model', choices=['auto', 'curves'], default='auto',
                    help='auto: the radial stick model when the mapping file has one; curves: the per-axis curves')
+    add_sight_args(q, yaw_rate_default=2.3)
     q = ls.add_parser('fake', help='run a stand-in for Liftoff (telemetry out, sticks in over UDP) to rehearse the loop')
     q.add_argument('--port', type=int, default=9001)
     q.add_argument('--stick-port', type=int, default=9002)
