@@ -102,8 +102,9 @@ class TelemetryPilot:
         self.vision_stale = 0.5                # s; older detections are not trusted
         self.vision_gate_w = None              # remembered position of the gate last seen (world, sim frame)
         self.vision_lookahead = 2.0            # m; the carrot runs this far ahead of the progress along the line
-        self.vision_speed = 1.5                # m/s; how fast the carrot advances toward the gate
+        self.vision_speed = 2.0                # m/s; how fast the carrot advances toward the gate
         self._cand_hist = []                   # (time, gate candidate, drone position) of recent sightings
+        self._sightings = []                   # (time, apparent width) of recent plausible detections
         self._passed = []                      # (time, world position) of gates already passed: an arch looks the same from behind
         self._rays = []                        # (time, origin, world direction) of recent sightings, for triangulation
         self._gate_anchor = (np.zeros(3), 3.0) # where the believed gate was first confirmed, and the allowed drift
@@ -158,6 +159,7 @@ class TelemetryPilot:
         self.vision_gate_w = None
         self.vision_passed_t = None
         self._cand_hist = []
+        self._sightings = []
         self._passed = []
         self._rays = []
         self._line = None
@@ -229,7 +231,12 @@ class TelemetryPilot:
             if any(np.linalg.norm(pos_w + dw * rng - g) < 6.0 for _, g in self._passed):
                 plausible = False                    # the arch just flown through, seen from behind
             else:
-                ray = (dw, rng)
+                # two arches often line up (the next gate shows small right behind the first) and the detector
+                # flips between them: only trust a sighting that is not much narrower than the widest of the
+                # last moment, i.e. follow the nearest arch
+                self._sightings = [(t, w) for t, w in self._sightings if now - t < 0.7] + [(now, det.width_px)]
+                if det.width_px >= 0.75 * max(w for _, w in self._sightings):
+                    ray = (dw, rng)
 
         def near(point, dw, rng):
             """Does the sighting ray pass close to the point (which must lie ahead along the ray)?"""
@@ -271,12 +278,16 @@ class TelemetryPilot:
                 self._line = None
                 self.vision_passed_t = now
             else:
-                if self._line is None or dist_gate > 12.0:
-                    # far away the line is simply from here to the gate; inside 12 m it is frozen so the final
-                    # approach is straight (the memory keeps sliding with fresh sightings, the line end follows)
+                if self._line is None:
                     self._line = (pos_w.copy(), gate.copy())
                     self._line_s = 0.0
                 start, _ = self._line
+                if dist_gate > 12.0 and np.linalg.norm(pos_w - start) > 6.0:
+                    # far from the gate the line is re-anchored every few metres so it always runs straight from
+                    # near the drone to the gate; inside 12 m it stays put so the final approach is straight
+                    self._line = (pos_w.copy(), gate.copy())
+                    self._line_s = 0.0
+                    start = pos_w.copy()
                 self._line = (start, gate.copy())
                 line = gate - start
                 L = float(np.linalg.norm(line))
