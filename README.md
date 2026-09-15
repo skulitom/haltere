@@ -259,7 +259,8 @@ would from its halteres and wings.
 ![the fly flying through a gate it sees](docs/liftoff_sight.gif)
 
 *Flight by sight: the detector picks the arch out of the view, the pilot turns its centre and
-width into a goal, the brain flies through it (gate 1 of the Straw Bale lap, first flight).*
+width into a goal, the brain flies through it (gate 2 of the Straw Bale lap, flight 4, which went
+through the first three gates in sequence).*
 
 Where it stands. The detector is only as good as the viewpoints it has seen. Trained on lap
 frames alone, where the camera always looked along the course and every gate sat near the middle
@@ -269,12 +270,19 @@ it, flew through the second (1.2 m from its centre) and then lost the course cha
 Two fixes followed: the path pilot now sweeps its camera 35 degrees either way while it records
 frames (`--face-wobble`), and the range from the apparent width accounts for the stretch of a
 wide-angle image away from its centre (a 116 degree camera shows a gate at the edge 2.5 times
-wider than at the centre). Retrained on the flight's own frames plus a sweeping lap, the detector
-agrees with the projected labels on 97% of a held-out tenth of the frames (centre error 7 px at
-320 wide), no longer hallucinates gates on that flight's gate-less views and keeps a 15 px centre
-bias, which the next flight will test. Every flight by sight records its frames with
+wider than at the centre). Retrained on the flights' own frames plus a sweeping lap (three rounds so far, 17k frames), the
+detector agrees with the projected labels on 98% of a held-out tenth of the frames (centre error
+4 px at 320 wide), no longer hallucinates gates on the flights' gate-less views and places the
+gates within 8 px on their frames. Every flight by sight records its frames with
 the pose, and the gate list labels them, so each round of flying adds exactly the views the last
-round got wrong.
+round got wrong. The detector is no longer the weak part; the pilot's habits are. The flights
+exposed two of them: the leg flown straight on after a gate was computed along the world's x axis
+rather than the nose (every turn sent the drone east), and after passing an arch the search sweep
+would find the same arch from behind and fly back into it (an arch looks the same from both sides,
+so passed gates are now remembered for a minute). With those fixed the best flight went through
+the first three gates in sequence (0.6, 0.1 and 1.0 m from their centres), but flight to flight the
+outcome still varies from three gates to one, with long hovers between them: a whole lap by sight
+is the open problem.
 
 The flights run inside an [Anode](https://github.com/skulitom/Anode) seat, a second Windows
 session with its own screen and input, so the desktop stays free while the fly practises. The
@@ -335,7 +343,7 @@ artifacts with a model card are on Hugging Face:
 | `artifacts/ftRobust_best.pt` | imitation, then flight cost with wide domain randomization | the first brain that flew in Liftoff |
 | `artifacts/imJ_best.pt` | imitation of the MLP with the premotor readout | best simulator accuracy |
 | `artifacts/mlp_baseline.pt` | the MLP teacher, no connectome | control experiment |
-| `artifacts/gatenet_best.pt` | GateNet, 5 M parameters, on 8.7k labelled frames from lap and by-sight flights in both camera setups | flying by sight (`--vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml`) |
+| `artifacts/gatenet_best.pt` | GateNet, 5 M parameters, on 17k labelled frames from lap, speed and by-sight flights in both camera setups | flying by sight (`--vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml`) |
 
 ## Prior art
 
@@ -505,10 +513,10 @@ while 2 times sends it overshooting. The bold row is the current lap setting.
 Working end to end on this machine: connectome download and graph construction on the real data,
 the simulator, the brain model (custom sparse backward, sign constraints), imitation and flight-cost
 training, the Liftoff telemetry and virtual-pad loop, automated calibration, connectome brains that
-hover, fly patterns and follow a taught race lap inside Liftoff, and a first flight by sight: the
-gate detector, trained on frames the flights label themselves, steers the same brain through a gate
-it sees. Open: a whole lap by sight (the detector still loses gates when the drone turns hard, and
-the pilot then hovers and looks around), and racing pace. The lap brain flies the course at up to
+hover, fly patterns and follow a taught race lap inside Liftoff, and flights by sight: the gate
+detector, trained on frames the flights label themselves, steers the same brain through gates it
+sees, three in sequence on the best flight. Open: a whole lap by sight (the pilot still hovers and
+looks around between gates, and flights vary a lot), and racing pace. The lap brain flies the course at up to
 3 m/s with `--path-speed 4 --lookahead 4.5 --stick-gain 1.6,1.6,1` (7 gates in 82 s) where a human lap on the same
 track runs at 14 m/s; its own top speed is the limit now; a simulator fine-tune on faster targets did not transfer, so the
 next lever is training on the identified game physics rather than the generic quad.
