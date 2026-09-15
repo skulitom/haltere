@@ -248,6 +248,24 @@ def cmd_vision(a):
     elif a.vision_cmd == 'passes':
         from .vision.evaluate import gate_passes
         gate_passes(a.dataset, a.gates)
+    elif a.vision_cmd == 'rehearse':
+        from .vision.rehearse import DetectorModel, RehearsalOptions, rehearse
+        det = DetectorModel.clean() if a.clean else DetectorModel()
+        for k in ('rate_hz', 'latency_s', 'centre_px', 'width_frac', 'oblique', 'miss', 'burst_rate', 'flip', 'false_pos'):
+            v = getattr(a, k)
+            if v is not None:
+                setattr(det, k, v)
+        sets = {}
+        for kv in a.set:
+            k, _, v = kv.partition('=')
+            sets[k.strip()] = yaml.safe_load(v)
+        sg = [float(x) for x in str(a.stick_gain).split(',')]
+        opts = RehearsalOptions(seconds=a.seconds, seed=a.seed, face_travel=a.face_travel, face_max=a.face_max,
+                                stick_gain=sg[0] if len(sg) == 1 else sg, stick_lpf=a.stick_lpf,
+                                delay_steps=a.delay_steps, start=tuple(float(x) for x in a.start.split(',')),
+                                collide=not a.no_collide, pilot_set=sets, physics_jitter=a.physics_jitter,
+                                max_gpu_temp=a.max_gpu_temp, burst_s=a.burst, cool_s=a.cool)
+        rehearse(a.ckpt, a.camera, a.gates, a.log or None, a.track or None, a.device, opts, det, a.json or None)
     elif a.vision_cmd == 'train':
         from .vision.train import train
         out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, max_gpu_temp=a.max_gpu_temp, batch_sleep=a.batch_sleep, init=a.init, device=a.device)
@@ -396,6 +414,40 @@ def main(argv=None):
     q = vs.add_parser('passes', help='which gates a recorded flight (dataset with poses) flew through')
     q.add_argument('dataset')
     q.add_argument('--gates', default='configs/gates_strawbale.json')
+    q = vs.add_parser('rehearse', help='fly the by-sight pilot through the course in the simulator with a synthetic '
+                                       'gate detector (no game): per-step log + score')
+    q.add_argument('ckpt', help='brain checkpoint (e.g. runs/ftPath2/best.pt)')
+    q.add_argument('--camera', default='configs/camera_seat.yaml')
+    q.add_argument('--gates', default='configs/gates_strawbale.json')
+    q.add_argument('--track', default='', help='taught track YAML: also report the distance to its line')
+    q.add_argument('--seconds', type=float, default=120.0, help='simulated seconds')
+    q.add_argument('--log', default='', help='per-step CSV in the `liftoff fly --log` format (scorable by `liftoff score`)')
+    q.add_argument('--json', default='', help='write the score to this JSON file')
+    q.add_argument('--seed', type=int, default=0)
+    q.add_argument('--device', default='cuda')
+    q.add_argument('--face-travel', type=float, default=0.8)
+    q.add_argument('--face-max', type=float, default=0.25)
+    q.add_argument('--stick-gain', default='1.0', help='one number or roll,pitch,yaw')
+    q.add_argument('--stick-lpf', type=float, default=0.0)
+    q.add_argument('--delay-steps', type=int, default=None, help='brain -> vehicle latency (default: the training value)')
+    q.add_argument('--start', default='0,0,0,0', help='reset point x,y,z (m, gate-list frame) and yaw (deg)')
+    q.add_argument('--no-collide', action='store_true', help='fly through the arch posts and top bars')
+    q.add_argument('--physics-jitter', type=float, default=0.0, help='randomize mass/thrust/drag/motor lag by +- this fraction')
+    q.add_argument('--set', action='append', default=[], metavar='ATTR=VALUE',
+                   help='override a TelemetryPilot attribute, e.g. --set vision_speed=3 --set vision_lookahead=2.5')
+    q.add_argument('--clean', action='store_true', help='perfect detector (no noise, misses, flips or phantoms; still 15 Hz and late)')
+    q.add_argument('--rate-hz', type=float, default=None)
+    q.add_argument('--latency-s', type=float, default=None)
+    q.add_argument('--centre-px', type=float, default=None, help='centre noise std (px at 320x180)')
+    q.add_argument('--width-frac', type=float, default=None, help='width noise (log-normal std)')
+    q.add_argument('--oblique', type=float, default=None, help='width shrink of arches seen at an angle (0..1; GateNet showed none)')
+    q.add_argument('--miss', type=float, default=None, help='per-frame miss probability')
+    q.add_argument('--burst-rate', type=float, default=None, help='per-frame probability of a 0.3-1 s dropout')
+    q.add_argument('--flip', type=float, default=None, help='probability of reporting the second arch in view')
+    q.add_argument('--false-pos', type=float, default=None, help='per-frame phantom probability')
+    q.add_argument('--max-gpu-temp', type=float, default=70.0, help='pause while the GPU is hotter than this (C); 0 = off')
+    q.add_argument('--burst', type=float, default=100.0, help='wall seconds of GPU work between cool-down pauses (0 = none)')
+    q.add_argument('--cool', type=float, default=20.0, help='length of a cool-down pause (s)')
     q = vs.add_parser('train', help='train GateNet on labelled datasets')
     q.add_argument('datasets', nargs='+')
     q.add_argument('--out', default='runs/gatenet')

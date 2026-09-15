@@ -317,6 +317,26 @@ haltere liftoff fly runs/hover/best.pt --udp-out 127.0.0.1:9002 --liftoff-config
 `fit` should report `stick_sign (1, -1, -1)` and `gyro_axis (1, 0, 2)` with `gyro_sign (-1, 1, 1)`
 for the fake, which is how it was built.
 
+The by-sight pilot has its own rehearsal, entirely inside the simulator and faster than real time:
+
+```bash
+haltere vision rehearse runs/ftPath2/best.pt --camera configs/camera_seat.yaml \
+    --gates configs/gates_strawbale.json --seconds 120 --log data/rehearse/sight.csv
+haltere vision rehearse runs/ftPath2/best.pt --set vision_speed=3 --seed 1   # a pilot change, another noise draw
+```
+
+The brain flies the simulated drone (its training physics and 60 ms latency) through the real
+`TelemetryPilot` on a simulated clock, and GateNet is replaced by a synthetic detector that projects
+the course's arches into the FPV camera with the drone's attitude and reports what the network
+would: the widest arch in view, 15 Hz and 80 ms late, with the misses (more for arches seen at an
+angle or far away), range-dependent width bias, flips between two arches in view and phantoms that
+`haltere.vision.rehearse.DetectorModel` measured for gatenet8 on recorded flights (`--clean` for
+a perfect detector). The log has the `fly --log` columns, so `haltere liftoff score` rates it like a
+game flight; the rehearsal adds time spent slow, goal jumps, time in each pilot mode, the error of
+the pilot's gate estimate, what it believed it passed, and how long the goal sat beyond 8 m (a far
+goal ahead of a pitched-down drone points up in its body frame, and the brain climbs). The ground
+is flat and only the arch posts and top bars are solid.
+
 ### Baseline
 
 `brain.model: mlp` in the training config swaps the connectome for a small MLP on the same

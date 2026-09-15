@@ -1,6 +1,7 @@
 """Run the trained brain on live Liftoff telemetry and produce stick commands."""
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -124,6 +125,9 @@ class TelemetryPilot:
         # has no camera and no heading objective, so on its own it flies sideways; this keeps the FPV view
         # looking along the path. Positive yaw stick = nose right (Betaflight convention, verified in the sim).
         self.face_gain, self.face_max = face_gain, face_max
+        # wall clock of the by-sight logic (detection ages, fly-on/creep/search timers, the facing wobble); the
+        # simulator rehearsal (haltere.vision.rehearse) swaps in its simulated clock
+        self.clock = time.time
         self.face_ahead = 0.0                  # m; path mode: face the path this far beyond the carrot (0 = face the carrot)
         self.face_target = None
         self.face_wobble_deg = 0.0             # > 0: sweep the facing heading +-this many degrees (sinusoidal)
@@ -158,7 +162,6 @@ class TelemetryPilot:
         self.vision_passed_t = None            # when the remembered gate was passed (fly on for a moment)
         self.vision_status = 'no vision'
         self.flow_gain = 1.0                   # scale on the horizontal speed the brain senses (< 1: it flies faster)
-        self.clock = __import__('time').time   # wall clock (a simulated one in rehearsals)
         self._pose_hist = []                   # (wall time, position, attitude) of the last second of telemetry
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
@@ -256,9 +259,8 @@ class TelemetryPilot:
         agreeing sightings establish a gate, and sightings that disagree for a while replace it. The goal is a
         carrot along the straight line from where the approach began to the gate. After passing a gate the drone
         flies on along its nose for a moment, then creeps ahead sweeping its view, then hovers and turns."""
-        import time as _time
         det = self.vision.get()
-        now = _time.time()
+        now = self.clock()
         dt = 0.0 if self._last_goal_t is None else float(np.clip(now - self._last_goal_t, 0.0, 0.1))
         self._last_goal_t = now
         R = self.last_R
@@ -521,7 +523,7 @@ class TelemetryPilot:
                 if np.hypot(rel[0], rel[1]) > 0.8:
                     err = np.angle(np.exp(1j * (np.arctan2(rel[1], rel[0]) - float(s['yaw'].flatten()[0]))))
             if self.face_wobble_deg > 0:
-                now = __import__('time').time()
+                now = self.clock()
                 self._wobble_t0 = now if self._wobble_t0 is None else self._wobble_t0
                 err += np.radians(self.face_wobble_deg) * np.sin(2 * np.pi * (now - self._wobble_t0) / self.face_wobble_period)
             a[3] = float(np.clip(-self.face_gain * err, -self.face_max, self.face_max))

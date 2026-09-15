@@ -33,6 +33,21 @@ class Detection:
     frames: int = 0
 
 
+def detection_geometry(cam: Camera, u: float, v: float, width_px: float) -> tuple[np.ndarray, float]:
+    """Body-frame unit direction through the detected centre (u, v) and the range from the apparent width, for a
+    camera at the network's input resolution. Shared by the live detector and the simulator rehearsal.
+
+    Off the optical axis a rectilinear image stretches things: a gate seen at horizontal offset du and radial offset
+    (du, dv) appears wider by sqrt(f^2 + du^2) * sqrt(f^2 + du^2 + dv^2) / f^2, a factor 2.5 at the edge of a
+    116 deg view; the range divides that out."""
+    direction = cam.unproject_body(np.array([[u, v]]))[0]
+    f = cam.f
+    du, dv = u - cam.width / 2, v - cam.height / 2
+    stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
+    dist = f * GATE_WIDTH_M * stretch / max(width_px, 4.0)
+    return direction, float(dist)
+
+
 class GateVision:
     def __init__(self, ckpt: str, cam: Camera, window_title: str = 'Liftoff', fps: float = 15.0,
                  device: str = 'cuda', p_thresh: float = 0.5):
@@ -91,16 +106,9 @@ class GateVision:
             p, u_n, v_n, width_px = float(d[0]), float(d[1]), float(d[2]), float(d[3])
             u = (u_n + 1) / 2 * IN_W
             v = (v_n + 1) / 2 * IN_H
-            direction = self.cam.unproject_body(np.array([[u, v]]))[0]
-            # range from the apparent width. Off the optical axis a rectilinear image stretches things: a gate
-            # seen at horizontal offset du and radial offset (du, dv) appears wider by
-            # sqrt(f^2 + du^2) * sqrt(f^2 + du^2 + dv^2) / f^2, a factor 2.5 at the edge of a 116 deg view
-            f = self.cam.f
-            du, dv = u - IN_W / 2, v - IN_H / 2
-            stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
-            dist = f * GATE_WIDTH_M * stretch / max(width_px, 4.0)
+            direction, dist = detection_geometry(self.cam, u, v, width_px)
             n += 1
-            det = Detection(t_grab, p, u, v, width_px, direction, float(dist), n)
+            det = Detection(t_grab, p, u, v, width_px, direction, dist, n)
             with self._lock:
                 self.latest = det
             t_next += 1.0 / self.fps
