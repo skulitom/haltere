@@ -5,8 +5,17 @@
 
 Perception. Every detector frame is used once, placed with the pose at its screen grab (``TelemetryPilot.pose_at``).
 A sighting is a world ray (the bearing is the accurate part) plus a range from the apparent width (the rough part,
-bias-corrected by ``range_corr``); it updates one of several per-arch Kalman filters with a covariance that is tight
-across the ray and loose along it (twice as loose when the arch is cropped by the image edge). Arches are associated
+bias-corrected by ``range_corr``). Apparent width only measures range per metre of gate width, and no course
+announces how wide its arches are, so the pilot measures that too: every track keeps a four-unknown least squares
+over all of its sightings - the arch's world point and, as a free unknown, its width - in which the bearings
+constrain the point and the apparent widths constrain width x range. The drone's own movement across the line of
+sight is what separates the two, and where there has been none the fit says so in its covariance instead of
+inventing a number. Those per-arch fits go into one course-wide filter in log space (arches on a course are usually
+one size), started at the width the detector's ranges assume with a prior wide enough to be told otherwise; every
+newly seen arch starts at it, and when it moves, every estimate in hand slides along its ray with it and has to earn
+its parallax again. A sighting's range then updates one of several per-arch Kalman filters with a covariance that
+is tight across the ray and loose along it (twice as loose when the arch is cropped by the image edge). Arches are
+associated
 in metres along and across the ray and in log-range, so two arches lined up on one bearing stay two tracks. A track
 confirms after three sightings over 0.2 s at a plausible height (hay bales and shadows on the ground do not); a
 confirmed estimate that the camera should see but does not for 2 s is a ghost, and one nothing has seen for
@@ -54,6 +63,8 @@ from operator import itemgetter
 import numpy as np
 
 CENTRE_UP_M = 1.5                  # the arch's visual centre above the passage point (gates.CENTRE_UP_M)
+GATE_WIDTH_NOM = 4.0               # the width a detection's range assumes when it does not say (gates.GATE_WIDTH_M);
+                                   # the prior of the pilot's own estimate, never an answer it relies on
 DEG = math.pi / 180.0
 TWO_PI = 2.0 * math.pi
 # true range / range from the apparent width, by the latter: measured on 2036 GateNet (gatenet8) detections of runs 17-21
@@ -69,7 +80,8 @@ LOG_COLUMNS = ['det_u', 'det_v', 'det_t',
                'tgt_id', 'tgt_x', 'tgt_y', 'tgt_z', 'tgt_sdlat', 'tgt_hits', 'tgt_age', 'axis_deg', 'next_id',
                'n_conf', 'n_tent', 'mode', 'n_passes', 'pass_kind',
                'flow_gain', 'rej_elev', 'rej_stale', 'rej_offaxis', 'absorbed', 'low', 'reseeds',
-               'ghosts', 'orphans', 'unpasses', 'behind', 'goal_clips', 'sight_errors', 'det_gap']
+               'ghosts', 'orphans', 'unpasses', 'behind', 'goal_clips', 'sight_errors',
+               'gate_w', 'gate_w_sd', 'w_updates', 'det_gap']
 PASS_KIND = {'cross': 1, 'travel': 2, 'beside': 3, 'ghost': 4, 'unpass': 5}
 MODE_NAMES = {0: 'ground', 1: 'cruise', 2: 'target', 3: 'search', 4: 'hold'}
 
@@ -93,6 +105,56 @@ class SightParams:
     vision_lag: float = 0.0               # s subtracted from det.t before pairing with a pose
     elev_deg: tuple = (-40.0, 35.0)       # world elevation window of a sighting (attitude at the grab)
     range_corr: tuple | None = RANGE_CORR  # range from width -> multiplied by interp(range, table); None = off
+    # The detector's range is f * stretch / width_px metres per metre of gate width, and an image cannot say how
+    # wide an arch is: every range is proportional to an assumed width, so a course of 1.5 m arches reads 2.67x too
+    # far and one of 8 m arches half as near, which desynchronises the whole tracker rather than merely biasing
+    # the approach. The pilot therefore estimates the course's own gate width online. Each track keeps a four-
+    # unknown least squares over all of its sightings - the arch's world point AND its width - in which the
+    # bearings constrain the point and the apparent widths constrain the width times the range; parallax from the
+    # drone's own movement is what separates them, and where there is none the fit says so in its own covariance
+    # rather than inventing a number. Those per-arch fits go into one course-wide filter in log space.
+    width_est: bool = True                # estimate the gate width online (False: keep the detector's nominal)
+    width_prior_ln: float = 0.55          # prior std of ln(width) about the nominal: +-1 sigma is 0.58x-1.7x,
+                                          # +-2 sigma 0.33x-3.0x, which spans the arches a race course can hold
+    width_meas_ln: float = 0.25           # std of one arch's width fit beyond what that fit reports of itself: the
+                                          # bearing scatter leaves a residual pull towards the drone that binning
+                                          # reduces but does not remove, and an early fit understates it badly
+    width_floor_ln: float = 0.18          # the posterior std never falls below this. Successive fits of one arch
+                                          # share their error, so the filter must not treat forty of them as forty
+                                          # independent looks: with a 0.10 floor one early, biased fit collapsed
+                                          # the spread and an 8 m course was still being flown as a 7.1 m one at
+                                          # the gate; at 0.18 the later, firmer fits can still move it (measured
+                                          # on a straight approach, six seeds: a 4 m arch read 3.87-3.97, an 8 m
+                                          # one 7.79-7.96, a 1.5 m one 1.43-1.50 on five seeds and 2.29 on the
+                                          # sixth, which got one weak look and then accepted no others)
+    width_reset_ln: float = 0.02          # a width revision this large makes every track earn its parallax again:
+                                          # the parallax that had shrunk its along-ray variance was measured
+                                          # against ranges on the old scale, so it does not license the new one
+    width_span: tuple = (0.6, 20.0)       # m: the estimate is never taken outside this
+    width_min_s: float = 0.25             # s between width updates from one track (15 Hz of them are one look)
+    width_bin: int = 10                   # sightings averaged into one look before they enter a track's width fit:
+                                          # per-frame centre scatter biases that fit towards the drone, and the
+                                          # bias goes as the square of the scatter, so averaging is what kills it
+    # two looks are the fewest at which the fit exists at all, and tri_sigma_frac is what actually decides whether
+    # to believe it. A higher floor only makes the width unmeasurable on the courses that need it most: an arch
+    # the tracker holds for 20 sightings before it is passed, ghosted or absorbed - which is most of them on a
+    # course of 8 m arches, where the pilot thinks every gate is half as far as it is and cycles through them -
+    # never produced a fit at 4. Measured on Straw Bale's layout with the rehearsal's detector, four seeds, 4 -> 2:
+    # a 4 m course stays 7/7 and reads 3.5-4.3 m, an 8 m one goes 6,4,6,5 -> 7,4,7,6 gates and 4.2-6.6 -> 5.8-9.5 m,
+    # a 1.5 m one is unchanged within its seed scatter.
+    tri_min_rays: int = 2                 # such looks a track needs before its own width fit is used at all ...
+    tri_sigma_frac: float = 0.5           # ... and the relative std it must have got down to (relative to the width
+                                          # the pilot currently assumes, which is the scale its noise model was
+                                          # built at - see _width_update). The fit's own std weights it in the
+                                          # filter, so this only says when it is worth listening to: measured on a
+                                          # straight approach with 5 px of centre scatter, 0.5 and 0.25 end within
+                                          # 2 % of each other, and 0.5 gets there 2-5 m earlier on a narrow course
+    range_corr_width: float = 4.0         # the arch width range_corr was fitted at: the table is really a function
+                                          # of apparent pixel width, which is only a range once the width is known
+    unit_range_clip: tuple = (0.25, 11.25)  # range per metre of gate width a sighting may claim: the old 1 m and
+                                          # 45 m divided by the 4 m nominal. f / width_px, so a detector property
+    range_common: float = 0.08            # the share of a width-range that successive sightings get wrong together
+                                          # (the along-ray variance may only shrink below it with parallax)
     sig_along: tuple = (0.22, 0.3)        # along-ray std = a * range + b
     sig_cross: tuple = (0.05, 0.2)        # across-ray std = a * range + b
     crop_px: float = 3.0                  # the arch's box within this of the image edge = cropped
@@ -403,9 +465,16 @@ class SightParams:
                   'flow_max', 'flow_tau', 'look_tau', 'look_kappa', 'pivot_tau', 'bump_tau', 'bump_vmax', 'sweep_period',
                   'sweep_ramp', 'lead_band', 'log_gate', 'log_gate_tent', 'search_radius', 'search_radius_wide', 'a_lat',
                   'a_acc', 'a_brk', 'sharp', 'kappa_max', 'goal_max', 'goal_z', 'crop_mult', 'v_cruise', 'v_gate',
-                  'v_gate_turn', 'ghost_s', 'orphan_life', 'course_age_s', 'grade_len'):
+                  'v_gate_turn', 'ghost_s', 'orphan_life', 'course_age_s', 'grade_len', 'width_meas_ln',
+                  'width_floor_ln', 'tri_sigma_frac', 'range_corr_width', 'range_common'):
             if not getattr(self, k) > 0:
                 bad.append(f'{k}={getattr(self, k)!r} (must be > 0)')
+        if self.tri_min_rays < 2:
+            bad.append(f'tri_min_rays={self.tri_min_rays!r} (two rays are the fewest that triangulate)')
+        if self.width_bin < 1:
+            bad.append(f'width_bin={self.width_bin!r} (must be >= 1)')
+        if not self.width_prior_ln >= self.width_floor_ln > 0:
+            bad.append(f'width_prior_ln={self.width_prior_ln!r} (>= width_floor_ln={self.width_floor_ln!r} > 0)')
         for k in ('ghost_keep_d', 'ghost_other_deg', 'ghost_s_max', 'orphan_d', 'orphan_lat', 'orphan_dedup_d',
                   'offaxis_max', 'offaxis_sig_deg', 'frag_gap', 'frag_gap_frac', 'frag_lat_ahead', 'next_min_sep',
                   'course_back_m', 'course_min_m', 'axis_sigma_cap', 'look_free', 'look_max', 'target_life',
@@ -420,10 +489,12 @@ class SightParams:
                 bad.append(f'{k}={getattr(self, k)!r} (a >= 0, b > 0)')
         if self.perp_gate[0] <= 0:
             bad.append(f'perp_gate={self.perp_gate!r} (a > 0)')
-        for k in ('elev_deg', 'ghost_range', 'flow_trim_range'):
+        for k in ('elev_deg', 'ghost_range', 'flow_trim_range', 'width_span', 'unit_range_clip'):
             lo, hi = getattr(self, k)
             if not lo < hi:
                 bad.append(f'{k}={getattr(self, k)!r} (low < high)')
+        if self.width_span[0] <= 0 or self.unit_range_clip[0] <= 0:
+            bad.append(f'width_span={self.width_span!r} / unit_range_clip={self.unit_range_clip!r} (low > 0)')
         if self.flow_trim_range[0] <= 0:
             bad.append(f'flow_trim_range={self.flow_trim_range!r} (low > 0)')
         for k in ('flow_min', 'v_exit'):
@@ -452,20 +523,36 @@ class SightParams:
                 f'a_lat {self.a_lat}, a_brk {self.a_brk}, yaw {self.yaw_rate} rad/s per stick gain {self.yaw_gain} '
                 f'lead {self.yaw_lead} s max {self.yaw_max}, flow {lo:.2f}-{hi:.2f} (ref {self.flow_ref}, {self.flow_mode}, altitude '
                 f'{self.flow_alt}), elevation {self.elev_deg}, vision lag {self.vision_lag} s, z aim {self.z_aim}, '
+                + (f'arch width estimated from parallax (prior +-{100 * self.width_prior_ln:.0f}%), '
+                   if self.width_est else 'arch width as the detector assumes it, ') +
                 f'snap from {self.snap_start} m, search {"left" if self.search_side > 0 else "right"} '
                 f'r {self.search_radius} m' + (f', turn hints {self.turn_hints}' if self.turn_hints else ''))
 
 
 class Track:
-    """One arch: a world Kalman estimate of its visual centre and what the pass logic needs."""
+    """One arch: a world Kalman estimate of its visual centre and what the pass logic needs.
+
+    Alongside the filter it keeps the normal equations of a four-unknown least squares over ALL of its sightings:
+    the arch's world point and, as a free unknown, how wide the arch is. Each sighting contributes its bearing
+    (residual across the ray, the accurate part) and its apparent width (residual along the ray, which is the
+    width times the sighting's unit range). Where the rays are parallel the point and the width trade off exactly
+    and the fit says so in its own covariance; where the drone has moved across the line of sight they separate,
+    and the width falls out of the geometry alone. Nothing here carries a prior, so what it returns is a
+    measurement of the arch, not a restatement of what the pilot already assumed."""
     __slots__ = ('id', 'm', 'P', 'r0', 'dir_first', 'hits', 't_first', 't_last', 'p_last', 'r_last', 'rng_last_h',
-                 'last_along', 'confirmed', 'passed', 't_passed', 'n_pass', 'min_a', 'unseen_in_view', 'min_d')
+                 'last_along', 'confirmed', 'passed', 't_passed', 'n_pass', 'min_a', 'unseen_in_view', 'min_d',
+                 'N4', 'g4', 'rays', 't_width', 'bin')
 
     def __init__(self, tid: int, now: float, z: np.ndarray, Rm: np.ndarray, r: np.ndarray, pg: np.ndarray, rho: float):
         self.id = tid
         self.m = z.copy()
         self.P = Rm.copy()
         self.r0 = r.copy()
+        self.N4 = np.zeros((4, 4))
+        self.g4 = np.zeros(4)
+        self.bin = [np.zeros(3), np.zeros(3), 0.0, 0.0, 0.0, 0]     # sum of p, of r, of ur, of sa, of sc, count
+        self.rays = 0                     # averaged sightings ("looks") that have gone into the fit
+        self.t_width = -math.inf          # when this track last gave the width estimate a measurement
         dx, dy = float(z[0] - pg[0]), float(z[1] - pg[1])
         n = math.hypot(dx, dy)
         self.dir_first = (dx / n, dy / n) if n > 1e-6 else (1.0, 0.0)
@@ -485,6 +572,64 @@ class Track:
 
     def dist_h(self, p) -> float:
         return math.hypot(float(self.m[0] - p[0]), float(self.m[1] - p[1]))
+
+    def add_sight(self, pg: np.ndarray, r: np.ndarray, ur: float, sa: float, sc: float, group: int = 1) -> None:
+        """One more sighting for the joint point-and-width fit: bearing ``r`` from ``pg`` with unit range ``ur``
+        (range per metre of arch width), across-ray std ``sc`` and along-ray std ``sa``, both in metres.
+
+        Sightings are averaged ``group`` at a time before they enter the fit. Fifteen frames a second from a drone
+        that has moved a metre are one look at the arch measured fifteen times, not fifteen looks: they carry no
+        extra parallax, and folding them in one at a time would let the detector's per-frame centre scatter bend
+        the fit. Scatter in the bearings always bends it the same way - towards the drone, a gate read smaller than
+        it is - because the residual it leaves is quadratic, so the cure is to average it down before it enters."""
+        b = self.bin
+        b[0] += pg
+        b[1] += r
+        b[2] += ur
+        b[3] += sa
+        b[4] += sc
+        b[5] += 1
+        if b[5] < max(1, int(group)):
+            return
+        n = float(b[5])
+        pg = b[0] / n
+        r = b[1] / n
+        nr = float(np.linalg.norm(r))
+        ur, sa, sc = b[2] / n, b[3] / n / math.sqrt(n), b[4] / n / math.sqrt(n)
+        self.bin = [np.zeros(3), np.zeros(3), 0.0, 0.0, 0.0, 0]
+        if nr < 1e-6:
+            return
+        r = r / nr
+        self._normal(pg, r, ur, sa, sc)
+
+    def _normal(self, pg: np.ndarray, r: np.ndarray, ur: float, sa: float, sc: float) -> None:
+        wc = 1.0 / max(sc, 1e-3) ** 2
+        wa = 1.0 / max(sa, 1e-3) ** 2
+        M = np.eye(3) - np.outer(r, r)                 # across the ray: M (x - pg) = 0, no width in it
+        self.N4[:3, :3] += wc * M
+        self.g4[:3] += wc * (M @ pg)
+        j = np.array([r[0], r[1], r[2], -ur])          # along it: r.x - width * ur = r.pg
+        self.N4 += wa * np.outer(j, j)
+        self.g4 += wa * j * float(r @ pg)
+        self.rays += 1
+
+    def fit_width(self) -> tuple[float, float, np.ndarray] | None:
+        """(arch width in metres, its std, the arch's world point) from every sighting so far, or None while the
+        rays are still too nearly parallel for the two to be told apart."""
+        if self.rays < 2:
+            return None
+        try:
+            ev = np.linalg.eigvalsh(self.N4)
+            if not ev[0] > max(1e-12, 1e-11 * float(ev[-1])):
+                return None
+            C = np.linalg.inv(self.N4)
+            u = C @ self.g4
+        except np.linalg.LinAlgError:
+            return None
+        w, var = float(u[3]), float(C[3, 3])
+        if not (math.isfinite(w) and math.isfinite(var) and var >= 0.0):
+            return None
+        return w, math.sqrt(var), u[:3]
 
 
 class SightPilot:
@@ -513,8 +658,15 @@ class SightPilot:
         self.flow_f = P.flow_max
         self.flow_trim = 1.0
         for k in ('rej_elev', 'rej_stale', 'rej_offaxis', 'absorbed', 'behind', 'ghosts', 'orphans_registered', 'low',
-                  'unpasses', 'reseeds', 'goal_clips', 'dup_passes', 'stale_targets'):
+                  'unpasses', 'reseeds', 'goal_clips', 'dup_passes', 'stale_targets', 'w_updates', 'w_rejects'):
             setattr(self, k, 0)
+        # how wide the arches of this course are, in log metres. It starts at whatever width the detector's ranges
+        # assume (the first detection says so) and is a fact about the course, not about an attempt: a crash and a
+        # fresh start throw the tracks away but not what the pilot has learned about the arches it is flying at.
+        self.w_ln = math.log(GATE_WIDTH_NOM)
+        self.w_var = P.width_prior_ln ** 2
+        self.w_drift = 0.0                    # net revision since the tracks last had to earn their parallax
+        self.w_seen = False                   # the nominal has been taken from a real detection
         self._next_id = 0
         self.pass_kind = 0
         self.carrot = None                    # the goal's world point of the last tick without an error
@@ -725,13 +877,35 @@ class SightPilot:
         return R.T @ rel
 
     # ------------------------------------------------------------------ 1 intake
-    def _range(self, dist: float) -> float:
+    @property
+    def gate_w(self) -> float:
+        """The pilot's current estimate of how wide the arches of this course are, in metres."""
+        return math.exp(self.w_ln)
+
+    @property
+    def gate_w_sd(self) -> float:
+        """...and its 1-sigma spread, as a fraction (0.2 means +-20 %)."""
+        return math.sqrt(max(self.w_var, 0.0))
+
+    def _unit_range(self, det) -> float:
+        """One detection's range per metre of gate width: f * stretch / width_px with the detector's range bias
+        taken out. This is the whole of what apparent size measures; multiplying by a width makes it a range.
+
+        The bias table is really a function of apparent pixel width, so it is read at the range the sighting would
+        have if the arches were ``range_corr_width`` wide - which is how it was fitted - and not at whatever range
+        the pilot currently believes. The clip is the detector's reach (f / width_px has a floor and a ceiling),
+        not a fact about any course."""
         P = self.params
-        rho = dist
+        w0 = float(getattr(det, 'width_m', 0.0) or 0.0) or GATE_WIDTH_NOM
+        ur = float(det.dist_m) / w0
         if P.range_corr:
             d, k = zip(*P.range_corr)
-            rho = dist * float(np.interp(dist, d, k))
-        return clip(rho, 1.0, 45.0)
+            ur = ur * float(np.interp(ur * P.range_corr_width, d, k))
+        return clip(ur, P.unit_range_clip[0], P.unit_range_clip[1])
+
+    def _range(self, det) -> float:
+        """The range of one sighting in metres: its unit range times the width the course seems to have."""
+        return clip(self.gate_w * self._unit_range(det), 0.5, 400.0)
 
     @staticmethod
     def _off_axis(det, cam) -> float:
@@ -755,7 +929,12 @@ class SightPilot:
         if not (P.elev_deg[0] * DEG < el < P.elev_deg[1] * DEG):
             self.rej_elev += 1
             return
-        rho = self._range(float(det.dist_m))
+        if not self.w_seen:               # the first sighting says which width the detector's ranges assume
+            self.w_seen = True
+            self.w_ln = math.log(clip(float(getattr(det, 'width_m', 0.0) or 0.0) or GATE_WIDTH_NOM,
+                                      P.width_span[0], P.width_span[1]))
+        ur = self._unit_range(det)
+        rho = clip(self.gate_w * ur, 0.5, 400.0)
         cam = getattr(self.host.vision, 'cam', None)
         W, H = (float(cam.width), float(cam.height)) if cam is not None else (320.0, 180.0)
         off = self._off_axis(det, cam)
@@ -765,12 +944,12 @@ class SightPilot:
         hw = 0.5 * float(det.width_px)
         crop = (det.u - hw < P.crop_px or det.u + hw > W - P.crop_px or det.v - hw < P.crop_px
                 or det.v + hw > H - P.crop_px)
-        sa = (P.sig_along[0] * rho + P.sig_along[1]) * (P.crop_mult if crop else 1.0)
-        sc = P.sig_cross[0] * rho + P.sig_cross[1]
+        # an off-axis box is a worse measurement, not a wrong one
+        k_off = math.sqrt(1.0 + off / P.offaxis_sig_deg) if P.offaxis_sig_deg > 0 and off > 0.0 else 1.0
+        sa = (P.sig_along[0] * rho + P.sig_along[1]) * (P.crop_mult if crop else 1.0) * k_off
+        sc = (P.sig_cross[0] * rho + P.sig_cross[1]) * k_off
         rr = np.outer(r, r)
         Rm = sa * sa * rr + sc * sc * (np.eye(3) - rr)
-        if P.offaxis_sig_deg > 0 and off > 0.0:
-            Rm = Rm * (1.0 + off / P.offaxis_sig_deg)     # an off-axis box is a worse measurement, not a wrong one
         z = pg + rho * r
         T = self._update(now, z, Rm, r, rho, pg, crop)
         if T is not None and T.confirmed:
@@ -780,10 +959,96 @@ class SightPilot:
             # how far this detector shows an arch on this course, measured rather than assumed: the search geometry
             # scales with it, since a gate nearer than this would already be in sight
             self.sight_r = max(self.sight_r, math.hypot(float(z[0] - pg[0]), float(z[1] - pg[1])))
+        if T is not None and not T.passed:
+            # the same sighting also goes into the track's own point-and-width fit, which assumes no width at all;
+            # once the drone has moved across the line of sight, that fit says how wide this arch is
+            T.add_sight(pg, r, ur, sa, sc, P.width_bin)
+            self._width_update(T, now)
         # the side to search: a tentative arch seen twice (a single sighting is as often a phantom or a flip)
         if T is not None and not T.confirmed and T.hits >= P.tent_side_hits:
             self.last_tent_b = wrap(math.atan2(float(T.m[1] - p[1]), float(T.m[0] - p[0])) - self.psi)
             self.last_tent_t = now
+
+    def _width_update(self, T: Track, now: float) -> None:
+        """What one arch's own sightings say its width is, folded into the course-wide estimate.
+
+        Every arch on a course is normally the same size, so the per-track fits go into one filter in log space.
+        A track is asked at most once every ``width_min_s`` (fifteen detections a second are one look at one arch,
+        not fifteen independent ones), only when it is confirmed, and only when its fit has separated the width
+        from the range to within ``tri_sigma_frac`` of itself - which is the drone's own movement across the line
+        of sight doing the work, and is exactly what will not have happened on a first, distant sighting. What it
+        then says is weighted by its own std, so an early rough fit moves the estimate and a later firm one fixes
+        it; a fit that disagrees with the course by more than three sigma is a flip or a phantom and is dropped."""
+        P = self.params
+        if not P.width_est or not T.confirmed or T.rays < P.tri_min_rays or now - T.t_width < P.width_min_s:
+            return
+        fit = T.fit_width()
+        if fit is None:
+            return
+        w_meas, sd, _ = fit
+        if w_meas <= 0.0:
+            return
+        # The sightings went into the fit with the noise of a range the pilot believes, not the range the arch is
+        # at, so the std comes back scaled by (what it believes) / (what the fit says): an arch read 2.7x too far
+        # looks 2.7x noisier than it is, and the gate below would then be 2.7x too strict on exactly the course
+        # that needs it. Dividing by the assumed width undoes that and makes the gate mean one thing everywhere.
+        rel = sd / max(self.gate_w, 1e-6)
+        if rel > P.tri_sigma_frac:
+            return
+        T.t_width = now
+        if not (P.width_span[0] <= w_meas <= P.width_span[1]):
+            self.w_rejects += 1
+            return
+        y = math.log(w_meas) - self.w_ln
+        v = rel * rel + P.width_meas_ln ** 2
+        s = self.w_var + v
+        if abs(y) > 3.0 * math.sqrt(s):          # a flip, a phantom or a badly split track, not a gate size
+            self.w_rejects += 1
+            return
+        k = self.w_var / s
+        was = self.w_ln
+        self.w_ln = clip(self.w_ln + k * y, math.log(P.width_span[0]), math.log(P.width_span[1]))
+        self.w_var = max((1.0 - k) * self.w_var, P.width_floor_ln ** 2)
+        self.w_updates += 1
+        self._rescale(math.exp(self.w_ln - was))     # what the width actually moved, clip included
+
+    def _rescale(self, g: float) -> None:
+        """The course's arches just got g times wider, so every range the tracker holds was g times short: slide
+        each unpassed estimate along the ray it was last seen on, from where it was seen, and scale its covariance
+        with it (a point g times further away is g times more uncertain in metres, across the ray as well as along
+        it). Passed arches are history and the drone's own path already vouches for them.
+
+        An estimate that has just jumped is also worth less than it was. Every range that built it was measured at
+        the old width, so the along-ray variance takes back the distance it moved, and a revision beyond
+        ``width_reset_ln`` makes the track earn its parallax again - the parallax that had been allowed to shrink
+        that variance was itself measured against ranges on the old scale. The filter then follows the new
+        measurements instead of averaging them against a history taken on a different scale. Without this, an 8 m
+        course was still being flown as a 7 m one at the gate, long after the width itself had been measured."""
+        P = self.params
+        if not math.isfinite(g) or abs(math.log(max(g, 1e-9))) < 1e-4:
+            return
+        # the parallax reference is retired on the NET drift since it was last set, not on one step: the estimate
+        # jitters either way by a per cent or two at rest, which is no reason to throw a good estimate's parallax
+        # away, while a course being walked from 4 m to 8 m drifts one way and so retires it
+        self.w_drift += math.log(g)
+        big = abs(self.w_drift) > P.width_reset_ln
+        if big:
+            self.w_drift = 0.0
+        for T in self.tracks:
+            if T.passed:
+                continue
+            rel = T.m - T.p_last
+            n = float(np.linalg.norm(rel))
+            T.m = T.p_last + g * rel
+            T.P = T.P * (g * g)
+            moved = abs(g - 1.0) * n
+            if n > 1e-6 and moved > 0.0:
+                u = rel / n
+                T.P = T.P + (moved * moved) * np.outer(u, u)
+            if big:
+                T.r0 = T.r_last.copy()
+            T.rng_last_h = T.dist_h(T.p_last)
+            T.last_along *= g
 
     def _fit(self, T: Track, pg: np.ndarray, r: np.ndarray, rho: float, g: float) -> float | None:
         rel = T.m - pg
@@ -854,7 +1119,7 @@ class SightPilot:
             T.P = 0.5 * (T.P + T.P.T)
             # successive width ranges share their error: the along-ray variance may only shrink with parallax
             par = math.degrees(math.acos(clip(float(r @ T.r0), -1.0, 1.0)))
-            sf = 0.08 * rho * (1.0 - min(par / 8.0, 1.0)) + 0.15
+            sf = P.range_common * rho * (1.0 - min(par / 8.0, 1.0)) + 0.15
             vr = float(r @ T.P @ r)
             if vr < sf * sf:
                 T.P = T.P + (sf * sf - vr) * np.outer(r, r)
@@ -1008,6 +1273,9 @@ class SightPilot:
             twin.P = (np.eye(3) - K) @ twin.P
             twin.P = 0.5 * (twin.P + twin.P.T)
             twin.hits += T.hits
+            twin.N4 = twin.N4 + T.N4              # two estimates of one arch: one set of sightings of it
+            twin.g4 = twin.g4 + T.g4
+            twin.rays += T.rays
             if T.t_last > twin.t_last:
                 twin.t_last, twin.p_last, twin.r_last = T.t_last, T.p_last, T.r_last
             twin.unseen_in_view = min(twin.unseen_in_view, T.unseen_in_view)
@@ -1023,6 +1291,9 @@ class SightPilot:
                 if self._ahead_fragment(o, self.target, p):
                     self.tracks.remove(o)
                     self.target.hits += o.hits
+                    self.target.N4 = self.target.N4 + o.N4
+                    self.target.g4 = self.target.g4 + o.g4
+                    self.target.rays += o.rays
                     self.absorbed += 1
         if self.target is not None and self.target not in self.tracks:
             self.target = None
@@ -1286,6 +1557,9 @@ class SightPilot:
                 self.tracks.remove(T)
             self.absorbed += 1
             frag.hits += T.hits
+            frag.N4 = frag.N4 + T.N4
+            frag.g4 = frag.g4 + T.g4
+            frag.rays += T.rays
             self.target = frag
             self.pending = None
             return None
@@ -1754,7 +2028,8 @@ class SightPilot:
             s = (f'DETECTOR STALLED ({gap:.1f} s without a fresh frame)' if math.isfinite(gap)
                  else 'DETECTOR STALLED (no frame yet)') + f'; {s}'
         self.host.vision_status = (f'{s}; rabbit v {self.v:.1f}/{self.v_nom:.1f} lead {self.lead_now:.1f}; '
-                                   f'passes {self.n_passes}; flow {self.flow_f:.2f}')
+                                   f'passes {self.n_passes}; flow {self.flow_f:.2f}; '
+                                   f'arch {self.gate_w:.2f} m +-{100 * self.gate_w_sd:.0f}% ({self.w_updates})')
 
     @property
     def host_pos(self) -> np.ndarray:
@@ -1783,6 +2058,7 @@ class SightPilot:
                 n_conf, n_tent, self.mode, self.n_passes, self.pass_kind,
                 self.flow_f, self.rej_elev, self.rej_stale, self.rej_offaxis, self.absorbed, self.low, self.reseeds,
                 self.ghosts, self.orphans_registered, self.unpasses, self.behind, self.goal_clips, self.errors,
+                self.gate_w, self.gate_w_sd, self.w_updates,
                 now - self.t_frame if math.isfinite(self.t_frame) else nan]
 
     @staticmethod

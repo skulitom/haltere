@@ -3,8 +3,9 @@
 A background thread grabs the Liftoff window with mss at up to ``fps`` frames per second, resizes the
 game view to the network's input size and runs GateNet on the GPU. The latest detection is converted
 into a direction (unit vector in the drone's body frame) and a distance estimate (from the gate's
-apparent width, the camera's focal length and the nominal gate width). The pilot builds the brain's
-goal vector from this instead of from telemetry positions.
+apparent width, the camera's focal length and a NOMINAL gate width, which the detection carries so the
+pilot can divide it back out). The pilot builds the brain's goal vector from this instead of from
+telemetry positions.
 """
 from __future__ import annotations
 
@@ -32,11 +33,21 @@ class Detection:
     direction_body: np.ndarray = field(default_factory=lambda: np.array([1.0, 0.0, 0.0]))
     dist_m: float = 0.0
     frames: int = 0
+    # the arch width ``dist_m`` was computed with. The detector cannot know how wide the arches of an unseen course
+    # are, so it reports a range for a nominal one; ``dist_m / width_m`` is the range per metre of gate width, the
+    # part of the measurement that IS course-independent, and the pilot multiplies it by its own online estimate.
+    width_m: float = GATE_WIDTH_M
 
 
-def detection_geometry(cam: Camera, u: float, v: float, width_px: float) -> tuple[np.ndarray, float]:
+def detection_geometry(cam: Camera, u: float, v: float, width_px: float,
+                       width_m: float = GATE_WIDTH_M) -> tuple[np.ndarray, float]:
     """Body-frame unit direction through the detected centre (u, v) and the range from the apparent width, for a
     camera at the network's input resolution. Shared by the live detector and the simulator rehearsal.
+
+    The range is strictly proportional to ``width_m``: apparent size gives f * stretch / width_px, the range per
+    metre of gate width, and nothing in an image says how wide the arch is. The default is the nominal width of the
+    course the detector was trained on; the by-sight pilot divides it back out and scales by the width it has
+    triangulated for the course it is on (``SightPilot`` / ``SightParams.width_est``).
 
     Off the optical axis a rectilinear image stretches things: a gate seen at horizontal offset du and radial offset
     (du, dv) appears wider by sqrt(f^2 + du^2) * sqrt(f^2 + du^2 + dv^2) / f^2, a factor 2.5 at the edge of a
@@ -45,16 +56,17 @@ def detection_geometry(cam: Camera, u: float, v: float, width_px: float) -> tupl
     f = cam.f
     du, dv = u - cam.width / 2, v - cam.height / 2
     stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
-    dist = f * GATE_WIDTH_M * stretch / max(width_px, 4.0)
+    dist = f * width_m * stretch / max(width_px, 4.0)
     return direction, float(dist)
 
 
 class GateVision:
     def __init__(self, ckpt: str, cam: Camera, window_title: str = 'Liftoff', fps: float = 15.0,
-                 device: str = 'cuda', p_thresh: float = 0.5):
+                 device: str = 'cuda', p_thresh: float = 0.5, gate_width_m: float = GATE_WIDTH_M):
         self.net = load_gatenet(ckpt, device)
         self.device = next(self.net.parameters()).device
         self.cam = cam.scaled(IN_W, IN_H)          # focal length at the network's input resolution
+        self.gate_width_m = float(gate_width_m)    # the width its ranges assume; the pilot re-scales them
         self.title = window_title
         self.fps = fps
         self.p_thresh = p_thresh
@@ -109,9 +121,9 @@ class GateVision:
                 p, u_n, v_n, width_px = float(d[0]), float(d[1]), float(d[2]), float(d[3])
                 u = (u_n + 1) / 2 * IN_W
                 v = (v_n + 1) / 2 * IN_H
-                direction, dist = detection_geometry(self.cam, u, v, width_px)
+                direction, dist = detection_geometry(self.cam, u, v, width_px, self.gate_width_m)
                 n += 1
-                det = Detection(t_grab, p, u, v, width_px, direction, dist, n)
+                det = Detection(t_grab, p, u, v, width_px, direction, dist, n, self.gate_width_m)
                 with self._lock:
                     self.latest = det
                 t_next += 1.0 / self.fps
