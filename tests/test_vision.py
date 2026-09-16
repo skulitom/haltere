@@ -133,3 +133,25 @@ def test_light_augmentation_leaves_the_geometry_alone(tmp_path):
     assert all(o.shape == base.shape and o.dtype == np.uint8 for o in outs)
     hues = [cv2.cvtColor(o, cv2.COLOR_RGB2HSV)[..., 0].mean() for o in outs]
     assert max(hues) - min(hues) > 5, 'strong augmentation is not varying colour'
+
+
+def test_perturbations_change_appearance_and_nothing_else():
+    """The colour battery must leave the geometry alone, or its recall drop would mean nothing."""
+    import cv2
+
+    from haltere.vision.measure import PERTURBATIONS, perturb
+    rng = np.random.default_rng(0)
+    img = (rng.random((IN_H, IN_W, 3)) * 70).astype(np.uint8)  # a dark, textured background
+    img[40:80, 100:160] = 250                                  # a landmark whose position must not move
+    for kind in PERTURBATIONS:
+        out = perturb(img, kind)
+        assert out.shape == img.shape and out.dtype == np.uint8, kind
+        a = out.mean(2)
+        ys, xs = np.nonzero(a >= 0.5 * (float(a.max()) + float(a.min())))
+        if kind in ('identity', 'grayscale', 'dark', 'gamma2.2'):
+            assert abs(xs.mean() - 130) < 12 and abs(ys.mean() - 60) < 12, kind
+        if kind != 'identity':
+            assert not np.array_equal(out, img), f'{kind} changed nothing'
+    hsv_in = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[..., 0].astype(float)
+    hsv_out = cv2.cvtColor(perturb(img, 'hue180'), cv2.COLOR_RGB2HSV)[..., 0].astype(float)
+    assert abs(float(np.median((hsv_out - hsv_in) % 180)) - 90) < 2      # 180 degrees is 90 in OpenCV units
