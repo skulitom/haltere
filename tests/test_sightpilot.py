@@ -746,7 +746,8 @@ def test_the_selection_cost_is_an_arc_that_blows_up_at_a_reversal():
     assert sp._arc_cost(10.0, -math.radians(150)) == sp._arc_cost(10.0, math.radians(150))
     assert sp._arc_cost(10.0, math.pi) == pytest.approx(10.0 * sp.params.select_arc_cap)
     sp.params.select_arc_cap = 0.0
-    assert sp._arc_cost(10.0, math.pi) == pytest.approx(10.0)                     # off: distance alone, as it was
+    # off is the plain distance - NOT the old score, which also had a bearing term (see select_arc_cap)
+    assert sp._arc_cost(10.0, math.pi) == pytest.approx(10.0)
 
 
 def test_the_first_gate_is_the_one_the_spawn_points_at_not_the_nearest():
@@ -761,6 +762,10 @@ def test_the_first_gate_is_the_one_the_spawn_points_at_not_the_nearest():
     sp.target = None
     sp._select(now, np.zeros(3))
     assert sp.last_pass is None and sp.target is first
+    sp.target = None
+    sp.params.start_line_w = 0.0            # the arc cost ALONE still starts the lap at its last gate: the
+    sp._select(now, np.zeros(3))            # spawn-line prior, not the arc, is what decides a start
+    assert sp.target is last
     sp.target = None
     sp.params.select_arc_cap, sp.params.start_line_w = 0.0, 0.0                   # the old distance-only score
     sp._select(now, np.zeros(3))

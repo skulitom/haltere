@@ -162,18 +162,31 @@ class SightParams:
     # direction the course is being travelled (SightPilot._course_dir): the circular arc from here that leaves along
     # that direction and ends at the arch, d at 0 deg, 1.57 d at 90 and unbounded at 180. An arch that needs the
     # direction of travel reversed is one already passed or much later in the course, and it prices itself out.
-    select_arc_cap: float = 20.0          # cap on that arc's length/chord ratio (reached at about 172 deg; 0 = off,
-                                          # which is the old distance-and-bearing score)
+    select_arc_cap: float = 20.0          # cap on that arc's length/chord ratio (reached at about 172 deg). 0 makes
+                                          # the score the plain distance - it is NOT the old score, which also had
+                                          # the 8.0 * (1 - cos b) bearing term, and nothing restores that: an A/B
+                                          # against the old selection has to be run against the old code.
     # One consequence worth recording, because the odd-course bench shows it. The old score added 8.0 * (1 - cos b)
     # to a distance: a dimensionless term against metres, so how hard it pushed depended on the scale of the ranges
     # the pilot was reading. On the bench's narrow and wide courses - which ARE home, with 1.5 m and 8 m arches, so
     # every range is read 2.67x too far or 2x too near - that accident was doing work. This score is scale-free, so
-    # it stops doing it: narrow 2,1,0 -> 1,1,0 and wide 6,6,7 -> 5,3,5, while home itself, the same layout with the
+    # it stops doing it: narrow 2,1,0 -> 1,1,0 and wide 6,7,6 -> 5,3,5, while home itself, the same layout with the
     # range conversion right, is unchanged run for run. The regression belongs to the hard-coded gates.GATE_WIDTH_M
     # in runtime.detection_geometry, not to the course's shape, and it should go when that does.
+    # (Those two before-columns are re-measured against a clean 6f06f45 checkout, which is the only valid way to
+    # read them: select_arc_cap = 0 does NOT restore the old score. wide was first reported as 6,6,7 from such a
+    # toggle - the same 19 gates over the three seeds, a different seed carrying them.)
     # Before any gate has been passed there is no travelled direction, only the spawn: a race starts pointing at its
     # first gate, so an arch off the spawn line is evidence against, in metres of its own.
-    start_line_w: float = 1.0             # score per metre an arch lies off the spawn line (0 = off)
+    start_line_w: float = 1.0             # score per metre an arch lies off the spawn line (0 = off). It is what
+                                          # decides a start, not the arc cost: at hairpin's spawn the arc alone
+                                          # still prefers the LAST gate of the lap (20.75 m of arc, 19.2 m away
+                                          # 39 deg off) to the first (25.00 m dead ahead), and any weight above
+                                          # 0.354 flips it. So the spawn-points-at-gate-one prior carries the
+                                          # first-gate half of the hairpin result on its own - and it is a claim
+                                          # about races that this very bench breaks on purpose in offaxis_start
+                                          # (which survives it only because there the penalty happens to rank the
+                                          # gates in course order anyway).
     switch_s: float = 0.3
     lock_s: tuple = (0.3, 0.6)            # on the latest ray up to a, blended to the filter until b
     bisector_cap: float = 45.0
