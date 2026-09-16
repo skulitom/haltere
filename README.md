@@ -439,23 +439,46 @@ and that 14 of 17 bad crossings were perception or bookkeeping. Six things were 
   flights, 47 of them inside 12 m, once 2 s before its gate with 88 sightings behind it). The timer now
   only runs on a frame whose arch is somewhere else in the image (`ghost_evidence`, `ghost_other_deg`),
   never deletes the current target inside 12 m (`ghost_keep_d`), and is longer for a well-seen estimate
-  (`ghost_s_hits`, `ghost_s_max`). *Legacy: `ghost_evidence=any ghost_keep_d=0 ghost_s_hits=0`.*
+  (`ghost_s_hits`, `ghost_s_max`). Because that timer cannot run beyond `ghost_range` and `ghost_keep_d` resets it,
+  nothing then retired a target that was simply never seen again — in replay the pilot flew at one for 45 s — so a
+  confirmed target unseen for `target_life` (20 s, against a longest honest gap of 15 s over the six flights) is
+  dropped; time while the detector is stalled does not count, since flying a remembered gate blind is the point.
+  *Legacy: `ghost_evidence=any ghost_keep_d=0 ghost_s_hits=0 target_life=0`.*
 - **A gate that is dropped is still passed.** Only `_pass` wrote `last_pass`, so a deleted target left the
   course reference behind: in w19 the reference stayed at gate 2 from 31 s to 75 s, giving gate 5 a
   +40 deg approach axis. A confirmed estimate the drone came within 8 m of leaves an *orphan*, and flying
   past it books a `travel` pass, which moves the course reference, the height ladder and the search side
-  on without touching the gate now being flown at (`orphan_*`). When the last pass is older than 10 s or
+  on without touching the gate now being flown at (`orphan_*`). One arch can leave two estimates, so a
+  second pass within `orphan_dedup_d` of the one on the books — or booked before the drone has flown that
+  far from it — is the same gate whichever path booked it: the pass declared from closer in is kept and the
+  gate is counted once, so `n_passes` (which indexes `--sight-turn-hints`) and the height ladder are not
+  fed twice from a badly ranged estimate. When the last pass is older than 10 s or
   more than 25 m behind, the approach course is the drone's own chord over the last 3-5 s instead
-  (`course_age_s`, `course_back_m`, `course_win`). *Legacy: `orphan_d=0 course_age_s=60 course_min_m=0`.*
+  (`course_age_s`, `course_back_m`, `course_win`). Neither of those outlasts a leg of this course (24-35 m,
+  10-17 s), so the reference expires *before* the gate on 40-60 % of the rows 3-12 m out and takes the turn
+  rotation with it. Raising them to 30 s / 50 m puts the reference back, but what that buys is small and
+  inconsistent — replayed, the mean approach-axis error against the arch's own heading 3-12 m out goes
+  17.4 → 11.3 deg on w21's second lap and 12.8 → 12.0 on w20's first, against 7.7 → 9.4 on w20's second and
+  no change on w19 — while it turns the bisector rotation back on over the 35 m leg into gate 1, and the
+  drone then flies an angled approach and a turning exit that peaks at 20.4 m/s² a metre past the arch
+  (11.8 at the 99th percentile over the rest of the flight): the rehearsal scores gate 1 a hit on three
+  seeds of four. Left as it is for that reason; `--sight-set course_age_s=30
+  --sight-set course_back_m=50` tries it. *Legacy: `orphan_d=0 course_age_s=60 course_min_m=0`.*
 - **A fragment is not the next gate.** A displaced sighting spawns a second confirmed track 5-10 m beyond
   the target on the same bearing; it used to win the target or set the bisector. A confirmed track ahead
   of the target within the course's own measured gate spacing (24-35 m here; `frag_gap`, `frag_gap_frac`)
   and close to its ray is now folded into it, and a next-gate candidate must be at least 18 m away
   (`next_min_sep`). *Legacy: `frag_gap=0 frag_absorb=false next_min_sep=3`.*
-- **Off the optical axis the detector is a different instrument.** Sightings more than 35 deg off the
+- **Off the optical axis the detector is a different instrument.** Sightings more than 40 deg off the
   camera axis are refused and the rest are weighted by how far off they are (`offaxis_max`,
-  `offaxis_sig_deg`). Because the camera is tilted up 30 deg, the *median* real detection is already
-  24-26 deg off-axis; what varies is the horizontal part, and that is what predicts quality: pooled over
+  `offaxis_sig_deg`). The angle is the box's image radius, `atan(hypot(u - cx, v - cy) / f)`. Because the
+  camera is tilted up 30 deg, the *median* real detection is already
+  24-26 deg off-axis (p95 32-37), so the first cut at 35 deg sliced the body of that distribution — 23 % of
+  every sighting taken in search mode, and in replay of w16 the pilot sat on an unseen estimate for 45 s.
+  At 40 deg (84 px of the 184 to the corner) the loss is 11 % in search and 2 % with a target, and the w16
+  fixation comes down to 10 s. Opening it further to 45 deg (6 % / 0.8 %) is no better on the game logs and
+  the rehearsal likes it less, since its synthetic detector has no off-axis degradation at all.
+  What varies is the horizontal part, and that is what predicts quality: pooled over
   the six flights, 91-100 % of sightings within 5 deg of the nose saw a real arch, against 55-88 % beyond
   20 deg. So the nose now follows the target from 10 deg of bearing instead of 35 (`look_free`,
   `look_max`, `look_kappa`) — extra yaw is free, since the brain flies a body-frame goal.
@@ -466,9 +489,12 @@ and that 14 of 17 bad crossings were perception or bookkeeping. Six things were 
   `atan(axis_sigma_cap / along-range sigma)`, the pivot onto the exact bearing starts at 18 m instead of
   12, and the terminal snap starts at 12 m and may move the goal 2 m. *Legacy: `axis_sigma_cap=0
   pivot_d=[3,12] pivot_max=60 --sight-snap-start 9 --sight-set snap_max=1.5`.*
-- **Height is held to the grade line.** `z_ref = z_aim_last + grade_last * min(s - last_pass.s, grade_len)`
-  and the target height is clipped to `z_ref` ± `z_window` (`z_window_ref`). The measured limit of this
-  net: a +2.5 m ceiling clips the real 4.9 m and 6.4 m climbs into gates 5 and 6 of this course by
+- **Height is capped by the grade line.** `z_ref = z_aim_last + grade_last * min(s - last_pass.s, grade_len)`
+  is the *ceiling* on the target height (`z_ref + z_window[1]`, `z_window_ref`); the floor stays where it
+  was, on the last passage height (`z_aim_last - z_window[0]`). Only the ceiling rides the grade line: a
+  floor that climbed with it is always at least 1.5 m above the old one and lifted the approach by up to
+  1.9 m on w21 — the very failure the net was written against. The measured limit of the ceiling: a +2.5 m
+  one clips the real 4.9 m and 6.4 m climbs into gates 5 and 6 of this course by
   1.2-1.7 m, which is a crash, so the ceiling is 6 m — enough to catch a gross lift, not enough to fix the
   +1.3 m estimate errors that actually happen. Those are fixed by the pass bookkeeping keeping the ladder
   rolling instead. *Legacy: `z_window_ref=false z_window=[3,12]`.*

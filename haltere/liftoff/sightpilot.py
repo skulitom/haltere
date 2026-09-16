@@ -9,8 +9,10 @@ bias-corrected by ``range_corr``); it updates one of several per-arch Kalman fil
 across the ray and loose along it (twice as loose when the arch is cropped by the image edge). Arches are associated
 in metres along and across the ray and in log-range, so two arches lined up on one bearing stay two tracks. A track
 confirms after three sightings over 0.2 s at a plausible height (hay bales and shadows on the ground do not); a
-confirmed estimate that the camera should see but does not for 2 s is a ghost. Passed arches absorb their own
-sightings from behind.
+confirmed estimate that the camera should see but does not for 2 s is a ghost, and one nothing has seen for
+``target_life`` while the detector is alive is dropped even when it is the target. Passed arches absorb their own
+sightings from behind. One arch can leave two estimates, so a second pass within ``orphan_dedup_d`` of the one on
+the books is that same gate: the pass declared from closer in is kept and the gate is counted once.
 
 Guidance. The target is the nearest confirmed arch ahead. Its approach axis runs along the course (from the last gate,
 turned toward the bisector with the next gate when that one is known) and pivots onto the exact bearing close up.
@@ -91,8 +93,15 @@ class SightParams:
     crop_px: float = 3.0                  # the arch's box within this of the image edge = cropped
     crop_mult: float = 2.0                # along-ray std multiplier when cropped
     # off the optical axis the detector is a different instrument: within 20 px of the centre 89 % of its boxes are
-    # the target arch, beyond 60 px (about 31 deg) only 28 % (task e)
-    offaxis_max: float = 35.0             # a detection further than this off the optical axis is not used (0 = off)
+    # the target arch, beyond 60 px (about 31 deg) only 28 % (task e). The angle is the box's image radius,
+    # atan(hypot(u - cx, v - cy) / f), and the camera's 30 deg uptilt puts an arch level with the drone dead ahead at
+    # 30 deg of it: over the six game flights the median sighting is 24-26 deg and the 95th percentile 32-37, so a
+    # 35 deg cut slices the body of that distribution -- 23 % of every sighting made in search mode, and in replay
+    # of w16 the pilot then sat on an unseen estimate for 45 s. At 40 deg that is 11 %, at 45 deg 6 %; both fix w16,
+    # and 40 is the one the rehearsal likes (the synthetic detector has no off-axis degradation, so every sighting
+    # let in there is a good one and the pilot commits to the turn out of gate 1 harder the wider this is opened).
+    offaxis_max: float = 40.0             # a detection further than this off the optical axis is not used (0 = off);
+                                          # 40 deg = 84 px of the 184 to the corner: the tail, not the bulk
     offaxis_sig_deg: float = 15.0         # its covariance is scaled by 1 + off_axis_deg / this (0 = off)
     q: float = 0.02                       # m^2/s process noise per track
     perp_gate: tuple = (1.5, 0.12)        # association: ray passes within max(a, b * along) of the estimate
@@ -108,6 +117,11 @@ class SightParams:
     no_update_crop_rng: float = 4.0       # ... nor when cropped and closer than this
     tent_life: float = 2.0
     conf_life: float = 30.0
+    # the target is exempt from conf_life, and the ghost rule cannot retire it beyond ghost_range or while
+    # ghost_keep_d holds it: nothing then retires an estimate that is simply never seen again (in replay the pilot
+    # flew at one for 45 s). Time while the detector is stalled does not count: a remembered target is flown blind.
+    target_life: float = 20.0             # a confirmed target unseen this long, the detector alive, is dropped
+                                          # (0 = off; the longest honest gap over the six game flights is 15 s)
     passed_life: float = 90.0
     ghost_s: float = 2.0
     ghost_range: tuple = (6.0, 30.0)
@@ -123,7 +137,10 @@ class SightParams:
     orphan_d: float = 8.0                 # a dropped confirmed track that came this close was a gate, not a phantom:
     orphan_a: float = 1.5                 # ... once the drone is this far past it along its line ...
     orphan_lat: float = 5.0               # ... and within this of the line, register a 'travel' pass (0 = legacy)
-    orphan_dedup_d: float = 10.0          # ... unless the last registered pass was this close (the same arch)
+    orphan_dedup_d: float = 15.0          # any pass within this of the one on the books is the same arch under a
+                                          # second id, whichever path booked it: the nearer of the two is kept and
+                                          # the gate is counted once (real gates on this course are 24-35 m apart,
+                                          # and the measured near-duplicates sat at 9.6-14.6 m)
     orphan_life: float = 12.0             # s an orphan waits to be flown past before it is forgotten
     orphan_target_only: bool = True       # only the gate that was being flown at leaves an orphan (a track dropped
                                           # beside the course is not a gate the drone has just been through)
@@ -150,6 +167,16 @@ class SightParams:
     frag_gap_frac: float = 0.6            # ... or this much of the course's own measured gate spacing, once known
     frag_lat_ahead: float = 4.0           # ... if it is also this close to the ray
     frag_absorb: bool = True              # fold such a fragment's sightings into the target instead of keeping it
+    # these two retire the last pass as the course reference. Note that neither outlasts a leg of this course
+    # (24-35 m, flown in 10-17 s): the reference expires BEFORE the gate on 40-60 % of the rows 3-12 m out, and the
+    # axis there falls back to the drone's own chord, which also switches the turn rotation off (turn_gate rows drop
+    # 30-73 %). Raising them (30 s / 50 m) does put the reference back, but what it buys is small and not
+    # consistent -- replayed, the mean approach-axis error against the arch's own heading 3-12 m out goes 17.4 ->
+    # 11.3 deg on w21's second lap and 12.8 -> 12.0 on w20's first, against 7.7 -> 9.4 on w20's second and no
+    # change on w19 -- while it turns the bisector rotation back on over the 35 m leg into gate 1, and the drone
+    # then flies an angled approach and a turning exit: in the rehearsal that peaks at 20.4 m/s^2 a metre past the
+    # arch (the rest of the flight is 11.8 at the 99th percentile) and `liftoff score` calls gate 1 a hit on three
+    # seeds of four. Not taken for that reason; to try it: --sight-set course_age_s=30 --sight-set course_back_m=50.
     course_age_s: float = 10.0            # a pass older than this no longer sets the approach course ...
     course_back_m: float = 25.0           # ... nor one the rabbit has run this far past (task b)
     course_win: tuple = (3.0, 5.0)        # then the course is the drone's own chord over this window, s ...
@@ -239,11 +266,13 @@ class SightParams:
     az_max: float = 0.8
     grade_max: float = 0.35
     grade_len: float = 15.0
-    # the estimate's height runs 1:1 into the altitude reference and from there into the drone: bound it to the grade
-    # line z_aim_last + grade_last * min(s - last_pass.s, grade_len), so one high estimate cannot lift the approach
-    # measured on the six game flights: a +2.5 m ceiling clips the real 5 m climbs into gates 5 and 6 by 1.2-1.7 m
-    # (a crash), so the net is set where it never fights a climb and still catches a gross lift
-    z_window: tuple = (1.5, 6.0)          # target height within [z_ref - a, z_ref + b] (legacy: (3, 12) off z_aim_last)
+    # the estimate's height runs 1:1 into the altitude reference and from there into the drone: cap it at the grade
+    # line z_aim_last + grade_last * min(s - last_pass.s, grade_len), so one high estimate cannot lift the approach.
+    # Measured on the six game flights: a +2.5 m ceiling clips the real 5 m climbs into gates 5 and 6 by 1.2-1.7 m
+    # (a crash), so the net is set where it never fights a climb and still catches a gross lift. Only the ceiling
+    # rides the grade line: a floor that climbs with it would push the aim UP (+1.9 m on w21), which is the failure
+    # this was written against, so the floor stays on the last passage height, as it was.
+    z_window: tuple = (3.0, 6.0)          # target height within [min(z_ref, z_aim_last) - a, z_ref + b]
     z_window_ref: bool = True             # False: the old window around z_aim_last with no grade line
     # --- yaw
     yaw_rate: float = 2.3                 # rad/s per unit yaw stick (Liftoff 2.3; the simulator's rates 3.8)
@@ -315,7 +344,7 @@ class SightParams:
                 bad.append(f'{k}={getattr(self, k)!r} (must be > 0)')
         for k in ('ghost_keep_d', 'ghost_other_deg', 'ghost_s_max', 'orphan_d', 'orphan_lat', 'orphan_dedup_d',
                   'offaxis_max', 'offaxis_sig_deg', 'frag_gap', 'frag_gap_frac', 'frag_lat_ahead', 'next_min_sep',
-                  'course_back_m', 'course_min_m', 'axis_sigma_cap', 'look_free', 'look_max'):
+                  'course_back_m', 'course_min_m', 'axis_sigma_cap', 'look_free', 'look_max', 'target_life'):
             if getattr(self, k) < 0:
                 bad.append(f'{k}={getattr(self, k)!r} (must be >= 0)')
         if not 0 < self.course_win[0] <= self.course_win[1]:
@@ -419,7 +448,7 @@ class SightPilot:
         self.flow_f = P.flow_max
         self.flow_trim = 1.0
         for k in ('rej_elev', 'rej_stale', 'rej_offaxis', 'absorbed', 'behind', 'ghosts', 'orphans_registered', 'low',
-                  'unpasses', 'reseeds', 'goal_clips'):
+                  'unpasses', 'reseeds', 'goal_clips', 'dup_passes', 'stale_targets'):
             setattr(self, k, 0)
         self._next_id = 0
         self.pass_kind = 0
@@ -445,6 +474,7 @@ class SightPilot:
         self.d_gate = math.inf
         self.psi_launch = psi_n
         self.launch_p = (float(p[0]), float(p[1]))
+        self._p = np.asarray(p, dtype=np.float64).copy()
         self.c = [float(p[0]) + 2.5 * math.cos(psi_n), float(p[1]) + 2.5 * math.sin(psi_n)]
         self.psi = psi_n
         self.kappa = 0.0
@@ -483,6 +513,7 @@ class SightPilot:
         self.yaw_ref = psi_n
         self.lead_now = 0.0
         self.t_launch = now                   # the launch leg runs launch_t from here (pushed on while holding)
+        self.t_stall_end = now                # when the detector last came back: target staleness counts from here
 
     @property
     def ready(self) -> bool:
@@ -577,6 +608,8 @@ class SightPilot:
                 else:
                     self._intake(now, det, pose, p)
         self.stalled = now - self.t_frame > P.stall_s
+        if self.stalled:
+            self.t_stall_end = now            # a target unseen through a stall has not been missed: nothing was seen
         if not self.p_hist or now - self.p_hist[-1][0] >= 0.1:
             self.p_hist.append((now, float(p[0]), float(p[1])))
             while len(self.p_hist) > 2 and now - self.p_hist[0][0] > P.course_win[1] + 1.0:
@@ -658,7 +691,7 @@ class SightPilot:
         W, H = (float(cam.width), float(cam.height)) if cam is not None else (320.0, 180.0)
         off = self._off_axis(det, cam)
         if P.offaxis_max > 0 and off > P.offaxis_max:
-            self.rej_offaxis += 1         # beyond about 35 deg only a quarter of the boxes are the arch being flown at
+            self.rej_offaxis += 1         # the image corners: 4 % of the sightings of the six flights, 11 % in search
             return
         hw = 0.5 * float(det.width_px)
         crop = (det.u - hw < P.crop_px or det.u + hw > W - P.crop_px or det.v - hw < P.crop_px
@@ -819,13 +852,12 @@ class SightPilot:
             if dx * nx + dy * ny < P.orphan_a or abs(-dx * ny + dy * nx) > P.orphan_lat:
                 continue
             self.orphans.remove(o)
-            lp = self.last_pass
-            if lp is not None and math.hypot(o['m'][0] - lp['m'][0], o['m'][1] - lp['m'][1]) < P.orphan_dedup_d:
-                continue                       # the same arch under another id: its pass is already on the books
-            self.orphans = [q for q in self.orphans     # ... and so are the other fragments of it
+            self.orphans = [q for q in self.orphans     # the other fragments of this arch are the same gate
                             if math.hypot(q['m'][0] - o['m'][0], q['m'][1] - o['m'][1]) >= P.orphan_dedup_d]
-            self.orphans_registered += 1
+            n = self.n_passes
             self._pass(o['T'], now, 'travel', o['n'], clear_target=False)
+            if self.n_passes > n:              # _pass refuses a second pass of the arch already on the books
+                self.orphans_registered += 1
             return
 
     def _maintain(self, now: float, dt: float, p: np.ndarray, R: np.ndarray) -> None:
@@ -851,8 +883,17 @@ class SightPilot:
                 if now - T.t_last <= P.tent_life:
                     keep.append(T)
                 continue
-            if T is not self.target and now - T.t_last > P.conf_life:
+            # an estimate nothing has seen for a long time is gone, the target included: the ghost rule cannot say so
+            # beyond ghost_range or while ghost_keep_d holds the target, and a stalled detector saw nothing at all
+            life = P.conf_life if T is not self.target else (P.target_life or math.inf)
+            if now - max(T.t_last, self.t_stall_end) > life:
                 self._orphan(T, now, p)
+                if T is self.target:
+                    self.stale_targets += 1
+                    self.ghosts += 1
+                    self.pass_kind = PASS_KIND['ghost']
+                    self.target = None
+                    self.n_ang = None
                 continue
             if T.unseen_in_view > self._ghost_s(T):
                 if T is self.target and P.ghost_keep_d > 0 and T.dist_h(p) < P.ghost_keep_d:
@@ -1145,41 +1186,71 @@ class SightPilot:
                 best, best_a = o, a
         return best
 
+    def _duplicate(self, T: Track, now: float, d_now: float) -> bool:
+        """Is this pass the arch already on the books, under a second id? One arch leaves two estimates (an orphan
+        and the track that survived it, or two fragments) 8-20 m apart, and the course between them is a few metres;
+        the gates of a course are 24-35 m apart and a lap is a minute and more. The pass declared from closer in is
+        the better one: it replaces the other, and the gate is counted once."""
+        P = self.params
+        lp = self.last_pass
+        if lp is None or P.orphan_dedup_d <= 0 or now - lp['t'] >= P.behind_s:
+            return False
+        q = lp.get('p')
+        if (math.hypot(float(T.m[0]) - lp['m'][0], float(T.m[1]) - lp['m'][1]) >= P.orphan_dedup_d
+                and (q is None or math.hypot(float(self._p[0]) - q[0], float(self._p[1]) - q[1])
+                     >= P.orphan_dedup_d)):
+            return False                      # far from the last pass, and the drone has flown a leg since it
+        if d_now >= lp.get('d', math.inf) or self.pass_backup is None:
+            return True                       # the pass on the books was the nearer one: keep it, count no second
+        (self.z_pass_last, self.z_aim_last, self.grade_last, self.last_pass, self.side,
+         self.n_passes) = self.pass_backup    # ... otherwise undo it and let this one take its place
+        if self.pass_xy:
+            self.pass_xy.pop()
+        self.dup_passes += 1
+        return False
+
     def _pass(self, T: Track, now: float, kind: str, n_vec, clear_target: bool = True) -> None:
         """Book a pass. ``clear_target`` False registers one for an arch the drone has flown past while already
         flying at the next one (an orphan), so the course reference and the height ladder move on undisturbed."""
         P = self.params
+        d_now = T.dist_h(self._p)
+        dup = self._duplicate(T, now, d_now)
         lp = self.last_pass
         self.pass_backup = (self.z_pass_last, self.z_aim_last, self.grade_last, lp, self.side, self.n_passes)
         T.passed = True
         T.t_passed = now
         T.n_pass = (float(n_vec[0]), float(n_vec[1]))
         zp = float(T.m[2]) - CENTRE_UP_M
-        if lp is not None:
-            dist = math.hypot(float(T.m[0] - lp['m'][0]), float(T.m[1] - lp['m'][1]))
-            self.grade_last = clip((zp - self.z_pass_last) / max(dist, 5.0), 0.0, P.grade_max)
-            turn = wrap(self.n_ang - math.atan2(lp['n'][1], lp['n'][0])) if self.n_ang is not None else 0.0
-            if abs(turn) > 10.0 * DEG:
-                self.side = math.copysign(1.0, turn)
+        if dup:
+            self.dup_passes += 1              # the same arch again: pass it, but do not count or re-seed anything
+            self.pass_backup = None           # ... and nothing is left to undo, so a third one cannot replace it
         else:
-            self.grade_last = 0.0
-        self.z_pass_last = zp
-        self.z_aim_last = clip(zp + P.z_aim, P.z_min, 30.0)
-        self.last_pass = {'t': now, 'm': (float(T.m[0]), float(T.m[1]), float(T.m[2])), 'n': T.n_pass, 's': self.s,
-                          'kind': kind, 'track': T}
-        self.n_passes += 1
+            if lp is not None:
+                dist = math.hypot(float(T.m[0] - lp['m'][0]), float(T.m[1] - lp['m'][1]))
+                self.grade_last = clip((zp - self.z_pass_last) / max(dist, 5.0), 0.0, P.grade_max)
+                turn = wrap(self.n_ang - math.atan2(lp['n'][1], lp['n'][0])) if self.n_ang is not None else 0.0
+                if abs(turn) > 10.0 * DEG:
+                    self.side = math.copysign(1.0, turn)
+            else:
+                self.grade_last = 0.0
+            self.z_pass_last = zp
+            self.z_aim_last = clip(zp + P.z_aim, P.z_min, 30.0)
+            self.last_pass = {'t': now, 'm': (float(T.m[0]), float(T.m[1]), float(T.m[2])), 'n': T.n_pass,
+                              's': self.s, 'kind': kind, 'track': T, 'd': d_now,
+                              'p': (float(self._p[0]), float(self._p[1]))}
+            self.n_passes += 1
+            # the course's own gate spacing, for the fragment rule (a real neighbour is 24-35 m away on this track)
+            self.pass_xy.append((float(T.m[0]), float(T.m[1])))
+            if len(self.pass_xy) >= 3:
+                d = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(self.pass_xy, self.pass_xy[1:])]
+                d = [x for x in d if x > 5.0]
+                if d:
+                    self.spacing = float(np.median(d))
         if clear_target:
             self.target = None
             self.n_ang = None
             self.pending = None
         self.pass_kind = PASS_KIND[kind]
-        # the course's own gate spacing, for the fragment rule (a real neighbour is 24-35 m away on this track)
-        self.pass_xy.append((float(T.m[0]), float(T.m[1])))
-        if len(self.pass_xy) >= 3:
-            d = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(self.pass_xy, self.pass_xy[1:])]
-            d = [x for x in d if x > 5.0]
-            if d:
-                self.spacing = float(np.median(d))
         # fragments of the same arch (made while the target was frozen close up) would be passed again a moment later
         for o in [o for o in self.tracks if o is not T and not o.passed]:
             if o is self.target and not clear_target:
@@ -1379,9 +1450,10 @@ class SightPilot:
             sz = math.sqrt(max(T.P[2, 2], 0.0))
             z_tgt = float(T.m[2]) - CENTRE_UP_M + P.z_aim + min(P.up_bias, P.up_bias * sz)
             # the estimate's height runs 1:1 into the reference and from there into the drone, and it has been 1.3 m
-            # out: hold it to the grade line, so one high estimate cannot lift the whole approach
+            # out: cap it at the grade line, so one high estimate cannot lift the whole approach. The floor stays on
+            # the last passage height: a floor that climbed with the grade line would itself lift the approach.
             base = z_ref if P.z_window_ref else self.z_aim_last
-            z_tgt = clip(z_tgt, max(P.z_min, base - P.z_window[0]), base + P.z_window[1])
+            z_tgt = clip(z_tgt, max(P.z_min, min(base, self.z_aim_last) - P.z_window[0]), base + P.z_window[1])
             T_z = max((self.d_gate - 1.0) / max(self.v_nom, 1.0), 1.0)
             if z_tgt > self.z_c:
                 T_z = max(P.climb_front * T_z, 1.0)

@@ -187,7 +187,8 @@ class RecordingSightPilot(SightPilot):
             if id(T) in kept:
                 continue
             into = None
-            if T.passed or not T.confirmed or (T is not target and now - T.t_last > P.conf_life):
+            life = P.conf_life if T is not target else (P.target_life or math.inf)
+            if T.passed or not T.confirmed or now - max(T.t_last, self.t_stall_end) > life:
                 reason = 'expired'
             elif T.unseen_in_view > self._ghost_s(T):
                 reason = 'ghost'
@@ -211,9 +212,10 @@ class RecordingSightPilot(SightPilot):
 
     def _pass(self, T, now, kind, n_vec, clear_target: bool = True):
         before = list(self.tracks)
+        n = self.n_passes
         super()._pass(T, now, kind, n_vec, clear_target=clear_target)
         self.rec['events'].append({'row': self.rec['row'], 'epoch': self.rec['epoch'], 'id': T.id, 'kind': kind,
-                                   'm': [float(x) for x in T.m], 'hits': T.hits,
+                                   'm': [float(x) for x in T.m], 'hits': T.hits, 'counted': self.n_passes > n,
                                    'axis_deg': math.degrees(math.atan2(T.n_pass[1], T.n_pass[0]))})
         for o in before:
             if o is not T and o not in self.tracks:
@@ -586,7 +588,8 @@ def score(log: dict[str, np.ndarray], res: dict, gates: list[dict], assoc_m: flo
                 continue
             t = table.get((e['epoch'], e['id']))
             ent = {'row': e['row'], 't': t_rel(e['row']), 'kind': e['kind'], 'id': e['id'],
-                   'arch': t['arch'] if t else None, 'm': [round(x, 2) for x in e['m']], 'crossing': None}
+                   'arch': t['arch'] if t else None, 'm': [round(x, 2) for x in e['m']], 'crossing': None,
+                   'counted': e.get('counted', True)}   # False: the arch already on the books, not a second gate
             passes.append(ent)
         approaches = []
         windows = []
@@ -679,13 +682,14 @@ def score(log: dict[str, np.ndarray], res: dict, gates: list[dict], assoc_m: flo
             if best is not None:
                 used.add(best[0])
                 p['crossing'] = {'gate': approaches[best[0]]['gate'], 'dt': best[1]}
-                approaches[best[0]]['passes'].append({'kind': p['kind'], 'id': p['id'], 'dt': best[1]})
+                approaches[best[0]]['passes'].append({'kind': p['kind'], 'id': p['id'], 'dt': best[1],
+                                                      'counted': p['counted']})
         for p in passes:            # passes of an arch that was not crossed then: attach to the nearest approach of it
             if p['crossing'] is None and p['kind'] != 'unpass':
                 cand = [ap for ap in approaches if ap['gate'] == p['arch']]
                 if cand:
                     ap = min(cand, key=lambda a: abs(a['row_end'] - p['row']))
-                    ap['passes'].append({'kind': p['kind'], 'id': p['id'],
+                    ap['passes'].append({'kind': p['kind'], 'id': p['id'], 'counted': p['counted'],
                                          'dt': float(wall[p['row']] - wall[ap['row_end']]), 'unmatched': True})
         phantoms = []
         for t in tracks_here:
@@ -785,7 +789,8 @@ def describe(name: str, val: dict | None, sc: dict) -> str:
             axs = f'{ax["median"]:+5.0f} (max {ax["abs_max"]:3.0f})' if ax else '       -       '
             sw = ap['switches']
             sws = f'{sw["same_arch"]}/{sw["other_arch"]}/{sw["to_phantom"] + sw["from_phantom"]}'
-            ps = ', '.join(f'{p["kind"]} #{p["id"]} {p["dt"]:+.1f}s' + (' (no crossing)' if p.get('unmatched') else '')
+            ps = ', '.join(f'{p["kind"]} #{p["id"]} {p["dt"]:+.1f}s' + ('' if p.get('counted', True) else ' [same arch]')
+                           + (' (no crossing)' if p.get('unmatched') else '')
                            for p in ap['passes']) or '-'
             lines.append(f'  g{ap["gate"]}    {t:6.1f}  {cs} | {ap["fragments"]:2d} ({ids:<18s}) | '
                          f'{_fmt_bins(ap["err_by_range"])} | {axs} | {sws:>8s}     | {ps}')
