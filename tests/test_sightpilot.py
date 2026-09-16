@@ -723,3 +723,141 @@ def test_a_gate_below_the_last_one_is_not_ground_clutter():
     # and the floor never goes under the absolute minimum height
     sp.z_pass_last = 1.3
     assert sp._z_floor() == P.z_min
+
+
+# --------------------------------------------------------------------- which arch is next, and where to look for it
+
+def _confirmed(sp, tid, m, now, hits=10):
+    """A confirmed, unpassed track at ``m``, as if it had been seen from the origin."""
+    m = np.asarray(m, dtype=float)
+    T = Track(tid, now, m, np.eye(3) * 0.1, np.array([1.0, 0.0, 0.0]), np.zeros(3), float(np.linalg.norm(m)))
+    T.confirmed, T.hits = True, hits
+    sp.tracks.append(T)
+    return T
+
+
+def test_the_selection_cost_is_an_arc_that_blows_up_at_a_reversal():
+    rig = Rig(ScriptVision(lambda t: None))
+    rig.hover_at((0.0, 0.0, 1.5))
+    sp = rig.sp
+    assert sp._arc_cost(10.0, 0.0) == pytest.approx(10.0)                        # straight ahead: the distance
+    assert sp._arc_cost(10.0, math.pi / 2) == pytest.approx(10.0 * math.pi / 2)   # a semicircle of radius d / 2
+    assert sp._arc_cost(10.0, math.radians(150)) > 5.0 * 10.0                     # nearly a reversal: priced out
+    assert sp._arc_cost(10.0, -math.radians(150)) == sp._arc_cost(10.0, math.radians(150))
+    assert sp._arc_cost(10.0, math.pi) == pytest.approx(10.0 * sp.params.select_arc_cap)
+    sp.params.select_arc_cap = 0.0
+    assert sp._arc_cost(10.0, math.pi) == pytest.approx(10.0)                     # off: distance alone, as it was
+
+
+def test_the_first_gate_is_the_one_the_spawn_points_at_not_the_nearest():
+    """The hairpin course at its spawn: the last gate of the lap sits 19.2 m away 39 deg off the spawn heading and
+    the first gate 25 m dead ahead. Distance alone picks the last gate and flies the whole course backwards."""
+    rig = Rig(ScriptVision(lambda t: None))
+    rig.hover_at((0.0, 0.0, 1.5))
+    sp = rig.sp
+    now = rig.clock()
+    first = _confirmed(sp, 1, (25.0, 0.0, 2.7), now)
+    last = _confirmed(sp, 2, (15.0, 12.0, 2.7), now)
+    sp.target = None
+    sp._select(now, np.zeros(3))
+    assert sp.last_pass is None and sp.target is first
+    sp.target = None
+    sp.params.select_arc_cap, sp.params.start_line_w = 0.0, 0.0                   # the old distance-only score
+    sp._select(now, np.zeros(3))
+    assert sp.target is last
+
+
+def test_an_arch_behind_the_direction_of_travel_is_not_the_next_gate():
+    """A gate that needs the direction of travel reversed has been passed already or comes much later, so a near
+    one behind loses to a far one ahead -- which the old distance-and-bearing score got the wrong way round."""
+    rig = Rig(ScriptVision(lambda t: None))
+    rig.hover_at((0.0, 0.0, 1.5))
+    sp = rig.sp
+    now = rig.clock()
+    sp.last_pass = {'t': now, 'm': (0.0, 0.0, 2.7), 'n': (1.0, 0.0), 's': 0.0, 'kind': 'cross', 'track': None,
+                    'd': 1.0, 'p': (0.0, 0.0)}
+    assert sp._course_dir() == pytest.approx((1.0, 0.0))
+    back = _confirmed(sp, 1, (-8.0, 4.0, 2.7), now)                              # 9 m off, 153 deg behind
+    ahead = _confirmed(sp, 2, (28.0, 6.0, 2.7), now)                             # 29 m off, 12 deg ahead
+    sp.psi = math.pi / 2                                                         # both inside eligible_bearing
+    sp.target = None
+    sp._select(now, np.zeros(3))
+    assert sp.target is ahead
+    sp.target = None
+    sp.params.select_arc_cap = 0.0
+    sp._select(now, np.zeros(3))
+    assert sp.target is back
+
+
+def test_with_nothing_in_sight_after_a_gate_the_pilot_presses_on_instead_of_circling():
+    """One arch and nothing beyond it: everything within sight of the gate has been looked at and is empty, so
+    circling there cannot help. The pilot runs on along the course by the course's own scale -- once, not again and
+    again -- and the search that follows is anchored where it ran out of course, not 6 m past the gate it already
+    flew through."""
+    arch = np.array([20.0, 0.0, 2.7])
+    rig = Rig(ScriptVision(lambda t: arch), SightParams(yaw_rate=3.8, press_on_legs=1.0))
+    on_m, anchor, anchor_at, runs, was = 0.0, None, None, 0, 2
+    for _ in range(5500):
+        rig.tick()
+        sp = rig.sp
+        if sp.n_passes == 1 and sp.mode == 1:
+            if anchor is None:                                           # the first run, before any looking around
+                on_m = max(on_m, float(rig.pos[0]) - arch[0])
+            runs += (was == 3)                                           # a second run after looking around
+        if sp.n_passes == 1 and sp.mode == 3 and anchor is None:
+            anchor, anchor_at = np.asarray(sp.search_anchor, dtype=float), rig.pos[:2].copy()
+        was = sp.mode
+    sp = rig.sp
+    assert sp.n_passes == 1 and sp.sight_r > 10.0
+    run = sp._press_run_m()
+    assert run == pytest.approx(max(sp._course_leg(), sp.sight_r))        # the course's scale, not a fixed radius
+    assert 2.0 * sp.params.d_on < on_m < sp.params.d_on + 1.5 * run       # ran on, and no further than the course
+    assert runs == 0                                                     # ... once: a second run is a straight line
+    assert anchor is not None and float(np.linalg.norm(anchor - anchor_at)) < 1.0
+    assert float(np.linalg.norm(anchor - arch[:2])) > 2.0 * sp.params.d_on
+
+
+def test_by_default_the_pilot_does_not_run_on_blind_at_all():
+    """The run-on is off in the shipped defaults: it cost the bench's control course its lap every way it was
+    tried (see SightParams.press_on_legs), so the fly-on is d_on and then a search, as it was."""
+    arch = np.array([20.0, 0.0, 2.7])
+    rig = Rig(ScriptVision(lambda t: arch))
+    assert rig.pilot.sight_params.press_on_legs == 0.0
+    on_m = 0.0
+    for _ in range(3000):
+        rig.tick()
+        sp = rig.sp
+        if sp.n_passes == 1 and sp.mode == 1:
+            on_m = max(on_m, float(rig.pos[0]) - arch[0])
+    assert rig.sp.n_passes == 1 and rig.sp.press_left == 0.0
+    assert on_m < 2.0 * rig.sp.params.d_on
+
+
+def test_with_the_next_arch_in_sight_the_fly_on_stays_short():
+    """The press-on is for a course whose gates are out of sight of each other: when the next one is visible the
+    moment the last goes by, nothing changes."""
+    first, second = np.array([20.0, 0.0, 2.7]), np.array([44.0, 6.0, 2.7])
+
+    def where(t):
+        return second if rig.pos[0] > 22.0 else first                            # the next arch, as the last goes by
+
+    rig = Rig(ScriptVision(where))
+    pressed_between = False
+    for _ in range(3000):
+        rig.tick()
+        if rig.sp.n_passes == 1 and rig.sp.press_left > 0.0:
+            pressed_between = True
+    assert rig.sp.n_passes >= 2 and not pressed_between
+
+
+def test_before_the_first_gate_the_search_is_anchored_at_the_spawn():
+    """Nothing passed yet: the spawn is the one point known to be on the course, so the search holds there rather
+    than 10 m down a heading that has just failed to show a gate."""
+    rig = Rig(ScriptVision(lambda t: None))
+    for _ in range(1500):
+        rig.tick()
+    sp = rig.sp
+    assert sp.mode == 3 and sp.n_passes == 0
+    assert sp.search_anchor == pytest.approx(sp.launch_p, abs=1e-9)
+    assert sp.search_anchor == pytest.approx((0.0, 0.0), abs=0.5)
+    assert float(np.linalg.norm(rig.pos[:2])) < sp.params.search_leash + 2.0 * sp.params.search_radius_wide

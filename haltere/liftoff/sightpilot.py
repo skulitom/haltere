@@ -14,10 +14,17 @@ confirmed estimate that the camera should see but does not for 2 s is a ghost, a
 sightings from behind. One arch can leave two estimates, so a second pass within ``orphan_dedup_d`` of the one on
 the books is that same gate: the pass declared from closer in is kept and the gate is counted once.
 
-Guidance. The target is the nearest confirmed arch ahead. Its approach axis runs along the course (from the last gate,
+Guidance. The target is the confirmed arch that is next in course order: a race is a sequence of gates flown in a
+consistent direction, so arches are scored by the length of the arc that leaves here along that direction and ends at
+them (``_course_dir``, ``_arc_cost``) - the nearest one ahead on most courses, but never one that needs the direction
+of travel reversed, which is one already passed or much later in the lap. Before any gate has been passed the spawn
+heading is that direction and an arch off the spawn line is evidence against, since a race starts pointing at its
+first gate. Its approach axis runs along the course (from the last gate,
 turned toward the bisector with the next gate when that one is known) and pivots onto the exact bearing close up.
 A rabbit, a point with bounded speed, acceleration, curvature and curvature rate, steers onto that axis with
-line-of-sight guidance and flies through the gate, on for a few metres and, without a gate, around a search circle;
+line-of-sight guidance and flies through the gate, on for a few metres and, without a gate, around a search circle
+held where that search began (after a gate, where the course ran out; before the first one, the spawn, which is the
+only point known to be on the course);
 it never stops, and it waits for the drone (it keeps about 3 m ahead along its own trail). The brain's goal is the
 rabbit (its horizontal part clipped to 5 m, its height to +-1.2 m), pulled onto the drone-to-gate bearing on the last
 metres. The nose follows the rabbit's heading. Nothing that perception decides can make the goal jump: a new target
@@ -151,6 +158,17 @@ class SightParams:
     # --- target and approach axis
     eligible_d: float = 1.0
     eligible_bearing: float = 110.0
+    # A race is a sequence of gates flown in a consistent direction, and selection used to know nothing about that:
+    # the score was distance plus a dimensionless bearing penalty, so on a course that doubles back the pilot picked
+    # the last gate out of the spawn and flew the whole thing in reverse. The score is now a path length against the
+    # direction the course is being travelled (SightPilot._course_dir): the circular arc from here that leaves along
+    # that direction and ends at the arch, d at 0 deg, 1.57 d at 90 and unbounded at 180. An arch that needs the
+    # direction of travel reversed is one already passed or much later in the course, and it prices itself out.
+    select_arc_cap: float = 20.0          # cap on that arc's length/chord ratio (reached at about 172 deg; 0 = off,
+                                          # which is the old distance-and-bearing score)
+    # Before any gate has been passed there is no travelled direction, only the spawn: a race starts pointing at its
+    # first gate, so an arch off the spawn line is evidence against, in metres of its own.
+    start_line_w: float = 1.0             # score per metre an arch lies off the spawn line (0 = off)
     switch_s: float = 0.3
     lock_s: tuple = (0.3, 0.6)            # on the latest ray up to a, blended to the filter until b
     bisector_cap: float = 45.0
@@ -240,10 +258,29 @@ class SightParams:
     bump_tau: float = 0.4
     bump_vmax: float = 2.5                # m/s: the reseed offset fades no faster than this
     d_on: float = 8.0                     # m flown straight on after a pass (4 m left the search circling too early)
+    # OFF by default, and the bench says why. The argument for it is sound: with the detector alive and NOTHING
+    # seen since the last gate, the next arch is further away than this pilot can see, so a search circle at the
+    # place it stands cannot find it -- everything within sight of here has already been looked at and is empty --
+    # and only travel can. Set > 0 and the fly-on past such a gate runs on along the course for that many units of
+    # the course's own scale (the longer of SightPilot._course_leg and the measured sight range SightPilot.sight_r,
+    # never a fixed radius) before the pilot starts circling.
+    # Measured on the odd-course bench, 3 seeds, against 7,7,6 / 3,3,3(order 0-1-2) / 1,1,1 / 7,7,7 with it off:
+    #   2 sight ranges, nose sweeping    home 6,7,2   hairpin 3,3,3   long_legs 3,3,3   offaxis 3,3,3
+    #   1 course leg, run again after every circle    home 2,2,-      (abandoned: each run leaves on the same
+    #                                                                  stored course direction, so the "expanding
+    #                                                                  search" is a straight line off a turning
+    #                                                                  course)
+    #   1 course leg, one run per gate   home 2,2,2
+    # It buys long_legs 1,1,1 -> 3,3,3 and costs the control its lap every time, so it is not the default. What a
+    # course with legs longer than sight needs is a run-on whose direction keeps up with the course, and none of
+    # these has one.
+    press_on_legs: float = 0.0            # runs of that length (0 = off: d_on, then circle, as before)
     launch_t: float = 6.0
     search_radius: float = 8.0
     search_radius_wide: float = 12.0      # after a full circle
-    search_leash: float = 20.0
+    search_leash: float = 20.0            # from the search anchor: where the search began, not a fixed point 6 m
+                                          # past the last gate (that leash pulled the pilot back onto a gate it had
+                                          # already flown through and cost 62-85 s of a 150 s budget on long legs)
     search_side: float = 1.0              # +1 left, -1 right (default side before the course has turned)
     tent_side_hits: int = 2               # a tentative track steers the search side after this many sightings
     snap_start: float = 12.0              # the terminal snap cancels range error: start it before the last 9 m ...
@@ -353,7 +390,8 @@ class SightParams:
                 bad.append(f'{k}={getattr(self, k)!r} (must be > 0)')
         for k in ('ghost_keep_d', 'ghost_other_deg', 'ghost_s_max', 'orphan_d', 'orphan_lat', 'orphan_dedup_d',
                   'offaxis_max', 'offaxis_sig_deg', 'frag_gap', 'frag_gap_frac', 'frag_lat_ahead', 'next_min_sep',
-                  'course_back_m', 'course_min_m', 'axis_sigma_cap', 'look_free', 'look_max', 'target_life'):
+                  'course_back_m', 'course_min_m', 'axis_sigma_cap', 'look_free', 'look_max', 'target_life',
+                  'select_arc_cap', 'start_line_w', 'press_on_legs'):
             if getattr(self, k) < 0:
                 bad.append(f'{k}={getattr(self, k)!r} (must be >= 0)')
         if not 0 < self.course_win[0] <= self.course_win[1]:
@@ -501,6 +539,11 @@ class SightPilot:
         self.last_pass = None                 # dict(t, m, n, s, kind)
         self.pass_backup = None
         self.n_passes = 0
+        self.sight_r = 0.0                    # how far this detector has actually shown an arch, m (online)
+        self.seen_since_pass = True           # has anything at all been sighted since the last gate went by?
+        self.press_left = 0.0                 # m still to run on blind along the course before looking around again
+        self.press_decided = True             # ... whether this gate owes one has been settled (nothing passed yet)
+        self.search_anchor = (float(p[0]), float(p[1]))   # where the search began (the leash holds the circle here)
         self.pass_xy: list = []               # where each pass was: the course's own gate spacing (fragment rule)
         self.spacing = None                   # median distance between successive passes, m
         self.orphans: list = []               # confirmed tracks dropped close in, still waiting to be flown past
@@ -713,6 +756,13 @@ class SightPilot:
             Rm = Rm * (1.0 + off / P.offaxis_sig_deg)     # an off-axis box is a worse measurement, not a wrong one
         z = pg + rho * r
         T = self._update(now, z, Rm, r, rho, pg, crop)
+        if T is not None and T.confirmed:
+            # confirmed, not any sighting: 3 % of the detector's frames hold a phantom, and one blob that never
+            # becomes an arch is not "something in sight"
+            self.seen_since_pass = True
+            # how far this detector shows an arch on this course, measured rather than assumed: the search geometry
+            # scales with it, since a gate nearer than this would already be in sight
+            self.sight_r = max(self.sight_r, math.hypot(float(z[0] - pg[0]), float(z[1] - pg[1])))
         # the side to search: a tentative arch seen twice (a single sighting is as often a phantom or a flip)
         if T is not None and not T.confirmed and T.hits >= P.tent_side_hits:
             self.last_tent_b = wrap(math.atan2(float(T.m[1] - p[1]), float(T.m[0] - p[0])) - self.psi)
@@ -1004,8 +1054,46 @@ class SightPilot:
                 and abs(math.log(ra / rb)) < min(P.merge_log, P.log_gate))
 
     # ------------------------------------------------------------------ 3 target
+    def _course_dir(self) -> tuple[float, float]:
+        """The direction this race is being travelled, as a unit vector.
+
+        The pilot has no map, but it does know that a race is a sequence of gates flown in a consistent direction.
+        ``last_pass['n']`` is the axis the drone actually flew the last gate on, which is that direction where the
+        course was last known; before any gate has been passed the spawn heading stands in for it, because a race
+        starts pointing at its first gate. Both are properties of racing, not of one track."""
+        lp = self.last_pass
+        if lp is not None:
+            nx, ny = float(lp['n'][0]), float(lp['n'][1])
+            n = math.hypot(nx, ny)
+            if n > 1e-6:
+                return nx / n, ny / n
+        return math.cos(self.psi_launch), math.sin(self.psi_launch)
+
+    def _arc_cost(self, d: float, alpha: float) -> float:
+        """Length of the circular arc that leaves here along the course direction and ends ``d`` away at ``alpha``
+        off it: d at 0 deg, 1.57 d at 90, unbounded at 180. The arc turns by 2 alpha, so its radius is
+        d / (2 sin alpha) and its length d * alpha / sin alpha. No free weight, and it is the reason a gate behind
+        is expensive: reaching it means reversing the direction of travel, and a gate that needs that has almost
+        certainly been passed already or comes much later in the course."""
+        cap = self.params.select_arc_cap
+        if cap <= 0:
+            return d
+        a = abs(alpha)
+        if a < 1e-3:
+            return d
+        return d * min(a / max(math.sin(a), 1e-6), cap)
+
+    def _off_start_line(self, T: Track) -> float:
+        """How far an arch lies off the spawn line, m. Only meaningful before the first gate has been passed."""
+        ux, uy = math.cos(self.psi_launch), math.sin(self.psi_launch)
+        dx, dy = float(T.m[0]) - self.launch_p[0], float(T.m[1]) - self.launch_p[1]
+        return abs(-dx * uy + dy * ux)
+
     def _select(self, now: float, p: np.ndarray) -> None:
         P = self.params
+        ux, uy = self._course_dir()
+        a_course = math.atan2(uy, ux)
+        first = self.last_pass is None
         best, best_score = None, math.inf
         for T in self.tracks:
             if not T.confirmed or T.passed:
@@ -1018,7 +1106,11 @@ class SightPilot:
                 continue
             if not is_t and self._ahead_fragment(T, self.target, p):
                 continue                  # the same arch 5-10 m further along the ray: never fly at the far copy
-            score = d + 8.0 * (1.0 - math.cos(b)) - (4.0 if is_t else 0.0)
+            # course order, not distance and bearing: how far along the course this arch is, as a path that leaves
+            # in the direction the race is being travelled
+            score = self._arc_cost(d, wrap(math.atan2(dy, dx) - a_course)) - (4.0 if is_t else 0.0)
+            if first and P.start_line_w > 0:
+                score += P.start_line_w * self._off_start_line(T)
             # an estimate not seen for a while loses its standing against arches seen now
             score += min(P.stale_penalty * max(now - T.t_last - P.stale_grace, 0.0), 8.0)
             if score < best_score:
@@ -1259,6 +1351,8 @@ class SightPilot:
             self.target = None
             self.n_ang = None
             self.pending = None
+            self.seen_since_pass = False      # ... until a sighting says otherwise (_intake)
+            self.press_left, self.press_decided = 0.0, False
         self.pass_kind = PASS_KIND[kind]
         # fragments of the same arch (made while the target was frozen close up) would be passed again a moment later
         for o in [o for o in self.tracks if o is not T and not o.passed]:
@@ -1289,11 +1383,47 @@ class SightPilot:
             h._passed.pop()
 
     # ------------------------------------------------------------------ guidance
+    def _course_leg(self) -> float:
+        """How far apart this course's gates are, m: the median of the legs actually flown, the spawn counting as
+        the start of the first one. Zero until a gate has gone by. This is the course's own scale, and the search
+        geometry is measured in it rather than in fixed radii - Straw Bale's 15-40 m legs are not a law of courses."""
+        pts = [self.launch_p] + self.pass_xy
+        if len(pts) < 2:
+            return 0.0
+        d = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(pts, pts[1:])]
+        return float(np.median(d))
+
+    def _press_run_m(self) -> float:
+        """How far one blind run on along the course goes: far enough to cover ground the last gate could not see
+        (a sight range), and at least one of this course's legs. 0 when the press-on is off."""
+        P = self.params
+        if P.press_on_legs <= 0:
+            return 0.0
+        return P.press_on_legs * max(self._course_leg(), self.sight_r)
+
+    def _fly_on(self, lp: dict) -> bool:
+        """Is the rabbit still flying straight on past the last gate, rather than searching?
+
+        For ``d_on`` always, and beyond that while a blind run on along the course is owed (``press_on_legs``, off
+        by default - see the note there for what it measured). One is owed when nothing at all has been sighted
+        since the gate went by: everything within sight of this place has already been looked at and is empty, so
+        the next arch is out of sight from here and only travel can find it. At most one run per gate, and it is
+        dropped the moment a target appears."""
+        if self.s - lp['s'] < self.params.d_on:
+            return True
+        if not self.press_decided:                # the end of the ordinary fly-on: decide once, for this gate
+            self.press_decided = True
+            if not self.seen_since_pass:
+                self.press_left = self._press_run_m()
+        return self.press_left > 0.0
+
     def _guidance(self, now: float, dt: float, p: np.ndarray, vel: np.ndarray) -> None:
         P = self.params
         T = self.target
         mode_prev = self.mode
         lp = self.last_pass
+        if T is not None:
+            self.press_left = 0.0             # something is in sight: there is nothing left to run on blind for
         if self.t_air is None:
             self.mode = 0
             v_des, k_des = 0.0, 0.0
@@ -1325,8 +1455,10 @@ class SightPilot:
             v_des, k_des = 0.0, 0.0
             if lp is None:
                 self.t_launch = now
-        elif (lp is not None and self.s - lp['s'] < P.d_on) or (lp is None and now - self.t_launch < P.launch_t):
+        elif (lp is not None and self._fly_on(lp)) or (lp is None and now - self.t_launch < P.launch_t):
             self.mode = 1
+            if lp is not None and self.s - lp['s'] >= P.d_on:
+                self.press_left = max(self.press_left - self.v * dt, 0.0)
             h_ref = math.atan2(lp['n'][1], lp['n'][0]) if lp is not None else self.psi_launch
             hints = P.turn_hints
             if lp is not None and hints and 0 < self.n_passes <= len(hints):
@@ -1336,8 +1468,12 @@ class SightPilot:
         else:
             self.mode = 3
             if mode_prev != 3:
-                self.mode_since = now
                 self.search_turned = 0.0
+                # where this search began: after a gate that is where the course ran out, and before the first gate
+                # it is the spawn, the one point known to be on the course. The old anchor sat 6 m past the last
+                # gate for ever, so a pilot that had to travel to find the next one was towed back to the last.
+                self.search_anchor = ((float(p[0]), float(p[1])) if lp is not None
+                                      else (self.launch_p[0], self.launch_p[1]))
             s_side = None
             hints = P.turn_hints
             if hints and 0 < self.n_passes <= len(hints) and hints[self.n_passes - 1]:
@@ -1352,11 +1488,7 @@ class SightPilot:
                     s_side = math.copysign(1.0, b)
             if s_side is None:
                 s_side = self.side
-            if lp is not None:
-                ax, ay = lp['m'][0] + 6.0 * lp['n'][0], lp['m'][1] + 6.0 * lp['n'][1]
-            else:
-                ax = self.launch_p[0] + 10.0 * math.cos(self.psi_launch)
-                ay = self.launch_p[1] + 10.0 * math.sin(self.psi_launch)
+            ax, ay = self.search_anchor
             if math.hypot(float(p[0]) - ax, float(p[1]) - ay) > P.search_leash:
                 k_des = P.k_head * wrap(math.atan2(ay - self.c[1], ax - self.c[0]) - self.psi) / max(self.v_nom, 1.0)
             else:
@@ -1364,6 +1496,12 @@ class SightPilot:
                 k_des = s_side / radius
             v_des = P.v_search
             self.search_turned += abs(self.kappa * self.v * dt)
+            # NOTE the run-on is NOT re-armed here. Alternating run and circle looks like an expanding search but is
+            # not one: every run leaves on the same stored course direction, so on a course that turns it is a
+            # straight line away from the track. Measured on the bench, re-arming cost home its 7/7 twice over
+            # (2,2 gates on seeds 0 and 1, 65 s of it running on); one run per gate is the whole of it.
+        if self.mode != mode_prev:
+            self.mode_since = now
         self.v_des = v_des
         self.k_des = k_des
 
@@ -1522,6 +1660,10 @@ class SightPilot:
             look_des = (math.copysign(1.0, b) * clip(abs(b) - P.look_free * DEG, 0.0, P.look_max * DEG)
                         * clip((self.d_gate - 4.0) / 4.0, 0.0, 1.0) * clip(1.0 - abs(self.kappa) / P.look_kappa, 0.0, 1.0))
         elif self.mode == 3:
+            # NOTE the press-on does NOT sweep, though it is a search: the camera's 30 deg uptilt already puts an
+            # arch level and dead ahead 30 deg off the optical axis, so a 35 deg sweep carries it past offaxis_max
+            # and its sightings are thrown away. A search circle has nowhere better to look; a press-on does - it
+            # is flying at where the next gate should be, and it keeps the nose there.
             ts = now - self.mode_since
             look_des = P.sweep * DEG * clip(ts / P.sweep_ramp, 0.0, 1.0) * math.sin(TWO_PI * ts / P.sweep_period)
         self.look += (look_des - self.look) * min(1.0, dt / P.look_tau)
