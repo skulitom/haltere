@@ -234,6 +234,22 @@ def cmd_vision(a):
         gates = gates_from_observations(a.dataset, load_observations(a.observations), cam)
         save_gates(gates, a.out)
         print(f'{len(gates)} gates written to {a.out}')
+    elif a.vision_cmd == 'beacon':
+        from .vision.beacon import (BeaconParams, detect_dataset, gates_from_beacons, save_observations,
+                                    strip_obs)
+        from .vision.gates import save_gates
+        c = yaml.safe_load(Path(a.camera).read_text(encoding='utf-8'))
+        cam = Camera(int(c['width']), int(c['height']), float(c['f']), float(c['tilt_deg']))
+        p = BeaconParams(min_px=a.min_px, max_px=a.max_px)
+        det = detect_dataset(a.dataset, p, every=a.every)
+        gates = gates_from_beacons(a.dataset, det, cam, tol=a.tol, min_inliers=a.min_inliers,
+                                   max_gates=a.max_gates, seed=a.seed)
+        if a.observations:
+            save_observations(gates, a.observations)
+            print(f'inlier rays written to {a.observations}')
+        if a.out:
+            save_gates(strip_obs(gates), a.out, width_m=a.width, up_m=a.centre_up)
+            print(f'{len(gates)} clusters written to {a.out}')
     elif a.vision_cmd == 'inspect':
         from .vision.inspect import overlay
         out = overlay(a.dataset, a.out, every=a.every, count=a.count, cols=a.cols, ckpt=a.ckpt or None, device=a.device)
@@ -419,6 +435,26 @@ def main(argv=None):
     q.add_argument('--observations', required=True, help='JSON list of observations')
     q.add_argument('--camera', default='configs/camera.yaml')
     q.add_argument('--out', default='configs/gates_strawbale.json')
+    q = vs.add_parser('beacon', help="gate positions from Liftoff's own next-checkpoint marker (automatic; needs a "
+                                     'flight that actually progresses through the checkpoints)')
+    q.add_argument('dataset')
+    q.add_argument('--camera', default='configs/camera_seat.yaml')
+    q.add_argument('--observations', default='',
+                   help="the inlier rays of each cluster, as a `vision triangulate` observations file")
+    q.add_argument('--out', default='', help='write the recovered clusters here (a gates JSON); not every '
+                                             'cluster is a gate - check them with vision label + vision inspect')
+    q.add_argument('--every', type=int, default=1, help='look at every Nth frame')
+    q.add_argument('--tol', type=float, default=0.8, help='inlier distance from a ray to the gate (m)')
+    q.add_argument('--min-inliers', type=int, default=8)
+    q.add_argument('--max-gates', type=int, default=8)
+    q.add_argument('--min-px', type=int, default=12, help='smallest marker blob (below this: chroma noise)')
+    q.add_argument('--max-px', type=int, default=900, help='largest marker blob (above this: a ground light-strip)')
+    q.add_argument('--width', type=float, default=4.0, help='gate_width_m to write')
+    q.add_argument('--centre-up', type=float, default=0.0,
+                   help="metres from the marker up to the gate's visual centre; on Pine Valley the arch "
+                        "centre measured 0.2 m above it, and 1.7 m short of it along the approach, which "
+                        "this cannot express - check the point before training on it")
+    q.add_argument('--seed', type=int, default=0)
     q = vs.add_parser('inspect', help='overlay the gate labels (and a GateNet checkpoint) on dataset frames')
     q.add_argument('dataset')
     q.add_argument('--out', default='data/vision/inspect.png')
