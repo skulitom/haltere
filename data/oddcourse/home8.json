@@ -1,0 +1,1202 @@
+{
+ "ckpt": "artifacts/ftPath2_best.pt",
+ "camera": "configs/camera_seat.yaml",
+ "seeds": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7
+ ],
+ "preset": {
+  "v_cruise": 3.5,
+  "v_gate": 3.2,
+  "v_gate_turn": 2.8,
+  "flow_min": 0.6,
+  "flow_alt": "ground",
+  "yaw_rate": 3.8
+ },
+ "warnings": [],
+ "courses": {
+  "home": {
+   "breaks": "nothing (the control)",
+   "width_m": 4.0,
+   "n_gates": 7,
+   "budget_s": 183.64148423630724,
+   "start": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "gates": {
+    "gate_width_m": 4.0,
+    "centre_up_m": 1.5,
+    "gates": [
+     {
+      "pos": [
+       25.885,
+       0.67,
+       1.2
+      ],
+      "heading": 0.0120995,
+      "gate": 0
+     },
+     {
+      "pos": [
+       60.933,
+       1.575,
+       1.2
+      ],
+      "heading": 0.1613049,
+      "gate": 1
+     },
+     {
+      "pos": [
+       79.32,
+       16.48,
+       1.2
+      ],
+      "heading": 1.5091967,
+      "gate": 2
+     },
+     {
+      "pos": [
+       59.437,
+       44.003,
+       1.2
+      ],
+      "heading": 2.3570509,
+      "gate": 3
+     },
+     {
+      "pos": [
+       41.608,
+       66.938,
+       1.765
+      ],
+      "heading": 1.9349965,
+      "gate": 4
+     },
+     {
+      "pos": [
+       37.175,
+       99.1,
+       6.625
+      ],
+      "heading": 1.6753389,
+      "gate": 5
+     },
+     {
+      "pos": [
+       35.175,
+       123.968,
+       12.987
+      ],
+      "heading": 1.6478858,
+      "gate": 6
+     }
+    ]
+   }
+  }
+ },
+ "runs": [
+  {
+   "course": "home",
+   "seed": 0,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 7,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.4,
+   "last_gate_s": 128.2,
+   "lateral_max_m": 0.7089581920964719,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.4,
+     "lat": -0.24,
+     "dz": 0.74,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.5,
+     "lat": -0.1,
+     "dz": 0.71,
+     "through": true
+    },
+    {
+     "gate": 2,
+     "t": 59.0,
+     "lat": 0.71,
+     "dz": 0.87,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 79.4,
+     "lat": 0.29,
+     "dz": 0.69,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 95.8,
+     "lat": 0.08,
+     "dz": 0.78,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 114.2,
+     "lat": 0.18,
+     "dz": 0.76,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 128.2,
+     "lat": 0.35,
+     "dz": 0.72,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 165.6,
+     "lat": 3.12,
+     "dz": 4.56,
+     "through": false
+    }
+   ],
+   "counters": {
+    "n_passes": 7.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 6,
+     "beside": 1,
+     "ghost": 0,
+     "unpass": 0
+    },
+    "ghosts": 0.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 7.0,
+    "rej_stale": 0.0,
+    "absorbed": 29.0,
+    "low": 0.0,
+    "behind": 4.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 9.5,
+     "target": 114.2,
+     "search": 58.2,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 11425,
+    "err_median_m": 1.422639729784198,
+    "err_p90_m": 5.767808858486923,
+    "per_gate_median_m": {
+     "0": 1.01,
+     "1": 3.43,
+     "2": 0.31,
+     "3": 2.16,
+     "4": 0.91,
+     "5": 2.34,
+     "6": 1.66
+    }
+   },
+   "detector": {
+    "frames": 2756,
+    "arch_in_view": 2091,
+    "detected": 1236,
+    "missed": 855,
+    "flipped": 79,
+    "phantoms": 45
+   },
+   "crashes": [],
+   "z_range": [
+    1.6405097246170044,
+    17.691102981567383
+   ],
+   "wall_s": 205.3
+  },
+  {
+   "course": "home",
+   "seed": 1,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 7,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.3,
+   "last_gate_s": 126.0,
+   "lateral_max_m": 0.33798006266356806,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.3,
+     "lat": -0.05,
+     "dz": 0.73,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.4,
+     "lat": -0.34,
+     "dz": 0.84,
+     "through": true
+    },
+    {
+     "gate": 2,
+     "t": 53.3,
+     "lat": 0.28,
+     "dz": 0.72,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 77.2,
+     "lat": 0.29,
+     "dz": 0.8,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 93.8,
+     "lat": 0.09,
+     "dz": 0.63,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 112.1,
+     "lat": 0.12,
+     "dz": 0.72,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 126.0,
+     "lat": -0.21,
+     "dz": 0.71,
+     "through": true
+    }
+   ],
+   "counters": {
+    "n_passes": 8.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 8,
+     "beside": 0,
+     "ghost": 0,
+     "unpass": 0
+    },
+    "ghosts": 0.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 17.0,
+    "rej_stale": 0.0,
+    "absorbed": 43.0,
+    "low": 0.0,
+    "behind": 3.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 15.9,
+     "target": 128.2,
+     "search": 37.7,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 12835,
+    "err_median_m": 1.7680054541879882,
+    "err_p90_m": 14.211984848703112,
+    "per_gate_median_m": {
+     "0": 1.55,
+     "1": 2.27,
+     "2": 0.79,
+     "3": 2.83,
+     "4": 1.24,
+     "5": 2.47,
+     "6": 14.21
+    }
+   },
+   "detector": {
+    "frames": 2757,
+    "arch_in_view": 2159,
+    "detected": 1337,
+    "missed": 822,
+    "flipped": 70,
+    "phantoms": 38
+   },
+   "crashes": [],
+   "z_range": [
+    1.5698727369308472,
+    17.72857093811035
+   ],
+   "wall_s": 198.6
+  },
+  {
+   "course": "home",
+   "seed": 2,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 6,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.3,
+   "last_gate_s": 127.1,
+   "lateral_max_m": 0.7827063855854899,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.3,
+     "lat": 0.32,
+     "dz": 0.83,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.4,
+     "lat": -0.4,
+     "dz": 0.88,
+     "through": false
+    },
+    {
+     "gate": 2,
+     "t": 50.6,
+     "lat": -0.09,
+     "dz": 0.71,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 78.1,
+     "lat": 0.2,
+     "dz": 0.98,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 95.4,
+     "lat": 0.23,
+     "dz": 0.98,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 113.4,
+     "lat": 0.68,
+     "dz": 0.77,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 127.1,
+     "lat": -0.78,
+     "dz": 0.63,
+     "through": true
+    }
+   ],
+   "counters": {
+    "n_passes": 8.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 12,
+     "beside": 0,
+     "ghost": 2,
+     "unpass": 0
+    },
+    "ghosts": 2.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 9.0,
+    "rej_stale": 0.0,
+    "absorbed": 42.0,
+    "low": 0.0,
+    "behind": 3.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 13.3,
+     "target": 131.3,
+     "search": 37.2,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 13146,
+    "err_median_m": 2.3416644146662864,
+    "err_p90_m": 15.285293455057138,
+    "per_gate_median_m": {
+     "0": 1.25,
+     "1": 3.49,
+     "2": 1.92,
+     "3": 0.33,
+     "4": 2.74,
+     "5": 3.4,
+     "6": 15.29
+    }
+   },
+   "detector": {
+    "frames": 2752,
+    "arch_in_view": 2066,
+    "detected": 1204,
+    "missed": 862,
+    "flipped": 98,
+    "phantoms": 47
+   },
+   "crashes": [],
+   "z_range": [
+    1.6464259624481201,
+    17.823509216308594
+   ],
+   "wall_s": 201.6
+  },
+  {
+   "course": "home",
+   "seed": 3,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 6,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.4,
+   "last_gate_s": 127.9,
+   "lateral_max_m": 0.7487755695653426,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.4,
+     "lat": 0.1,
+     "dz": 0.92,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.4,
+     "lat": -0.07,
+     "dz": 0.91,
+     "through": false
+    },
+    {
+     "gate": 2,
+     "t": 50.6,
+     "lat": 0.29,
+     "dz": 0.9,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 78.5,
+     "lat": 0.75,
+     "dz": 0.85,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 95.9,
+     "lat": 0.29,
+     "dz": 0.75,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 114.2,
+     "lat": -0.39,
+     "dz": 1.47,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 127.9,
+     "lat": -0.48,
+     "dz": 0.75,
+     "through": true
+    }
+   ],
+   "counters": {
+    "n_passes": 8.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 7,
+     "beside": 1,
+     "ghost": 2,
+     "unpass": 0
+    },
+    "ghosts": 2.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 6.0,
+    "rej_stale": 0.0,
+    "absorbed": 80.0,
+    "low": 0.0,
+    "behind": 0.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 12.3,
+     "target": 131.6,
+     "search": 38.0,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 13169,
+    "err_median_m": 1.9892786448714115,
+    "err_p90_m": 6.792965271294711,
+    "per_gate_median_m": {
+     "0": 0.92,
+     "1": 2.53,
+     "2": 3.14,
+     "3": 0.69,
+     "4": 1.63,
+     "5": 4.43,
+     "6": 6.79
+    }
+   },
+   "detector": {
+    "frames": 2751,
+    "arch_in_view": 2158,
+    "detected": 1290,
+    "missed": 868,
+    "flipped": 98,
+    "phantoms": 47
+   },
+   "crashes": [],
+   "z_range": [
+    1.6823992729187012,
+    17.701711654663086
+   ],
+   "wall_s": 198.1
+  },
+  {
+   "course": "home",
+   "seed": 4,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 7,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.2,
+   "last_gate_s": 127.8,
+   "lateral_max_m": 0.6703395492859692,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.2,
+     "lat": 0.34,
+     "dz": 0.81,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.5,
+     "lat": -0.67,
+     "dz": 0.86,
+     "through": true
+    },
+    {
+     "gate": 2,
+     "t": 50.7,
+     "lat": 0.37,
+     "dz": 0.72,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 78.7,
+     "lat": 0.38,
+     "dz": 0.92,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 95.8,
+     "lat": 0.25,
+     "dz": 0.7,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 114.0,
+     "lat": 0.12,
+     "dz": 0.65,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 127.8,
+     "lat": 0.14,
+     "dz": 0.78,
+     "through": true
+    }
+   ],
+   "counters": {
+    "n_passes": 8.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 8,
+     "beside": 1,
+     "ghost": 1,
+     "unpass": 0
+    },
+    "ghosts": 1.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 14.0,
+    "rej_stale": 0.0,
+    "absorbed": 39.0,
+    "low": 0.0,
+    "behind": 5.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 13.5,
+     "target": 134.3,
+     "search": 34.0,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 13426,
+    "err_median_m": 1.7206299533033893,
+    "err_p90_m": 24.805815686782076,
+    "per_gate_median_m": {
+     "0": 1.11,
+     "1": 3.82,
+     "2": 2.1,
+     "3": 0.48,
+     "4": 1.53,
+     "5": 3.66,
+     "6": 24.81
+    }
+   },
+   "detector": {
+    "frames": 2753,
+    "arch_in_view": 2041,
+    "detected": 1188,
+    "missed": 853,
+    "flipped": 95,
+    "phantoms": 43
+   },
+   "crashes": [],
+   "z_range": [
+    1.703277587890625,
+    17.750097274780273
+   ],
+   "wall_s": 201.6
+  },
+  {
+   "course": "home",
+   "seed": 5,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 7,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.3,
+   "last_gate_s": 127.6,
+   "lateral_max_m": 0.7236219045296459,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.3,
+     "lat": 0.12,
+     "dz": 0.8,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.6,
+     "lat": 0.25,
+     "dz": 0.81,
+     "through": true
+    },
+    {
+     "gate": 2,
+     "t": 50.5,
+     "lat": 0.27,
+     "dz": 0.72,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 78.1,
+     "lat": 0.72,
+     "dz": 0.86,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 95.6,
+     "lat": -0.04,
+     "dz": 0.85,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 113.9,
+     "lat": -0.43,
+     "dz": 0.83,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 127.6,
+     "lat": 0.43,
+     "dz": 0.5,
+     "through": true
+    }
+   ],
+   "counters": {
+    "n_passes": 7.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 7,
+     "beside": 1,
+     "ghost": 2,
+     "unpass": 0
+    },
+    "ghosts": 2.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 13.0,
+    "rej_stale": 0.0,
+    "absorbed": 85.0,
+    "low": 0.0,
+    "behind": 3.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 8.6,
+     "target": 121.1,
+     "search": 52.2,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 12115,
+    "err_median_m": 2.0242047176577986,
+    "err_p90_m": 9.249570014407412,
+    "per_gate_median_m": {
+     "0": 2.02,
+     "1": 3.16,
+     "2": 0.68,
+     "3": 0.87,
+     "4": 7.41,
+     "5": 1.9,
+     "6": 2.14
+    }
+   },
+   "detector": {
+    "frames": 2763,
+    "arch_in_view": 2140,
+    "detected": 1110,
+    "missed": 1030,
+    "flipped": 121,
+    "phantoms": 43
+   },
+   "crashes": [],
+   "z_range": [
+    1.687009572982788,
+    17.79128646850586
+   ],
+   "wall_s": 203.4
+  },
+  {
+   "course": "home",
+   "seed": 6,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 7,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.3,
+   "last_gate_s": 126.6,
+   "lateral_max_m": 0.5197375770521788,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.3,
+     "lat": 0.27,
+     "dz": 0.66,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.3,
+     "lat": 0.15,
+     "dz": 0.77,
+     "through": true
+    },
+    {
+     "gate": 2,
+     "t": 54.2,
+     "lat": 0.3,
+     "dz": 0.69,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 78.0,
+     "lat": 0.02,
+     "dz": 0.84,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 94.6,
+     "lat": 0.33,
+     "dz": 0.63,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 113.0,
+     "lat": -0.52,
+     "dz": 0.74,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 126.6,
+     "lat": 0.01,
+     "dz": 0.79,
+     "through": true
+    }
+   ],
+   "counters": {
+    "n_passes": 7.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 6,
+     "beside": 1,
+     "ghost": 0,
+     "unpass": 0
+    },
+    "ghosts": 0.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 10.0,
+    "rej_stale": 0.0,
+    "absorbed": 75.0,
+    "low": 0.0,
+    "behind": 4.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 11.9,
+     "target": 112.6,
+     "search": 57.4,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 11270,
+    "err_median_m": 1.7261420657752997,
+    "err_p90_m": 5.790774377583046,
+    "per_gate_median_m": {
+     "0": 1.18,
+     "1": 2.15,
+     "2": 0.5,
+     "3": 2.44,
+     "4": 1.84,
+     "5": 4.06,
+     "6": 1.87
+    }
+   },
+   "detector": {
+    "frames": 2752,
+    "arch_in_view": 2130,
+    "detected": 1247,
+    "missed": 883,
+    "flipped": 59,
+    "phantoms": 39
+   },
+   "crashes": [],
+   "z_range": [
+    1.5919339656829834,
+    17.831192016601562
+   ],
+   "wall_s": 195.1
+  },
+  {
+   "course": "home",
+   "seed": 7,
+   "n_gates": 7,
+   "width_m": 4.0,
+   "seconds": 183.64148423630724,
+   "attempts": 1,
+   "through": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "n_through": 7,
+   "through_w": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "first_gate_s": 17.3,
+   "last_gate_s": 125.5,
+   "lateral_max_m": 0.4278763868501679,
+   "crossings": [
+    {
+     "gate": 0,
+     "t": 17.3,
+     "lat": -0.28,
+     "dz": 0.83,
+     "through": true
+    },
+    {
+     "gate": 1,
+     "t": 36.5,
+     "lat": -0.42,
+     "dz": 0.8,
+     "through": true
+    },
+    {
+     "gate": 2,
+     "t": 50.8,
+     "lat": 0.43,
+     "dz": 0.76,
+     "through": true
+    },
+    {
+     "gate": 3,
+     "t": 76.5,
+     "lat": 0.28,
+     "dz": 0.75,
+     "through": true
+    },
+    {
+     "gate": 4,
+     "t": 93.4,
+     "lat": -0.42,
+     "dz": 0.78,
+     "through": true
+    },
+    {
+     "gate": 5,
+     "t": 111.8,
+     "lat": 0.42,
+     "dz": 0.85,
+     "through": true
+    },
+    {
+     "gate": 6,
+     "t": 125.5,
+     "lat": 0.36,
+     "dz": 0.72,
+     "through": true
+    }
+   ],
+   "counters": {
+    "n_passes": 7.0,
+    "pass_kinds": {
+     "cross": 0,
+     "travel": 7,
+     "beside": 1,
+     "ghost": 0,
+     "unpass": 0
+    },
+    "ghosts": 0.0,
+    "unpasses": 0.0,
+    "reseeds": 0.0,
+    "goal_clips": 0.0,
+    "rej_elev": 10.0,
+    "rej_stale": 0.0,
+    "absorbed": 97.0,
+    "low": 0.0,
+    "behind": 5.0,
+    "sight_errors": 0.0,
+    "mode_s": {
+     "ground": 1.8,
+     "cruise": 8.2,
+     "target": 125.2,
+     "search": 48.5,
+     "hold": 0.0
+    }
+   },
+   "gate_estimate": {
+    "steps": 12537,
+    "err_median_m": 1.7364827845067243,
+    "err_p90_m": 7.79633431819506,
+    "per_gate_median_m": {
+     "0": 1.22,
+     "1": 2.61,
+     "2": 3.73,
+     "3": 1.24,
+     "4": 0.92,
+     "5": 4.2,
+     "6": 1.67
+    }
+   },
+   "detector": {
+    "frames": 2755,
+    "arch_in_view": 2211,
+    "detected": 1310,
+    "missed": 901,
+    "flipped": 112,
+    "phantoms": 41
+   },
+   "crashes": [],
+   "z_range": [
+    1.7332656383514404,
+    17.90724754333496
+   ],
+   "wall_s": 204.4
+  }
+ ],
+ "wall_s": 1612.9
+}
