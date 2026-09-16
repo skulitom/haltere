@@ -98,3 +98,37 @@ Two things made the detector's own numbers flattering, both fixed in `vision tra
 
 Checkpoints now record what they trained on, and `vision eval` marks every line `TRAINED ON` or
 `held out`, so an in-domain number can no longer be quoted as a generalisation number by accident.
+
+## 6. What the first round measured (2026-09-16)
+
+`gatenet10`: the same 43,263 frames as gatenet9, `--augment strong`, `--holdout run29 run30 run31`,
+16 epochs from scratch. The augmentation did exactly what it was aimed at, and it was not enough.
+
+| on held-out home flights | gatenet9 | gatenet10 |
+|---|---|---|
+| identity | 85.6% recall, 2.9 px | 78.7%, 4.6 px |
+| grayscale | 43.1% | 79.9% |
+| hue+180 | 51.1%, 40.6 px | 79.2%, 4.4 px |
+| spread over all eight | 43-86% | 77-80% |
+
+Colour dependence is gone, for about seven points of in-domain recall. **And on Pine Valley it still
+sees nothing: 2.7% of frames fire (gatenet9: 3.0%), median confidence 0.093, against its own 8.7%
+false-positive rate at home.** Its nine most confident Pine Valley frames are three pictures of the
+game's countdown ring - a white circle with a number in it - and six crashes into foliage. It has
+learned "white round thing" well enough to fire on a HUD overlay, and Pine Valley's dark truss
+arches are not white round things.
+
+The conclusion is not subtle: **colour invariance was necessary and is not sufficient.** A detector
+that has seen one gate type cannot recognise another, however the pixels are jittered. The next
+round needs a second gate *type* in the training set, not more augmentation.
+
+The hold-out tagging also shows what the old split was hiding, on the same checkpoint:
+`run29 [held out]` 88.5% visibility accuracy against `run10 [TRAINED ON]` 98.2%.
+
+Range table refitted for gatenet10 (`vision rangefit`, held-out flights); the 35-60 m bin has 32
+samples and is not trustworthy, so it keeps the old 45 m anchor:
+`((2.8, 0.665), (6.0, 0.79), (9.2, 0.874), (13.0, 0.937), (18.0, 0.986), (24.1, 1.021), (30.3, 1.058), (45.0, 1.0))`
+
+**Which detector flies today: still gatenet9.** gatenet10 is better everywhere except the one course
+we can currently fly, and neither can see Pine Valley. Swapping now would trade 7 points of recall
+and 1.7 px of bearing for nothing that can be flown yet.
