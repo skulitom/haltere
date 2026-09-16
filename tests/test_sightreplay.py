@@ -1,4 +1,4 @@
-"""The offline replay of the rabbit tracker (haltere.liftoff.sightreplay) on a tiny synthetic `fly --log`.
+﻿"""The offline replay of the rabbit tracker (haltere.liftoff.sightreplay) on a tiny synthetic `fly --log`.
 
 A kinematic drone flies straight through two arches while the real pilot tracks a synthetic detector; every telemetry
 frame is written in the fly --log format. Replaying that log must rebuild the same tracker: the same target ids and
@@ -27,6 +27,13 @@ CAM = Camera(640, 360, 200.0, 30.0)
 GATES = [{'pos': [20.0, 0.0, 1.2], 'heading': 0.0}, {'pos': [45.0, 0.0, 1.2], 'heading': 0.0}]
 DT = 0.01
 EPOCH = 1789000000.0        # a wall clock of the size time.time() gives: the log writes it to 0.1 ms
+
+
+def SIGHT_PARAMS(**kw):
+    """The pilot this fixture flies. ``range_corr`` is off: that table is GateNet's range bias, measured on the
+    game, and ArchVision below reports the label's width exactly - correcting a bias that is not there would only
+    put one in, which the pilot's own width estimate would then have to take back out."""
+    return SightParams(v_cruise=2.5, range_corr=None, **kw)
 
 
 class DummyBrain:
@@ -85,7 +92,7 @@ def fly_synthetic_log(path, seconds=24.0, speed=2.5, params=None):
     pilot.clock = clock
     pilot.vision = ArchVision(GATES)
     pilot.sight = 'rabbit'
-    pilot.sight_params = params or SightParams(v_cruise=speed)
+    pilot.sight_params = params or SIGHT_PARAMS()
     rows = []
     head = None
     for k in range(int(seconds / DT)):
@@ -120,7 +127,7 @@ def flight(tmp_path_factory):
     path = tmp_path_factory.mktemp('replay') / 'synthetic.csv'
     live = fly_synthetic_log(path)
     log = load_log(str(path))
-    res = replay(log, SightParams(v_cruise=2.5), CAM.scaled(IN_W, IN_H))
+    res = replay(log, SIGHT_PARAMS(), CAM.scaled(IN_W, IN_H))
     return {'path': str(path), 'log': log, 'res': res, 'live': live}
 
 
@@ -211,10 +218,11 @@ def test_the_flights_flags_are_parsed_and_the_parameters_validated():
 
 def test_changed_parameters_change_what_the_replay_tracks(flight):
     """The point of the replay: the same flight flown by a differently tuned tracker."""
-    res = replay(flight['log'], SightParams(v_cruise=2.5, confirm_span=1e6), CAM.scaled(IN_W, IN_H))
+    res = replay(flight['log'], SIGHT_PARAMS(confirm_span=1e6), CAM.scaled(IN_W, IN_H))
     C = res['cols']
     ids = np.nan_to_num(C[:, COL['tgt_id']], nan=-1.0)
     assert np.nanmax(C[:, COL['n_conf']]) == 0 and ids.max() == -1      # nothing confirms, so nothing is flown at
     assert np.nanmax(C[:, COL['n_passes']]) == 0 and not res['events']
     assert np.nanmax(C[:, COL['n_tent']]) >= 1                          # the sightings still make tentative tracks
     assert math.isfinite(validate(flight['log'], res)['tgt_id_match'])
+
