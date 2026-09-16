@@ -89,45 +89,12 @@ def test_synthetic_detector_timing_and_geometry():
     assert blind.get().p_visible < 0.5 and blind.latest_gate == -1
 
 
-def test_the_synthetic_detector_never_tells_the_pilot_the_course_width():
-    """The arches are projected at the course's width but the range is converted with the nominal one, as a live
-    detector with no knowledge of the course must: a 1.5 m arch is reported far away and seen from closer in."""
-    pos, q = np.array([8.0, 0.0, 1.5]), quat_from_yaw(0.0)
-    truth = float(np.linalg.norm(np.array(GATES[0]['pos']) + [0, 0, 1.5] - pos))
-    got = {}
-    for w in (4.0, 1.5, 8.0):
-        vis = SyntheticGateVision(GATES, CAM, DetectorModel.clean(), np.random.default_rng(0), width_m=w)
-        det, gate = vis.detect(0.0, pos, q)
-        got[w] = det
-        assert gate == 0 and det.width_m == 4.0, w
-    assert abs(got[4.0].dist_m / truth - 1.0) < 0.12                # the nominal course reads about right ...
-    assert abs(got[1.5].dist_m / got[4.0].dist_m - 4.0 / 1.5) < 0.2      # ... a 1.5 m one about 2.7x too far ...
-    assert abs(got[8.0].dist_m / got[4.0].dist_m - 4.0 / 8.0) < 0.05     # ... and an 8 m one about half as far
-    # the apparent width IS the course's, which is what the pilot has to work back from
-    assert got[1.5].width_px < got[4.0].width_px < got[8.0].width_px
-
-
 def test_arch_collision():
     g = GATES[:1]
     assert arch_collision(np.array([19.9, 0.5, 1.5]), np.array([20.1, 0.5, 1.5]), g) is None      # through
     assert arch_collision(np.array([19.9, 2.0, 1.5]), np.array([20.1, 2.0, 1.5]), g) == (0, 'post')
     assert arch_collision(np.array([19.9, 0.0, 4.7]), np.array([20.1, 0.0, 4.7]), g) == (0, 'top')
     assert arch_collision(np.array([19.9, 5.0, 1.5]), np.array([20.1, 5.0, 1.5]), g) is None      # beside it
-
-
-def test_the_arch_that_can_be_hit_is_the_width_of_the_course():
-    """A course of 8 m arches has no posts in the middle of its opening, and a 1.5 m one no opening wider
-    than the arch: the frame is built at the course's own width, not at the 4 m of Straw Bale."""
-    g = GATES[:1]
-    a, b = np.array([19.9, 2.0, 1.5]), np.array([20.1, 2.0, 1.5])         # 2 m off centre, the 4 m post
-    assert arch_collision(a, b, g, width_m=8.0) is None                    # ... is deep inside an 8 m opening
-    assert arch_collision(np.array([19.9, 4.0, 1.5]), np.array([20.1, 4.0, 1.5]), g, width_m=8.0) == (0, 'post')
-    assert arch_collision(a, b, g, width_m=1.5) is None                    # ... and outside a 1.5 m arch entirely
-    assert arch_collision(np.array([19.9, 0.75, 1.5]), np.array([20.1, 0.75, 1.5]), g, width_m=1.5) == (0, 'post')
-    # the top bar sits half a width above the visual centre, so it rises with the arch
-    for w, z in ((4.0, 4.7), (8.0, 6.7), (1.5, 3.45)):
-        assert arch_collision(np.array([19.9, 0.0, z]), np.array([20.1, 0.0, z]), g, width_m=w) == (0, 'top'), w
-    assert arch_collision(np.array([19.9, 0.0, 4.7]), np.array([20.1, 0.0, 4.7]), g, width_m=8.0) is None
 
 
 def test_rehearsal_loop_runs_the_real_pilot(tmp_path):

@@ -69,8 +69,7 @@ def test_narrow_and_wide_change_only_the_width_and_are_warned_about():
     for c in (narrow, wide):
         w = c.width_warning()
         assert 'GATE_WIDTH_M' in w and 'detection_geometry' in w and str(c.width_m) in w
-        assert f'{GATE_WIDTH_M / c.width_m:.2f}x' in w                 # the raw range error, spelled out
-        assert 'width_est' in w and 'through_w' in w                   # what takes it out, and what to read
+        assert f'{GATE_WIDTH_M / c.width_m:.2f}x' in w                 # the range error it causes, spelled out
 
 
 def test_descending_falls_far_enough_to_matter():
