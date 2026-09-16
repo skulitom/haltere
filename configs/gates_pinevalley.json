@@ -1,0 +1,30 @@
+{
+ "gate_width_m": 3.0,
+ "centre_up_m": 0.0,
+ "note": "Pine Valley. One arch: white/grey round arch with a chequered lower leg and LIFTOFF branding, about 18 m ahead of the spawn point. pos is the CENTRE OF THE ARCH OPENING as read off the frames, not a passage point, so centre_up_m is 0 and not Straw Bale's 1.5. gate_width_m 3.0 is the arch's outer width: the inner opening triangulates to 2.4 m and the band is about 0.35 m either side. heading is the arch's facing, fitted from the projected positions of its two legs (leg_a, leg_b below); the fit is shallow and good only to about +-20 deg. Rebuild with: haltere vision triangulate data/vision/pine1 --observations configs/obs_pinevalley.json --camera configs/camera_seat.yaml  (gate 0 there is the opening centre; gates 1 and 2 are the legs, read only to measure the width and the facing).",
+ "gates": [
+  {
+   "pos": [
+    17.286626707971045,
+    -5.649308733258792,
+    1.642085363676937
+   ],
+   "heading": -0.6981317007977318,
+   "rms": 0.46020162171234885,
+   "n": 10,
+   "gate": 0,
+   "closest_m": 0.15480160310795515,
+   "leg_a": [
+    17.73325044539823,
+    -4.4294649260587535,
+    1.6221081415160121
+   ],
+   "leg_b": [
+    16.56242944684262,
+    -6.686858664396762,
+    1.6644084488132678
+   ],
+   "opening_width_m": 2.54
+  }
+ ]
+}

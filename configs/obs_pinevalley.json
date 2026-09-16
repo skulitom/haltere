@@ -1,0 +1,212 @@
+[
+ {
+  "file": "000020.jpg",
+  "u": 331,
+  "v": 327,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000050.jpg",
+  "u": 338,
+  "v": 296,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000169.jpg",
+  "u": 132,
+  "v": 286,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000173.jpg",
+  "u": 192,
+  "v": 278,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000179.jpg",
+  "u": 204,
+  "v": 267,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000196.jpg",
+  "u": 124,
+  "v": 298,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000200.jpg",
+  "u": 258,
+  "v": 307,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000203.jpg",
+  "u": 318,
+  "v": 298,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000210.jpg",
+  "u": 365,
+  "v": 284,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "001197.jpg",
+  "u": 152,
+  "v": 243,
+  "gate": 0,
+  "what": "centre of the arch opening"
+ },
+ {
+  "file": "000020.jpg",
+  "u": 313.3,
+  "v": 327,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000050.jpg",
+  "u": 304.3,
+  "v": 296,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000169.jpg",
+  "u": 111.4,
+  "v": 286,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000173.jpg",
+  "u": 182.3,
+  "v": 278,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000179.jpg",
+  "u": 192.4,
+  "v": 267,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000196.jpg",
+  "u": 89.9,
+  "v": 298,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000200.jpg",
+  "u": 225.4,
+  "v": 307,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000203.jpg",
+  "u": 288.8,
+  "v": 298,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000210.jpg",
+  "u": 330.8,
+  "v": 284,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "001197.jpg",
+  "u": 131.6,
+  "v": 243,
+  "gate": 1,
+  "what": "inner face of the image-left leg, at the centre height"
+ },
+ {
+  "file": "000020.jpg",
+  "u": 349.3,
+  "v": 327,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000050.jpg",
+  "u": 370.8,
+  "v": 296,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000169.jpg",
+  "u": 153.2,
+  "v": 286,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000173.jpg",
+  "u": 202.1,
+  "v": 278,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000179.jpg",
+  "u": 215.8,
+  "v": 267,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000196.jpg",
+  "u": 158.2,
+  "v": 298,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000200.jpg",
+  "u": 290.3,
+  "v": 307,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000203.jpg",
+  "u": 348.1,
+  "v": 298,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "000210.jpg",
+  "u": 399.1,
+  "v": 284,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ },
+ {
+  "file": "001197.jpg",
+  "u": 170.0,
+  "v": 243,
+  "gate": 2,
+  "what": "inner face of the image-right leg, at the centre height"
+ }
+]
