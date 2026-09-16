@@ -177,6 +177,8 @@ class TelemetryPilot:
         self.sight = 'legacy'
         self.sight_params = None               # SightParams for the rabbit (None: defaults)
         self.sightpilot = None
+        self._gate_clearance = None            # m, measured on this course: the first gate's height above the
+                                               # terrain it stands on (see sensors(); None until a gate is flown)
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
         self.path_z_lead = None                # m; the carrot's height is taken this far ahead (None: at the carrot)
@@ -498,6 +500,18 @@ class TelemetryPilot:
             return None
         return (self.brain.cfg.rate_max * torch.sigmoid(self.state['v'][:, 0])).float().cpu().numpy()
 
+    def gate_clearance(self, sp) -> float:
+        """How high this course's gates stand above the ground under them, measured on the course being flown.
+
+        Latched at the first gate actually flown through: the drone starts on the ground, so the reset datum is
+        the terrain under the start, and the height at which it crosses the first gate is that gate's clearance
+        above it. Until then ``z_pass0`` stands in as a prior. It used to stand in permanently, at Straw Bale's
+        1.2 m, which put a measurement of one course inside the speed sense of every other.
+        """
+        if self._gate_clearance is None and getattr(sp, 'n_passes', 0) >= 1:
+            self._gate_clearance = float(sp.z_pass_last)
+        return sp.params.z_pass0 if self._gate_clearance is None else self._gate_clearance
+
     def sensors(self, fr: TelemetryFrame) -> dict[str, torch.Tensor]:
         if self.pos0 is None:
             self.reset(fr)
@@ -526,8 +540,16 @@ class TelemetryPilot:
         else:
             vel = vel * np.array([self.flow_gain, self.flow_gain, 1.0])
         if sp is not None and sp.params.flow_alt == 'ground':
-            # height above the ground under the altitude reference, not above the reset point (13 m up the hill)
-            altitude = float(np.clip(pos[2] - (sp.z_c - sp.params.z_aim - sp.params.z_pass0), 0.3, 6.0))
+            # Height above the ground under the altitude reference, not above the reset point (13 m up the hill).
+            # The ground is taken to be the gate height less the gates' clearance above the terrain, and that
+            # clearance used to be z_pass0 = 1.2 m - a measurement of Straw Bale, baked into the SPEED sense of
+            # every course. It biases the optic flow the brain flies on wherever gates sit differently above the
+            # ground, which is not a navigation shortcut but a corrupted input. Measure it here instead: the drone
+            # starts on the ground, so the reset datum is the terrain under the start, and the height at which it
+            # crosses the first gate is that gate's clearance above it. z_pass0 survives only as the prior held
+            # until the first gate has actually been flown through.
+            clearance = self.gate_clearance(sp)
+            altitude = float(np.clip(pos[2] - (sp.z_c - sp.params.z_aim - clearance), 0.3, 6.0))
         vel_body = R.T @ vel
         if self.map.use_quat_rates and self.prev_quat is not None and self.prev_t is not None:
             dt = max(fr.timestamp - self.prev_t, 1e-3)

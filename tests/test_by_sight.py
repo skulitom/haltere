@@ -59,3 +59,26 @@ def test_the_pilot_does_not_open_files_while_flying():
                 called.add(f.attr)
     forbidden = called & {'open', 'load', 'safe_load', 'loads', 'read_text', 'read_bytes'}
     assert not forbidden, f'SightPilot calls {forbidden}: the flight loop must not read anything from disk'
+
+
+def test_gate_clearance_is_measured_on_the_course_being_flown():
+    """The optic-flow speed sense needs height above terrain, and used to get it from a Straw Bale constant.
+
+    The brain flies on that sense, so a wrong clearance is not a navigation shortcut - it corrupts the input.
+    It must come from the course under the drone: the height at which it crosses the first gate.
+    """
+    from types import SimpleNamespace
+
+    from haltere.liftoff.pilot import TelemetryPilot
+
+    p = TelemetryPilot.__new__(TelemetryPilot)
+    p._gate_clearance = None
+    sp = SimpleNamespace(n_passes=0, z_pass_last=1.2, params=SimpleNamespace(z_pass0=1.2))
+
+    assert p.gate_clearance(sp) == 1.2, 'before any gate, the prior stands in'
+
+    sp.n_passes, sp.z_pass_last = 1, 4.6            # this course's gates stand 4.6 m up, not 1.2
+    assert p.gate_clearance(sp) == 4.6, 'the first gate flown through sets the clearance'
+
+    sp.z_pass_last = 11.0                            # a later, higher gate must not move it
+    assert p.gate_clearance(sp) == 4.6, 'the clearance is latched at the first gate, not the last'
