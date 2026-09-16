@@ -10,18 +10,21 @@ what it passed and which of the pilot's own rejection counters fired.
 
 It measures; it does not fix anything and it changes no pilot behaviour.
 
-A caveat the bench cannot hide, and prints as a warning for every course whose width is not 4 m: the
-nominal gate width is hard-coded in three places outside this module, so a course with another width is
-only partly simulated.
+What a course of a different size still costs, printed as a warning for every course whose width is not
+4 m. The detector converts apparent size into range with the NOMINAL 4 m (``detection_geometry``), which
+is all a detector can do, and the pilot works that back out and re-scales by the width it triangulates
+for itself (``SightParams.width_est``) - so a wrong width is a transient now rather than a constant, but
+the first arch of a course is still flown before there is any parallax to measure it with. Two things
+about a narrow or wide course are real and are not defects:
 
-  * ``vision.runtime.detection_geometry`` (runtime.py:48) turns the detected pixel width into a range
-    with ``gates.GATE_WIDTH_M`` = 4.0, whatever the course says. The synthetic detector projects the
-    course's real width, so the pilot's range is wrong by 4.0 / width (a 1.5 m arch reads 2.7x too far)
-    and the arch drops below the detector's 11 px floor 2.7x nearer.
-  * ``rehearse.arch_collision`` (rehearse.py:244) puts the posts at 1.7-2.3 m either side and the top
-    bar at 3.2-3.8 m, a 4 m arch, for every course.
-  * ``flightlog.gate_crossings`` (flightlog.py:56) scores a pass with a fixed 2.0 m half width; the
-    bench therefore also reports a width-aware count (``through_w``) beside the project's own.
+  * it is SEEN from a different distance. The detector's 11 px width floor puts a 1.5 m arch out of
+    sight beyond about 14 m and lets an 8 m one be seen to 73, against 36 m for a 4 m arch.
+  * ``flightlog.gate_crossings`` (flightlog.py) still scores a pass with a fixed 2.0 m half width, which
+    is the wrong opening on either course; the bench reports a width-aware count (``through_w``) beside
+    the project's own, and that is the one to read for narrow and wide.
+
+``rehearse.arch_collision`` now builds the frame at the course's own width, so an 8 m arch no longer has
+posts standing in the middle of its opening and a 1.5 m one no longer has an opening wider than itself.
 """
 from __future__ import annotations
 
@@ -98,13 +101,14 @@ class Course:
         if abs(self.width_m - GATE_WIDTH_M) < 1e-9:
             return ''
         k = GATE_WIDTH_M / self.width_m
-        return (f'{self.name}: gate_width_m {self.width_m} != {GATE_WIDTH_M}. The pilot\'s range comes from '
-                f'runtime.detection_geometry, which divides by the hard-coded gates.GATE_WIDTH_M = {GATE_WIDTH_M}: '
-                f'every sighting reads {k:.2f}x its true range, and the 11 px detector floor cuts sight off at '
-                f'{100.0 * self.width_m / 11.0:.0f} m instead of {100.0 * GATE_WIDTH_M / 11.0:.0f} m. '
-                f'rehearse.arch_collision still builds a 4 m arch, and flightlog.gate_crossings still scores with a '
-                f'2.0 m half width (the bench also reports through_w at {self.width_m / 2:.2f} m). Results on this '
-                f'course measure the pilot AND that mismatch together.')
+        return (f'{self.name}: gate_width_m {self.width_m} != {GATE_WIDTH_M}. runtime.detection_geometry converts '
+                f'apparent size at the nominal gates.GATE_WIDTH_M = {GATE_WIDTH_M}, so a raw sighting reads '
+                f'{k:.2f}x its true range until the pilot has triangulated the width for itself '
+                f'(SightParams.width_est); the first arch is flown before there is parallax to do that with. '
+                f'The 11 px detector floor also cuts sight off at {100.0 * self.width_m / 11.0:.0f} m instead of '
+                f'{100.0 * GATE_WIDTH_M / 11.0:.0f} m, which is a real property of the course. '
+                f'flightlog.gate_crossings still scores with a 2.0 m half width, so read through_w '
+                f'(at {self.width_m / 2:.2f} m) on this course, not through.')
 
 
 def _headings(points, start=(0.0, 0.0)) -> list[float]:
@@ -290,7 +294,8 @@ def fly_course(course: Course, brain, cfg, cam, seed: int, seconds: float | None
                        'dz': round(c['dz_m'], 2), 'through': bool(c['through'])} for c in best.get('crossings', [])],
         'counters': {k: (None if k not in sight else (sight[k] if isinstance(sight[k], dict) else float(sight[k])))
                      for k in ('n_passes', 'pass_kinds', 'ghosts', 'unpasses', 'reseeds', 'goal_clips', 'rej_elev',
-                               'rej_stale', 'absorbed', 'low', 'behind', 'sight_errors', 'mode_s')},
+                               'rej_stale', 'absorbed', 'low', 'behind', 'sight_errors', 'mode_s',
+                               'gate_w', 'w_updates')},
         'gate_estimate': best.get('gate_estimate'),
         'detector': s['detector'],
         'crashes': [{'kind': c['kind'], 'gate': c.get('gate'), 'ts': round(c['ts'], 1)} for c in s['crashes']],
@@ -312,7 +317,7 @@ def table(rows: list[dict], courses: dict[str, Course]) -> str:
     by: dict[str, list[dict]] = {}
     for r in rows:
         by.setdefault(r['course'], []).append(r)
-    head = (f'{"course":<14}{"w(m)":>5}{"gates":>6}  {"through/seed":<14}{"w-aware":>8}{"t_last":>8}'
+    head = (f'{"course":<14}{"w(m)":>5}{"seen w":>7}{"gates":>6}  {"through/seed":<14}{"w-aware":>8}{"t_last":>8}'
             f'{"passes":>7}{"ghost":>6}{"low":>5}{"behind":>7}{"absorb":>7}{"unpass":>7}{"reseed":>7}'
             f'{"elev":>6}{"clips":>6}{"crash":>6}{"err":>4}')
     out = [head, '-' * len(head)]
@@ -321,7 +326,7 @@ def table(rows: list[dict], courses: dict[str, Course]) -> str:
         thr = ','.join(str(r['n_through']) for r in runs)
         wa = ','.join(str(len(r['through_w'])) for r in runs)
         tl = [r['last_gate_s'] for r in runs if r['last_gate_s'] is not None]
-        out.append(f'{name:<14}{c.width_m:>5.1f}{runs[0]["n_gates"]:>6}  {thr:<14}{wa:>8}'
+        out.append(f'{name:<14}{c.width_m:>5.1f}{_agg(runs, "gate_w"):>7.2f}{runs[0]["n_gates"]:>6}  {thr:<14}{wa:>8}'
                    f'{(f"{np.median(tl):.0f}" if tl else "-"):>8}'
                    f'{_agg(runs, "n_passes"):>7.0f}{_agg(runs, "ghosts"):>6.0f}{_agg(runs, "low"):>5.0f}'
                    f'{_agg(runs, "behind"):>7.0f}{_agg(runs, "absorbed"):>7.0f}{_agg(runs, "unpasses"):>7.0f}'
@@ -329,7 +334,8 @@ def table(rows: list[dict], courses: dict[str, Course]) -> str:
                    f'{float(np.median([len(r["crashes"]) for r in runs])):>6.0f}'
                    f'{_agg(runs, "sight_errors"):>4.0f}')
     out.append('through/seed: gates flown through per seed (flightlog.gate_crossings, 2.0 m half width); '
-               'w-aware: the same with the course\'s own half width; counters are the median over the seeds.')
+               'w-aware: the same with the course\'s own half width; seen w: the width the pilot triangulated for '
+               'the arches, against the w(m) they really are; counters are the median over the seeds.')
     return '\n'.join(out)
 
 
@@ -370,7 +376,8 @@ def run_bench(ckpt: str, camera_yaml: str = 'configs/camera_seat.yaml', names=No
                       f'(width-aware {len(r["through_w"])}), passes {cn["n_passes"]:.0f} {cn["pass_kinds"]}, '
                       f'ghosts {cn["ghosts"]:.0f}, low {cn["low"]:.0f}, behind {cn["behind"]:.0f}, absorbed '
                       f'{cn["absorbed"]:.0f}, unpasses {cn["unpasses"]:.0f}, reseeds {cn["reseeds"]:.0f}, rej_elev '
-                      f'{cn["rej_elev"]:.0f}, errors {cn["sight_errors"]:.0f}, modes {cn["mode_s"]}, crashes '
+                      f'{cn["rej_elev"]:.0f}, errors {cn["sight_errors"]:.0f}, modes {cn["mode_s"]}, arch width '
+                      f'{cn["gate_w"]:.2f} m from {cn["w_updates"]:.0f} looks (really {c.width_m}), crashes '
                       f'{len(r["crashes"])} [{r["wall_s"]:.0f} s wall]', flush=True)
     out = {'ckpt': ckpt, 'camera': camera_yaml, 'seeds': seed_list, 'preset': PRESET, 'warnings': warnings,
            'courses': {c.name: {'breaks': c.breaks, 'width_m': c.width_m, 'n_gates': len(c.gates),

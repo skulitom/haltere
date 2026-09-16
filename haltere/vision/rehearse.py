@@ -6,12 +6,14 @@ creep / search state machine and the face-travel yaw) fed with telemetry frames 
 simulated clock, and the brain's sticks going through the control latency into the simulated flight controller.
 
 GateNet is replaced by ``SyntheticGateVision``: every arch of the course is projected into the FPV camera with the
-drone's simulated attitude (the geometry of the dataset labels: visual centre 1.5 m above the passage point, 4 m
-wide, 5% image margin, at most 45 m, at least 22 px wide at 640) and the detector reports the widest arch in view
-(arches look the same from behind), with the failure modes of the real one (``DetectorModel``, measured on recorded
-flights): centre noise, width noise with a range-dependent bias, frames at 15 Hz delivered ~80 ms after the pose they
-show, single-frame misses and dropout bursts, arches seen at an angle or far away found less often, flips to the
-second arch in view, the occasional phantom, and optionally arches seen at an angle looking narrower.
+drone's simulated attitude (the geometry of the dataset labels: visual centre 1.5 m above the passage point, the
+course's own width, 5% image margin, at most 45 m, at least 22 px wide at 640) and the detector reports the widest
+arch in view (arches look the same from behind), with the failure modes of the real one (``DetectorModel``, measured
+on recorded flights): centre noise, width noise with a range-dependent bias, frames at 15 Hz delivered ~80 ms after
+the pose they show, single-frame misses and dropout bursts, arches seen at an angle or far away found less often,
+flips to the second arch in view, the occasional phantom, and optionally arches seen at an angle looking narrower.
+The range it reports is converted with the NOMINAL width (``assumed_width_m``), never the course's: a live detector
+has no way to know how wide the arches in front of it are, and the pilot estimates that for itself.
 
 Not modelled: Liftoff's own physics (the simulator is the brain's training physics), the terrain (the ground is flat
 at the start height, so the hill under gates 5 and 6 is missing), obstacles other than the arch posts and top bars,
@@ -150,12 +152,17 @@ class SyntheticGateVision:
     (like the live detector, which stamps the screen grab)."""
 
     def __init__(self, gates: list[dict], cam: Camera, model: DetectorModel | None = None,
-                 rng: np.random.Generator | None = None, width_m: float = GATE_WIDTH_M, up_m: float = CENTRE_UP_M):
+                 rng: np.random.Generator | None = None, width_m: float = GATE_WIDTH_M, up_m: float = CENTRE_UP_M,
+                 assumed_width_m: float = GATE_WIDTH_M):
         self.gates = gates
         self.cam = cam.scaled(IN_W, IN_H)
         self.model = model or DetectorModel()
         self.rng = rng or np.random.default_rng(0)
+        # width_m is how wide the arches of this course really are (what gets projected into the image); the
+        # detector's own range conversion must NOT know it, or the rehearsal would hand the pilot an answer no
+        # live detector has: it converts with the nominal assumed_width_m, exactly as runtime.GateVision does.
         self.width_m, self.up_m = width_m, up_m
+        self.assumed_width_m = float(assumed_width_m)
         self.stats = {'frames': 0, 'arch_in_view': 0, 'detected': 0, 'missed': 0, 'flipped': 0, 'phantoms': 0}
         self.reset()
 
@@ -217,9 +224,9 @@ class SyntheticGateVision:
             p, u, v, w, gate = (float(rng.uniform(0.55, 0.85)), float(rng.uniform(0, W)), float(rng.uniform(0.45 * H, H)),
                                 float(rng.uniform(10.0, 50.0)), -2)
             self.stats['phantoms'] += 1
-        direction, dist = detection_geometry(self.cam, u, v, w)
+        direction, dist = detection_geometry(self.cam, u, v, w, self.assumed_width_m)
         self._n += 1
-        return Detection(0.0, p, u, v, w, direction, dist, self._n), gate
+        return Detection(0.0, p, u, v, w, direction, dist, self._n, self.assumed_width_m), gate
 
     def update(self, now: float, pos: np.ndarray, quat: np.ndarray) -> None:
         m = self.model
@@ -243,11 +250,19 @@ class SyntheticGateVision:
 
 # ----------------------------------------------------------------------------- the course: ground and arches
 
-def arch_collision(p0: np.ndarray, p1: np.ndarray, gates: list[dict], post_band: tuple[float, float] = (1.7, 2.3),
-                   top_band: tuple[float, float] = (3.2, 3.8)) -> tuple[int, str] | None:
-    """Did the step from p0 to p1 cross an arch's plane where its frame is? A drone clipping a post (about 2 m
-    either side of the passage point, from the ground below up to the top) or the top bar (3.5 m above the
-    passage point) crashes. Returns (gate, 'post' | 'top') or None."""
+def arch_collision(p0: np.ndarray, p1: np.ndarray, gates: list[dict], width_m: float = GATE_WIDTH_M,
+                   up_m: float = CENTRE_UP_M, thick: float = 0.3) -> tuple[int, str] | None:
+    """Did the step from p0 to p1 cross an arch's plane where its frame is? A drone clipping a post (at the edge of
+    the opening, from the ground below up to the top) or the top bar crashes. Returns (gate, 'post' | 'top') or None.
+
+    The frame is built at the course's OWN width: the posts stand half a width either side of the passage point and
+    the top bar half a width above the visual centre, each ``thick`` metres of structure reaching inwards and
+    outwards. A 4 m arch with the 1.5 m visual centre gives the posts at 1.7-2.3 m and the bar at 3.2-3.8 m, which
+    is what this used to hard-code for every course - an 8 m arch then had phantom posts standing in the middle of
+    its opening and a 1.5 m one an opening wider than the arch."""
+    half = 0.5 * float(width_m)
+    post_band = (half - thick, half + thick)
+    top_band = (up_m + half - thick, up_m + half + thick)
     for i, g in enumerate(gates):
         gp = np.asarray(g['pos'], dtype=np.float64)
         h = float(g['heading'])
@@ -431,7 +446,7 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
         elif p1[2] > 0.3:
             airborne = True
         if opts.collide and crashed_at is None and event is None:
-            hit = arch_collision(pos, p1, gates)
+            hit = arch_collision(pos, p1, gates, width_m, up_m)
             if hit is not None:
                 event = {'kind': f'crash_{hit[1]}', 'gate': hit[0]}
                 new.quad.pos[0, 2] = 0.0
@@ -587,6 +602,10 @@ def summarize(result: dict, gates: list[dict], track: np.ndarray | None = None, 
                                                                       ('ghost', 4), ('unpass', 5))}
             last['mode_s'] = {n: round(float((mode == v).sum() * dt), 1)
                               for v, n in ((0, 'ground'), (1, 'cruise'), (2, 'target'), (3, 'search'), (4, 'hold'))}
+            gw = log['gate_w'][idx]
+            gw = gw[np.isfinite(gw)]
+            last['gate_w'] = float(gw[-1]) if len(gw) else float('nan')      # what the pilot made the arches out to be
+            last['w_updates'] = float(np.nanmax(log['w_updates'][idx]))
             last['flow_gain_median'] = float(np.nanmedian(log['flow_gain'][idx][air])) if air.any() else float('nan')
             last['rabbit_speed_median'] = float(np.nanmedian(log['rb_v'][idx][air])) if air.any() else float('nan')
             r['sight'] = last
@@ -632,7 +651,8 @@ def describe(summary: dict, name: str = 'rehearsal') -> str:
                   f'elev/stale/off-axis {sg["rej_elev"]:.0f}/{sg["rej_stale"]:.0f}/{sg["rej_offaxis"]:.0f}, absorbed '
                   f'{sg["absorbed"]:.0f}, low {sg["low"]:.0f}, orphan passes {sg["orphans"]:.0f}, '
                   f'errors {sg["sight_errors"]:.0f}, modes {sg["mode_s"]}, flow median {sg["flow_gain_median"]:.2f}, '
-                  f'rabbit speed median {sg["rabbit_speed_median"]:.2f}')
+                  f'rabbit speed median {sg["rabbit_speed_median"]:.2f}, arch width {sg.get("gate_w", float("nan")):.2f} m '
+                  f'from {sg.get("w_updates", 0):.0f} looks')
         if 'gate_estimate' in r:
             ge = r['gate_estimate']
             s += f' | gate estimate error median {ge["err_median_m"]:.1f} m (p90 {ge["err_p90_m"]:.1f}), per gate {ge["per_gate_median_m"]}'
