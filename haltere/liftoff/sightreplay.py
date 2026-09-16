@@ -192,7 +192,8 @@ class RecordingSightPilot(SightPilot):
                 reason = 'expired'
             elif T.unseen_in_view > self._ghost_s(T):
                 reason = 'ghost'
-            elif math.sqrt(max(T.P[2, 2], 0.0)) < P.low_sigma and T.m[2] < self.z_pass_last + P.low_above:
+            elif (math.sqrt(max(T.P[2, 2], 0.0)) < P.low_sigma
+                  and T.m[2] < max(P.z_min, self.z_pass_last - P.z_drop_max)):   # same floor as the pilot
                 reason = 'low'
             else:
                 reason = 'merged'

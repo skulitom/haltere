@@ -701,3 +701,25 @@ def test_fly_log_header_and_rows_have_the_same_columns():
         row = _fly_log_row(rig.pilot, fr, rig.clock(), np.zeros(4), 1.0, False)
         assert len(head) == len(row) and head[-1] == 'status'
         assert ('sight_yaw' in head) == (sight == 'rabbit')
+
+
+def test_a_gate_below_the_last_one_is_not_ground_clutter():
+    """Straw Bale only ever climbs. Two rules took that for a law of courses, and a descending course lost
+    every gate to them: the next gate was refused confirmation and then deleted as clutter."""
+    from haltere.liftoff.sightpilot import SightParams, SightPilot
+
+    P = SightParams()
+    sp = SightPilot.__new__(SightPilot)
+    sp.params = P
+    sp.z_pass_last = 9.0
+    floor = sp._z_floor()
+    assert floor == max(P.z_min, 9.0 - P.z_drop_max)
+    assert floor < 8.5, 'a gate 0.5 m below the last one must still be a gate'
+    assert 7.0 >= floor, 'a 2 m descent between gates is an ordinary course, not clutter'
+    # ... but something on the ground under a high gate still is clutter
+    sp.z_pass_last = 20.0
+    assert sp._z_floor() > 1.5
+
+    # and the floor never goes under the absolute minimum height
+    sp.z_pass_last = 1.3
+    assert sp._z_floor() == P.z_min

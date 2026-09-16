@@ -110,9 +110,7 @@ class SightParams:
     confirm_hits: int = 3
     confirm_span: float = 0.2
     z_plaus_sigma: float = 0.7            # height plausibility applies once sigma_z < this ...
-    z_plaus_above: float = 0.5            # ... centre >= last passage height + this
-    low_sigma: float = 0.5                # confirmed with sigma_z < this and centre < passage + low_above: deleted
-    low_above: float = 0.3
+    low_sigma: float = 0.5                # ... and a confirmed track below the floor (see z_drop_max) is deleted
     no_update_d: float = 2.5              # the target is not updated within this horizontal distance ...
     no_update_crop_rng: float = 4.0       # ... nor when cropped and closer than this
     tent_life: float = 2.0
@@ -263,6 +261,9 @@ class SightParams:
     vz_frac: float = 0.35
     vz_min: float = 0.4
     vz_max: float = 1.0
+    vz_max_down: float = 2.0              # a quad drops more easily than it climbs, and one limit for both
+                                          # left a 10 m step down unflyable: the leg is over before the
+                                          # reference arrives, so the drone reaches the gate still high
     az_max: float = 0.8
     grade_max: float = 0.35
     grade_len: float = 15.0
@@ -274,6 +275,14 @@ class SightParams:
     # this was written against, so the floor stays on the last passage height, as it was.
     z_window: tuple = (3.0, 6.0)          # target height within [min(z_ref, z_aim_last) - a, z_ref + b]
     z_window_ref: bool = True             # False: the old window around z_aim_last with no grade line
+    # The Straw Bale course only ever climbs, and two rules quietly assumed every course does. A gate BELOW the
+    # last passage height was refused confirmation and then deleted outright as ground clutter, and the aim could
+    # not follow it down more than z_window[0] per gate. On the odd-course bench that cost every gate of a
+    # descending course (low counter 21 against 0 at home) and overshot a 12 m -> 2 m step by 10.45 m, into the
+    # top bar. A gate may now sit z_drop_max below the last passage point, and the aim may descend at the rate the
+    # drone can actually fly - descend_slope metres down per metre along, which is what limits it in the air.
+    z_drop_max: float = 8.0               # how far below the last passage height a gate may plausibly sit
+    descend_slope: float = 0.35           # metres of descent per metre flown towards the gate
     # --- yaw
     yaw_rate: float = 2.3                 # rad/s per unit yaw stick (Liftoff 2.3; the simulator's rates 3.8)
     yaw_gain: float = 1.5                 # 1/s (2.5 limit-cycled against the simulator's lagging yaw-rate response)
@@ -784,7 +793,7 @@ class SightPilot:
                 T.P = T.P + (sf * sf - vr) * np.outer(r, r)
         T.rng_last_h = T.dist_h(pg)
         if (not T.confirmed and T.hits >= P.confirm_hits and now - T.t_first >= P.confirm_span
-                and (math.sqrt(max(T.P[2, 2], 0.0)) >= P.z_plaus_sigma or T.m[2] >= self.z_pass_last + P.z_plaus_above)):
+                and (math.sqrt(max(T.P[2, 2], 0.0)) >= P.z_plaus_sigma or T.m[2] >= self._z_floor())):
             T.confirmed = True
         return T
 
@@ -907,8 +916,8 @@ class SightPilot:
                     self.target = None
                     self.n_ang = None
                 continue
-            if math.sqrt(max(T.P[2, 2], 0.0)) < P.low_sigma and T.m[2] < self.z_pass_last + P.low_above:
-                self.low += 1
+            if math.sqrt(max(T.P[2, 2], 0.0)) < P.low_sigma and T.m[2] < self._z_floor():
+                self.low += 1                       # ground clutter: below anything a gate could plausibly be
                 if T is self.target:
                     self.target = None
                     self.n_ang = None
@@ -1435,6 +1444,10 @@ class SightPilot:
             self.o_bump *= max(nb - shrink, 0.0) / nb
 
     # ------------------------------------------------------------------ altitude
+    def _z_floor(self) -> float:
+        """The lowest height a gate could plausibly sit at: a descending course is a course, ground clutter is not."""
+        return max(self.params.z_min, self.z_pass_last - self.params.z_drop_max)
+
     def _z_ref(self) -> float:
         """The grade line: the last passage height carried on at the grade of the leg that led to it."""
         lp = self.last_pass
@@ -1453,7 +1466,14 @@ class SightPilot:
             # out: cap it at the grade line, so one high estimate cannot lift the whole approach. The floor stays on
             # the last passage height: a floor that climbed with the grade line would itself lift the approach.
             base = z_ref if P.z_window_ref else self.z_aim_last
-            z_tgt = clip(z_tgt, max(P.z_min, min(base, self.z_aim_last) - P.z_window[0]), base + P.z_window[1])
+            # How far the aim may drop below the reference. The window is there to stop ONE bad estimate lifting or
+            # dropping the whole approach, so it binds on uncertain estimates and gets out of the way of certain
+            # ones: a confident height is the best information there is. While it is still uncertain, the limit is
+            # what the drone could fly anyway - descend_slope metres down per metre along.
+            drop = max(P.z_window[0], P.descend_slope * max(self.d_gate, 0.0))
+            if sz < P.low_sigma:
+                drop = max(drop, P.z_drop_max)
+            z_tgt = clip(z_tgt, max(P.z_min, min(base, self.z_aim_last) - drop), base + P.z_window[1])
             T_z = max((self.d_gate - 1.0) / max(self.v_nom, 1.0), 1.0)
             if z_tgt > self.z_c:
                 T_z = max(P.climb_front * T_z, 1.0)
@@ -1461,7 +1481,8 @@ class SightPilot:
             z_tgt = z_ref
             T_z = 1.5
         vlim = min(max(P.vz_frac * self.v_nom, P.vz_min), P.vz_max)
-        vz_des = clip((z_tgt - self.z_c) / T_z, -vlim, vlim)
+        vlim_dn = min(max(P.vz_frac * self.v_nom, P.vz_min), max(P.vz_max_down, P.vz_max))
+        vz_des = clip((z_tgt - self.z_c) / T_z, -vlim_dn, vlim)
         self.vz_c += clip(vz_des - self.vz_c, -P.az_max * dt, P.az_max * dt)
         self.z_c += self.vz_c * dt
 
