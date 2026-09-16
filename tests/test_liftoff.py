@@ -234,34 +234,79 @@ def test_path_follower_profile_projection_and_frame():
     assert abs(h.point(20.0)[1] - 1.0) < 0.05 and abs(h.point(5.0)[1]) < 1e-9
 
 
-def test_a_hard_corner_is_not_a_contact():
-    """A corner changes velocity as fast as a bump does. It cost the home control two gates on the bench.
+def test_only_a_force_the_drone_cannot_make_is_a_contact():
+    """A quad makes 3 g of its own, so a fast velocity change is not by itself a contact.
 
-    The difference is the direction: an impact pushes back along the track and takes speed out of the drone,
-    a coordinated turn pushes sideways and keeps it.
+    What the propellers can do is push along the drone's own up axis. Anything left over after that comes from
+    outside: an arch, a bale, the ground. A corner and a throttle punch leave nothing over, and both have cost
+    the odd-course bench gates the drone flew cleanly through.
     """
     import numpy as np
 
     from haltere.liftoff.flightlog import collisions
 
+    def attitude(up, n):
+        """n copies of the [w, x, y, z] quaternion of a drone whose thrust axis points along ``up``."""
+        u = np.asarray(up, dtype=float)
+        u = u / np.linalg.norm(u)
+        axis = np.cross([0.0, 0.0, 1.0], u)
+        s = np.linalg.norm(axis)
+        if s < 1e-12:
+            q = np.array([1.0, 0.0, 0.0, 0.0]) if u[2] > 0 else np.array([0.0, 1.0, 0.0, 0.0])
+        else:
+            ang = np.arctan2(s, float(u[2]))
+            q = np.concatenate([[np.cos(ang / 2)], np.sin(ang / 2) * axis / s])
+        return np.repeat(q[None], n, axis=0)
+
     dt = 0.01
     t = np.arange(0, 3.0, dt)
     n = len(t)
     air = np.ones(n, bool)
+    level = attitude([0.0, 0.0, 1.0], n)
 
-    # a 4 m/s turn at 8 rad/s: 32 m/s^2, all of it perpendicular, speed constant throughout
+    # a 4 m/s turn at 8 rad/s: 32 m/s^2, all of it perpendicular, flown by a drone banked into it as it must be
     w = 8.0
     V = np.stack([4 * np.cos(w * t), 4 * np.sin(w * t), np.zeros(n)], axis=1)
     P = np.cumsum(V * dt, axis=0)
-    assert collisions(P, V, t, air) == [], 'a coordinated turn is not a contact'
+    A = np.gradient(V, dt, axis=0)
+    Q = np.stack([attitude(a + [0.0, 0.0, 9.81], 1)[0] for a in A])
+    assert collisions(P, V, Q, t, air) == [], 'a coordinated turn is not a contact'
 
-    # the same speed stopped dead in 0.1 s: 40 m/s^2 straight against the direction of travel
+    # the bench's own false contact: 25 m/s^2 straight up out of a level drone, the throttle punched
+    V = np.zeros((n, 3))
+    V[:, 0] = 2.0
+    up_from = n // 2
+    V[up_from:up_from + 10, 2] = np.linspace(0.0, 2.5, 10)
+    V[up_from + 10:, 2] = 2.5
+    P = np.cumsum(V * dt, axis=0)
+    assert collisions(P, V, level, t, air) == [], 'a throttle punch is not a contact'
+
+    # the same speed stopped dead in 0.1 s: 40 m/s^2 against the direction of travel, and the drone level
     V = np.zeros((n, 3))
     V[:, 0] = 4.0
     hit = n // 2
     V[hit:hit + 10, 0] = np.linspace(4.0, 0.0, 10)
     V[hit + 10:, 0] = 0.0
     P = np.cumsum(V * dt, axis=0)
-    hits = collisions(P, V, t, air)
+    hits = collisions(P, V, level, t, air)
     assert len(hits) == 1, f'a head-on stop must be a contact, got {hits}'
-    assert hits[0]['speed_after'] < hits[0]['speed_before']
+    assert hits[0]['speed_after'] < hits[0]['speed_before'] and hits[0]['unexplained'] > 20.0
+
+    # a glancing clip that costs no speed at all - it leaves 4.0 m/s as 4.6 - is still a contact, because a level
+    # drone has no way to push itself sideways
+    V = np.zeros((n, 3))
+    V[:, 0] = 4.0
+    V[hit:hit + 10, 1] = np.linspace(0.0, -2.2, 10)
+    V[hit + 10:, 1] = -2.2
+    P = np.cumsum(V * dt, axis=0)
+    hits = collisions(P, V, level, t, air)
+    assert len(hits) == 1, f'a glancing clip must be a contact, got {hits}'
+    assert hits[0]['speed_after'] > hits[0]['speed_before']
+
+    # pushed down along its own up axis, as a top bar does: propellers push, they never pull
+    V = np.zeros((n, 3))
+    V[:, 0] = 4.0
+    V[hit:hit + 10, 2] = np.linspace(0.0, -2.5, 10)
+    V[hit + 10:, 2] = -2.5
+    P = np.cumsum(V * dt, axis=0)
+    assert len(collisions(P, V, level, t, air)) == 1, 'being pushed down through the thrust axis is a contact'

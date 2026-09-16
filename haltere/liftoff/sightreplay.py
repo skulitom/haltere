@@ -550,6 +550,7 @@ def score(log: dict[str, np.ndarray], res: dict, gates: list[dict], assoc_m: flo
     C = res['cols']
     P = np.c_[log['px'], log['py'], log['pz']]
     V = np.c_[log['vx'], log['vy'], log['vz']]
+    Q = np.c_[log['qw'], log['qx'], log['qy'], log['qz']]
     cen = np.array([np.asarray(g['pos'], dtype=float) + [0.0, 0.0, CENTRE_UP_M] for g in gates])
     head = np.array([float(g['heading']) for g in gates])
     _sighting_arches(res, gates)
@@ -570,7 +571,7 @@ def score(log: dict[str, np.ndarray], res: dict, gates: list[dict], assoc_m: flo
         Pa, Va = P[idx], V[idx]
         ts_a = ts[idx] - ts[r0]
         air = (Pa[:, 2] > 0.5) & (log['phase'][idx] > 3.0)
-        hits = collisions(Pa, Va, ts_a, air)
+        hits = collisions(Pa, Va, Q[idx], ts_a, air)
         cr = gate_crossings(Pa, idx.astype(float), gates)
         for c in cr:
             c['row'] = int(c['t'])
