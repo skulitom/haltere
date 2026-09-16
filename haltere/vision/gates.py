@@ -148,15 +148,35 @@ def next_gate_index(pos: np.ndarray, gates: list[dict], passed_margin: float = 1
     return None if best is None else best[0]
 
 
-def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: Camera, next_only: bool = True,
+def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: Camera, next_only: bool = False,
                max_dist_m: float = 45.0, min_width_px: float = 22.0, width_m: float = GATE_WIDTH_M,
-               up_m: float = CENTRE_UP_M) -> dict:
-    """Label for one frame: the next gate's pixel centre, apparent width and distance (if it is in the image and
-    close enough to be seen: within max_dist_m and at least min_width_px wide).
+               up_m: float = CENTRE_UP_M, margin: float = 0.12) -> dict:
+    """Label for one frame: an arch's pixel centre, apparent width and distance (if it is in the image and close
+    enough to be seen: within max_dist_m and at least min_width_px wide).
+
+    By default the label is the NEAREST arch that is actually in view, whether or not the drone has flown through
+    it already. Labelling only the next gate along the course (``next_only``, how the first detectors were trained)
+    taught the network to report nothing for an arch it had passed, so a gate flown past could never be re-acquired
+    by sight, and nothing for the second arch when two were in view.
     Returns {'visible': 0/1, 'u', 'v' (pixels), 'width_px', 'dist_m', 'gate': index}."""
-    i = next_gate_index(pos, gates)
-    if i is None:
-        return {'visible': 0}
+    if next_only:
+        i = next_gate_index(pos, gates)
+        if i is None:
+            return {'visible': 0}
+        cand = [i]
+    else:
+        cand = sorted(range(len(gates)), key=lambda k: np.linalg.norm(np.asarray(gates[k]['pos']) - pos))
+    best = None
+    for i in cand:
+        lab = _one_gate_label(pos, quat_wxyz, gates, i, cam, max_dist_m, min_width_px, width_m, up_m, margin)
+        if lab['visible']:
+            return lab
+        best = best or lab
+    return best if best is not None else {'visible': 0}
+
+
+def _one_gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], i: int, cam: Camera,
+                    max_dist_m: float, min_width_px: float, width_m: float, up_m: float, margin: float) -> dict:
     g = gates[i]
     centre = np.asarray(g['pos'], dtype=np.float64) + np.array([0.0, 0.0, up_m])   # visual centre of the gate
     # gate corners: a square of width_m facing the heading, centred there
@@ -170,8 +190,10 @@ def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: C
     if not ok.all() or dist < 0.8:
         return {'visible': 0, 'gate': i}
     u, v = px[0]
-    # 5% margin: the same tolerance the training loader applies in normalised coordinates (|u|, |v| <= 1.1)
-    inside = -0.05 * cam.width <= u <= 1.05 * cam.width and -0.05 * cam.height <= v <= 1.05 * cam.height
+    # the label may sit a little outside the frame (the loader allows |u|, |v| <= 1.1 normalised and the network
+    # can express +-1.2): an arch whose centre has just left the view still fills it and must not read as "nothing"
+    inside = (-margin * cam.width <= u <= (1 + margin) * cam.width
+              and -margin * cam.height <= v <= (1 + margin) * cam.height)
     width_px = float(np.linalg.norm(px[1] - px[2]))
     visible = inside and dist <= max_dist_m and width_px >= min_width_px
     return {'visible': int(visible), 'u': float(u), 'v': float(v), 'width_px': width_px, 'dist_m': dist, 'gate': i}
