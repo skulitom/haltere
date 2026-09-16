@@ -283,9 +283,9 @@ class SightParams:
     launch_t: float = 6.0
     search_radius: float = 8.0
     search_radius_wide: float = 12.0      # after a full circle
-    search_leash: float = 20.0            # from the search anchor: where the search began, not a fixed point 6 m
-                                          # past the last gate (that leash pulled the pilot back onto a gate it had
-                                          # already flown through and cost 62-85 s of a 150 s budget on long legs)
+    search_leash: float = 20.0            # from the anchor 6 m past the last gate (see the note in _guidance: it
+                                          # tows a pilot that has to travel back onto a gate it already flew
+                                          # through, and moving it was still worse)
     search_side: float = 1.0              # +1 left, -1 right (default side before the course has turned)
     tent_side_hits: int = 2               # a tentative track steers the search side after this many sightings
     snap_start: float = 12.0              # the terminal snap cancels range error: start it before the last 9 m ...
