@@ -98,6 +98,13 @@ def collisions(P: np.ndarray, V: np.ndarray, Q: np.ndarray, t: np.ndarray, airbo
 
     This subsumes the corner test it replaces: a coordinated turn is thrust along a banked axis, and leaves nothing
     over. A tumble after hitting the ground still counts, and so does a clip that barely slows the drone.
+
+    Where it is weakest is a sideways clip taken in a steep bank, because a thrust axis tilted into the blow absorbs
+    ``cos(bank)`` of it. The margin is wide rather than absent: the weakest contact in the game logs leaves
+    12 m/s^2 and would need 59 degrees of bank to fall under ``unexplained``, and contacts there arrive at a median
+    bank of 10 degrees. A push straight up the thrust axis is invisible to this test by construction, which the
+    course generator cannot produce - its posts push sideways and its top bars down, and ground contact is below
+    the ``airborne`` floor - but a real bale top could.
     """
     dt = np.maximum(np.diff(t), 1e-3)
     A = np.diff(V, axis=0) / dt[:, None]                       # acceleration vector, m/s^2
