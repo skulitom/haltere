@@ -64,7 +64,8 @@ today and cannot be bought back later.
   next headline number needs a fresh sealed track — which is why you seal several.
 - **R6.** One flight card per flight, written *before* it: command, checkpoint hashes, rung,
   predicted outcome, pass criterion; then the HUD count, splits and verdict. A prediction written
-  after the flight does not exist.
+  after the flight does not exist. Cards live in `docs/flight_cards/` (version controlled - a record
+  that is not kept is not a record).
 
 ## 4. Which parameters may be touched
 
