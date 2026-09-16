@@ -36,11 +36,20 @@ def _predict(net, frames: list[Path], batch: int = 128) -> np.ndarray:
 
 def evaluate(ckpt: str | Path, datasets: list[str | Path], device: str = 'cuda',
              bins=((0, 6), (6, 10), (10, 15), (15, 22), (22, 30), (30, 45))) -> dict:
+    import torch
     from .train import load_gatenet
     net = load_gatenet(ckpt, device)
+    # A number measured on a dataset the checkpoint trained on says nothing about a track it has not seen, and
+    # the two are easy to mix up once there are several environments, so every line says which kind it is.
+    try:
+        trained_on = {Path(x).resolve() for x in torch.load(ckpt, map_location='cpu', weights_only=False).get('datasets', [])}
+    except Exception:
+        trained_on = set()
     report = {}
     for d in datasets:
         d = Path(d)
+        seen = d.resolve() in trained_on
+        tag = 'TRAINED ON' if seen else ('held out' if trained_on else 'provenance unknown')
         labels = json.loads((d / 'labels.json').read_text(encoding='utf-8'))
         P = _predict(net, [d / 'frames' / lab['file'] for lab in labels])
         vis = np.array([lab['visible'] for lab in labels], dtype=bool)
@@ -54,7 +63,8 @@ def evaluate(ckpt: str | Path, datasets: list[str | Path], device: str = 'cuda',
              'accuracy': float((det == vis).mean()),
              'false_pos': float((det & ~vis).sum() / max((~vis).sum(), 1)),
              'false_neg': float((~det & vis).sum() / max(vis.sum(), 1)), 'bins': []}
-        print(f'{d.name}: {len(labels)} frames, {vis.sum()} with a gate; visibility accuracy {100 * r["accuracy"]:.1f}%, '
+        r['trained_on'] = bool(seen)
+        print(f'{d.name} [{tag}]: {len(labels)} frames, {vis.sum()} with a gate; visibility accuracy {100 * r["accuracy"]:.1f}%, '
               f'false positives {100 * r["false_pos"]:.1f}% of gate-less frames, misses {100 * r["false_neg"]:.1f}%')
         for lo, hi in bins:
             m = vis & (dist >= lo) & (dist < hi)

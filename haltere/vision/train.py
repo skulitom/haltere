@@ -37,10 +37,66 @@ def label_dataset(dataset: str | Path, gates_path: str | Path, cam: Camera, verb
     return out
 
 
+def photometric(img: np.ndarray, cv2, strength: str = 'strong') -> np.ndarray:
+    """Vary colour, lighting and sharpness. Pixels only: none of this moves the gate, so the label is untouched.
+
+    'light' is brightness and contrast, which is all the first detectors saw. It leaves the palette of the track
+    it was trained on intact, and a net that has only ever seen one environment learns that palette: the Straw
+    Bale detector fired on almost nothing in Pine Valley. Hue, saturation, sharpness and colour altogether are
+    what actually differ between environments, so 'strong' takes all of them away and leaves the shape.
+    """
+    if strength == 'light':
+        return np.clip(img.astype(np.float32) * random.uniform(0.7, 1.3) + random.uniform(-25, 25), 0, 255).astype(np.uint8)
+    img = np.ascontiguousarray(img)
+    if random.random() < 0.9:                                     # hue / saturation / value
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV).astype(np.int16)
+        hsv[..., 0] = (hsv[..., 0] + random.randint(-90, 90)) % 180    # the whole circle: OpenCV hue is 0-179
+        hsv[..., 1] = np.clip(hsv[..., 1] * random.uniform(0.0, 2.0), 0, 255)
+        hsv[..., 2] = np.clip(hsv[..., 2] * random.uniform(0.5, 1.5), 0, 255)
+        img = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2RGB)
+    if random.random() < 0.15:                                    # drop colour entirely
+        img = cv2.cvtColor(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), cv2.COLOR_GRAY2RGB)
+    elif random.random() < 0.1:                                   # or scramble it
+        img = img[..., random.sample([0, 1, 2], 3)]
+    img = np.clip(img.astype(np.float32) * random.uniform(0.75, 1.25) + random.uniform(-25, 25), 0, 255)
+    if random.random() < 0.6:                                     # gamma: dusk and noon are not a linear scale apart
+        img = 255.0 * np.power(img / 255.0, float(np.exp(random.uniform(np.log(0.45), np.log(2.4)))))
+    img = img.astype(np.uint8)
+    if random.random() < 0.25:                                    # motion blur along a random direction
+        k = random.choice([3, 5, 7])
+        ker = np.zeros((k, k), np.float32)
+        if random.random() < 0.5:
+            ker[k // 2, :] = 1.0 / k
+        else:
+            ker[:, k // 2] = 1.0 / k
+        img = cv2.filter2D(img, -1, ker)
+    elif random.random() < 0.25:
+        img = cv2.GaussianBlur(img, (3, 3), random.uniform(0.4, 1.4))
+    if random.random() < 0.3:
+        img = np.clip(img.astype(np.float32) + np.random.normal(0, random.uniform(2, 12), img.shape), 0, 255).astype(np.uint8)
+    if random.random() < 0.25:                                    # the capture path is a JPEG in the game too
+        ok, buf = cv2.imencode('.jpg', img, [int(cv2.IMWRITE_JPEG_QUALITY), random.randint(30, 85)])
+        if ok:
+            img = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    return img
+
+
+def occlude(img: np.ndarray, n_max: int = 2, frac: float = 0.12) -> np.ndarray:
+    """Paste a few small patches of noise: foliage and course furniture cut across an arch on every track."""
+    h, w = img.shape[:2]
+    img = img.copy()
+    for _ in range(random.randint(0, n_max)):
+        bw, bh = int(w * random.uniform(0.03, frac)), int(h * random.uniform(0.03, frac))
+        x0, y0 = random.randint(0, max(w - bw, 1)), random.randint(0, max(h - bh, 1))
+        img[y0:y0 + bh, x0:x0 + bw] = np.random.randint(0, 256, (bh, bw, 3), dtype=np.uint8) if random.random() < 0.5 \
+            else np.array(img[y0, x0], dtype=np.uint8)
+    return img
+
+
 class GateFrames(torch.utils.data.Dataset):
     """Frames + labels from one or more datasets; the images are resized to the network's input size."""
 
-    def __init__(self, datasets: list[str | Path], augment: bool = True, cam: Camera | None = None):
+    def __init__(self, datasets: list[str | Path], augment: bool | str = True, cam: Camera | None = None):
         import cv2
         self.items = []
         for d in datasets:
@@ -59,24 +115,44 @@ class GateFrames(torch.utils.data.Dataset):
         cv2 = self.cv2
         path, lab = self.items[i]
         img = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
-        h, w = img.shape[:2]
+        h0, w0 = img.shape[:2]
+        img = cv2.resize(img, (IN_W, IN_H), interpolation=cv2.INTER_AREA)   # augment at the size the net sees:
+        w, h = IN_W, IN_H                                                   # a quarter of the pixels, same picture
         vis = float(lab['visible'])
-        lu, lv, lw = (lab['u'], lab['v'], lab['width_px']) if vis else (0.0, 0.0, 100.0)   # label in pixels
+        sx, sy = IN_W / w0, IN_H / h0
+        lu, lv, lw = (lab['u'] * sx, lab['v'] * sy, lab['width_px'] * sx) if vis else (0.0, 0.0, 100.0)  # label in pixels
+        strength = 'strong' if self.augment is True else str(self.augment)
         if self.augment:
-            # photometric jitter (Liftoff's lighting and clouds change), small crop + resize, horizontal flip
+            # geometry first (it moves the label), then colour and sharpness (they do not)
             if random.random() < 0.5:
                 img = img[:, ::-1]
                 lu = w - lu
-            alpha = random.uniform(0.7, 1.3)
-            beta = random.uniform(-25, 25)
-            img = np.clip(img.astype(np.float32) * alpha + beta, 0, 255).astype(np.uint8)
-            if random.random() < 0.7:
-                fx, fy = random.uniform(0.0, 0.08), random.uniform(0.0, 0.08)
-                x0, y0 = int(fx * w * random.random()), int(fy * h * random.random())
-                x1, y1 = w - int(fx * w * random.random()), h - int(fy * h * random.random())
-                img = img[y0:y1, x0:x1]
-                lu, lv = lu - x0, lv - y0
-                w, h = x1 - x0, y1 - y0
+            if strength == 'light':
+                if random.random() < 0.7:                      # the small crop the first detectors were trained with
+                    fx, fy = random.uniform(0.0, 0.08), random.uniform(0.0, 0.08)
+                    x0, y0 = int(fx * w * random.random()), int(fy * h * random.random())
+                    x1, y1 = w - int(fx * w * random.random()), h - int(fy * h * random.random())
+                    img = img[y0:y1, x0:x1]
+                    lu, lv = lu - x0, lv - y0
+                    w, h = x1 - x0, y1 - y0
+            else:
+                # One warp for bank angle, apparent size and framing. Scale matters more than it looks: apparent
+                # size is (gate width / range), so a 1.5 m gate and an 8 m gate at the same distance differ by 5x.
+                # The border is replicated, not reflected: a reflection mirrors the arch back into the frame as a
+                # second, unlabelled one, which teaches exactly the wrong thing. Zooming out stays mild for the
+                # same reason, and the frames already hold gates at every range.
+                ang = random.uniform(-12, 12)
+                s = float(np.exp(random.uniform(np.log(0.8), np.log(1.9))))
+                M = cv2.getRotationMatrix2D((w / 2, h / 2), ang, s)
+                M[0, 2] += random.uniform(-0.12, 0.12) * w
+                M[1, 2] += random.uniform(-0.12, 0.12) * h
+                img = cv2.warpAffine(np.ascontiguousarray(img), M, (w, h),
+                                     flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+                lu, lv = (M[0, 0] * lu + M[0, 1] * lv + M[0, 2]), (M[1, 0] * lu + M[1, 1] * lv + M[1, 2])
+                lw = lw * s
+            img = photometric(img, cv2, strength)
+            if strength != 'light' and random.random() < 0.3:
+                img = occlude(img)
         u = (lu / w * 2 - 1) if vis else 0.0        # normalised to [-1, 1] over the (cropped) image width
         v = (lv / h * 2 - 1) if vis else 0.0
         width_px = lw * IN_W / w if vis else 100.0
@@ -90,18 +166,26 @@ class GateFrames(torch.utils.data.Dataset):
 
 def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, batch: int = 64, lr: float = 1e-3,
           width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0,
-          max_gpu_temp: float = 70.0, batch_sleep: float = 0.15, init: str = '') -> Path:
+          max_gpu_temp: float = 70.0, batch_sleep: float = 0.15, init: str = '', augment: str = 'strong',
+          holdout: list[str] | None = None) -> Path:
     torch.manual_seed(seed)
     random.seed(seed)
     dev = torch.device(device if torch.cuda.is_available() else 'cpu')
-    full = GateFrames(datasets, augment=True)
-    n_val = max(1, int(len(full) * val_frac))
-    idx = list(range(len(full)))
-    random.shuffle(idx)
-    val_items = [full.items[i] for i in idx[:n_val]]
-    train_items = [full.items[i] for i in idx[n_val:]]
-    train_ds = GateFrames([], augment=True); train_ds.items = train_items; train_ds.cv2 = full.cv2
-    val_ds = GateFrames([], augment=False); val_ds.items = val_items; val_ds.cv2 = full.cv2
+    full = GateFrames(datasets, augment=augment)
+    if holdout:
+        # A random split over frames of the same flights is not a test: neighbouring frames are the same picture,
+        # so the held-out frames are in the training set in all but name. Whole datasets held out - better still,
+        # a whole environment - is the only split that answers "does this work somewhere it has never been".
+        val_ds = GateFrames(holdout, augment=False)
+        train_ds = GateFrames([], augment=augment); train_ds.items = full.items; train_ds.cv2 = full.cv2
+    else:
+        n_val = max(1, int(len(full) * val_frac))
+        idx = list(range(len(full)))
+        random.shuffle(idx)
+        val_items = [full.items[i] for i in idx[:n_val]]
+        train_items = [full.items[i] for i in idx[n_val:]]
+        train_ds = GateFrames([], augment=augment); train_ds.items = train_items; train_ds.cv2 = full.cv2
+        val_ds = GateFrames([], augment=False); val_ds.items = val_items; val_ds.cv2 = full.cv2
     tl = torch.utils.data.DataLoader(train_ds, batch_size=batch, shuffle=True, num_workers=0, drop_last=True)
     vl = torch.utils.data.DataLoader(val_ds, batch_size=batch, shuffle=False, num_workers=0)
     net = GateNet(width).to(dev)
@@ -154,9 +238,11 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
               flush=True)
         if vloss < best:
             best = vloss
-            torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': ep + 1, 'val_loss': vloss},
+            torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': ep + 1, 'val_loss': vloss,
+                        'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])]},
                        out / 'best.pt')
-    torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': epochs}, out / 'last.pt')
+    torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': epochs,
+                'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])]}, out / 'last.pt')
     return out
 
 
