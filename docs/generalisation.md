@@ -1,10 +1,15 @@
 # Flying a race the drone has never seen
 
 The by-sight stack flies clean 7/7 laps on Straw Bale "Field Day". That number says nothing about
-any other course, and the first flight on an unseen map showed why: on Pine Valley the detector
-fired on 3.4% of frames with arches plainly in view, median confidence 0.01, against its own 4.9%
-false-positive rate at home. Detection on an unseen course was statistically indistinguishable
-from noise, and the pilot never got a gate to fly at.
+any other course, and the first flight on an unseen map showed why: over the 1392 Pine Valley frames
+the detector fired on 3.0%, median confidence 0.010, with arches plainly in view - against its own
+8.7% false-positive rate on gate-less frames at home. Detection on an unseen course was worse than
+its own noise floor, and the pilot never got a gate to fly at.
+
+The same detector loses half its skill when the colour goes: on held-out home flights, recall
+85.6% -> 43.1% in grayscale and -> 51.1% at hue+180, where the centre error goes 2.9 -> 40.6 px and
+false positives 8.7% -> 50.2%. Brightness, gamma and blur barely touch it. What it learned is a
+palette.
 
 This file is the discipline that keeps that from being discovered late again. It is about
 measurement and hold-out rules, not about the fixes.
