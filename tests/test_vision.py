@@ -1,4 +1,6 @@
 """Gate vision: camera conventions, gate labels, the network's shapes and the pilot's goal logic."""
+import json
+import random
 import numpy as np
 import torch
 
@@ -65,3 +67,69 @@ def test_triangulation_recovers_a_gate():
         dirs.append(d)
     p, rms = intersect_rays(np.array(origins), np.array(dirs))
     assert np.linalg.norm(p - gate) < 0.3 and rms < 0.2
+
+
+def test_strong_augmentation_carries_the_label_with_the_picture(tmp_path, monkeypatch):
+    """The warp moves the gate; if the label does not move with it the whole training run is wasted.
+
+    A bright square stands in for the arch: wherever the augmentation puts it, the returned centre must
+    still land on it, and the returned width must still be its width. Colour is held still for this one
+    (the next test covers it) so that the only thing under test is the geometry.
+    """
+    import cv2
+
+    from haltere.vision import train as train_mod
+    from haltere.vision.train import GateFrames
+
+    monkeypatch.setattr(train_mod, 'photometric', lambda img, cv2, strength='strong': img)
+    monkeypatch.setattr(train_mod, 'occlude', lambda img, **kw: img)
+
+    (tmp_path / 'frames').mkdir()
+    img = np.full((360, 640, 3), 20, np.uint8)
+    img[160:200, 180:220] = 245                                   # a 40 px square centred at (200, 180)
+    cv2.imwrite(str(tmp_path / 'frames' / 'a.jpg'), img)
+    lab = {'file': 'a.jpg', 'visible': 1, 'u': 200.0, 'v': 180.0, 'width_px': 40.0}
+    (tmp_path / 'labels.json').write_text(json.dumps([lab]), encoding='utf-8')
+
+    ds = GateFrames([tmp_path], augment='strong')
+    random.seed(0)
+    checked = 0
+    for _ in range(40):
+        x, y = ds[0]
+        if y[0] < 0.5 or abs(float(y[1])) > 0.85 or abs(float(y[2])) > 0.85:
+            continue                                              # the warp pushed it to or past the edge
+        a = x.permute(1, 2, 0).numpy().mean(2)
+        ys, xs = np.nonzero(a >= 0.5 * (float(a.max()) + float(a.min())))
+        if not len(xs) or len(xs) > 0.2 * a.size:                 # the square left the frame; nothing to check
+            continue
+        u = (float(y[1]) + 1) / 2 * IN_W
+        v = (float(y[2]) + 1) / 2 * IN_H
+        assert abs(u - xs.mean()) < 16 and abs(v - ys.mean()) < 16, 'label left the gate behind'
+        w_pred = float(np.exp(float(y[3]))) * 100.0 * IN_W / 640
+        assert 0.4 < w_pred / max(np.ptp(xs), 1) < 2.5, 'width does not track the apparent size'
+        checked += 1
+    assert checked >= 10, 'too many draws lost the gate out of frame'
+
+
+def test_light_augmentation_leaves_the_geometry_alone(tmp_path):
+    """The 'light' setting must stay what the earlier detectors were trained with, so an A/B means something."""
+    import cv2
+
+    from haltere.vision.train import GateFrames, photometric
+
+    (tmp_path / 'frames').mkdir()
+    img = (np.random.default_rng(0).random((360, 640, 3)) * 255).astype(np.uint8)
+    cv2.imwrite(str(tmp_path / 'frames' / 'a.jpg'), img)
+    (tmp_path / 'labels.json').write_text(
+        json.dumps([{'file': 'a.jpg', 'visible': 1, 'u': 320.0, 'v': 180.0, 'width_px': 80.0}]), encoding='utf-8')
+    ds = GateFrames([tmp_path], augment='light')
+    random.seed(1)
+    us = [float(ds[0][1][1]) for _ in range(25)]
+    assert max(abs(u) for u in us) < 0.35, 'light augmentation should not move a centred gate far'
+
+    base = np.full((40, 60, 3), 128, np.uint8)
+    random.seed(2)
+    outs = [photometric(base.copy(), cv2, 'strong') for _ in range(12)]
+    assert all(o.shape == base.shape and o.dtype == np.uint8 for o in outs)
+    hues = [cv2.cvtColor(o, cv2.COLOR_RGB2HSV)[..., 0].mean() for o in outs]
+    assert max(hues) - min(hues) > 5, 'strong augmentation is not varying colour'
