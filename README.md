@@ -228,7 +228,7 @@ haltere liftoff fly artifacts/ftPath2_best.pt --waypoints-file configs/track_str
 haltere liftoff fly artifacts/ftPath2_best.pt --vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml \
         --sight rabbit --sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8 \
         --sight-flow-min 0.6 --sight-flow-alt ground --throttle-scale 0.8 --gyro telemetry --reset-key R
-haltere liftoff score data/liftoff/logs/lap.csv --track configs/track_strawbale.yaml
+haltere liftoff score data/liftoff/logs/lap.csv --gates configs/gates_strawbale.json \n        --track configs/track_strawbale.yaml
 ```
 
 `--advance-radius` makes the brain move on to the next waypoint as soon as it gets within that

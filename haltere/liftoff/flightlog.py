@@ -130,6 +130,8 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
     if track is not None:
         e = path_error(P[sl], track)
         res.update({'path_err_mean': float(e.mean()), 'path_err_p90': float(np.percentile(e, 90))})
+    if gates is not None:
+        res['n_gates'] = len(gates)
     hits = collisions(P, V, ts, air)
     res['collisions'] = hits
     if gates is not None:
@@ -150,7 +152,7 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
     return res
 
 
-def score_log(path: str, gates_json: str | None = 'configs/gates_strawbale.json',
+def score_log(path: str, gates_json: str | None = None,
               track_yaml: str | None = None) -> list[dict]:
     log = load_log(path)
     gates = json.load(open(gates_json, encoding='utf-8'))['gates'] if gates_json else None
@@ -178,7 +180,7 @@ def describe(name: str, results: list[dict]) -> str:
         if 'path_err_mean' in r:
             s += f' | path error {r["path_err_mean"]:.2f} m (p90 {r["path_err_p90"]:.2f})'
         if 'gates_through' in r:
-            s += f' | gates through {r["gates_through"]} ({len(r["gates_through"])}/7)'
+            s += f' | gates through {r["gates_through"]} ({len(r["gates_through"])}/{r.get("n_gates", "?")})'
             if 'gate_span_s' in r:
                 g0, g1 = r['first_last_gate']
                 s += f', gate {g0} -> {g1} in {r["gate_span_s"]:.0f} s at {r["gate_span_speed"]:.2f} m/s'

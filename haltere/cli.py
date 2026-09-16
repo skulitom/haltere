@@ -276,6 +276,11 @@ def cmd_vision(a):
                                 max_gpu_temp=a.max_gpu_temp, burst_s=a.burst, cool_s=a.cool, sight=a.sight,
                                 sight_params=sight_params, flow_gain=a.flow_gain)
         rehearse(a.ckpt, a.camera, a.gates, a.log or None, a.track or None, a.device, opts, det, a.json or None)
+    elif a.vision_cmd == 'oddcourse':
+        from .vision.oddcourse import run_bench
+        names = [x.strip() for x in a.only.split(',') if x.strip()] if a.only else None
+        run_bench(a.ckpt, a.camera, names=names, seeds=a.seeds, seconds=a.seconds or None, device=a.device,
+                  json_out=a.json or None)
     elif a.vision_cmd == 'train':
         from .vision.train import train
         out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, max_gpu_temp=a.max_gpu_temp, batch_sleep=a.batch_sleep, init=a.init, device=a.device, augment=a.augment, holdout=a.holdout)
@@ -462,6 +467,15 @@ def main(argv=None):
                    help='scale on the sensed horizontal speed (legacy: constant; rabbit: its highest value)')
     from .liftoff.sightpilot import add_cli_args as add_sight_args
     add_sight_args(q, yaw_rate_default=3.8)
+    q = vs.add_parser('oddcourse', help='rehearse the by-sight pilot on a suite of synthetic courses that each break '
+                                        'one assumption of the Straw Bale course, and score what it passed')
+    q.add_argument('ckpt', help='brain checkpoint (e.g. artifacts/ftPath2_best.pt)')
+    q.add_argument('--camera', default='configs/camera_seat.yaml')
+    q.add_argument('--device', default='cuda')
+    q.add_argument('--seeds', type=int, default=3, help='how many of the fixed seeds (0, 1, 2, ...) to fly')
+    q.add_argument('--only', default='', help='course names, comma separated (default: the whole suite)')
+    q.add_argument('--seconds', type=float, default=0.0, help='simulated seconds per run (0: from the course length)')
+    q.add_argument('--json', default='', help='write the whole record to this JSON file')
     q = vs.add_parser('train', help='train GateNet on labelled datasets')
     q.add_argument('datasets', nargs='+')
     q.add_argument('--out', default='runs/gatenet')
@@ -525,7 +539,9 @@ def main(argv=None):
     q.add_argument('--liftoff-config', default='configs/liftoff.yaml')
     q = ls.add_parser('score', help='score flights from their `fly --log` CSVs: gates, speed, path error, wobble')
     q.add_argument('logs', nargs='+')
-    q.add_argument('--gates', default='configs/gates_strawbale.json')
+    q.add_argument('--gates', default='', help='gate list of the course that was flown; without it the gates are '
+                                               'not scored (there is no safe default: scoring a flight against '
+                                               'another course prints confident nonsense)')
     q.add_argument('--track', default='', help='taught track YAML: also report the distance to its line')
     q.add_argument('--json', default='', help='write the scores to this JSON file')
     q = ls.add_parser('record', help='record telemetry (fly manually) to a CSV for system identification')

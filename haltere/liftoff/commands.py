@@ -849,6 +849,9 @@ def _sight_log_cells(pilot, det) -> list[str]:
 def cmd_score(a):
     from .flightlog import describe, score_log
     out = {}
+    if not a.gates:
+        print('no --gates: speed, shake and contacts only. Gates are not scored, because scoring a flight '
+              'against a course it was not flown on reports gates it never saw.')
     for path in a.logs:
         res = score_log(path, a.gates or None, a.track or None)
         out[path] = res
