@@ -1,4 +1,4 @@
-"""The rabbit by-sight pilot (haltere.liftoff.sightpilot) on a fake clock with scripted detections and a kinematic drone:
+﻿"""The rabbit by-sight pilot (haltere.liftoff.sightpilot) on a fake clock with scripted detections and a kinematic drone:
 bounded goal and yaw under perception upsets, intake bookkeeping, track separation and absorption, the pass rules."""
 import math
 import time
@@ -364,6 +364,227 @@ def test_a_sharp_turn_keeps_the_next_gate_for_the_bisector():
     sp._axis(tracks[0], g2, p, 1.0, 0.01)
     assert sp.next is tracks[1] and sp.turn_gate
     assert abs(math.degrees(sp.n_ang) - 86.5) < 6.0                   # the arch's heading (it was 54: 32 deg off)
+
+
+def _move_to(rig, pos, ticks=3):
+    """Teleport the (already hovering, frozen) drone and let a few ticks run there."""
+    rig.pos = np.asarray(pos, dtype=float)
+    for _ in range(ticks):
+        rig.tick()
+
+
+def test_the_current_target_is_not_ghosted_inside_twelve_metres_while_a_neighbour_is_fed():
+    # the detector reports one arch per frame: feeding only the neighbour used to delete the gate being flown at
+    # (the neighbour sits 15 deg off the nose: the 30 deg camera uptilt already spends 23 deg of the off-axis budget)
+    near, far = np.array([9.0, 0.0, 2.7]), np.array([24.15, 6.47, 2.7])
+
+    def rig_for(keep_d):
+        rig = Rig(ScriptVision(lambda t: far), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=keep_d))
+        rig.hover_at((0.0, 0.0, 2.0))
+        T = _crafted_target(rig, near, min_a=math.inf)
+        for _ in range(500):                                   # 5 s, well past ghost_s
+            rig.tick()
+        return rig, T
+
+    rig, T = rig_for(12.0)
+    assert rig.sp.target is T and T in rig.sp.tracks and rig.sp.ghosts == 0
+    assert T.unseen_in_view <= rig.sp._ghost_s(T)
+    rig0, T0 = rig_for(0.0)                                    # ghost_keep_d 0 = the behaviour that lost the gate
+    assert rig0.sp.ghosts >= 1 and T0 not in rig0.sp.tracks
+
+
+def test_a_frame_that_showed_another_arch_on_the_same_bearing_still_counts_against_an_estimate():
+    # ghost_evidence 'other': the timer only runs on frames whose arch is somewhere else in the image
+    near, far = np.array([20.0, 0.0, 2.7]), np.array([24.15, 6.47, 2.7])         # 15 deg apart, both in view
+    out = {}
+    for name, fed in (('off_bearing', far), ('same_bearing', np.array([34.0, 0.0, 2.7]))):
+        rig = Rig(ScriptVision(lambda t, f=fed: f), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0))
+        rig.hover_at((0.0, 0.0, 2.0))
+        T = _crafted_target(rig, near, min_a=math.inf)
+        for _ in range(400):
+            rig.tick()
+        out[name] = (rig.sp, T)
+    assert out['off_bearing'][0].ghosts >= 1                   # the detector looked elsewhere: charge it
+    assert out['same_bearing'][0].ghosts == 0                  # it was busy with an arch on this very bearing
+
+
+def test_a_target_nothing_sees_any_more_is_dropped_but_not_while_the_detector_is_stalled():
+    # ghost_keep_d resets the ghost timer and the target is exempt from conf_life, so without target_life nothing
+    # retires an estimate that is simply never seen again (in replay the pilot flew at one for 45 s)
+    far = np.array([40.0, 0.0, 2.7])                       # beyond ghost_range: the ghost rule cannot touch it
+
+    def run(target_life, feed):
+        rig = Rig(ScriptVision(feed), SightParams(yaw_rate=3.8, range_corr=None, target_life=target_life))
+        rig.hover_at((0.0, 0.0, 2.0))
+        T = _crafted_target(rig, far, min_a=math.inf)
+        for _ in range(2500):                              # 25 s
+            rig.tick()
+        return rig.sp, T
+
+    live = lambda t: np.array([9.0, 9.0, 2.7])             # noqa: E731  the detector is alive and sees another arch
+    sp, T = run(20.0, live)
+    assert sp.target is not T and T not in sp.tracks and sp.stale_targets == 1
+    sp, T = run(0.0, live)                                 # 0 = off: the old behaviour, nothing retires it
+    assert sp.target is T and sp.stale_targets == 0
+    sp, T = run(20.0, lambda t: None)                      # ScriptVision still delivers empty frames: alive
+    assert sp.target is not T and sp.stale_targets == 1
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, target_life=20.0))
+    rig.hover_at((0.0, 0.0, 2.0))
+    T = _crafted_target(rig, far, min_a=math.inf)
+    rig.pilot.vision.next_t = 1e9                          # the detector stops sending frames altogether
+    for _ in range(2500):
+        rig.tick()
+    assert rig.sp.stalled and rig.sp.target is T and rig.sp.stale_targets == 0   # blind flight is not a lost gate
+
+
+def test_the_same_arch_passed_twice_under_two_ids_counts_one_gate():
+    # an orphan books the arch from its (short) estimate and the surviving track books it again a moment later
+    arch, far = np.array([22.0, 0.0, 2.7]), np.array([60.0, 0.0, 6.7])
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0))
+    rig.hover_at((2.0, 0.0, 2.0))
+    sp = rig.sp
+    short = _crafted_target(rig, np.array([12.0, 0.0, 2.7]), min_a=math.inf)     # the same arch, 10 m short
+    short.min_d = 1.0
+    short.unseen_in_view = 99.0
+    rig.tick()
+    assert short not in sp.tracks and sp.orphans
+    T = _crafted_target(rig, arch, min_a=math.inf)                               # the good estimate of that arch
+    _move_to(rig, (14.0, 0.0, 2.0), ticks=40)                                    # past the orphan's plane
+    assert sp.n_passes == 1 and abs(sp.z_pass_last - (2.7 - 1.5)) < 1e-6
+    _move_to(rig, (23.0, 0.0, 2.0), ticks=40)                                    # and now past the real one
+    assert T.passed and sp.n_passes == 1 and sp.dup_passes == 1                  # one arch, one gate
+    assert abs(sp.last_pass['m'][0] - 22.0) < 1e-6                               # the nearer pass is the one kept
+    nxt = _crafted_target(rig, far, min_a=math.inf)                              # a real neighbour, 38 m on
+    _move_to(rig, (61.0, 0.0, 2.0), ticks=40)
+    assert nxt.passed and sp.n_passes == 2 and sp.dup_passes == 1                # ... is still its own gate
+
+
+def test_a_dropped_then_passed_track_registers_a_travel_pass_without_taking_the_target():
+    arch, nxt = np.array([10.0, 0.0, 2.7]), np.array([40.0, 0.0, 2.7])
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0))
+    rig.hover_at((2.0, 0.0, 2.0))
+    sp = rig.sp
+    T = _crafted_target(rig, arch, min_a=math.inf)
+    T.min_d = 1.0                                              # the drone came close to it before it was dropped
+    T.unseen_in_view = 99.0                                    # ... and then it was ghosted
+    rig.tick()
+    assert T not in sp.tracks and sp.target is None and sp.orphans
+    T2 = _crafted_target(rig, nxt, min_a=math.inf)             # already flying at the next gate
+    _move_to(rig, (14.0, 0.0, 2.0))                           # the drone travels past the dropped arch
+    assert sp.n_passes == 1 and sp.orphans_registered == 1
+    assert sp.last_pass is not None and sp.last_pass['kind'] == 'travel' and abs(sp.last_pass['m'][0] - 10.0) < 1e-6
+    assert abs(sp.z_pass_last - (2.7 - 1.5)) < 1e-6 and abs(sp.z_aim_last - 1.2) < 1e-6
+    assert sp.target is T2                                     # the gate now being flown at is untouched
+
+
+def test_the_altitude_reference_stays_within_the_grade_band_when_a_wild_estimate_arrives():
+    tall = np.array([20.0, 0.0, 30.0])                         # an estimate 27 m too high
+    for ref, ceiling in ((True, 1.2 + 2.0), (False, math.inf)):
+        P = SightParams(yaw_rate=3.8, range_corr=None, z_window=(1.5, 2.0), z_window_ref=ref)
+        if not ref:
+            P.z_window = (3.0, 12.0)
+        rig = Rig(ScriptVision(lambda t: None), P)
+        rig.hover_at((0.0, 0.0, 2.0))
+        sp = rig.sp
+        sp.z_aim_last, sp.grade_last = 1.2, 0.0
+        sp.last_pass = {'t': rig.clock(), 'm': (0.0, 0.0, 2.7), 'n': (1.0, 0.0), 's': sp.s, 'kind': 'cross',
+                        'track': None}
+        _crafted_target(rig, tall, min_a=math.inf)
+        top = 0.0
+        for _ in range(600):
+            rig.tick()
+            top = max(top, sp.z_c)
+        if math.isfinite(ceiling):
+            assert top <= ceiling + 0.02, top                   # bounded by the grade line + z_window[1]
+        else:
+            assert top > 5.0, top                               # the old window let the estimate lift the approach
+
+
+def test_the_altitude_floor_stays_on_the_last_passage_height():
+    # only the ceiling rides the grade line: a floor that climbed with it would push the approach UP (+1.9 m on w21),
+    # which is the failure the ceiling was written against
+    low = np.array([20.0, 0.0, 2.7])                                    # an arch whose passage point is at 1.2 m
+    P = SightParams(yaw_rate=3.8, range_corr=None)
+    rig = Rig(ScriptVision(lambda t: None), P)
+    rig.hover_at((0.0, 0.0, 2.0))
+    sp = rig.sp
+    sp.z_pass_last, sp.z_aim_last, sp.grade_last = 1.2, 1.2, P.grade_max
+    sp.last_pass = {'t': rig.clock(), 'm': (-20.0, 0.0, 2.7), 'n': (1.0, 0.0), 's': sp.s - 100.0,
+                    'kind': 'cross', 'track': None}                     # a steep leg, its grade line fully run out
+    _crafted_target(rig, low, min_a=math.inf)
+    for _ in range(600):
+        rig.tick()
+    assert sp._z_ref() > 6.0                                            # the grade line has climbed 5 m ...
+    assert sp.z_c < 1.6, sp.z_c                                         # ... and the approach has stayed at the arch
+
+
+def test_a_fragment_beyond_the_target_is_neither_selected_nor_used_as_the_next_gate():
+    near, frag = np.array([15.0, 0.0, 2.7]), np.array([18.0, 0.0, 2.7])         # 3 m further along the same ray
+
+    def build(**kw):
+        sp = SightPilot(type('H', (), {})(), SightParams(**kw))
+        p = np.array([0.0, 0.0, 2.0])
+        ts = []
+        for i, m in enumerate((near, frag)):
+            T = Track(i, 0.0, m, np.eye(3) * 0.2, np.array([1.0, 0.0, 0.0]), p, float(m[0]))
+            T.confirmed, T.hits, T.t_last = True, 30, 0.0
+            ts.append(T)
+        sp.tracks, sp.target, sp.t_air = ts, ts[0], -10.0
+        sp.last_pass = {'t': 0.0, 'm': (-20.0, 0.0, 2.7), 'n': (1.0, 0.0), 's': 0.0, 'kind': 'cross', 'track': None}
+        sp._p = p
+        sp._axis(ts[0], near, p, 0.5, 0.01)
+        return sp, ts, p
+
+    sp, ts, p = build()
+    assert sp.next is None                                     # not a gate of its own: it is 3 m, not 24-35 m, away
+    assert not sp._ahead_fragment(ts[0], ts[1], p) and sp._ahead_fragment(ts[1], ts[0], p)
+    ts[0].t_last = -5.0                                        # the target goes stale, the fragment is seen now
+    sp._select(0.5, p)
+    assert sp.target is ts[0] and sp.pending is None            # ... and still does not win the target
+    sp2, ts2, p2 = build(frag_gap=0.0, next_min_sep=2.0)        # both rules off: the old behaviour
+    assert sp2.next is ts2[1]
+    ts2[0].t_last = -5.0
+    sp2._select(0.5, p2)
+    assert sp2.pending is ts2[1]
+
+
+def test_a_detection_far_off_the_optical_axis_does_not_move_the_target():
+    cam = CAM.scaled(IN_W, IN_H)
+
+    def deliver(sp, off_deg, pos, R, now):
+        d_c = np.array([math.tan(math.radians(off_deg)), 0.0, 1.0])
+        d_b = (d_c / np.linalg.norm(d_c)) @ cam.body_to_cam()
+        px, ok = cam.project_body(d_b[None])
+        det = Detection(now, 0.99, float(px[0, 0]), float(px[0, 1]), 30.0, d_b, 15.0, sp.det_seen + 1)
+        sp._intake(now, det, (pos, R), pos)
+
+    for off, moves in ((50.0, False), (10.0, True)):
+        sp = SightPilot(type('H', (), {'vision': type('V', (), {'cam': cam})()})(), SightParams(range_corr=None))
+        sp._full_init(np.zeros(3), 0.0, 0.0)
+        pos, R = np.array([0.0, 0.0, 2.0]), np.eye(3)
+        before = sp.rej_offaxis
+        deliver(sp, off, pos, R, 1.0)
+        assert bool(sp.tracks) is moves
+        assert (sp.rej_offaxis == before + 1) is not moves
+
+
+def test_an_arch_level_with_the_drone_dead_ahead_is_not_cut_off_axis():
+    # the off-axis angle is the box's image radius, and the camera's 30 deg uptilt already spends 30 deg of it on an
+    # arch at the drone's own height straight ahead: the cut has to sit above that, or the commonest geometry is lost
+    cam = CAM.scaled(IN_W, IN_H)
+    P = SightParams(range_corr=None)
+    assert P.offaxis_max > 30.0 + 5.0, P.offaxis_max
+    for dx, dy in ((15.0, 0.0), (15.0, 4.0), (8.0, 0.0)):                 # dead ahead, 15 deg off, and closer in
+        sp = SightPilot(type('H', (), {'vision': type('V', (), {'cam': cam})()})(), P)
+        sp._full_init(np.zeros(3), 0.0, 0.0)
+        pos, R = np.array([0.0, 0.0, 2.0]), np.eye(3)
+        rel = np.array([dx, dy, 0.0])                                    # the arch centre at the drone's height
+        px, ok = cam.project_body(rel[None])
+        d_b = cam.unproject_body(px)[0]
+        det = Detection(1.0, 0.99, float(px[0, 0]), float(px[0, 1]), 30.0, d_b, float(np.linalg.norm(rel)), 1)
+        assert ok[0] and SightPilot._off_axis(det, cam) > 25.0            # the uptilt alone puts it out this far
+        sp._intake(1.0, det, (pos, R), pos)
+        assert sp.tracks and sp.rej_offaxis == 0, (dx, dy, SightPilot._off_axis(det, cam))
 
 
 def test_the_speed_sense_trim_does_not_wind_up_while_its_output_is_clipped():
