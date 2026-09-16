@@ -32,6 +32,10 @@ The flights of 15 Sep 2026 (the flags each was flown with; ``--preset`` adds the
   w17_rabbit_a2   --sight-speed 2.5 --sight-z-aim 0 --set up_bias=0 --set next_min_hits=10 --set bisector_cap=35
   w18_rabbit_b1   --sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8 --sight-flow-min 0.6
   w19_rabbit_b2_ground   the w18 flags and --sight-flow-alt ground
+  w20_rabbit_rep1, w21_rabbit_rep2 (16 Sep)   the w19 flags (--preset w20 / w21 are the same list)
+
+Every flight was flown on the defaults of its day; ``--set name=value`` puts a later default back, so
+`--preset w19 --set ghost_keep_d=0 ...` replays a flight under the pilot it actually flew with.
 """
 from __future__ import annotations
 
@@ -57,6 +61,8 @@ FLIGHT_FLAGS = {
     'w19': ['--sight-speed', '3.5', '--sight-gate-speed', '3.2', '--sight-turn-gate-speed', '2.8',
             '--sight-flow-min', '0.6', '--sight-flow-alt', 'ground'],
 }
+# w20 and w21 (16 Sep 2026) were flown with the w19 flags: w20 attempt 2 was the first clean 7/7 lap
+FLIGHT_FLAGS['w20'] = FLIGHT_FLAGS['w21'] = FLIGHT_FLAGS['w19']
 RANGE_BINS = ((0.0, 5.0), (5.0, 10.0), (10.0, 20.0), (20.0, math.inf))
 COL = {c: i for i, c in enumerate(LOG_COLUMNS)}
 
@@ -183,7 +189,7 @@ class RecordingSightPilot(SightPilot):
             into = None
             if T.passed or not T.confirmed or (T is not target and now - T.t_last > P.conf_life):
                 reason = 'expired'
-            elif T.unseen_in_view > P.ghost_s:
+            elif T.unseen_in_view > self._ghost_s(T):
                 reason = 'ghost'
             elif math.sqrt(max(T.P[2, 2], 0.0)) < P.low_sigma and T.m[2] < self.z_pass_last + P.low_above:
                 reason = 'low'
@@ -203,9 +209,9 @@ class RecordingSightPilot(SightPilot):
                 self._end(T, 'ghost_at_pass')
         return out
 
-    def _pass(self, T, now, kind, n_vec):
+    def _pass(self, T, now, kind, n_vec, clear_target: bool = True):
         before = list(self.tracks)
-        super()._pass(T, now, kind, n_vec)
+        super()._pass(T, now, kind, n_vec, clear_target=clear_target)
         self.rec['events'].append({'row': self.rec['row'], 'epoch': self.rec['epoch'], 'id': T.id, 'kind': kind,
                                    'm': [float(x) for x in T.m], 'hits': T.hits,
                                    'axis_deg': math.degrees(math.atan2(T.n_pass[1], T.n_pass[0]))})
@@ -345,7 +351,8 @@ def validate(log: dict[str, np.ndarray], res: dict) -> dict:
         out[f'{c}_match'] = float((lv == rv).mean())
     # the tracker's counters at the end (a log's can start above zero: the pilot flew before its first row)
     out['counters'] = {}
-    for c in ('rej_elev', 'rej_stale', 'absorbed', 'low', 'reseeds', 'ghosts', 'unpasses', 'behind', 'goal_clips'):
+    for c in ('rej_elev', 'rej_stale', 'rej_offaxis', 'absorbed', 'low', 'reseeds', 'ghosts', 'orphans', 'unpasses',
+              'behind', 'goal_clips'):
         lv, rv = _logged(log, c), C[:, COL[c]]
         lv, rv = lv[np.isfinite(lv)], rv[np.isfinite(rv)]
         if len(lv) and len(rv):

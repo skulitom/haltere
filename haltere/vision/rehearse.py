@@ -578,8 +578,8 @@ def summarize(result: dict, gates: list[dict], track: np.ndarray | None = None, 
         mode = log['mode'][idx]
         if np.isfinite(mode).any():
             last = {k: float(np.nanmax(log[k][idx])) for k in ('n_passes', 'ghosts', 'unpasses', 'reseeds', 'goal_clips',
-                                                              'rej_elev', 'rej_stale', 'absorbed', 'low', 'behind',
-                                                              'sight_errors')}
+                                                              'rej_elev', 'rej_stale', 'rej_offaxis', 'absorbed', 'low',
+                                                              'behind', 'orphans', 'sight_errors')}
             pk = log['pass_kind'][idx]
             last['pass_kinds'] = {n: int((pk == v).sum()) for n, v in (('cross', 1), ('travel', 2), ('beside', 3),
                                                                       ('ghost', 4), ('unpass', 5))}
@@ -627,7 +627,8 @@ def describe(summary: dict, name: str = 'rehearsal') -> str:
             sg = r['sight']
             s += (f' | rabbit: passes {sg["n_passes"]:.0f} {sg["pass_kinds"]}, ghosts {sg["ghosts"]:.0f}, unpasses '
                   f'{sg["unpasses"]:.0f}, reseeds {sg["reseeds"]:.0f}, goal clips {sg["goal_clips"]:.0f}, rejected '
-                  f'elev/stale {sg["rej_elev"]:.0f}/{sg["rej_stale"]:.0f}, absorbed {sg["absorbed"]:.0f}, low {sg["low"]:.0f}, '
+                  f'elev/stale/off-axis {sg["rej_elev"]:.0f}/{sg["rej_stale"]:.0f}/{sg["rej_offaxis"]:.0f}, absorbed '
+                  f'{sg["absorbed"]:.0f}, low {sg["low"]:.0f}, orphan passes {sg["orphans"]:.0f}, '
                   f'errors {sg["sight_errors"]:.0f}, modes {sg["mode_s"]}, flow median {sg["flow_gain_median"]:.2f}, '
                   f'rabbit speed median {sg["rabbit_speed_median"]:.2f}')
         if 'gate_estimate' in r:

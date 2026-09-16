@@ -61,8 +61,8 @@ LOG_COLUMNS = ['det_u', 'det_v', 'det_t',
                'look', 'yaw_ref', 'sight_yaw',
                'tgt_id', 'tgt_x', 'tgt_y', 'tgt_z', 'tgt_sdlat', 'tgt_hits', 'tgt_age', 'axis_deg', 'next_id',
                'n_conf', 'n_tent', 'mode', 'n_passes', 'pass_kind',
-               'flow_gain', 'rej_elev', 'rej_stale', 'absorbed', 'low', 'reseeds',
-               'ghosts', 'unpasses', 'behind', 'goal_clips', 'sight_errors', 'det_gap']
+               'flow_gain', 'rej_elev', 'rej_stale', 'rej_offaxis', 'absorbed', 'low', 'reseeds',
+               'ghosts', 'orphans', 'unpasses', 'behind', 'goal_clips', 'sight_errors', 'det_gap']
 PASS_KIND = {'cross': 1, 'travel': 2, 'beside': 3, 'ghost': 4, 'unpass': 5}
 MODE_NAMES = {0: 'ground', 1: 'cruise', 2: 'target', 3: 'search', 4: 'hold'}
 
@@ -90,6 +90,10 @@ class SightParams:
     sig_cross: tuple = (0.05, 0.2)        # across-ray std = a * range + b
     crop_px: float = 3.0                  # the arch's box within this of the image edge = cropped
     crop_mult: float = 2.0                # along-ray std multiplier when cropped
+    # off the optical axis the detector is a different instrument: within 20 px of the centre 89 % of its boxes are
+    # the target arch, beyond 60 px (about 31 deg) only 28 % (task e)
+    offaxis_max: float = 35.0             # a detection further than this off the optical axis is not used (0 = off)
+    offaxis_sig_deg: float = 15.0         # its covariance is scaled by 1 + off_axis_deg / this (0 = off)
     q: float = 0.02                       # m^2/s process noise per track
     perp_gate: tuple = (1.5, 0.12)        # association: ray passes within max(a, b * along) of the estimate
     log_gate: float = 0.45                # |ln(range / along)| for confirmed tracks
@@ -107,6 +111,22 @@ class SightParams:
     passed_life: float = 90.0
     ghost_s: float = 2.0
     ghost_range: tuple = (6.0, 30.0)
+    # the detector reports at most ONE arch per frame, so an arch in view is "unseen" on every frame that showed the
+    # other one: the gate being flown at collected 2 s of it and was deleted 39 times in the game (task a)
+    ghost_keep_d: float = 12.0            # never ghost the current target inside this horizontal range (0 = legacy)
+    ghost_evidence: str = 'other'         # what a fresh frame must show to charge an in-view estimate: 'any' (legacy,
+                                          # every frame), 'other' (its sighting went to another track off this one's
+                                          # bearing), 'empty_or_other' (that, or the frame held no arch at all)
+    ghost_other_deg: float = 4.0          # "off this one's bearing" = the rays differ by more than this
+    ghost_s_hits: int = 20                # a confirmed track earns a longer ghost timer per this many sightings ...
+    ghost_s_max: float = 5.0              # ... up to this (one with 88 hits died 2 s before its gate; 0 = legacy)
+    orphan_d: float = 8.0                 # a dropped confirmed track that came this close was a gate, not a phantom:
+    orphan_a: float = 1.5                 # ... once the drone is this far past it along its line ...
+    orphan_lat: float = 5.0               # ... and within this of the line, register a 'travel' pass (0 = legacy)
+    orphan_dedup_d: float = 10.0          # ... unless the last registered pass was this close (the same arch)
+    orphan_life: float = 12.0             # s an orphan waits to be flown past before it is forgotten
+    orphan_target_only: bool = True       # only the gate that was being flown at leaves an orphan (a track dropped
+                                          # beside the course is not a gate the drone has just been through)
     merge_d: float = 1.5
     merge_lat: tuple = (1.5, 0.06)
     merge_log: float = 0.7
@@ -121,12 +141,27 @@ class SightParams:
     bisector_cap: float = 45.0
     next_min_hits: int = 10               # sightings a confirmed track needs before it can set the approach bisector
                                           # (a briefly seen track swung gate 4's axis by 40 deg in the game)
+    next_min_sep: float = 18.0            # ... and it must be this far from the target: real gates on this course are
+                                          # 24-35 m apart, so anything nearer is a fragment of the target (task d)
+    # a displaced sighting spawns a second confirmed track 5-10 m beyond the target along the same bearing; it is the
+    # same arch badly ranged, so it must not be selected, act as the next gate, or survive (task d)
+    frag_gap: float = 15.0                # a confirmed track this far ahead of the target along its ray is its
+                                          # fragment (0 = off) ...
+    frag_gap_frac: float = 0.6            # ... or this much of the course's own measured gate spacing, once known
+    frag_lat_ahead: float = 4.0           # ... if it is also this close to the ray
+    frag_absorb: bool = True              # fold such a fragment's sightings into the target instead of keeping it
+    course_age_s: float = 10.0            # a pass older than this no longer sets the approach course ...
+    course_back_m: float = 25.0           # ... nor one the rabbit has run this far past (task b)
+    course_win: tuple = (3.0, 5.0)        # then the course is the drone's own chord over this window, s ...
+    course_min_m: float = 2.0             # ... if it moved at least this far in it (0 = never use it)
     turn_rot_min: float = 12.0            # no next gate: rotate the axis by min(0.5 |alpha|, turn_rot_max) beyond this
     turn_rot_max: float = 20.0
     turn_gate_alpha: float = 25.0
     turn_gate_bisector: float = 15.0
-    pivot_max: float = 60.0               # axis may pivot this far from the ray at pivot_d[1], none at pivot_d[0]
-    pivot_d: tuple = (3.0, 12.0)
+    pivot_max: float = 70.0               # axis may pivot this far from the ray at pivot_d[1], none at pivot_d[0]
+    pivot_d: tuple = (3.0, 18.0)          # (the pivot onto the ray now starts further out: it undoes range error)
+    axis_sigma_cap: float = 1.0           # m: cap |axis - bearing| at atan(this / along-range sigma), since an axis
+                                          # tilted off the ray turns range error into lateral error (0 = off)
     pivot_rate: float = 40.0              # deg/s
     pivot_tau: float = 0.4
     pivot_freeze_d: float = 4.0
@@ -154,7 +189,7 @@ class SightParams:
     frag_lat: float = 3.0                 # ... within this of the approach line ...
     frag_fresh_s: float = 0.5             # ... seen this recently (gates on a course are further apart)
     # --- rabbit
-    v_launch: float = 2.5
+    v_launch: float = 3.5                 # the launch leg was the slowest part of every game lap
     v_cruise: float = 2.5
     v_exit: float | None = None           # None = v_cruise
     v_gate: float = 3.0
@@ -162,11 +197,12 @@ class SightParams:
     v_unsure: float = 2.5
     v_blind: float = 2.0
     v_search: float = 2.0
-    a_lat: float = 1.2
+    # a saturated curvature collapsed the rabbit to sqrt(a_lat / kappa_max) = 2.19 m/s for whole legs: 2.58 now (task g)
+    a_lat: float = 2.0
     a_acc: float = 0.8
     a_brk: float = 1.2
     t_lag: float = 1.2
-    kappa_max: float = 0.25
+    kappa_max: float = 0.30
     sharp: float = 0.06                   # 1/m^2
     k_head: float = 1.5                   # 1/s
     lead: float = 3.0                     # m at the gate; + lead_open in the open
@@ -178,15 +214,15 @@ class SightParams:
     reseed_s: float = 1.0
     bump_tau: float = 0.4
     bump_vmax: float = 2.5                # m/s: the reseed offset fades no faster than this
-    d_on: float = 4.0                     # m flown straight on after a pass
+    d_on: float = 8.0                     # m flown straight on after a pass (4 m left the search circling too early)
     launch_t: float = 6.0
     search_radius: float = 8.0
     search_radius_wide: float = 12.0      # after a full circle
     search_leash: float = 20.0
     search_side: float = 1.0              # +1 left, -1 right (default side before the course has turned)
     tent_side_hits: int = 2               # a tentative track steers the search side after this many sightings
-    snap_start: float = 9.0
-    snap_max: float = 1.5
+    snap_start: float = 12.0              # the terminal snap cancels range error: start it before the last 9 m ...
+    snap_max: float = 2.0                 # ... and let it move the goal as far as the misses it undoes
     snap_rate: float = 0.8
     goal_max: float = 5.0
     goal_z: float = 1.2
@@ -203,7 +239,12 @@ class SightParams:
     az_max: float = 0.8
     grade_max: float = 0.35
     grade_len: float = 15.0
-    z_window: tuple = (3.0, 12.0)         # target height within [z_aim_last - a, z_aim_last + b]
+    # the estimate's height runs 1:1 into the altitude reference and from there into the drone: bound it to the grade
+    # line z_aim_last + grade_last * min(s - last_pass.s, grade_len), so one high estimate cannot lift the approach
+    # measured on the six game flights: a +2.5 m ceiling clips the real 5 m climbs into gates 5 and 6 by 1.2-1.7 m
+    # (a crash), so the net is set where it never fights a climb and still catches a gross lift
+    z_window: tuple = (1.5, 6.0)          # target height within [z_ref - a, z_ref + b] (legacy: (3, 12) off z_aim_last)
+    z_window_ref: bool = True             # False: the old window around z_aim_last with no grade line
     # --- yaw
     yaw_rate: float = 2.3                 # rad/s per unit yaw stick (Liftoff 2.3; the simulator's rates 3.8)
     yaw_gain: float = 1.5                 # 1/s (2.5 limit-cycled against the simulator's lagging yaw-rate response)
@@ -213,11 +254,13 @@ class SightParams:
     yaw_rate_cap: float = 1.0             # rad/s
     yaw_max: float = 0.35
     yaw_slew: float = 3.0                 # stick per s
-    look_free: float = 35.0
-    look_max: float = 25.0
+    # detector quality is governed by how far off the optical axis the arch is, and extra yaw is free (the brain flies
+    # a body-frame goal): keep the nose on the target instead of letting it sit 35 deg out of frame (task e)
+    look_free: float = 10.0               # bearing beyond which the nose starts following the target (legacy 35)
+    look_max: float = 45.0                # ... up to this much lead (legacy 25)
     look_tau: float = 0.3
-    look_kappa: float = 0.04
-    sweep: float = 20.0
+    look_kappa: float = 0.20              # the look is given up as the rabbit's curvature approaches this (legacy .04)
+    sweep: float = 35.0
     sweep_period: float = 5.0
     sweep_ramp: float = 1.5
     # --- speed sense
@@ -243,7 +286,8 @@ class SightParams:
             return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
 
         optional = {'range_corr', 'turn_hints', 'flow_min', 'v_exit'}
-        choices = {'flow_mode': ('global', 'along'), 'flow_alt': ('start', 'ground')}
+        choices = {'flow_mode': ('global', 'along'), 'flow_alt': ('start', 'ground'),
+                   'ghost_evidence': ('any', 'other', 'empty_or_other')}
         for f in fields(self):
             v, d = getattr(self, f.name), f.default
             if f.name in optional:
@@ -266,9 +310,16 @@ class SightParams:
                   'flow_max', 'flow_tau', 'look_tau', 'look_kappa', 'pivot_tau', 'bump_tau', 'bump_vmax', 'sweep_period',
                   'sweep_ramp', 'lead_band', 'log_gate', 'log_gate_tent', 'search_radius', 'search_radius_wide', 'a_lat',
                   'a_acc', 'a_brk', 'sharp', 'kappa_max', 'goal_max', 'goal_z', 'crop_mult', 'v_cruise', 'v_gate',
-                  'v_gate_turn'):
+                  'v_gate_turn', 'ghost_s', 'orphan_life', 'course_age_s', 'grade_len'):
             if not getattr(self, k) > 0:
                 bad.append(f'{k}={getattr(self, k)!r} (must be > 0)')
+        for k in ('ghost_keep_d', 'ghost_other_deg', 'ghost_s_max', 'orphan_d', 'orphan_lat', 'orphan_dedup_d',
+                  'offaxis_max', 'offaxis_sig_deg', 'frag_gap', 'frag_gap_frac', 'frag_lat_ahead', 'next_min_sep',
+                  'course_back_m', 'course_min_m', 'axis_sigma_cap', 'look_free', 'look_max'):
+            if getattr(self, k) < 0:
+                bad.append(f'{k}={getattr(self, k)!r} (must be >= 0)')
+        if not 0 < self.course_win[0] <= self.course_win[1]:
+            bad.append(f'course_win={self.course_win!r} (0 < a <= b)')
         for k in ('sig_along', 'sig_cross'):
             a, b = getattr(self, k)
             if a < 0 or b <= 0:
@@ -314,7 +365,7 @@ class SightParams:
 class Track:
     """One arch: a world Kalman estimate of its visual centre and what the pass logic needs."""
     __slots__ = ('id', 'm', 'P', 'r0', 'dir_first', 'hits', 't_first', 't_last', 'p_last', 'r_last', 'rng_last_h',
-                 'last_along', 'confirmed', 'passed', 't_passed', 'n_pass', 'min_a', 'unseen_in_view')
+                 'last_along', 'confirmed', 'passed', 't_passed', 'n_pass', 'min_a', 'unseen_in_view', 'min_d')
 
     def __init__(self, tid: int, now: float, z: np.ndarray, Rm: np.ndarray, r: np.ndarray, pg: np.ndarray, rho: float):
         self.id = tid
@@ -335,7 +386,8 @@ class Track:
         self.t_passed = -math.inf
         self.n_pass = (1.0, 0.0)
         self.min_a = math.inf
-        self.unseen_in_view = 0.0
+        self.min_d = n                    # closest the drone has been, horizontally: a dropped track that came close
+        self.unseen_in_view = 0.0         # was a gate the drone is about to fly past, not a phantom
 
     def dist_h(self, p) -> float:
         return math.hypot(float(self.m[0] - p[0]), float(self.m[1] - p[1]))
@@ -366,7 +418,8 @@ class SightPilot:
         self.sight_yaw = 0.0
         self.flow_f = P.flow_max
         self.flow_trim = 1.0
-        for k in ('rej_elev', 'rej_stale', 'absorbed', 'behind', 'ghosts', 'low', 'unpasses', 'reseeds', 'goal_clips'):
+        for k in ('rej_elev', 'rej_stale', 'rej_offaxis', 'absorbed', 'behind', 'ghosts', 'orphans_registered', 'low',
+                  'unpasses', 'reseeds', 'goal_clips'):
             setattr(self, k, 0)
         self._next_id = 0
         self.pass_kind = 0
@@ -409,6 +462,12 @@ class SightPilot:
         self.last_pass = None                 # dict(t, m, n, s, kind)
         self.pass_backup = None
         self.n_passes = 0
+        self.pass_xy: list = []               # where each pass was: the course's own gate spacing (fragment rule)
+        self.spacing = None                   # median distance between successive passes, m
+        self.orphans: list = []               # confirmed tracks dropped close in, still waiting to be flown past
+        self.p_hist: list = []                # (t, x, y) of the drone, for its own smoothed course
+        self.f_track = None                   # the track the last fresh detector frame's sighting went to ...
+        self.f_dir = None                     # ... and that sighting's world ray
         self.z_pass_last = P.z_pass0
         self.z_aim_last = P.z_start
         self.grade_last = 0.0
@@ -510,6 +569,7 @@ class SightPilot:
             fresh = det.frames > 0 and now - tg <= P.stale_s
             if fresh:
                 self.t_frame = now                # the detector is alive, whatever this frame holds
+                self.f_track, self.f_dir = None, None   # ... and this frame has not shown an arch yet
             if det.frames > 0 and det.p_visible >= P.p_min and det.dist_m > 0.5:
                 pose = h.pose_at(tg) if fresh else None
                 if pose is None:
@@ -517,6 +577,10 @@ class SightPilot:
                 else:
                     self._intake(now, det, pose, p)
         self.stalled = now - self.t_frame > P.stall_s
+        if not self.p_hist or now - self.p_hist[-1][0] >= 0.1:
+            self.p_hist.append((now, float(p[0]), float(p[1])))
+            while len(self.p_hist) > 2 and now - self.p_hist[0][0] > P.course_win[1] + 1.0:
+                self.p_hist.pop(0)
 
         # 2 maintenance
         self._maintain(now, dt, p, R)
@@ -540,6 +604,7 @@ class SightPilot:
                 n_vec = None
                 self.g_s = None
                 self.d_gate = math.inf
+        self._orphan_pass(now, p)
         h.vision_gate_w = None if self.target is None else self.target.m.copy()
 
         # guidance (mode and desired speed / curvature)
@@ -566,6 +631,18 @@ class SightPilot:
             rho = dist * float(np.interp(dist, d, k))
         return clip(rho, 1.0, 45.0)
 
+    @staticmethod
+    def _off_axis(det, cam) -> float:
+        """Degrees between the detection's ray and the camera's optical axis (0 when the camera is unknown)."""
+        if cam is None:
+            return 0.0
+        fwd = cam.body_to_cam()[2]                     # camera forward, in body coordinates
+        d = np.asarray(det.direction_body, dtype=np.float64)
+        n = float(np.linalg.norm(d))
+        if n < 1e-9:
+            return 0.0
+        return math.degrees(math.acos(clip(float(d @ fwd) / n, -1.0, 1.0)))
+
     def _intake(self, now: float, det, pose, p: np.ndarray) -> None:
         P = self.params
         pg = np.asarray(pose[0], dtype=np.float64)
@@ -579,6 +656,10 @@ class SightPilot:
         rho = self._range(float(det.dist_m))
         cam = getattr(self.host.vision, 'cam', None)
         W, H = (float(cam.width), float(cam.height)) if cam is not None else (320.0, 180.0)
+        off = self._off_axis(det, cam)
+        if P.offaxis_max > 0 and off > P.offaxis_max:
+            self.rej_offaxis += 1         # beyond about 35 deg only a quarter of the boxes are the arch being flown at
+            return
         hw = 0.5 * float(det.width_px)
         crop = (det.u - hw < P.crop_px or det.u + hw > W - P.crop_px or det.v - hw < P.crop_px
                 or det.v + hw > H - P.crop_px)
@@ -586,6 +667,8 @@ class SightPilot:
         sc = P.sig_cross[0] * rho + P.sig_cross[1]
         rr = np.outer(r, r)
         Rm = sa * sa * rr + sc * sc * (np.eye(3) - rr)
+        if P.offaxis_sig_deg > 0 and off > 0.0:
+            Rm = Rm * (1.0 + off / P.offaxis_sig_deg)     # an off-axis box is a worse measurement, not a wrong one
         z = pg + rho * r
         T = self._update(now, z, Rm, r, rho, pg, crop)
         # the side to search: a tentative arch seen twice (a single sighting is as often a phantom or a flip)
@@ -644,8 +727,10 @@ class SightPilot:
             self._next_id += 1
             T = Track(self._next_id, now, z, Rm, r, pg, rho)
             self.tracks.append(T)
+            self.f_track, self.f_dir = T, r
             return T
         T = best
+        self.f_track, self.f_dir = T, r    # this frame showed this arch: it says nothing about the others (ghost rule)
         T.hits += 1
         T.t_last = now
         T.p_last = pg.copy()
@@ -681,6 +766,68 @@ class SightPilot:
         u, v = px[0]
         return bool(ok[0]) and 0.05 * cam.width < u < 0.95 * cam.width and 0.05 * cam.height < v < 0.95 * cam.height
 
+    def _ghost_charge(self, T: Track, p: np.ndarray) -> bool:
+        """Does the last fresh frame count against an estimate the camera should see? The detector reports at most one
+        arch per frame, so a frame that showed a different arch elsewhere in the image says nothing about this one."""
+        P = self.params
+        if P.ghost_evidence == 'any':
+            return True
+        F = self.f_track
+        if F is None:
+            return P.ghost_evidence == 'empty_or_other'      # the frame held no arch at all
+        if F is T or self.f_dir is None:
+            return False
+        b_t = math.atan2(float(T.m[1] - p[1]), float(T.m[0] - p[0]))
+        b_f = math.atan2(float(self.f_dir[1]), float(self.f_dir[0]))
+        return abs(wrap(b_f - b_t)) > P.ghost_other_deg * DEG
+
+    def _ghost_s(self, T: Track) -> float:
+        """A long-lived estimate has earned a longer timer: one with 88 sightings was ghosted 2 s before its gate."""
+        P = self.params
+        if P.ghost_s_hits <= 0 or P.ghost_s_max <= P.ghost_s:
+            return P.ghost_s
+        return min(P.ghost_s * max(1.0, T.hits / P.ghost_s_hits), P.ghost_s_max)
+
+    def _orphan(self, T: Track, now: float, p: np.ndarray) -> None:
+        """Remember a confirmed estimate the drone came close to but dropped: it was a gate, and flying past it still
+        has to move the course reference and the height ladder on (a ghosted target never registered a pass)."""
+        P = self.params
+        if P.orphan_d <= 0 or not T.confirmed or T.passed or T.min_d > P.orphan_d:
+            return
+        if P.orphan_target_only and T is not self.target:
+            return
+        if self.n_ang is not None and T is self.target:
+            nx, ny = math.cos(self.n_ang), math.sin(self.n_ang)
+        else:
+            dx, dy = float(T.m[0] - p[0]), float(T.m[1] - p[1])
+            n = math.hypot(dx, dy)
+            nx, ny = (dx / n, dy / n) if n > 1e-6 else (math.cos(self.psi), math.sin(self.psi))
+        self.orphans.append({'T': T, 'm': (float(T.m[0]), float(T.m[1])), 'n': (nx, ny), 't': now})
+        del self.orphans[:-4]
+
+    def _orphan_pass(self, now: float, p: np.ndarray) -> None:
+        """Register the pass of an orphan the drone has now flown past, without disturbing the current target."""
+        P = self.params
+        if P.orphan_d <= 0 or not self.orphans or self.t_air is None or now - self.t_air <= P.airborne_guard:
+            return
+        for o in list(self.orphans):
+            if now - o['t'] > P.orphan_life:
+                self.orphans.remove(o)
+                continue
+            nx, ny = o['n']
+            dx, dy = float(p[0]) - o['m'][0], float(p[1]) - o['m'][1]
+            if dx * nx + dy * ny < P.orphan_a or abs(-dx * ny + dy * nx) > P.orphan_lat:
+                continue
+            self.orphans.remove(o)
+            lp = self.last_pass
+            if lp is not None and math.hypot(o['m'][0] - lp['m'][0], o['m'][1] - lp['m'][1]) < P.orphan_dedup_d:
+                continue                       # the same arch under another id: its pass is already on the books
+            self.orphans = [q for q in self.orphans     # ... and so are the other fragments of it
+                            if math.hypot(q['m'][0] - o['m'][0], q['m'][1] - o['m'][1]) >= P.orphan_dedup_d]
+            self.orphans_registered += 1
+            self._pass(o['T'], now, 'travel', o['n'], clear_target=False)
+            return
+
     def _maintain(self, now: float, dt: float, p: np.ndarray, R: np.ndarray) -> None:
         P = self.params
         cam = getattr(self.host.vision, 'cam', None)
@@ -688,10 +835,11 @@ class SightPilot:
         for T in self.tracks:
             T.P = T.P + (P.q * dt) * np.eye(3)
             if T.confirmed and not T.passed:
+                T.min_d = min(T.min_d, T.dist_h(p))
                 d = float(np.linalg.norm(T.m - p))
                 if d < near_d and self._in_view(T, p, R, cam):
                     near, near_d = T, d
-        if near is not None and now - self.t_frame < P.unseen_live_s:
+        if near is not None and now - self.t_frame < P.unseen_live_s and self._ghost_charge(near, p):
             near.unseen_in_view += dt                 # only while frames arrive: a stalled detector sees nothing
         keep = []
         for T in self.tracks:
@@ -704,10 +852,16 @@ class SightPilot:
                     keep.append(T)
                 continue
             if T is not self.target and now - T.t_last > P.conf_life:
+                self._orphan(T, now, p)
                 continue
-            if T.unseen_in_view > P.ghost_s:
+            if T.unseen_in_view > self._ghost_s(T):
+                if T is self.target and P.ghost_keep_d > 0 and T.dist_h(p) < P.ghost_keep_d:
+                    T.unseen_in_view = 0.0            # the gate being flown at is never deleted from close in: it is
+                    keep.append(T)                    # about to be passed, or missed and dropped from further out
+                    continue
                 self.ghosts += 1
                 self.pass_kind = PASS_KIND['ghost']
+                self._orphan(T, now, p)
                 if T is self.target:
                     self.target = None
                     self.n_ang = None
@@ -745,9 +899,43 @@ class SightPilot:
             if self.pending is T:
                 self.pending = twin
         self.tracks = out
-        if self.target is not None and self.target not in out:
+        # a confirmed track strung out along the target's own bearing is that arch badly ranged, not the next gate:
+        # fold its sightings in rather than let it steal the target or swing the bisector
+        if P.frag_absorb and self.target is not None:
+            for o in [o for o in self.tracks if o is not self.target and o.confirmed and not o.passed]:
+                if self._ahead_fragment(o, self.target, p):
+                    self.tracks.remove(o)
+                    self.target.hits += o.hits
+                    self.absorbed += 1
+        if self.target is not None and self.target not in self.tracks:
             self.target = None
             self.n_ang = None
+
+    def _frag_gap(self) -> float:
+        """How far ahead of the target a confirmed track is still a fragment of it: the course's own gate spacing
+        once two gates have been passed, otherwise the default."""
+        P = self.params
+        if P.frag_gap <= 0:
+            return 0.0
+        if self.spacing is not None and P.frag_gap_frac > 0:
+            return max(P.frag_gap, P.frag_gap_frac * self.spacing)
+        return P.frag_gap
+
+    def _ahead_fragment(self, o: Track, T: Track | None, p: np.ndarray) -> bool:
+        """Is ``o`` a fragment of the target sitting just beyond it on the same ray from the drone?"""
+        if T is None or o is T:
+            return False
+        gap = self._frag_gap()
+        if gap <= 0:
+            return False
+        dx, dy = float(T.m[0] - p[0]), float(T.m[1] - p[1])
+        n = math.hypot(dx, dy)
+        if n < 1e-6:
+            return False
+        nx, ny = dx / n, dy / n
+        ax, ay = float(o.m[0] - T.m[0]), float(o.m[1] - T.m[1])
+        a = ax * nx + ay * ny
+        return 0.5 < a <= gap and abs(-ax * ny + ay * nx) < self.params.frag_lat_ahead
 
     def _same(self, a: Track, b: Track, p: np.ndarray) -> bool:
         P = self.params
@@ -778,6 +966,8 @@ class SightPilot:
             is_t = T is self.target
             if not is_t and (d < P.eligible_d or abs(b) > P.eligible_bearing * DEG):
                 continue
+            if not is_t and self._ahead_fragment(T, self.target, p):
+                continue                  # the same arch 5-10 m further along the ray: never fly at the far copy
             score = d + 8.0 * (1.0 - math.cos(b)) - (4.0 if is_t else 0.0)
             # an estimate not seen for a while loses its standing against arches seen now
             score += min(P.stale_penalty * max(now - T.t_last - P.stale_grace, 0.0), 8.0)
@@ -799,6 +989,28 @@ class SightPilot:
             self.pending = None
 
     # ------------------------------------------------------------------ 4-5 locked point and approach axis
+    def _course_stale(self, now: float) -> bool:
+        """Is the last registered pass too old or too far behind to say where the course runs?"""
+        P = self.params
+        lp = self.last_pass
+        return lp is None or now - lp['t'] > P.course_age_s or self.s - lp['s'] > P.course_back_m
+
+    def _drone_course(self, now: float) -> float | None:
+        """The drone's own heading over the last ``course_win`` seconds (None when it has not moved far enough)."""
+        P = self.params
+        if P.course_min_m <= 0:
+            return None
+        lo, hi = P.course_win
+        old = None
+        for t, x, y in self.p_hist:               # in time order: the oldest sample still inside the window
+            if now - t <= hi:
+                old = (t, x, y)
+                break
+        if old is None or now - old[0] < lo:
+            return None
+        dx, dy = float(self._p[0]) - old[1], float(self._p[1]) - old[2]
+        return math.atan2(dy, dx) if math.hypot(dx, dy) >= P.course_min_m else None
+
     def _locked(self, T: Track, age: float) -> np.ndarray:
         a0, a1 = self.params.lock_s
         if age > a1:
@@ -817,10 +1029,14 @@ class SightPilot:
         self.d_gate = d
         a_ray = math.atan2(ry, rx)
         lp = self.last_pass
-        if lp is not None and now - lp['t'] < 60.0 and math.hypot(gx - lp['m'][0], gy - lp['m'][1]) > 4.0:
+        stale = self._course_stale(now)
+        if lp is not None and not stale and math.hypot(gx - lp['m'][0], gy - lp['m'][1]) > 4.0:
             a_cin = math.atan2(gy - lp['m'][1], gx - lp['m'][0])
         else:
-            a_cin = math.atan2(T.dir_first[1], T.dir_first[0])
+            # no gate passed lately (a ghosted target never registered one): the drone's own course, not the bearing
+            # the target happened to be first seen on, is what "along the course" means
+            a_drone = self._drone_course(now)
+            a_cin = a_drone if a_drone is not None else math.atan2(T.dir_first[1], T.dir_first[0])
         cx, cy = math.cos(a_cin), math.sin(a_cin)
         nxt, nxt_d = None, math.inf
         for o in self.tracks:
@@ -828,8 +1044,9 @@ class SightPilot:
                 continue                  # a briefly seen phantom beside the course would swing the approach axis
             vx, vy = float(o.m[0]) - gx, float(o.m[1]) - gy
             dv = math.hypot(vx, vy)
-            # any arch not well behind the target along the course (turns up to about 107 deg; gate 2 turns 87)
-            if 3.0 < dv < 45.0 and vx * cx + vy * cy > -0.3 * dv and dv < nxt_d:
+            # any arch not well behind the target along the course (turns up to about 107 deg; gate 2 turns 87), and
+            # far enough to be a gate of its own: the gates of this course are 24-35 m apart
+            if P.next_min_sep < dv < 45.0 and vx * cx + vy * cy > -0.3 * dv and dv < nxt_d:
                 nxt, nxt_d = o, dv
         self.next = nxt
         hints = P.turn_hints
@@ -843,7 +1060,7 @@ class SightPilot:
             hint = float(hints[self.n_passes]) * DEG
             a_nom = a_cin + 0.5 * hint
             self.turn_gate = abs(hint) >= P.turn_gate_alpha * DEG
-        elif lp is not None:
+        elif lp is not None and not stale:
             alpha = wrap(a_cin - math.atan2(lp['n'][1], lp['n'][0]))
             if abs(alpha) >= P.turn_rot_min * DEG:
                 a_nom = a_cin + math.copysign(min(0.5 * abs(alpha), P.turn_rot_max * DEG), alpha)
@@ -855,6 +1072,13 @@ class SightPilot:
             self.turn_gate = False
         beta = wrap(a_nom - a_ray)
         lim = P.pivot_max * DEG * clip((d - P.pivot_d[0]) / max(P.pivot_d[1] - P.pivot_d[0], 1e-6), 0.0, 1.0)
+        Pm = T.P
+        if P.axis_sigma_cap > 0 and d > 1e-6:
+            # an axis tilted off the ray turns range error into lateral error at the gate plane (w19 gate 3: +7.9 m
+            # along the ray and 13.6 deg of tilt made the whole -1.9 m miss), so tilt only as far as the range is sure
+            ux, uy = rx / d, ry / d
+            sig_a = math.sqrt(max(ux * ux * Pm[0, 0] + 2 * ux * uy * Pm[0, 1] + uy * uy * Pm[1, 1], 0.0))
+            lim = min(lim, math.atan(P.axis_sigma_cap / max(sig_a, 1.0)))
         a_app = a_ray + clip(beta, -lim, lim)
         if self.n_ang is None:
             self.n_ang = wrap(a_app)
@@ -863,7 +1087,6 @@ class SightPilot:
             self.n_ang = wrap(self.n_ang + clip(step, -P.pivot_rate * DEG * dt, P.pivot_rate * DEG * dt))
         nx, ny = math.cos(self.n_ang), math.sin(self.n_ang)
         lx, ly = -ny, nx
-        Pm = T.P
         self.sd_lat = math.sqrt(max(lx * lx * Pm[0, 0] + 2 * lx * ly * Pm[0, 1] + ly * ly * Pm[1, 1], 0.0))
         return nx, ny
 
@@ -902,6 +1125,7 @@ class SightPilot:
                 self.tracks.remove(T)
             self.ghosts += 1
             self.pass_kind = PASS_KIND['ghost']
+            self._orphan(T, now, p)       # thin, but the drone is on top of it: flying past still moves the course on
             self.target = None
             self.n_ang = None
         return None
@@ -921,7 +1145,9 @@ class SightPilot:
                 best, best_a = o, a
         return best
 
-    def _pass(self, T: Track, now: float, kind: str, n_vec) -> None:
+    def _pass(self, T: Track, now: float, kind: str, n_vec, clear_target: bool = True) -> None:
+        """Book a pass. ``clear_target`` False registers one for an arch the drone has flown past while already
+        flying at the next one (an orphan), so the course reference and the height ladder move on undisturbed."""
         P = self.params
         lp = self.last_pass
         self.pass_backup = (self.z_pass_last, self.z_aim_last, self.grade_last, lp, self.side, self.n_passes)
@@ -942,12 +1168,22 @@ class SightPilot:
         self.last_pass = {'t': now, 'm': (float(T.m[0]), float(T.m[1]), float(T.m[2])), 'n': T.n_pass, 's': self.s,
                           'kind': kind, 'track': T}
         self.n_passes += 1
-        self.target = None
-        self.n_ang = None
-        self.pending = None
+        if clear_target:
+            self.target = None
+            self.n_ang = None
+            self.pending = None
         self.pass_kind = PASS_KIND[kind]
+        # the course's own gate spacing, for the fragment rule (a real neighbour is 24-35 m away on this track)
+        self.pass_xy.append((float(T.m[0]), float(T.m[1])))
+        if len(self.pass_xy) >= 3:
+            d = [math.hypot(b[0] - a[0], b[1] - a[1]) for a, b in zip(self.pass_xy, self.pass_xy[1:])]
+            d = [x for x in d if x > 5.0]
+            if d:
+                self.spacing = float(np.median(d))
         # fragments of the same arch (made while the target was frozen close up) would be passed again a moment later
         for o in [o for o in self.tracks if o is not T and not o.passed]:
+            if o is self.target and not clear_target:
+                continue                  # never absorb the gate now being flown at into one behind it
             if math.hypot(float(o.m[0] - T.m[0]), float(o.m[1] - T.m[1])) < P.pass_absorb_d:
                 self.tracks.remove(o)
                 self.absorbed += 1
@@ -1128,21 +1364,29 @@ class SightPilot:
             self.o_bump *= max(nb - shrink, 0.0) / nb
 
     # ------------------------------------------------------------------ altitude
+    def _z_ref(self) -> float:
+        """The grade line: the last passage height carried on at the grade of the leg that led to it."""
+        lp = self.last_pass
+        if lp is None:
+            return self.z_aim_last
+        return self.z_aim_last + self.grade_last * min(max(self.s - lp['s'], 0.0), self.params.grade_len)
+
     def _altitude(self, dt: float) -> None:
         P = self.params
         T = self.target
-        lp = self.last_pass
+        z_ref = self._z_ref()
         if T is not None and self.g_s is not None:
             sz = math.sqrt(max(T.P[2, 2], 0.0))
             z_tgt = float(T.m[2]) - CENTRE_UP_M + P.z_aim + min(P.up_bias, P.up_bias * sz)
-            z_tgt = clip(z_tgt, max(P.z_min, self.z_aim_last - P.z_window[0]), self.z_aim_last + P.z_window[1])
+            # the estimate's height runs 1:1 into the reference and from there into the drone, and it has been 1.3 m
+            # out: hold it to the grade line, so one high estimate cannot lift the whole approach
+            base = z_ref if P.z_window_ref else self.z_aim_last
+            z_tgt = clip(z_tgt, max(P.z_min, base - P.z_window[0]), base + P.z_window[1])
             T_z = max((self.d_gate - 1.0) / max(self.v_nom, 1.0), 1.0)
             if z_tgt > self.z_c:
                 T_z = max(P.climb_front * T_z, 1.0)
         else:
-            z_tgt = self.z_aim_last
-            if lp is not None:
-                z_tgt += self.grade_last * min(self.s - lp['s'], P.grade_len)
+            z_tgt = z_ref
             T_z = 1.5
         vlim = min(max(P.vz_frac * self.v_nom, P.vz_min), P.vz_max)
         vz_des = clip((z_tgt - self.z_c) / T_z, -vlim, vlim)
@@ -1264,8 +1508,8 @@ class SightPilot:
                 math.degrees(self.look), math.degrees(self.yaw_ref), self.sight_yaw,
                 *tgt,
                 n_conf, n_tent, self.mode, self.n_passes, self.pass_kind,
-                self.flow_f, self.rej_elev, self.rej_stale, self.absorbed, self.low, self.reseeds,
-                self.ghosts, self.unpasses, self.behind, self.goal_clips, self.errors,
+                self.flow_f, self.rej_elev, self.rej_stale, self.rej_offaxis, self.absorbed, self.low, self.reseeds,
+                self.ghosts, self.orphans_registered, self.unpasses, self.behind, self.goal_clips, self.errors,
                 now - self.t_frame if math.isfinite(self.t_frame) else nan]
 
     @staticmethod
@@ -1340,7 +1584,8 @@ def add_cli_args(q, yaw_rate_default: float = 2.3) -> None:
     g.add_argument('--sight-gate-speed', type=float, default=3.0, help='speed through a straight gate (m/s)')
     g.add_argument('--sight-turn-gate-speed', type=float, default=2.5, help='speed through a gate on a turn (m/s)')
     g.add_argument('--sight-lead', type=float, default=3.0, help='rabbit lead ahead of the drone at the gate (m)')
-    g.add_argument('--sight-a-lat', type=float, default=1.2, help='rabbit lateral acceleration limit (m/s^2)')
+    g.add_argument('--sight-a-lat', type=float, default=2.0, help='rabbit lateral acceleration limit (m/s^2); with '
+                   'kappa_max it sets the speed floor sqrt(a_lat / kappa_max) on a saturated turn')
     g.add_argument('--sight-a-brk', type=float, default=1.2, help='rabbit braking limit (m/s^2)')
     g.add_argument('--sight-yaw-rate', type=float, default=yaw_rate_default,
                    help='yaw rate per unit yaw stick (rad/s; Liftoff 2.3, the simulator 3.8)')
@@ -1368,7 +1613,7 @@ def add_cli_args(q, yaw_rate_default: float = 2.3) -> None:
                         "or 'none'")
     g.add_argument('--sight-z-aim', type=float, default=0.0, help='fly this far above the passage point (m)')
     g.add_argument('--sight-climb-front', type=float, default=0.5, help='climbs finish by this fraction of the time to go')
-    g.add_argument('--sight-snap-start', type=float, default=9.0,
+    g.add_argument('--sight-snap-start', type=float, default=12.0,
                    help='pull the goal onto the gate bearing within this distance (m)')
     g.add_argument('--sight-turn-hints', default='', help='heading change at each gate, deg (+ left), e.g. 5,40,90')
     g.add_argument('--sight-set', action='append', default=[], metavar='NAME=VALUE',
