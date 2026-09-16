@@ -73,20 +73,40 @@ def gate_crossings(P: np.ndarray, t: np.ndarray, gates: list[dict], half_width: 
     return sorted(out, key=lambda p: p['t'])
 
 
-def collisions(P: np.ndarray, V: np.ndarray, t: np.ndarray, airborne: np.ndarray, threshold: float = 20.0) -> list[dict]:
+def collisions(P: np.ndarray, V: np.ndarray, t: np.ndarray, airborne: np.ndarray, threshold: float = 20.0,
+               turn_frac: float = 0.35, keep_speed: float = 0.8) -> list[dict]:
     """Impacts: the velocity changing faster than ``threshold`` m/s^2 (3-frame mean) while airborne. Clean flight stays
-    under about 14 m/s^2 at the 99th percentile; bumping an arch or a bale gives 20-400."""
-    acc = np.linalg.norm(np.diff(V, axis=0), axis=1) / np.maximum(np.diff(t), 1e-3)
-    acc = np.convolve(acc, np.ones(3) / 3, mode='same')
+    under about 14 m/s^2 at the 99th percentile; bumping an arch or a bale gives 20-400.
+
+    A hard corner also changes the velocity fast, and on the odd-course bench that cost two seeds of the home control
+    a gate each - the drone flew clean through and the scorer called a contact on the turn-out. The two are not the
+    same event: an impact pushes back along the direction of travel and takes speed out of the drone, while a
+    coordinated turn pushes sideways and keeps it. So an acceleration that is almost all perpendicular (under
+    ``turn_frac`` of it along the track) AND leaves at least ``keep_speed`` of the speed is a corner, not a contact.
+    A tumble after hitting the ground still counts: its speed changes, often upwards.
+    """
+    dt = np.maximum(np.diff(t), 1e-3)
+    A = np.diff(V, axis=0) / dt[:, None]                       # acceleration vector, m/s^2
+    k = np.ones(3) / 3
+    A = np.stack([np.convolve(A[:, i], k, mode='same') for i in range(3)], axis=1)
+    acc = np.linalg.norm(A, axis=1)
     out, last = [], -1e9
     for e in np.where(airborne[1:] & (acc > threshold))[0]:
+        v = V[e]
+        speed = float(np.linalg.norm(v))
+        before = float(np.linalg.norm(V[max(e - 10, 0)]))
+        after = float(np.linalg.norm(V[min(e + 10, len(V) - 1)]))
+        if speed > 1e-6:
+            along = float(A[e] @ (v / speed))                   # negative = being stopped, positive = pushed on
+            if abs(along) < turn_frac * acc[e] and after > keep_speed * before:
+                continue                                        # a corner: sideways, and the speed survived it
         if t[e] - last < 1.0:
-            out[-1]['peak'] = max(out[-1]['peak'], float(acc[e]))
+            if out:
+                out[-1]['peak'] = max(out[-1]['peak'], float(acc[e]))
             continue
         last = t[e]
         out.append({'t': float(t[e]), 'pos': [round(float(x), 1) for x in P[e]], 'peak': float(acc[e]),
-                    'speed_before': float(np.linalg.norm(V[max(e - 10, 0)])),
-                    'speed_after': float(np.linalg.norm(V[min(e + 10, len(V) - 1)]))})
+                    'speed_before': before, 'speed_after': after})
     return out
 
 

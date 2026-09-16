@@ -232,3 +232,36 @@ def test_path_follower_profile_projection_and_frame():
     # obstacle clearance: an obstacle 0.8 m right of the straight pushes the line 1.8 m away from it, smoothly
     h = PathFollower(np.array(straight + turn + back), loop=False, obstacles=[[20.0, -0.8, 1.4]], clearance=1.8)
     assert abs(h.point(20.0)[1] - 1.0) < 0.05 and abs(h.point(5.0)[1]) < 1e-9
+
+
+def test_a_hard_corner_is_not_a_contact():
+    """A corner changes velocity as fast as a bump does. It cost the home control two gates on the bench.
+
+    The difference is the direction: an impact pushes back along the track and takes speed out of the drone,
+    a coordinated turn pushes sideways and keeps it.
+    """
+    import numpy as np
+
+    from haltere.liftoff.flightlog import collisions
+
+    dt = 0.01
+    t = np.arange(0, 3.0, dt)
+    n = len(t)
+    air = np.ones(n, bool)
+
+    # a 4 m/s turn at 8 rad/s: 32 m/s^2, all of it perpendicular, speed constant throughout
+    w = 8.0
+    V = np.stack([4 * np.cos(w * t), 4 * np.sin(w * t), np.zeros(n)], axis=1)
+    P = np.cumsum(V * dt, axis=0)
+    assert collisions(P, V, t, air) == [], 'a coordinated turn is not a contact'
+
+    # the same speed stopped dead in 0.1 s: 40 m/s^2 straight against the direction of travel
+    V = np.zeros((n, 3))
+    V[:, 0] = 4.0
+    hit = n // 2
+    V[hit:hit + 10, 0] = np.linspace(4.0, 0.0, 10)
+    V[hit + 10:, 0] = 0.0
+    P = np.cumsum(V * dt, axis=0)
+    hits = collisions(P, V, t, air)
+    assert len(hits) == 1, f'a head-on stop must be a contact, got {hits}'
+    assert hits[0]['speed_after'] < hits[0]['speed_before']
