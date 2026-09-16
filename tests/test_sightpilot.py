@@ -29,13 +29,20 @@ class DummyBrain:
 
 class ScriptVision:
     """Detections of world points picked by a script: grabbed at 15 Hz with the drone's pose, delivered 80 ms later,
-    stamped with the grab time; a frame whose point is not in the image holds no arch (p 0.01), like the detector's."""
+    stamped with the grab time; a frame whose point is not in the image holds no arch (p 0.01), like the detector's.
 
-    def __init__(self, where, rate=15.0, latency=0.08):
+    ``width_m`` is how wide the arches really are: the apparent width is projected from it, while the range the
+    detection reports is converted with ``nominal`` (4 m), as a detector with no knowledge of the course must.
+    ``min_px`` is the detector's width floor, which is what puts a narrow arch out of sight sooner."""
+
+    def __init__(self, where, rate=15.0, latency=0.08, width_m=4.0, nominal=4.0, min_px=0.0, centre_px=0.0, seed=0):
         self.cam = CAM.scaled(IN_W, IN_H)
         self.latest = Detection()
         self.where = where
         self.rate, self.latency = rate, latency
+        self.width_m, self.nominal, self.min_px = float(width_m), float(nominal), float(min_px)
+        self.centre_px = float(centre_px)
+        self.rng = np.random.default_rng(seed)
         self.queue = []
         self.next_t = None
         self.n = 0
@@ -59,13 +66,17 @@ class ScriptVision:
                     f = self.cam.f
                     du, dv = u - self.cam.width / 2, v - self.cam.height / 2
                     stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
-                    width = f * 4.0 * stretch / d
-                    direction, dist = detection_geometry(self.cam, u, v, width)
-                    det = Detection(now, 0.99, u, v, width, direction, dist)
+                    width = f * self.width_m * stretch / d
+                    if width >= self.min_px:
+                        if self.centre_px:
+                            u += self.centre_px * self.rng.normal()
+                            v += self.centre_px * self.rng.normal()
+                        direction, dist = detection_geometry(self.cam, u, v, width, self.nominal)
+                        det = Detection(now, 0.99, u, v, width, direction, dist, width_m=self.nominal)
             if det is None:
                 w, h = self.cam.width, self.cam.height
-                direction, dist = detection_geometry(self.cam, w / 2, h / 2, 30.0)
-                det = Detection(now, 0.01, w / 2, h / 2, 30.0, direction, dist)
+                direction, dist = detection_geometry(self.cam, w / 2, h / 2, 30.0, self.nominal)
+                det = Detection(now, 0.01, w / 2, h / 2, 30.0, direction, dist, width_m=self.nominal)
             self.n += 1
             det.frames = self.n
             self.queue.append((now + self.latency, det))
@@ -203,6 +214,233 @@ def test_two_lined_up_arches_make_two_tracks():
     ms = sorted((t.m for t in conf), key=lambda m: m[0])
     assert np.linalg.norm(ms[0] - near) < 1.0 and np.linalg.norm(ms[1] - far) < 3.0
     assert rig.sp.target is not None and np.linalg.norm(rig.sp.target.m - near) < 1.0      # the nearer one first
+
+
+# ------------------------------------------------------------------ how wide are the arches of this course?
+
+def _fly_at_an_arch(true_w, arch, ticks=900, centre_px=5.0, seed=0, **kw):
+    """Take off and fly at a single arch of ``true_w`` metres whose range the detector converts at the 4 m
+    nominal, the way a course of another size looks to a detector trained on Straw Bale. Returns the rig and, for
+    every tick of the approach, how far the pilot's estimate of the arch sits from where the arch actually is."""
+    vis = ScriptVision(lambda t: arch, width_m=true_w, nominal=4.0, min_px=11.0, centre_px=centre_px, seed=seed)
+    rig = Rig(vis, SightParams(yaw_rate=3.8, range_corr=None, **kw))
+    err = []
+    for _ in range(ticks):
+        rig.tick()
+        T = rig.sp.target
+        if T is not None and rig.sp.n_passes == 0:            # the approach, before it flies past and turns back
+            err.append(float(np.linalg.norm(T.m - np.asarray(arch))))
+    return rig, err
+
+
+def test_the_width_fit_reads_an_arch_off_its_own_sightings():
+    """The per-track fit gets the width and the point from the sightings alone: fed exact bearings and exact
+    apparent widths from a moving drone, it returns the arch it was shown, with no prior anywhere in it."""
+    arch = np.array([26.0, 3.0, 2.7])
+    for true_w in (1.5, 4.0, 8.0):
+        T = Track(1, 0.0, arch.copy(), np.eye(3), np.array([1.0, 0.0, 0.0]), np.zeros(3), 1.0)
+        T.N4, T.g4, T.rays = np.zeros((4, 4)), np.zeros(4), 0          # a bare fit, nothing seeded
+        for k in range(24):
+            pg = np.array([0.6 * k, -0.25 * k, 1.4 + 0.02 * k])
+            d = arch - pg
+            rng = float(np.linalg.norm(d))
+            T.add_sight(pg, d / rng, rng / true_w, 0.22 * rng, 0.05 * rng, group=1)
+        w, sd, x = T.fit_width()
+        assert abs(w - true_w) < 0.05 * true_w, (true_w, w)
+        assert np.linalg.norm(x - arch) < 0.3, (true_w, x)
+        assert sd < 0.15 * true_w, (true_w, sd)
+
+
+def test_parallel_rays_leave_the_width_unknown_instead_of_guessed():
+    """Straight at an arch with no movement across the line of sight the width and the range trade off exactly.
+    The fit must report that, not a number: hovering, nothing is learned and the estimate stays at the nominal."""
+    arch = np.array([26.0, 0.0, 2.7])
+    T = Track(1, 0.0, arch.copy(), np.eye(3), np.array([1.0, 0.0, 0.0]), np.zeros(3), 1.0)
+    T.N4, T.g4, T.rays = np.zeros((4, 4)), np.zeros(4), 0
+    pg = np.array([0.0, 0.0, 2.7])
+    d = arch - pg
+    rng = float(np.linalg.norm(d))
+    for _ in range(30):
+        T.add_sight(pg, d / rng, rng / 1.5, 0.22 * rng, 0.05 * rng, group=1)
+    fit = T.fit_width()
+    assert fit is None or fit[1] > 0.5 * fit[0], fit           # unknown, or honestly reported as unknown
+    rig = Rig(ScriptVision(lambda t: arch, width_m=1.5, nominal=4.0, min_px=11.0),
+              SightParams(yaw_rate=3.8, range_corr=None))
+    rig.hover_at((10.0, 0.0, 2.7))                             # and hovering teaches the pilot nothing either
+    for _ in range(1200):
+        rig.tick()
+    assert rig.sp.w_updates == 0 and rig.sp.gate_w == pytest.approx(4.0)
+
+
+@pytest.mark.parametrize('true_w,ticks', [(1.5, 1400), (4.0, 1600), (8.0, 2600)])
+def test_the_pilot_measures_the_width_of_the_course_it_is_on(true_w, ticks):
+    """Flying at an arch of an unannounced size, the pilot's own estimate finds it - to within the few per cent
+    the detector's centre scatter leaves on a straight approach - and its estimate of where the arch is comes
+    with it. A straight approach is the hard case: the only parallax is the arch sitting above the drone."""
+    arch = np.array([16.0 * true_w / 4.0 + 8.0, 0.0, 2.7])
+    got, ends = [], []
+    for seed in range(3):
+        rig, err = _fly_at_an_arch(true_w, arch, ticks=ticks, seed=seed)
+        sp = rig.sp
+        assert sp.w_updates > 0 and sp.errors == 0
+        got.append(sp.gate_w)
+        ends.append(float(np.median(err[-100:])))          # ... by the end of the approach
+    for w in got:
+        if true_w == 4.0:
+            assert abs(w - 4.0) < 0.15 * 4.0, got          # a course the nominal already fits is left alone
+        else:
+            # it need not land exactly, but it must close most of the way from the 4 m it was handed
+            closed = 1.0 - abs(math.log(w / true_w)) / abs(math.log(4.0 / true_w))
+            assert closed > 0.5, (true_w, got, closed)
+    # where the arch is, by the end of the approach. A seed that gets one weak look and then holds what it has
+    # (the 1.5 m course does that on one of these three) ends further out, so the median carries the claim.
+    assert float(np.median(ends)) < 2.5 and max(ends) < 5.0, (true_w, ends)
+
+
+def test_the_width_estimate_can_be_turned_off():
+    """Without it the pilot is back where it started: the arch sits where a 4 m one would have been."""
+    arch = np.array([14.0, 0.0, 2.7])
+    rig, err = _fly_at_an_arch(1.5, arch, ticks=1400, width_est=False)
+    assert rig.sp.w_updates == 0 and rig.sp.gate_w == pytest.approx(4.0)
+    assert float(np.median(err)) > 15.0, float(np.median(err))         # tens of metres beyond the real arch
+    rig_on, err_on = _fly_at_an_arch(1.5, arch, ticks=1400)
+    assert rig_on.sp.w_updates > 0 and float(np.median(err_on[-100:])) < 2.0
+
+
+def _voting_rig(**kw):
+    """A pilot holding nothing, plus a helper that shows it one arch of a known width and lets it vote on it.
+
+    ``arch_track`` builds a track whose fit really is of an arch ``w`` metres wide: it feeds the four-unknown fit
+    exact bearings and apparent widths from a drone moving across the line of sight, so ``fit_width`` returns that
+    arch rather than a number a test asserted into it. ``rays`` then says how many looks the pilot is told went
+    into that same fit, which is how the look gate can be tested on its own."""
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, **kw))
+    rig.hover_at((0.0, 0.0, 1.5))
+    sp = rig.sp
+
+    def arch_track(tid, w, rays=None, sights=24):
+        arch = np.array([26.0, 3.0, 2.7])
+        T = Track(tid, rig.clock(), arch.copy(), np.eye(3) * 0.4, np.array([1.0, 0.0, 0.0]),
+                  np.array([0.0, 0.0, 2.7]), 20.0)
+        T.p_last = np.array([0.0, 0.0, 2.7])
+        T.confirmed = True
+        T.N4, T.g4, T.rays = np.zeros((4, 4)), np.zeros(4), 0
+        for k in range(sights):
+            pg = np.array([0.6 * k, -0.25 * k, 1.4 + 0.02 * k])
+            d = arch - pg
+            rng = float(np.linalg.norm(d))
+            T.add_sight(pg, d / rng, rng / w, 0.22 * rng, 0.05 * rng, group=1)
+        if rays is not None:
+            T.rays = int(rays)
+        return T
+
+    def vote(tid, w, rays=None, now=None):
+        T = arch_track(tid, w, rays)
+        sp.tracks = [T]
+        sp._width_update(T, rig.clock() if now is None else now)
+        return T
+    return sp, vote
+
+
+def test_one_arch_is_one_vote_however_many_times_it_is_fitted():
+    """A track's eleventh fit is its tenth with one more ray in it, not a new arch. Repeating the same fit must
+    therefore leave the estimate exactly where the first one put it - the old filter walked towards it instead,
+    which is how six repeats of one early, biased fit talked a correct 4 m nominal down to 2.7 m."""
+    sp, vote = _voting_rig()
+    vote(1, 6.0)
+    once = sp.gate_w
+    assert once != pytest.approx(4.0)                    # it did move
+    for k in range(20):
+        vote(1, 6.0, now=sp.params.width_min_s * (k + 2))
+    # and then stays: twenty more of the same fit settle within a per cent of what the first one alone said.
+    # Not bit-identical, because a fit's std is read against the width the pilot currently assumes (the scale its
+    # own noise model was built at - see _width_update), so once the estimate has moved towards the fit, that same
+    # fit reads as slightly the firmer. It converges there; the old filter walked the whole way to 6.0.
+    assert abs(math.log(sp.gate_w / once)) < 0.01, (once, sp.gate_w)
+    assert len(sp.w_votes) == 1
+    # a track's own later fit replaces its earlier one rather than being averaged with it
+    vote(1, 5.0, now=100.0)
+    assert len(sp.w_votes) == 1
+    sp2, vote2 = _voting_rig()
+    vote2(1, 5.0)
+    assert abs(math.log(sp.gate_w / sp2.gate_w)) < 0.01  # as if 5.0 were the only thing this arch had ever said
+
+
+def test_a_second_arch_is_evidence_where_the_same_arch_again_is_not():
+    """Two arches agreeing is twice the evidence, and the estimate moves further and holds tighter than one."""
+    sp1, vote1 = _voting_rig()
+    vote1(1, 6.0)
+    sp2, vote2 = _voting_rig()
+    vote2(1, 6.0)
+    vote2(2, 6.0, now=1.0)
+    assert sp2.gate_w > sp1.gate_w and sp2.gate_w_sd < sp1.gate_w_sd
+    assert len(sp2.w_votes) == 2
+
+
+def test_an_absorbed_track_s_vote_goes_with_its_sightings():
+    """Two estimates of one arch become one track, and its sightings move into that track's fit. The vote has to
+    move with them or the arch is counted twice - once in the survivor's fit and once as a vote of its own."""
+    sp, vote = _voting_rig()
+    vote(1, 6.0)
+    vote(2, 6.0, now=1.0)
+    two = sp.gate_w
+    assert len(sp.w_votes) == 2
+    sp._drop_width_vote(sp.tracks[-1])                   # ... the second one, absorbed into the first
+    assert len(sp.w_votes) == 1 and sp.gate_w < two      # back to what one arch alone is worth
+    sp1, vote1 = _voting_rig()
+    vote1(1, 6.0)
+    assert abs(math.log(sp.gate_w / sp1.gate_w)) < 0.01
+
+
+def test_a_fit_with_too_little_baseline_is_not_believed_however_sure_it_sounds():
+    """Below ``tri_min_rays`` looks the fit reads an arch a third to a half too narrow on every width, because
+    the bearing scatter pulls the fitted point towards the drone and a covariance reports scatter, not bias. Such
+    a fit must not move the estimate at all, even when it claims a small std."""
+    sp, vote = _voting_rig()
+    short = vote(1, 2.0, rays=sp.params.tri_min_rays - 1)
+    assert short.fit_width()[0] == pytest.approx(2.0, abs=0.05)              # the fit is right about the arch ...
+    assert short.fit_width()[1] < 0.5 * sp.params.tri_sigma_frac * 4.0       # ... and sounds sure of itself
+    assert sp.w_updates == 0 and sp.gate_w == pytest.approx(4.0) and not sp.w_votes
+    vote(1, 2.0, rays=sp.params.tri_min_rays, now=1.0)
+    assert sp.w_updates == 1 and sp.gate_w < 4.0         # the very same fit, once the looks are behind it
+
+
+def test_a_revised_width_slides_every_estimate_in_hand_with_it():
+    """The width is what turns apparent size into range, so when it moves, every range the tracker holds moved
+    too: the estimates slide along the rays they were last seen on rather than being left where they were."""
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8))
+    rig.hover_at((0.0, 0.0, 1.5))
+    sp = rig.sp
+    T = Track(1, rig.clock(), np.array([20.0, 0.0, 2.7]), np.eye(3) * 0.4, np.array([1.0, 0.0, 0.0]),
+              np.array([0.0, 0.0, 2.7]), 20.0)
+    T.p_last = np.array([0.0, 0.0, 2.7])
+    sp.tracks = [T]
+    sp._rescale(0.5)
+    assert np.allclose(T.m, [10.0, 0.0, 2.7]) and T.rng_last_h == pytest.approx(10.0)
+    assert np.allclose(np.diag(T.P)[1:], [0.1, 0.1])         # across the ray: scaled with the range
+    assert T.P[0, 0] == pytest.approx(0.4 * 0.25 + 10.0 ** 2)  # along it: plus the 10 m the estimate just moved
+    passed = Track(2, rig.clock(), np.array([5.0, 0.0, 2.7]), np.eye(3), np.array([1.0, 0.0, 0.0]),
+                   np.zeros(3), 5.0)
+    passed.passed = True
+    sp.tracks = [passed]
+    sp._rescale(0.5)
+    assert np.allclose(passed.m, [5.0, 0.0, 2.7])           # history the drone flew through is left alone
+
+
+def test_a_sighting_s_unit_range_is_the_part_that_does_not_depend_on_the_width():
+    """dist_m / width_m is what apparent size actually measures; the pilot works from that and multiplies by
+    what it has learned, so a detector told to assume a different width changes nothing it does."""
+    cam = CAM.scaled(IN_W, IN_H)
+    sp = SightPilot(type('H', (), {'vision': type('V', (), {'cam': cam})()})(), SightParams(range_corr=None))
+    urs = []
+    for nominal in (4.0, 1.0, 9.0):
+        direction, dist = detection_geometry(cam, cam.width / 2, cam.height / 2, 40.0, nominal)
+        urs.append(sp._unit_range(Detection(0.0, 0.99, cam.width / 2, cam.height / 2, 40.0, direction, dist,
+                                            1, nominal)))
+    assert urs[0] == pytest.approx(urs[1]) and urs[0] == pytest.approx(urs[2])
+    sp.w_ln = math.log(2.0)
+    assert sp._range(Detection(0.0, 0.99, cam.width / 2, cam.height / 2, 40.0, direction, dist, 1, 9.0)) \
+        == pytest.approx(2.0 * urs[0])
 
 
 def test_one_pass_and_the_arch_seen_from_behind_is_absorbed():
