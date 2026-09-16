@@ -31,11 +31,14 @@ def test_arch_views_match_the_dataset_labels():
 
 
 def test_arches_are_seen_from_behind_and_at_an_angle():
-    # past the first gate, looking back at it: the labels' next-gate rule hides it, a detector does not
+    # past the first gate, looking back at it: an arch in view is an arch, whether or not it has been flown
+    # through, and the labeller says so too since it started labelling the nearest arch in view (b5cee9c)
     pos, q = np.array([30.0, 0.0, 2.7]), quat_from_yaw(np.pi)
-    assert gate_label(pos, q, GATES[:1], CAM)['visible'] == 0
+    lab = gate_label(pos, q, GATES[:1], CAM)
+    assert lab['visible'] == 1
     v = arch_views(pos, q, GATES[:1], CAM)[0]
     assert v['visible'] == 1 and abs(v['view_deg']) < 1e-6 and abs(v['u'] - 320) < 1e-6
+    assert abs(v['u'] - lab['u']) < 1e-6 and abs(v['v'] - lab['v']) < 1e-6
     # 10 m in front of it and 10 m to the side, facing it: 45 deg off its axis, right of the image centre when it
     # is to the right of the drone
     pos = np.array([10.0, 10.0, 2.7])

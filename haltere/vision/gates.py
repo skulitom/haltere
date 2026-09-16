@@ -17,6 +17,8 @@ import numpy as np
 from .camera import Camera, world_to_body
 
 GATE_WIDTH_M = 4.0      # nominal width of a gate (arches on this course; turns apparent size into distance)
+VIEW_MARGIN = 0.12                  # a centre this far outside the frame still counts as in view:
+                                   # an arch whose centre has just left the edge still fills the image
 CENTRE_UP_M = 1.5       # the gate's visual centre sits this far above the passage point of the flight path
 
 
@@ -150,7 +152,7 @@ def next_gate_index(pos: np.ndarray, gates: list[dict], passed_margin: float = 1
 
 def gate_label(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: Camera, next_only: bool = False,
                max_dist_m: float = 45.0, min_width_px: float = 22.0, width_m: float = GATE_WIDTH_M,
-               up_m: float = CENTRE_UP_M, margin: float = 0.12) -> dict:
+               up_m: float = CENTRE_UP_M, margin: float = VIEW_MARGIN) -> dict:
     """Label for one frame: an arch's pixel centre, apparent width and distance (if it is in the image and close
     enough to be seen: within max_dist_m and at least min_width_px wide).
 

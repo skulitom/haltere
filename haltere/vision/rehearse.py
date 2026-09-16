@@ -34,7 +34,7 @@ from ..liftoff.sightpilot import LOG_COLUMNS as SIGHT_LOG_COLUMNS
 from ..liftoff.sightpilot import SightPilot
 from ..liftoff.telemetry import TelemetryFrame
 from .camera import Camera, quat_wxyz_to_mat, world_to_body
-from .gates import CENTRE_UP_M, GATE_WIDTH_M
+from .gates import CENTRE_UP_M, GATE_WIDTH_M, VIEW_MARGIN
 from .model import IN_H, IN_W
 from .runtime import Detection, detection_geometry
 
@@ -132,7 +132,9 @@ def arch_views(pos: np.ndarray, quat_wxyz: np.ndarray, gates: list[dict], cam: C
         view = {'gate': i, 'visible': 0, 'dist_m': dist, 'view_deg': float(np.degrees(np.arccos(min(cosv, 1.0))))}
         if ok.all() and dist >= 0.8:
             u, v = px[0]
-            inside = -0.05 * cam.width <= u <= 1.05 * cam.width and -0.05 * cam.height <= v <= 1.05 * cam.height
+            m = VIEW_MARGIN            # the same margin the labeller uses, or the rehearsal's detector and
+            inside = (-m * cam.width <= u <= (1 + m) * cam.width      # the trained one disagree at the edge
+                      and -m * cam.height <= v <= (1 + m) * cam.height)
             width_px = float(np.linalg.norm(px[1] - px[2]))
             view.update(u=float(u), v=float(v), width_px=width_px,
                         visible=int(inside and dist <= max_dist_m and width_px >= min_width_px))
