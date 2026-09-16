@@ -281,6 +281,15 @@ def cmd_vision(a):
         names = [x.strip() for x in a.only.split(',') if x.strip()] if a.only else None
         run_bench(a.ckpt, a.camera, names=names, seeds=a.seeds, seconds=a.seconds or None, device=a.device,
                   json_out=a.json or None)
+    elif a.vision_cmd == 'probe':
+        from .vision.measure import probe
+        probe(a.ckpt, a.dataset, a.out, device=a.device, tiles=a.tiles)
+    elif a.vision_cmd == 'stress':
+        from .vision.measure import colour_stress
+        colour_stress(a.ckpt, a.datasets, device=a.device, limit=a.limit)
+    elif a.vision_cmd == 'rangefit':
+        from .vision.measure import fit_range_corr
+        fit_range_corr(a.ckpt, a.datasets, a.camera, device=a.device, limit=a.limit)
     elif a.vision_cmd == 'train':
         from .vision.train import train
         out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, max_gpu_temp=a.max_gpu_temp, batch_sleep=a.batch_sleep, init=a.init, device=a.device, augment=a.augment, holdout=a.holdout)
@@ -476,6 +485,26 @@ def main(argv=None):
     q.add_argument('--only', default='', help='course names, comma separated (default: the whole suite)')
     q.add_argument('--seconds', type=float, default=0.0, help='simulated seconds per run (0: from the course length)')
     q.add_argument('--json', default='', help='write the whole record to this JSON file')
+    q = vs.add_parser('probe', help='run a detector over a dataset with NO labels (a new track) and report how '
+                                    'often it fires and what at')
+    q.add_argument('ckpt')
+    q.add_argument('dataset')
+    q.add_argument('--out', default='', help='write a sheet of the most confident frames here')
+    q.add_argument('--tiles', type=int, default=9)
+    q.add_argument('--device', default='cuda')
+    q = vs.add_parser('stress', help='how much recall survives grayscale, hue rotation, darkness and blur: the '
+                                     'cheapest proxy for an unseen environment, and it needs no new data')
+    q.add_argument('ckpt')
+    q.add_argument('datasets', nargs='+')
+    q.add_argument('--limit', type=int, default=900)
+    q.add_argument('--device', default='cuda')
+    q = vs.add_parser('rangefit', help='refit the range table the pilot corrects its ranges with (sightpilot '
+                                       'RANGE_CORR) for this detector')
+    q.add_argument('ckpt')
+    q.add_argument('datasets', nargs='+')
+    q.add_argument('--camera', default='configs/camera_seat.yaml')
+    q.add_argument('--limit', type=int, default=2500)
+    q.add_argument('--device', default='cuda')
     q = vs.add_parser('train', help='train GateNet on labelled datasets')
     q.add_argument('datasets', nargs='+')
     q.add_argument('--out', default='runs/gatenet')
