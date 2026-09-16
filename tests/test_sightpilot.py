@@ -776,7 +776,7 @@ def test_an_arch_behind_the_direction_of_travel_is_not_the_next_gate():
     now = rig.clock()
     sp.last_pass = {'t': now, 'm': (0.0, 0.0, 2.7), 'n': (1.0, 0.0), 's': 0.0, 'kind': 'cross', 'track': None,
                     'd': 1.0, 'p': (0.0, 0.0)}
-    assert sp._course_dir() == pytest.approx((1.0, 0.0))
+    assert sp._course_dir(now) == pytest.approx((1.0, 0.0))    # the axis it flew the last gate on
     back = _confirmed(sp, 1, (-8.0, 4.0, 2.7), now)                              # 9 m off, 153 deg behind
     ahead = _confirmed(sp, 2, (28.0, 6.0, 2.7), now)                             # 29 m off, 12 deg ahead
     sp.psi = math.pi / 2                                                         # both inside eligible_bearing
@@ -789,14 +789,35 @@ def test_an_arch_behind_the_direction_of_travel_is_not_the_next_gate():
     assert sp.target is back
 
 
+def test_the_course_direction_hands_over_from_the_last_gate_to_the_drone_s_own_course():
+    """The axis the last gate was flown on says where the course runs only while that pass is still current, by
+    the same test the approach axis uses. A lap that turns at every gate would otherwise go on scoring candidates
+    against the leg before last."""
+    rig = Rig(ScriptVision(lambda t: None))
+    rig.hover_at((0.0, 0.0, 1.5))
+    sp = rig.sp
+    now = rig.clock()
+    assert sp._course_dir(now) == pytest.approx((1.0, 0.0))               # nothing passed: the spawn heading
+    sp.last_pass = {'t': now, 'm': (0.0, 0.0, 2.7), 'n': (1.0, 0.0), 's': 0.0, 'kind': 'cross', 'track': None,
+                    'd': 1.0, 'p': (0.0, 0.0)}
+    assert not sp._course_stale(now)
+    assert sp._course_dir(now) == pytest.approx((1.0, 0.0))               # fresh pass: the axis it was flown on
+    sp.s = sp.params.course_back_m + 10.0                                 # ... but the rabbit has run well past it
+    assert sp._course_stale(now)
+    sp.p_hist = [(now - 4.0, 0.0, 0.0), (now, 0.0, 0.0)]                  # and the drone has flown north since
+    sp._p = np.array([0.0, 20.0, 1.5])
+    assert sp._course_dir(now) == pytest.approx((0.0, 1.0), abs=1e-6)
+    sp.p_hist = []                                                        # no course of its own: back to the gate
+    assert sp._course_dir(now) == pytest.approx((1.0, 0.0))
+
+
 def test_with_nothing_in_sight_after_a_gate_the_pilot_presses_on_instead_of_circling():
     """One arch and nothing beyond it: everything within sight of the gate has been looked at and is empty, so
     circling there cannot help. The pilot runs on along the course by the course's own scale -- once, not again and
-    again -- and the search that follows is anchored where it ran out of course, not 6 m past the gate it already
-    flew through."""
+    again."""
     arch = np.array([20.0, 0.0, 2.7])
     rig = Rig(ScriptVision(lambda t: arch), SightParams(yaw_rate=3.8, press_on_legs=1.0))
-    on_m, anchor, anchor_at, runs, was = 0.0, None, None, 0, 2
+    on_m, anchor, runs, was = 0.0, None, 0, 2
     for _ in range(5500):
         rig.tick()
         sp = rig.sp
@@ -805,7 +826,7 @@ def test_with_nothing_in_sight_after_a_gate_the_pilot_presses_on_instead_of_circ
                 on_m = max(on_m, float(rig.pos[0]) - arch[0])
             runs += (was == 3)                                           # a second run after looking around
         if sp.n_passes == 1 and sp.mode == 3 and anchor is None:
-            anchor, anchor_at = np.asarray(sp.search_anchor, dtype=float), rig.pos[:2].copy()
+            anchor = rig.pos[:2].copy()                                  # the run is over; the pilot circles here
         was = sp.mode
     sp = rig.sp
     assert sp.n_passes == 1 and sp.sight_r > 10.0
@@ -813,8 +834,7 @@ def test_with_nothing_in_sight_after_a_gate_the_pilot_presses_on_instead_of_circ
     assert run == pytest.approx(max(sp._course_leg(), sp.sight_r))        # the course's scale, not a fixed radius
     assert 2.0 * sp.params.d_on < on_m < sp.params.d_on + 1.5 * run       # ran on, and no further than the course
     assert runs == 0                                                     # ... once: a second run is a straight line
-    assert anchor is not None and float(np.linalg.norm(anchor - anchor_at)) < 1.0
-    assert float(np.linalg.norm(anchor - arch[:2])) > 2.0 * sp.params.d_on
+    assert anchor is not None and float(np.linalg.norm(anchor - arch[:2])) > 2.0 * sp.params.d_on
 
 
 def test_by_default_the_pilot_does_not_run_on_blind_at_all():
@@ -848,16 +868,3 @@ def test_with_the_next_arch_in_sight_the_fly_on_stays_short():
         if rig.sp.n_passes == 1 and rig.sp.press_left > 0.0:
             pressed_between = True
     assert rig.sp.n_passes >= 2 and not pressed_between
-
-
-def test_before_the_first_gate_the_search_is_anchored_at_the_spawn():
-    """Nothing passed yet: the spawn is the one point known to be on the course, so the search holds there rather
-    than 10 m down a heading that has just failed to show a gate."""
-    rig = Rig(ScriptVision(lambda t: None))
-    for _ in range(1500):
-        rig.tick()
-    sp = rig.sp
-    assert sp.mode == 3 and sp.n_passes == 0
-    assert sp.search_anchor == pytest.approx(sp.launch_p, abs=1e-9)
-    assert sp.search_anchor == pytest.approx((0.0, 0.0), abs=0.5)
-    assert float(np.linalg.norm(rig.pos[:2])) < sp.params.search_leash + 2.0 * sp.params.search_radius_wide

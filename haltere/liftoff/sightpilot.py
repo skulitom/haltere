@@ -22,9 +22,7 @@ heading is that direction and an arch off the spawn line is evidence against, si
 first gate. Its approach axis runs along the course (from the last gate,
 turned toward the bisector with the next gate when that one is known) and pivots onto the exact bearing close up.
 A rabbit, a point with bounded speed, acceleration, curvature and curvature rate, steers onto that axis with
-line-of-sight guidance and flies through the gate, on for a few metres and, without a gate, around a search circle
-held where that search began (after a gate, where the course ran out; before the first one, the spawn, which is the
-only point known to be on the course);
+line-of-sight guidance and flies through the gate, on for a few metres and, without a gate, around a search circle;
 it never stops, and it waits for the drone (it keeps about 3 m ahead along its own trail). The brain's goal is the
 rabbit (its horizontal part clipped to 5 m, its height to +-1.2 m), pulled onto the drone-to-gate bearing on the last
 metres. The nose follows the rabbit's heading. Nothing that perception decides can make the goal jump: a new target
@@ -166,6 +164,13 @@ class SightParams:
     # direction of travel reversed is one already passed or much later in the course, and it prices itself out.
     select_arc_cap: float = 20.0          # cap on that arc's length/chord ratio (reached at about 172 deg; 0 = off,
                                           # which is the old distance-and-bearing score)
+    # One consequence worth recording, because the odd-course bench shows it. The old score added 8.0 * (1 - cos b)
+    # to a distance: a dimensionless term against metres, so how hard it pushed depended on the scale of the ranges
+    # the pilot was reading. On the bench's narrow and wide courses - which ARE home, with 1.5 m and 8 m arches, so
+    # every range is read 2.67x too far or 2x too near - that accident was doing work. This score is scale-free, so
+    # it stops doing it: narrow 2,1,0 -> 1,1,0 and wide 6,6,7 -> 5,3,5, while home itself, the same layout with the
+    # range conversion right, is unchanged run for run. The regression belongs to the hard-coded gates.GATE_WIDTH_M
+    # in runtime.detection_geometry, not to the course's shape, and it should go when that does.
     # Before any gate has been passed there is no travelled direction, only the spawn: a race starts pointing at its
     # first gate, so an arch off the spawn line is evidence against, in metres of its own.
     start_line_w: float = 1.0             # score per metre an arch lies off the spawn line (0 = off)
@@ -543,7 +548,6 @@ class SightPilot:
         self.seen_since_pass = True           # has anything at all been sighted since the last gate went by?
         self.press_left = 0.0                 # m still to run on blind along the course before looking around again
         self.press_decided = True             # ... whether this gate owes one has been settled (nothing passed yet)
-        self.search_anchor = (float(p[0]), float(p[1]))   # where the search began (the leash holds the circle here)
         self.pass_xy: list = []               # where each pass was: the course's own gate spacing (fragment rule)
         self.spacing = None                   # median distance between successive passes, m
         self.orphans: list = []               # confirmed tracks dropped close in, still waiting to be flown past
@@ -1054,15 +1058,27 @@ class SightPilot:
                 and abs(math.log(ra / rb)) < min(P.merge_log, P.log_gate))
 
     # ------------------------------------------------------------------ 3 target
-    def _course_dir(self) -> tuple[float, float]:
+    def _course_dir(self, now: float) -> tuple[float, float]:
         """The direction this race is being travelled, as a unit vector.
 
         The pilot has no map, but it does know that a race is a sequence of gates flown in a consistent direction.
-        ``last_pass['n']`` is the axis the drone actually flew the last gate on, which is that direction where the
-        course was last known; before any gate has been passed the spawn heading stands in for it, because a race
-        starts pointing at its first gate. Both are properties of racing, not of one track."""
+        Before any gate has been passed that direction is the spawn heading, because a race starts pointing at its
+        first gate. After one it is the axis the drone actually flew that gate on - but only while the pass still
+        says where the course runs, by the same test ``_axis`` uses (``_course_stale``: not older than
+        ``course_age_s``, not further back than ``course_back_m``). Past that the drone's own recent course is the
+        better answer, and holding on to the old axis is worse than not having one: a lap that turns 45-90 deg at
+        every gate ends up scoring candidates against the leg BEFORE last, which on the bench's 8 m course pulled
+        the pilot onto later gates mid-turn and cost it 6,6,7 -> 3,4,5."""
         lp = self.last_pass
+        if lp is not None and not self._course_stale(now):
+            nx, ny = float(lp['n'][0]), float(lp['n'][1])
+            n = math.hypot(nx, ny)
+            if n > 1e-6:
+                return nx / n, ny / n
         if lp is not None:
+            a = self._drone_course(now)
+            if a is not None:
+                return math.cos(a), math.sin(a)
             nx, ny = float(lp['n'][0]), float(lp['n'][1])
             n = math.hypot(nx, ny)
             if n > 1e-6:
@@ -1091,7 +1107,7 @@ class SightPilot:
 
     def _select(self, now: float, p: np.ndarray) -> None:
         P = self.params
-        ux, uy = self._course_dir()
+        ux, uy = self._course_dir(now)
         a_course = math.atan2(uy, ux)
         first = self.last_pass is None
         best, best_score = None, math.inf
@@ -1469,11 +1485,6 @@ class SightPilot:
             self.mode = 3
             if mode_prev != 3:
                 self.search_turned = 0.0
-                # where this search began: after a gate that is where the course ran out, and before the first gate
-                # it is the spawn, the one point known to be on the course. The old anchor sat 6 m past the last
-                # gate for ever, so a pilot that had to travel to find the next one was towed back to the last.
-                self.search_anchor = ((float(p[0]), float(p[1])) if lp is not None
-                                      else (self.launch_p[0], self.launch_p[1]))
             s_side = None
             hints = P.turn_hints
             if hints and 0 < self.n_passes <= len(hints) and hints[self.n_passes - 1]:
@@ -1488,7 +1499,21 @@ class SightPilot:
                     s_side = math.copysign(1.0, b)
             if s_side is None:
                 s_side = self.side
-            ax, ay = self.search_anchor
+            # The leash holds the search at a fixed point: 6 m past the last gate, or before the first one 10 m down
+            # the spawn heading. Anchoring it instead at the place the search BEGAN was tried and not taken. It is
+            # the better idea for a pilot that has to travel - it stops one that ran out of course being towed back
+            # onto a gate it has already flown through - and on offaxis_start, whose spawn heading is 90 deg wrong,
+            # holding at the spawn itself (the one point known to be on the course) brought the first gate forward
+            # from 51,50,51 s to 43,43,43 s. But on the bench's two width-mismatched courses, where every range is
+            # read 2.67x too far or 2x too near and the drone never arrives where it aimed, being towed back to the
+            # last gate is what keeps it near the course at all: narrow went 2,1,0 -> 0,1,0 and wide 6,6,7 -> 3,3,6
+            # (measured with the new selection score switched off, so this anchor is the only difference). The
+            # 8 seconds are not worth two courses.
+            if lp is not None:
+                ax, ay = lp['m'][0] + 6.0 * lp['n'][0], lp['m'][1] + 6.0 * lp['n'][1]
+            else:
+                ax = self.launch_p[0] + 10.0 * math.cos(self.psi_launch)
+                ay = self.launch_p[1] + 10.0 * math.sin(self.psi_launch)
             if math.hypot(float(p[0]) - ax, float(p[1]) - ay) > P.search_leash:
                 k_des = P.k_head * wrap(math.atan2(ay - self.c[1], ax - self.c[0]) - self.psi) / max(self.v_nom, 1.0)
             else:
