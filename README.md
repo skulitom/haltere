@@ -799,7 +799,9 @@ with 3.7 deg/s of roll and pitch rate shake, but a thin obstacle beside gate 2 s
 from learned impact points made things worse, so the lap setting above stays. The taught lap also
 turned out to run 33 m past its own start; the follower closes the loop where it passes the start
 instead of reversing. `liftoff score` counts a crossing with a contact (a 3-frame acceleration above
-20 m/s^2 within a second and 5 m) as a hit, not a pass.
+20 m/s^2 within a second and 5 m) as a hit, not a pass. A quad makes 3 g of its own, so the size of the
+acceleration alone does not make it a contact: the score keeps only what the drone's own thrust cannot
+account for, the part of the specific force that does not lie along its up axis.
 
 ### Lap speed
 

@@ -53,6 +53,12 @@ def euler_deg(q: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return roll, pitch
 
 
+def body_up(q: np.ndarray) -> np.ndarray:
+    """The world direction the propellers push in: the drone's own up axis, from its [w, x, y, z] quaternion."""
+    w, x, y, z = np.asarray(q, dtype=float).T
+    return np.stack([2 * (x * z + y * w), 2 * (y * z - x * w), 1 - 2 * (x * x + y * y)], axis=1)
+
+
 def gate_crossings(P: np.ndarray, t: np.ndarray, gates: list[dict], half_width: float = 2.0) -> list[dict]:
     out = []
     for i, g in enumerate(gates):
@@ -73,40 +79,46 @@ def gate_crossings(P: np.ndarray, t: np.ndarray, gates: list[dict], half_width: 
     return sorted(out, key=lambda p: p['t'])
 
 
-def collisions(P: np.ndarray, V: np.ndarray, t: np.ndarray, airborne: np.ndarray, threshold: float = 20.0,
-               turn_frac: float = 0.35, keep_speed: float = 0.8) -> list[dict]:
-    """Impacts: the velocity changing faster than ``threshold`` m/s^2 (3-frame mean) while airborne. Clean flight stays
-    under about 14 m/s^2 at the 99th percentile; bumping an arch or a bale gives 20-400.
+def collisions(P: np.ndarray, V: np.ndarray, Q: np.ndarray, t: np.ndarray, airborne: np.ndarray,
+               threshold: float = 20.0, unexplained: float = 6.0) -> list[dict]:
+    """Impacts: the velocity changing faster than ``threshold`` m/s^2 (3-frame mean) while airborne, by a force the
+    drone cannot have produced itself.
 
-    A hard corner also changes the velocity fast, and on the odd-course bench that cost two seeds of the home control
-    a gate each - the drone flew clean through and the scorer called a contact on the turn-out. The two are not the
-    same event: an impact pushes back along the direction of travel and takes speed out of the drone, while a
-    coordinated turn pushes sideways and keeps it. So an acceleration that is almost all perpendicular (under
-    ``turn_frac`` of it along the track) AND leaves at least ``keep_speed`` of the speed is a corner, not a contact.
-    A tumble after hitting the ground still counts: its speed changes, often upwards.
+    Magnitude on its own does not mean contact, because a racing quad makes about 3 g of its own. Both events that
+    have cost the odd-course bench a gate the drone actually flew through were the drone's own doing: a hard corner
+    on home (1d3d62e), and on clockwise and gate_pair a throttle punch a second after the gate - 30 m/s^2 straight
+    up while the drone sat dead centre in the arch, 1.7 m clear of the nearest post.
+
+    What a contact has and a manoeuvre has not is a force from outside. The propellers can only push along the
+    drone's own up axis, and they push, never pull, so in free flight the specific force (the acceleration less
+    gravity, what an accelerometer reads) lies on that ray. Whatever distance is left to it is the arch, the bale or
+    the ground. Ordinary flight leaves under 4 m/s^2 of it - drag, and the rehearsal's own drag model - while the
+    contacts in the game logs leave 12 to 1100, so anything past ``unexplained`` is a contact and nothing between
+    3 and 8 m/s^2 changes a single count on the 26 recorded flights or on the bench.
+
+    This subsumes the corner test it replaces: a coordinated turn is thrust along a banked axis, and leaves nothing
+    over. A tumble after hitting the ground still counts, and so does a clip that barely slows the drone.
     """
     dt = np.maximum(np.diff(t), 1e-3)
     A = np.diff(V, axis=0) / dt[:, None]                       # acceleration vector, m/s^2
     k = np.ones(3) / 3
     A = np.stack([np.convolve(A[:, i], k, mode='same') for i in range(3)], axis=1)
     acc = np.linalg.norm(A, axis=1)
+    spec = A + np.array([0.0, 0.0, 9.81])                      # the specific force: acceleration less gravity
+    up = body_up(Q)[:len(A)]
+    thrust = np.maximum(np.einsum('ij,ij->i', spec, up), 0.0)  # the drone's own share of it
+    left = np.linalg.norm(spec - thrust[:, None] * up, axis=1)  # and what no propeller of its could have made
     out, last = [], -1e9
-    for e in np.where(airborne[1:] & (acc > threshold))[0]:
-        v = V[e]
-        speed = float(np.linalg.norm(v))
-        before = float(np.linalg.norm(V[max(e - 10, 0)]))
-        after = float(np.linalg.norm(V[min(e + 10, len(V) - 1)]))
-        if speed > 1e-6:
-            along = float(A[e] @ (v / speed))                   # negative = being stopped, positive = pushed on
-            if abs(along) < turn_frac * acc[e] and after > keep_speed * before:
-                continue                                        # a corner: sideways, and the speed survived it
+    for e in np.where(airborne[1:] & (acc > threshold) & (left > unexplained))[0]:
         if t[e] - last < 1.0:
             if out:
                 out[-1]['peak'] = max(out[-1]['peak'], float(acc[e]))
             continue
         last = t[e]
         out.append({'t': float(t[e]), 'pos': [round(float(x), 1) for x in P[e]], 'peak': float(acc[e]),
-                    'speed_before': before, 'speed_after': after})
+                    'unexplained': float(left[e]),
+                    'speed_before': float(np.linalg.norm(V[max(e - 10, 0)])),
+                    'speed_after': float(np.linalg.norm(V[min(e + 10, len(V) - 1)]))})
     return out
 
 
@@ -126,12 +138,13 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
     dt = float(np.median(np.diff(ts)))
     P = np.c_[log['px'][idx], log['py'][idx], log['pz'][idx]]
     V = np.c_[log['vx'][idx], log['vy'][idx], log['vz'][idx]]
+    Q = np.c_[log['qw'][idx], log['qx'][idx], log['qy'][idx], log['qz'][idx]]
     air = (P[:, 2] > 0.5) & (log['phase'][idx] > 3.0)
     if air.sum() < 100:
         return {'airborne_s': float(air.sum() * dt)}
     a0 = int(np.argmax(air))
     sl = slice(a0, len(idx))
-    roll, pitch = euler_deg(np.c_[log['qw'][idx], log['qx'][idx], log['qy'][idx], log['qz'][idx]])
+    roll, pitch = euler_deg(Q)
     hp = lambda x: _highpass(x[sl], dt, 1.0)  # noqa: E731
     w = np.degrees(np.c_[log['wx'][idx], log['wy'][idx], log['wz'][idx]])
     speed = np.linalg.norm(V[:, :2], axis=1)
@@ -152,7 +165,7 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
         res.update({'path_err_mean': float(e.mean()), 'path_err_p90': float(np.percentile(e, 90))})
     if gates is not None:
         res['n_gates'] = len(gates)
-    hits = collisions(P, V, ts, air)
+    hits = collisions(P, V, Q, ts, air)
     res['collisions'] = hits
     if gates is not None:
         cr = gate_crossings(P, ts, gates)
@@ -195,7 +208,8 @@ def describe(name: str, results: list[dict]) -> str:
              f'{r["rate_shake_dps"]:.1f} deg/s, yaw {r["yaw_shake_dps"]:.1f} deg/s, vz {r["vz_shake"]:.2f} m/s, '
              f'input chatter thr/roll/pitch/yaw {r["input_chatter"]}')
         s += f' | collisions {len(r.get("collisions", []))}' + ''.join(
-            f' @{h["t"]:.0f}s({h["pos"][0]:.0f},{h["pos"][1]:.0f},{h["pos"][2]:.0f}) {h["speed_before"]:.1f}->{h["speed_after"]:.1f}m/s'
+            f' @{h["t"]:.0f}s({h["pos"][0]:.0f},{h["pos"][1]:.0f},{h["pos"][2]:.0f}) {h["speed_before"]:.1f}->'
+            f'{h["speed_after"]:.1f}m/s [{h["unexplained"]:.0f} off-axis]'
             for h in r.get('collisions', [])[:6])
         if 'path_err_mean' in r:
             s += f' | path error {r["path_err_mean"]:.2f} m (p90 {r["path_err_p90"]:.2f})'
