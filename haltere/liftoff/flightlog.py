@@ -66,8 +66,10 @@ def gate_crossings(P: np.ndarray, t: np.ndarray, gates: list[dict], half_width: 
             dz = float(P[c, 2] - gp[2])
             if abs(lat) > 12.0:                    # crossing the gate's plane far away is not an attempt at it
                 continue
+            # dz is measured against the passage point (where the human flew through), not the arch's floor: the
+            # opening extends about a metre below it before the ground, and the round top limits the height
             out.append({'gate': i, 't': float(t[c]), 'lateral_m': lat, 'dz_m': dz,
-                        'through': abs(lat) < half_width and -0.5 < dz < 3.0})
+                        'through': abs(lat) < half_width and -1.0 < dz < 2.5})
     return sorted(out, key=lambda p: p['t'])
 
 
