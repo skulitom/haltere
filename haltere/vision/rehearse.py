@@ -96,9 +96,11 @@ class ClutterModel:
     3.3-7.1). They are more persistent than the game's, which is the one target missed: a median of 11 sightings
     each against 4-8, with the largest 19 against 13-34.
 
-    Per 100 m flown, not only per second, because a closed-loop rehearsal flies this course at about 1.8 m/s
-    against the game's 2.8-3.6, so the same per-frame rate hands its pilot nearly twice the false sightings per
-    metre. ``--clutter-set fire=0.10`` puts the per-metre pressure back where the game has it.
+    Per 100 m flown and not only per second, because the closed-loop rehearsal covers this course at about
+    1.9 m/s against the game's 2.8-3.6, so an identical per-frame rate hands its pilot far more false sightings
+    per metre. At these defaults the closed loop comes out at 1.2-1.5 confirmed phantoms per 100 m over eight
+    runs of the home course, inside the games' 1.19-2.19; the earlier placement (4-22 m out, at ground level)
+    reached 3.7 and had to be flown at ``fire=0.10`` to be comparable at all.
     """
     n_per_100m: float = 3.0          # objects per 100 m of course line (Straw Bale is 205 m -> 6 of them)
     lateral_m: tuple = (4.0, 14.0)   # placed this far to either side of the course line ...
