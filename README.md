@@ -14,13 +14,19 @@ of 8.0 m/s and no contact, where the same brain took 69 s before; the horizon's 
 ([the stick path and the speed senses](#smooth-and-fast-the-stick-path-and-the-speed-senses)).
 [Video of the whole loop](https://github.com/skulitom/haltere/releases/tag/v0.4.0).*
 
+![The fly brain flying the whole Straw Bale lap by sight](docs/liftoff_by_sight_v05.gif)
+
+*The whole lap by sight, four times actual speed. Nothing here knows where the gates are: the goal
+comes from a gate detector reading Liftoff's own FPV image, and the drone's telemetry is used only
+for its own pose, speed and rates - what a real quad has from its IMU. Gates 0 to 6 in 64 s at
+3.19 m/s, all seven flown, every arch crossed within 0.4 m of its centre, no contacts, the horizon
+steady to 0.48 degrees ([the rabbit pilot](#the-rabbit-pilot---sight-rabbit)). Four laps have now
+gone 7/7; the fix that bought them was in the gate labels, not the pilot.*
+
 ![The fly brain flying by sight through the two hill gates](docs/liftoff_sight_hill.gif)
 
-*Flying by sight: gates 5 and 6 of the lap, the last one 13 m up the hill, found by the gate
-detector in the FPV image and flown through by the brain behind the
-[rabbit pilot](#the-rabbit-pilot---sight-rabbit). This flight went through six of the seven gates
-in one 139 s run (gate 3 crossed 2.0 m from its centre, just outside the arch), each within 0.8 m of
-the arch's centre.*
+*An earlier flight by sight: gates 5 and 6, the last one 13 m up the hill. Six of seven gates in one
+139 s run, each within 0.8 m of the arch's centre.*
 
 ![The same stretch of the lap before and after the stick-path fix](docs/liftoff_stickfix.gif)
 
@@ -674,7 +680,8 @@ artifacts with a model card are on Hugging Face:
 | `artifacts/ftRobust_best.pt` | imitation, then flight cost with wide domain randomization | the first brain that flew in Liftoff |
 | `artifacts/imJ_best.pt` | imitation of the MLP with the premotor readout | best simulator accuracy |
 | `artifacts/mlp_baseline.pt` | the MLP teacher, no connectome | control experiment |
-| `artifacts/gatenet_best.pt` | GateNet, 5 M parameters, on 17k labelled frames from lap, speed and by-sight flights in both camera setups | flying by sight (`--vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml`) |
+| `artifacts/gatenet_best.pt` | GateNet, 5 M parameters, on 43k labelled frames from lap, speed and by-sight flights in both camera setups, relabelled so every arch in view is labelled rather than only the next one | flying by sight (`--vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml`) — four clean 7/7 laps |
+| `artifacts/gatenet_colourblind.pt` | the same frames, trained with hue, saturation, gamma, sharpness, noise and scale augmentation, validated on whole held-out flights | studying generalisation, **not** for flying: it holds 77-80% recall through the whole colour battery where the shipped one drops to 43%, and costs 7 points of recall at home. On an unseen map both are blind |
 
 ## Prior art
 
@@ -902,9 +909,32 @@ training, the Liftoff telemetry and virtual-pad loop, automated calibration, and
 that hover, fly patterns, race a taught lap and fly by sight inside Liftoff. The lap brain flies the
 Straw Bale gates at 4.8 m/s (gate 0 to 6 in 38 s, peaks of 8.0 m/s) with a steady horizon, now that the
 pilot inverts Liftoff's radial stick deadzone exactly and commands speed through the brain's own
-speed senses; a human lap on the same track runs at 14 m/s. By sight, the rabbit pilot has flown six
-of the seven gates in one run, both hill gates included, each within 0.8 m of the arch's centre.
-Open: a clean lap by sight (arches the detector sees as several at once split the tracker, and gate 3
-or 4 is passed wide), contacts with thin obstacles near the line at speed, and faster flight by sight
-(the rabbit has flown at a 3.5 m/s setting, about 3 m/s in practice; the lap brain flies the taught line
-at a median 5.7 m/s).
+speed senses; a human lap on the same track runs at 14 m/s.
+
+**By sight the lap is clean.** Four laps have gone 7/7 with the shipped detector and defaults — the
+last of them gate 0 to 6 in 64 s at 3.19 m/s, every arch crossed within 0.4 m of its centre, no
+contacts, with the horizon steady to 0.48 degrees. The fix that bought it was not in the pilot: the
+gate LABELS were wrong, marking a passed or second arch as "nothing", and relabelling every arch
+actually in view was worth three gates a lap.
+
+Open, and measured rather than guessed:
+
+- **Another environment.** On Pine Valley the detector fires on 2.7-3.0% of frames, below its own
+  8.7% false-positive rate at home, and its most confident detections there are the game's countdown
+  ring. Strong colour augmentation removed the palette dependence completely (43% -> 80% recall under
+  a hue rotation) and changed nothing on the unseen map: a detector that has seen one gate *type*
+  does not recognise another. It needs a second gate type in training, which needs a flight that
+  completes a course it cannot yet see. `haltere vision beacon` is the way out of that circle.
+- **Course shapes the pilot has never met.** An offline bench (`haltere vision oddcourse`) flies ten
+  synthetic courses that each break one Straw Bale assumption. It is clean on home, clockwise, gate
+  pairs, an off-axis start and a descent, and it still loses a hairpin course, gates 1.5 m or 8 m
+  wide, and legs 90 m long.
+- **Speed by sight**: about 3.2 m/s against the taught lap's 4.8.
+
+One methodological result is worth more than any of the numbers above. Two pilot changes that the
+replay harness and the rehearsal both said were improvements cost three gates and ten times the yaw
+shake the first time they met the game, and a third that the bench liked cost the control two gates.
+A replay is open loop, so a target sitting on a phantom cannot steer the drone; the rehearsal's
+synthetic detector emits no false positives, so it cannot start one. Neither can show the loop the
+game shows — phantom, target switch, nose swing, smeared detection, next phantom. Offline harnesses
+here are filters, not verdicts, and the flight cards in `docs/flight_cards/` record which is which.
