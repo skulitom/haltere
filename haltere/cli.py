@@ -268,12 +268,19 @@ def cmd_vision(a):
         from .vision.evaluate import gate_passes
         gate_passes(a.dataset, a.gates)
     elif a.vision_cmd == 'rehearse':
-        from .vision.rehearse import DetectorModel, RehearsalOptions, rehearse
+        from .vision.rehearse import ClutterModel, DetectorModel, RehearsalOptions, rehearse
         det = DetectorModel.clean() if a.clean else DetectorModel()
         for k in ('rate_hz', 'latency_s', 'centre_px', 'width_frac', 'oblique', 'miss', 'burst_rate', 'flip', 'false_pos'):
             v = getattr(a, k)
             if v is not None:
                 setattr(det, k, v)
+        if a.clutter or a.clutter_set:
+            det.clutter = ClutterModel()
+            for kv in a.clutter_set:
+                k, _, v = kv.partition('=')
+                if not hasattr(det.clutter, k.strip()):
+                    raise SystemExit(f'ClutterModel has no field {k.strip()!r}')
+                setattr(det.clutter, k.strip(), yaml.safe_load(v))
         sets = {}
         for kv in a.set:
             k, _, v = kv.partition('=')
@@ -291,13 +298,17 @@ def cmd_vision(a):
                                 delay_steps=a.delay_steps, start=tuple(float(x) for x in a.start.split(',')),
                                 collide=not a.no_collide, pilot_set=sets, physics_jitter=a.physics_jitter,
                                 max_gpu_temp=a.max_gpu_temp, burst_s=a.burst, cool_s=a.cool, sight=a.sight,
-                                sight_params=sight_params, flow_gain=a.flow_gain)
+                                sight_params=sight_params, flow_gain=a.flow_gain, track_report=a.tracks)
         rehearse(a.ckpt, a.camera, a.gates, a.log or None, a.track or None, a.device, opts, det, a.json or None)
     elif a.vision_cmd == 'oddcourse':
         from .vision.oddcourse import run_bench
         names = [x.strip() for x in a.only.split(',') if x.strip()] if a.only else None
+        sset = {}
+        for kv in a.sight_set:
+            k, _, v = kv.partition('=')
+            sset[k.strip()] = yaml.safe_load(v)
         run_bench(a.ckpt, a.camera, names=names, seeds=a.seeds, seconds=a.seconds or None, device=a.device,
-                  json_out=a.json or None)
+                  json_out=a.json or None, clutter=a.clutter, sight_set=sset, tracks=a.tracks)
     elif a.vision_cmd == 'probe':
         from .vision.measure import probe
         probe(a.ckpt, a.dataset, a.out, device=a.device, tiles=a.tiles)
@@ -505,7 +516,17 @@ def main(argv=None):
     q.add_argument('--miss', type=float, default=None, help='per-frame miss probability')
     q.add_argument('--burst-rate', type=float, default=None, help='per-frame probability of a 0.3-1 s dropout')
     q.add_argument('--flip', type=float, default=None, help='probability of reporting the second arch in view')
-    q.add_argument('--false-pos', type=float, default=None, help='per-frame phantom probability')
+    q.add_argument('--false-pos', type=float, default=None,
+                   help='per-frame probability of a LOOSE phantom (an independent box at a random place in the '
+                        'image, which never accumulates into a track); for the coherent kind see --clutter')
+    q.add_argument('--clutter', action='store_true',
+                   help='the detector also fires on objects standing beside the course, over and over on the same '
+                        'one, the way the real one does: those sightings triangulate and confirm as tracks. OFF by '
+                        'default, so every bench number taken without it stays comparable')
+    q.add_argument('--clutter-set', action='append', default=[], metavar='FIELD=VALUE',
+                   help='override a ClutterModel field (implies --clutter), e.g. --clutter-set fire=0.2')
+    q.add_argument('--tracks', action='store_true',
+                   help='record every track and sighting and report which of them sat on no arch (rabbit only)')
     q.add_argument('--max-gpu-temp', type=float, default=70.0, help='pause while the GPU is hotter than this (C); 0 = off')
     q.add_argument('--burst', type=float, default=100.0, help='wall seconds of GPU work between cool-down pauses (0 = none)')
     q.add_argument('--cool', type=float, default=20.0, help='length of a cool-down pause (s)')
@@ -522,6 +543,13 @@ def main(argv=None):
     q.add_argument('--only', default='', help='course names, comma separated (default: the whole suite)')
     q.add_argument('--seconds', type=float, default=0.0, help='simulated seconds per run (0: from the course length)')
     q.add_argument('--json', default='', help='write the whole record to this JSON file')
+    q.add_argument('--clutter', action='store_true',
+                   help='the detector also fires on objects beside the course, repeatedly on the same one, so its '
+                        'false positives confirm as tracks the way the real one\'s do (off by default)')
+    q.add_argument('--sight-set', action='append', default=[], metavar='NAME=VALUE',
+                   help='override a SightParams field for every run, e.g. --sight-set target_life=20')
+    q.add_argument('--tracks', action='store_true',
+                   help='record the tracks and report which of them sat on no arch (a confirmed phantom)')
     q = vs.add_parser('probe', help='run a detector over a dataset with NO labels (a new track) and report how '
                                     'often it fires and what at')
     q.add_argument('ckpt')

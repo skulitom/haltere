@@ -43,14 +43,105 @@ LOG_COLUMNS = ['wall', 'ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy
                'in_thr', 'in_yaw', 'in_pitch', 'in_roll', 'rpm', 'b_thr', 'b_roll', 'b_pitch', 'b_yaw',
                'c_thr', 'c_roll', 'c_pitch', 'c_yaw', 's_thr', 's_roll', 's_pitch', 's_yaw',
                'gx', 'gy', 'gz', 'tx', 'ty', 'tz', 'phase', 'crashed', 'det_p', 'det_w', 'det_age',
-               # rehearsal only: which arch the synthetic detector reported (-1 none, -2 phantom), its pixel centre,
-               # the pilot's gate estimate (world) and the yaw override of the search modes
+               # rehearsal only: which arch the synthetic detector reported (-1 none, -2 loose phantom,
+               # -3 a clutter object), its pixel centre, the pilot's gate estimate (world) and the yaw override of
+               # the search modes
                'det_gate', 'det_u', 'det_v', 'est_x', 'est_y', 'est_z', 'yaw_ovr',
                # the rabbit pilot's columns (haltere.liftoff.sightpilot.LOG_COLUMNS; empty for the legacy pilot)
                *[c for c in SIGHT_LOG_COLUMNS if c not in ('det_u', 'det_v')], 'status']
 
 
 # ----------------------------------------------------------------------------- synthetic detector
+
+@dataclass
+class ClutterModel:
+    """Things beside the course that are not arches and that the detector reports as if they were. OFF by default
+    (``DetectorModel.clutter`` is None): every bench number taken without it stays comparable.
+
+    Why this exists, and why ``DetectorModel.false_pos`` is not it. ``false_pos`` rolls an INDEPENDENT box per
+    frame at a uniformly random place in the image, so two of them are at unrelated bearings and unrelated ranges:
+    the tracker's association gate (``SightParams.perp_gate`` / ``log_gate_tent``) never lets them meet, no track
+    ever reaches ``confirm_hits``, and nothing a phantom can do to the pilot is reachable. The real detector's
+    false positives are COHERENT: it fires again and again on the same object standing in the world, the sightings
+    triangulate on it, a track confirms, and that track can become the target. This models the object, not the box.
+
+    Measured by replaying the six Straw Bale game flights (w22, w23, w27, w28, w29, w30) with ``liftoff
+    replay-sight`` against the true gate list:
+
+      * of every box the detector reported at p >= 0.5, 6.7-26.9 % sat on no arch at all (w30 6.7, w29 11.1,
+        w23 12.1, w22 16.9, w28 17.8, w27 26.9); per detector frame, a box appeared on 4.2-13.9 % of the frames
+        with no arch in view, and on 1.8-15.9 % of the frames that did have one the box was on something else;
+      * they are coherent: 62-92 % of those false boxes fall into groups of three or more whose world points sit
+        within 4 m of each other, and the largest single group is 64 sightings over 164 s while the drone moved
+        40 m and saw the thing from 4.8 m to 25 m away -- a fixed object, seen from many places, placed at the
+        same spot every time (which also says its apparent width is about that of a 4 m arch at its true range,
+        or the estimate would have smeared along the ray as the drone closed on it);
+      * they confirm: 5 to 17 confirmed phantoms per flight (a median of 6 per 100 s, on the clean laps as well
+        as the broken ones), built from 4-8 sightings each, living 3-9 s, sitting 12-27 m from the drone and
+        7-43 m from the nearest arch;
+      * the boxes are confident (median p 0.77-0.98) and 15-56 px wide (median 29), which the pilot's 4 m width
+        conversion reads as 6-27 m of range (median 12-22).
+
+    The defaults are ``n_per_100m`` and ``fire`` set together so that an open-loop pass along Straw Bale at the
+    pace the pilot keeps (the scripted-path harness of ``tests/test_rehearse.py``) lands inside every one of those
+    measured spreads at once: 8 % of detector frames carry a false box (games 4.2-13.9 %), 11 % of the boxes
+    reported are false (games 6.7-26.9 %), 4 % of the frames where an arch WAS found hand its box to an object
+    instead (games 1.8-15.9 %), 71-77 % of the false boxes are placed on the same thing as two or more others
+    (games 62-92 %; ``false_pos``, at ten times its shipped rate, manages 4-6 %), and the tracker confirms 6.2
+    phantoms per 100 s (games 3.3-7.1) of a median 8 sightings each, the largest 18 (games: a median of 4-8, the
+    largest 13-34).
+    """
+    n_per_100m: float = 3.0          # objects per 100 m of course line (Straw Bale is 205 m -> 6 of them)
+    lateral_m: tuple = (4.0, 22.0)   # placed this far to either side of the course line ...
+    min_arch_m: float = 8.0          # ... and never within this of an arch's centre (nearer than that the tracker
+                                     # folds the sightings into the arch's own track, which is range error, not a
+                                     # phantom: the measured phantoms sat 7-43 m from the nearest arch)
+    up_m: tuple = (-0.5, 4.0)        # height above the course's own passage height where it stands
+    size_m: tuple = (3.0, 5.5)       # apparent width, which is what the pilot's 4 m conversion ranges it by
+    fire: float = 0.20               # per-frame probability that one object in view is reported
+    range_m: tuple = (3.0, 35.0)     # only reported within this range (and above the detector's width floor)
+    beats_arch: float = 0.35         # when an arch was found in the same frame, this often the object wins the box
+    conf_log10: tuple = (-1.0, 0.8)  # confidence 1 - 10 ** normal(mu, sigma), clipped to [0.5, 0.9999]
+    seed: int = 12345                # the objects are drawn from their own stream: the arches' noise is unchanged
+
+
+def clutter_objects(gates: list[dict], model: ClutterModel, seed: int = 0,
+                    start: tuple | None = None) -> np.ndarray:
+    """Where the clutter stands: (n, 4) of x, y, z and apparent width, drawn along the course line.
+
+    The course line is the spawn (when given) and then the arches in course order; an object sits at a random
+    distance along it, offset to one side, at the height the course has there. Its own stream, so switching the
+    clutter on does not shift the detector's noise for a seed."""
+    pts = [np.asarray(g['pos'], dtype=np.float64) for g in gates]
+    if start is not None:
+        pts = [np.asarray([start[0], start[1], gates[0]['pos'][2]], dtype=np.float64)] + pts
+    P = np.stack(pts)
+    seg = np.linalg.norm(np.diff(P[:, :2], axis=0), axis=1)
+    cum = np.r_[0.0, np.cumsum(seg)]
+    length = float(cum[-1])
+    n = int(round(model.n_per_100m * length / 100.0))
+    if n <= 0 or length < 1e-6:
+        return np.zeros((0, 4))
+    rng = np.random.default_rng((int(seed), int(model.seed)))
+    centres = np.array([p + [0.0, 0.0, CENTRE_UP_M] for p in (np.asarray(g['pos'], dtype=np.float64) for g in gates)])
+    out = []
+    for _ in range(40 * n):
+        if len(out) >= n:
+            break
+        s = rng.uniform(0.0, length)
+        k = int(np.clip(np.searchsorted(cum, s) - 1, 0, len(seg) - 1))
+        f = (s - cum[k]) / max(seg[k], 1e-6)
+        base = P[k] + f * (P[k + 1] - P[k])
+        d = P[k + 1, :2] - P[k, :2]
+        side = np.array([-d[1], d[0]]) / max(float(np.linalg.norm(d)), 1e-6)
+        off = rng.uniform(*model.lateral_m) * (1.0 if rng.random() < 0.5 else -1.0)
+        xy = base[:2] + side * off
+        z = base[2] + rng.uniform(*model.up_m)
+        if float(np.hypot(centres[:, 0] - xy[0], centres[:, 1] - xy[1]).min()) < model.min_arch_m:
+            continue
+        out.append([xy[0], xy[1], max(z, 0.3), rng.uniform(*model.size_m)])
+    return np.array(out, dtype=np.float64).reshape(-1, 4)
+
 
 @dataclass
 class DetectorModel:
@@ -79,7 +170,12 @@ class DetectorModel:
     burst_rate: float = 0.02         # per-frame probability of starting a dropout burst ...
     burst_s: tuple = (0.3, 1.0)      # ... lasting this long
     flip: float = 0.2                # probability of reporting the second widest arch in view instead of the widest
-    false_pos: float = 0.03          # per-frame probability of a phantom when no arch is detected
+    false_pos: float = 0.03          # per-frame probability of a LOOSE phantom when no arch is detected: an
+                                     # independent box at a random place in the image, which is what the real
+                                     # detector's false positives are NOT (see ClutterModel). Such a box cannot
+                                     # meet another one in the tracker's association gate, so it never confirms
+                                     # and never reaches the pilot's choices.
+    clutter: ClutterModel | None = None   # objects the detector keeps firing on (None = off, the default)
     max_dist_m: float = 45.0         # labelling limits (min width 22 px at 640 = 11 px at 320)
     min_width_px: float = 11.0
 
@@ -88,7 +184,7 @@ class DetectorModel:
         """A perfect detector (still 15 Hz, still late): separates pilot problems from detector problems."""
         return DetectorModel(rate_jitter=0.0, latency_jitter_s=0.0, centre_px=0.0, width_frac=0.0, width_bias=(),
                              oblique=0.0, miss=0.0, oblique_fade=(), far_fade=(), burst_rate=0.0, flip=0.0,
-                             false_pos=0.0)
+                             false_pos=0.0, clutter=None)
 
     def find_probability(self, view_deg: float, dist_m: float) -> float:
         p = 1.0 - self.miss
@@ -150,14 +246,44 @@ class SyntheticGateVision:
     (like the live detector, which stamps the screen grab)."""
 
     def __init__(self, gates: list[dict], cam: Camera, model: DetectorModel | None = None,
-                 rng: np.random.Generator | None = None, width_m: float = GATE_WIDTH_M, up_m: float = CENTRE_UP_M):
+                 rng: np.random.Generator | None = None, width_m: float = GATE_WIDTH_M, up_m: float = CENTRE_UP_M,
+                 start: tuple | None = None, clutter_seed: int = 0):
         self.gates = gates
         self.cam = cam.scaled(IN_W, IN_H)
         self.model = model or DetectorModel()
         self.rng = rng or np.random.default_rng(0)
         self.width_m, self.up_m = width_m, up_m
-        self.stats = {'frames': 0, 'arch_in_view': 0, 'detected': 0, 'missed': 0, 'flipped': 0, 'phantoms': 0}
+        self.stats = {'frames': 0, 'arch_in_view': 0, 'detected': 0, 'missed': 0, 'flipped': 0, 'phantoms': 0,
+                      'clutter_in_view': 0, 'clutter': 0, 'clutter_over_arch': 0}
+        self.clutter = (clutter_objects(gates, self.model.clutter, clutter_seed, start)
+                        if self.model.clutter is not None else np.zeros((0, 4)))
         self.reset()
+
+    def clutter_views(self, pos: np.ndarray, quat: np.ndarray) -> list[dict]:
+        """Every clutter object as the camera sees it: [{obj, visible, u, v, width_px, dist_m}]. The apparent
+        width is that of an object ``size_m`` wide at its range, with the same off-axis stretch
+        ``runtime.detection_geometry`` divides out, so the range the pilot reads back is the object's own range
+        times 4 m / size_m -- one fixed factor per object, which is what lets its sightings triangulate."""
+        c, cam = self.model.clutter, self.cam
+        if c is None or not len(self.clutter):
+            return []
+        pts_b = world_to_body(self.clutter[:, :3], pos, quat)
+        px, ok = cam.project_body(pts_b)
+        dist = np.linalg.norm(pts_b, axis=1)
+        du, dv = px[:, 0] - cam.width / 2, px[:, 1] - cam.height / 2
+        f = cam.f
+        stretch = np.sqrt(f * f + du * du) * np.sqrt(f * f + du * du + dv * dv) / (f * f)
+        wpx = f * self.clutter[:, 3] * stretch / np.maximum(dist, 1e-6)
+        m = VIEW_MARGIN
+        out = []
+        for i in range(len(self.clutter)):
+            u, v = float(px[i, 0]), float(px[i, 1])
+            vis = (bool(ok[i]) and -m * cam.width <= u <= (1 + m) * cam.width
+                   and -m * cam.height <= v <= (1 + m) * cam.height
+                   and c.range_m[0] <= dist[i] <= c.range_m[1] and wpx[i] >= self.model.min_width_px)
+            out.append({'obj': i, 'visible': int(vis), 'u': u, 'v': v, 'width_px': float(wpx[i]),
+                        'dist_m': float(dist[i])})
+        return out
 
     def reset(self, now: float | None = None) -> None:
         self.latest = Detection()
@@ -178,7 +304,8 @@ class SyntheticGateVision:
         return self.latest
 
     def detect(self, now: float, pos: np.ndarray, quat: np.ndarray) -> tuple[Detection, int]:
-        """One frame: (detection without its delivery time, index of the arch reported: -1 none, -2 phantom)."""
+        """One frame: (detection without its delivery time, what the box is on: the arch's index, -1 nothing,
+        -2 a loose phantom, -3 a clutter object)."""
         m, rng, W, H = self.model, self.rng, self.cam.width, self.cam.height
         views = [v for v in arch_views(pos, quat, self.gates, self.cam, self.width_m, self.up_m, m.max_dist_m,
                                        m.min_width_px) if v['visible']]
@@ -212,6 +339,22 @@ class SyntheticGateVision:
                 self.stats['missed'] += 1
         elif views:
             self.stats['missed'] += 1
+        c = m.clutter
+        if c is not None and c.fire > 0 and len(self.clutter):
+            seen = [v for v in self.clutter_views(pos, quat) if v['visible']]
+            self.stats['clutter_in_view'] += len(seen)
+            fired = [v for v in seen if rng.random() < c.fire]
+            if fired and (gate == -1 or rng.random() < c.beats_arch):
+                # the network reports one box: the widest thing it fired on, arch or not
+                pick = max(fired, key=lambda v: v['width_px'])
+                if gate >= 0:
+                    self.stats['clutter_over_arch'] += 1      # an arch WAS found and the object took its box
+                p = float(np.clip(1.0 - 10.0 ** rng.normal(*c.conf_log10), 0.5, 0.9999))
+                u = float(np.clip(pick['u'] + m.centre_px * rng.normal(), -0.1 * W, 1.1 * W))
+                v = float(np.clip(pick['v'] + m.centre_px * rng.normal(), -0.1 * H, 1.1 * H))
+                w = float(max(4.0, pick['width_px'] * np.exp(m.width_frac * rng.normal())))
+                gate = -3
+                self.stats['clutter'] += 1
         if gate == -1 and m.false_pos > 0 and rng.random() < m.false_pos:
             # a phantom: hay bales and shadows on the ground in the lower part of the view
             p, u, v, w, gate = (float(rng.uniform(0.55, 0.85)), float(rng.uniform(0, W)), float(rng.uniform(0.45 * H, H)),
@@ -310,6 +453,9 @@ class RehearsalOptions:
     pilot_set: dict = field(default_factory=dict)   # TelemetryPilot attributes to override (e.g. vision_speed)
     physics_jitter: float = 0.0       # +- fraction of mass/thrust/drag/motor-lag randomization (0 = nominal physics)
     sight: str = 'legacy'             # by-sight pilot: 'legacy' or 'rabbit' (haltere.liftoff.sightpilot)
+    track_report: bool = False        # record every track and sighting (the rabbit only), so ``phantom_report``
+                                      # can say which of them sat on no arch -- the analysis `replay-sight` prints
+                                      # for a game flight, which cannot read a rehearsal log (its clock is too small)
     sight_params: object = None       # SightParams for the rabbit (None: defaults with the simulator's yaw rate)
     flow_gain: float = 1.0            # the fly command's --flow-gain (the rabbit's highest speed-sense gain)
     max_gpu_temp: float = 70.0        # C; pause (and wait for it to cool) above this; 0 = never check
@@ -347,8 +493,18 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
         sp_params = opts.sight_params or SightParams(yaw_rate=3.8)
         sp_params.flow_max = opts.flow_gain
         pilot.sight_params = sp_params
-    vision = SyntheticGateVision(gates, cam, detector, rng, width_m, up_m)
+    vision = SyntheticGateVision(gates, cam, detector, rng, width_m, up_m, start=tuple(opts.start[:3]),
+                                 clutter_seed=opts.seed)
     pilot.vision = vision
+    rec = None
+    if opts.track_report:
+        if opts.sight != 'rabbit':
+            raise ValueError("track_report records the rabbit pilot's tracks (sight='rabbit')")
+        from ..liftoff.sightreplay import RecordingSightPilot
+        rec = {'row': -1, 'epoch': 0, 'events': [], 'ends': [], 'sightings': [], 'cols': [], 'epochs': [],
+               'snap': {k: [] for k in ('row', 'epoch', 'id', 'x', 'y', 'z', 'confirmed', 'passed', 'hits')},
+               'cam': vision.cam}
+        pilot.sightpilot = RecordingSightPilot(pilot, pilot.sight_params, rec)
     for k, v in opts.pilot_set.items():
         if not hasattr(pilot, k):
             raise ValueError(f'TelemetryPilot has no attribute {k!r}')
@@ -374,6 +530,7 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
     crashed_at = None
     applied = idle.copy()
     prev_passed_t = None
+    prev_ts = 0.0
     use_gpu = brain.device.type == 'cuda'
     wall0 = burst0 = time.time()
     if use_gpu and opts.max_gpu_temp > 0:
@@ -397,7 +554,26 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
         now = clock()
         vision.update(now, pos, quat)
         fr = frame_from_sim(ts, pos, vel, quat, omega, motor, applied, now)
+        if rec is not None:
+            rec['row'] = k
+            if ts < prev_ts - 0.5:        # the same test TelemetryPilot.step resets on: the track ids start again
+                rec['epoch'] += 1
+        prev_ts = ts
         pilot.step(fr)
+        if rec is not None:
+            sp = pilot.sightpilot
+            rec['cols'].append(sp.log_values(vision.latest))
+            rec['epochs'].append(rec['epoch'])
+            for T in sp.tracks:
+                rec['snap']['row'].append(k)
+                rec['snap']['epoch'].append(rec['epoch'])
+                rec['snap']['id'].append(T.id)
+                rec['snap']['x'].append(float(T.m[0]))
+                rec['snap']['y'].append(float(T.m[1]))
+                rec['snap']['z'].append(float(T.m[2]))
+                rec['snap']['confirmed'].append(T.confirmed)
+                rec['snap']['passed'].append(T.passed)
+                rec['snap']['hits'].append(T.hits)
         cmd = pilot.last_cmd.copy()                       # [thr, roll, pitch, yaw] after gains, facing yaw, overrides
         sent = cmd.copy()
         if crashed_at is not None or ts < opts.arm_hold:
@@ -481,7 +657,8 @@ def run_rehearsal(brain, cfg, gates: list[dict], cam: Camera, log_path: str | Pa
             for r in rows:
                 w.writerow([_fmt(x) for x in r])
     return {'rows': rows, 'events': events, 'detector': dict(vision.stats), 'wall_s': time.time() - wall0,
-            'steps': n_steps, 'dt': dt, 'delay_steps': delay_steps}
+            'steps': n_steps, 'dt': dt, 'delay_steps': delay_steps, 'rec': rec,
+            'clutter': [[round(float(x), 2) for x in o] for o in vision.clutter]}
 
 
 def _sight_values(pilot, det, start) -> list:
@@ -505,6 +682,47 @@ def _log_dict(rows: list[list]) -> dict[str, np.ndarray]:
     for j, c in enumerate(LOG_COLUMNS):
         col = [r[j] for r in rows]
         out[c] = np.array(col, dtype=object) if c == 'status' else np.array(col, dtype=np.float64)
+    return out
+
+
+def phantom_report(result: dict, gates: list[dict], assoc_m: float = 4.0, ray_deg: float = 6.0) -> dict | None:
+    """What the tracker built that was not an arch, by ``liftoff replay-sight``'s own definitions.
+
+    Needs ``RehearsalOptions.track_report``. The classification is ``sightreplay._track_table``'s, unchanged: a
+    track belongs to the arch it sits within ``assoc_m`` of for most of its unpassed life, failing that to the arch
+    whose bearing it shares to within ``ray_deg`` (an arch at the wrong range is not a phantom), failing that to
+    the arch most of its sightings actually saw; a confirmed track left over is a phantom. A rehearsal log cannot
+    be handed to ``replay-sight`` (its clock starts at 1000 s, so the detector frames cannot be placed in time),
+    which is why the tracks are recorded as the rehearsal runs instead."""
+    rec = result.get('rec')
+    if not rec:
+        return None
+    from ..liftoff.sightreplay import _sighting_arches, _track_table
+    log = _log_dict(result['rows'])
+    res = {'tracks': {k: np.asarray(v) for k, v in rec['snap'].items()}, 'cols': np.asarray(rec['cols']),
+           'epoch': np.asarray(rec['epochs']), 'ends': rec['ends'], 'sightings': rec['sightings'],
+           'events': rec['events'], 'cam': rec['cam']}
+    _sighting_arches(res, gates)
+    tab = _track_table(log, res, gates, assoc_m, ray_deg)
+    conf = [t for t in tab.values() if t['confirmed']]
+    ph = [t for t in conf if t['arch'] is None]
+    keys = {(t['epoch'], t['id']) for t in ph}
+    passes = [e for e in rec['events'] if e['kind'] != 'unpass' and (e['epoch'], e['id']) in keys]
+    sightings = [s for s in res['sightings'] if 'm' in s]
+    sim_s = result['steps'] * result['dt']
+    out = {'tracks': len(tab), 'confirmed': len(conf), 'phantoms': len(ph),
+           'phantoms_per_100s': round(100.0 * len(ph) / max(sim_s, 1e-6), 2),
+           'phantom_target_rows': int(sum(t['target_rows'] for t in ph)),
+           'phantom_passes': len(passes), 'passes_declared': len([e for e in rec['events'] if e['kind'] != 'unpass']),
+           'sightings': len(sightings), 'sightings_at_no_arch': sum(1 for s in sightings if s['arch'] is None),
+           'worst': [{k: t[k] for k in ('epoch', 'id', 'hits', 'life_s', 'median_pos', 'nearest_arch',
+                                        'nearest_arch_d', 'drone_range_median', 'target_rows', 'end', 'saw')}
+                     for t in sorted(ph, key=lambda t: -t['target_rows'])[:6]]}
+    if ph:
+        out['phantom_hits_median'] = float(np.median([t['hits'] for t in ph]))
+        out['phantom_life_s_median'] = round(float(np.median([t['life_s'] for t in ph])), 1)
+        out['phantom_arch_d_median'] = round(float(np.median([t['nearest_arch_d'] for t in ph])), 1)
+        out['phantom_drone_range_median'] = round(float(np.median([t['drone_range_median'] for t in ph])), 1)
     return out
 
 
@@ -570,7 +788,8 @@ def summarize(result: dict, gates: list[dict], track: np.ndarray | None = None, 
                                   'err_p90_m': float(np.percentile(e, 90)),
                                   'per_gate_median_m': {int(g): round(float(np.median(e[near == g])), 2) for g in np.unique(near)}}
         dg = log['det_gate'][idx]
-        r['detections'] = {'arch_reported_s': float((dg >= 0).sum() * dt), 'phantom_s': float((dg == -2).sum() * dt)}
+        r['detections'] = {'arch_reported_s': float((dg >= 0).sum() * dt), 'phantom_s': float((dg == -2).sum() * dt),
+                           'clutter_s': float((dg == -3).sum() * dt)}
         # the view: yaw stick reversals (beyond +-0.02) per airborne minute
         cy = log['c_yaw'][idx][air]
         sg = np.sign(cy[np.abs(cy) > 0.02])
@@ -603,6 +822,9 @@ def summarize(result: dict, gates: list[dict], track: np.ndarray | None = None, 
             passes.append({'ts': round(e['ts'], 1), 'attempt': e['attempt'], 'nearest_gate': int(d.argmin()),
                            'est_err_m': round(float(d.min()), 2)})
     out['pilot_passes'] = passes
+    out['phantom_tracks'] = phantom_report(result, gates)
+    if result.get('clutter'):
+        out['clutter'] = result['clutter']
     return out
 
 
@@ -612,7 +834,18 @@ def describe(summary: dict, name: str = 'rehearsal') -> str:
     det = summary['detector']
     lines.append(f'{name}: {summary["sim_s"]:.0f} s simulated in {summary["wall_s"]:.0f} s, latency {summary["delay_steps"]} steps; '
                  f'detector frames {det["frames"]}, arch in view {det["arch_in_view"]}, detected {det["detected"]}, '
-                 f'missed {det["missed"]}, flipped {det["flipped"]}, phantoms {det["phantoms"]}')
+                 f'missed {det["missed"]}, flipped {det["flipped"]}, phantoms {det["phantoms"]}'
+                 + (f', clutter boxes {det["clutter"]} ({det["clutter_over_arch"]} of them over an arch the detector '
+                    f'had found)' if det.get('clutter') else ''))
+    if summary.get('phantom_tracks') is not None:
+        ph = summary['phantom_tracks']
+        lines.append(f'  tracker: {ph["tracks"]} tracks, {ph["confirmed"]} confirmed, {ph["phantoms"]} of them '
+                     f'confirmed phantoms ({ph["phantoms_per_100s"]:.1f} per 100 s), {ph["phantom_target_rows"]} '
+                     f'steps flown at a phantom, {ph["phantom_passes"]} passes declared at one')
+        for p in ph['worst']:
+            lines.append(f'  phantom #{p["id"]}: {p["hits"]} hits, {p["life_s"]:.1f} s, at {p["median_pos"]} '
+                         f'({p["nearest_arch_d"]:.1f} m from arch {p["nearest_arch"]}), target {p["target_rows"]} '
+                         f'rows, ended {p["end"]}')
     for k, r in enumerate(summary['attempts']):
         if 'slow_s' not in r:
             continue
