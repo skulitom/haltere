@@ -3,12 +3,12 @@
 The by-sight stack flies clean 7/7 laps on Straw Bale "Field Day". That number says nothing about
 any other course, and the first flight on an unseen map showed why: over the 1392 Pine Valley frames
 the detector fired on 3.0%, median confidence 0.010, with arches plainly in view - against its own
-8.7% false-positive rate on gate-less frames at home. Detection on an unseen course was worse than
+11.6% false-positive rate on gate-less frames at home. Detection on an unseen course was worse than
 its own noise floor, and the pilot never got a gate to fly at.
 
 The same detector loses half its skill when the colour goes: on held-out home flights, recall
 85.6% -> 43.1% in grayscale and -> 51.1% at hue+180, where the centre error goes 2.9 -> 40.6 px and
-false positives 8.7% -> 50.2%. Brightness, gamma and blur barely touch it. What it learned is a
+false positives 11.6% -> 56.4%. Brightness, gamma and blur barely touch it. What it learned is a
 palette.
 
 This file is the discipline that keeps that from being discovered late again. It is about
@@ -96,8 +96,10 @@ Two things made the detector's own numbers flattering, both fixed in `vision tra
   the network key on it. `--augment strong` varies hue over the whole circle, saturation, gamma,
   sharpness, noise, bank angle and apparent size.
 
-Checkpoints now record what they trained on, and `vision eval` marks every line `TRAINED ON` or
-`held out`, so an in-domain number can no longer be quoted as a generalisation number by accident.
+Checkpoints trained since this change record what they trained on, and `vision eval` marks their
+lines `TRAINED ON` or `held out`. A checkpoint without that record - including the gatenet9 that
+ships as `artifacts/gatenet_best.pt`, which predates it - is marked `provenance unknown`, and its
+numbers still have to be checked by hand.
 
 ## 6. What the first round measured (2026-09-16)
 

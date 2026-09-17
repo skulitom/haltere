@@ -9,8 +9,8 @@ A fruit-fly brain, wired exactly as in the newest fly connectome, trained to fly
 (brain on top, nerve cord below), brightening as they fire, live on Liftoff's telemetry. Right:
 Liftoff's own FPV view of the drone they are flying, through a virtual Xbox controller. The lap
 brain on the taught Straw Bale Field Day line: gates 0 to 6 in 38 s, 4.8 m/s on average with peaks
-of 8.0 m/s and no contact, where the same brain took 69 s before; the horizon's shake above 1 Hz is
-0.37 degrees against 1.36 before, and the roll and pitch rate shake 2 deg/s against 26
+of 8.3 m/s and no contact, where the same brain took 69 s before; the horizon's shake above 1 Hz is
+0.37 degrees against 1.37 before, and the roll and pitch rate shake 2 deg/s against 26
 ([the stick path and the speed senses](#smooth-and-fast-the-stick-path-and-the-speed-senses)).
 [Video of the whole loop](https://github.com/skulitom/haltere/releases/tag/v0.4.0).*
 
@@ -20,8 +20,9 @@ of 8.0 m/s and no contact, where the same brain took 69 s before; the horizon's 
 comes from a gate detector reading Liftoff's own FPV image, and the drone's telemetry is used only
 for its own pose, speed and rates - what a real quad has from its IMU. Gates 0 to 6 in 64 s at
 3.19 m/s, all seven flown, every arch crossed within 0.4 m of its centre, no contacts, the horizon
-steady to 0.48 degrees ([the rabbit pilot](#the-rabbit-pilot---sight-rabbit)). Four laps have now
-gone 7/7; the fix that bought them was in the gate labels, not the pilot.*
+steady to 0.48 degrees ([the rabbit pilot](#the-rabbit-pilot---sight-rabbit)). Five laps have now
+gone 7/7 with this detector and pilot; the fastest was 58 s at 3.35 m/s, at a higher speed setting
+than the one shipped. The fix that bought them was in the gate labels, not the pilot.*
 
 ![The fly brain flying by sight through the two hill gates](docs/liftoff_sight_hill.gif)
 
@@ -234,7 +235,8 @@ haltere liftoff fly artifacts/ftPath2_best.pt --waypoints-file configs/track_str
 haltere liftoff fly artifacts/ftPath2_best.pt --vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml \
         --sight rabbit --sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8 \
         --sight-flow-min 0.6 --sight-flow-alt ground --throttle-scale 0.8 --gyro telemetry --reset-key R
-haltere liftoff score data/liftoff/logs/lap.csv --gates configs/gates_strawbale.json \n        --track configs/track_strawbale.yaml
+haltere liftoff score data/liftoff/logs/lap.csv --gates configs/gates_strawbale.json \
+        --track configs/track_strawbale.yaml
 ```
 
 `--advance-radius` makes the brain move on to the next waypoint as soon as it gets within that
@@ -310,8 +312,11 @@ Two fixes followed: the path pilot now sweeps its camera 35 degrees either way w
 frames (`--face-wobble`), and the range from the apparent width accounts for the stretch of a
 wide-angle image away from its centre (a 116 degree camera shows a gate at the edge 2.5 times
 wider than at the centre). Retrained on the flights' own frames plus a sweeping lap (three rounds so far, 17k frames), the
-detector agrees with the projected labels on 98% of a held-out tenth of the frames (centre error
-4 px at 320 wide), no longer hallucinates gates on the flights' gate-less views and places the
+detector of that round agreed with the projected labels on 98% of a held-out tenth of the frames
+(centre error 4 px at 320 wide) - a number that could not fall, because that split took single frames
+out of the same flights, and frames 130 ms apart are the same picture. Measured on whole flights
+recorded after it was trained, the detector that ships now holds 85.6% recall at 2.9 px. It no longer
+hallucinates gates on the flights' gate-less views and places the
 gates within 8 px on their frames. Every flight by sight records its frames with
 the pose, and the gate list labels them, so each round of flying adds exactly the views the last
 round got wrong. The detector is no longer the weak part; the pilot's habits are. The flights
@@ -343,9 +348,9 @@ that follows the lead's heading. In the game, on the same lap (`haltere liftoff 
 
 | pilot, flight | gates through | laterals (m) | gate 0 to last | horizon / roll-pitch-rate shake | contacts |
 |---|---|---|---|---|---|
-| old pilot, radial sticks (w6, best attempt) | 1, 2 | 1.7, 1.5 | - | 1.4 deg / 11 deg/s | 2 |
+| old pilot, radial sticks (w6, best attempt) | 1, 2 | 1.7, 1.5 | - | 1.4 deg / 11 deg/s | 1 |
 | rabbit, 2.5 m/s (w17) | 0, 1, 2, 5 | 0.2, 0.4, 1.2, 0.6 | 75 s to gate 5 | 0.70 deg / 5.1 deg/s | 4 |
-| rabbit, 3.5 m/s (w18, attempt 2) | 0, 1, 2, 3, 4 | 0.2, 0.4, 0.0, 0.2, 0.2 | 46 s to gate 4 | 0.56 deg / 3.4 deg/s | 1 |
+| rabbit, 3.5 m/s (w18, attempt 2) | 0, 1, 2, 3, 4, 5 | 0.2, 0.4, 0.0, 0.2, 0.2, 2.0 | 54 s to gate 5 | 0.56 deg / 3.4 deg/s | 1 |
 | rabbit, 3.5 m/s, flow height above ground (w19) | 0, 1, 2, 4, 5, 6 | 0.1, 0.6, 0.5, 0.8, 0.7, 0.5 | 72 s to gate 6 | 0.49 deg / 6.3 deg/s | 1 |
 
 Gate 2, the obliquely seen turn most earlier flights by sight missed, has been passed in every rabbit
@@ -438,6 +443,18 @@ Replaying the tracker on all six (`liftoff replay-sight`, below) said the contro
 problem — on clean crossings the estimate sits 0.26 m from the arch and the yaw stick never saturates —
 and that 14 of 17 bad crossings were perception or bookkeeping. Six things were fixed; each is a
 `SightParams` field, and the values in brackets restore the old behaviour exactly.
+
+> **These switches are OFF in the shipping build, and this section describes what they do when on.**
+> The first flight that met them in the game went 3/7 with ten times the yaw shake, against 7/7 with
+> them off on the same command, camera and detector; the bisection is in
+> `docs/flight_cards/2026-09-17_strawbale_1..3.md`. They were measured by replaying recorded flights
+> and by the rehearsal, and neither can produce the loop that broke it - a replay cannot steer the
+> drone onto a phantom, and the rehearsal's synthetic detector emits no false positives to start one.
+> The code and every switch remain, because the faults they fix are real and measured. Turn them on
+> with `--sight-set ghost_evidence=other --sight-set ghost_keep_d=12 --sight-set target_life=20
+> --sight-set orphan_d=8 --sight-set frag_gap=15 --sight-set offaxis_max=40 --sight-set
+> offaxis_sig_deg=15 --sight-set look_free=10`. Of the six below, only the pivot/axis bullet and the
+> height-window bullet are live by default.
 
 - **A neighbour no longer deletes the gate being flown at.** The detector reports at most *one* arch per
   frame, but "seen by the camera and not detected for 2 s" was charged to the nearest arch in view on
@@ -587,7 +604,7 @@ two naive alternatives). The flags of the four game flights of 15 Sep 2026 are `
 | `w17_rabbit_a2` | `--sight-speed 2.5 --sight-z-aim 0 --set up_bias=0 --set next_min_hits=10 --set bisector_cap=35` |
 | `w18_rabbit_b1` | `--sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8 --sight-flow-min 0.6` |
 | `w19_rabbit_b2_ground` | the w18 flags and `--sight-flow-alt ground` |
-| `w20_rabbit_rep1`, `w21_rabbit_rep2` (16 Sep) | the w19 flags (`--preset w20`, `--preset w21`) |
+| `w20_rabbit_rep1`, `w21_rabbit_rep2` (15 Sep) | the w19 flags (`--preset w20`, `--preset w21`) |
 
 Every flight was flown on the defaults of its day, so a flight is replayed under the pilot that flew it
 by adding that day's `--set` values (the legacy switches listed above).
@@ -680,8 +697,8 @@ artifacts with a model card are on Hugging Face:
 | `artifacts/ftRobust_best.pt` | imitation, then flight cost with wide domain randomization | the first brain that flew in Liftoff |
 | `artifacts/imJ_best.pt` | imitation of the MLP with the premotor readout | best simulator accuracy |
 | `artifacts/mlp_baseline.pt` | the MLP teacher, no connectome | control experiment |
-| `artifacts/gatenet_best.pt` | GateNet, 5 M parameters, on 43k labelled frames from lap, speed and by-sight flights in both camera setups, relabelled so every arch in view is labelled rather than only the next one | flying by sight (`--vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml`) — four clean 7/7 laps |
-| `artifacts/gatenet_colourblind.pt` | the same frames, trained with hue, saturation, gamma, sharpness, noise and scale augmentation, validated on whole held-out flights | studying generalisation, **not** for flying: it holds 77-80% recall through the whole colour battery where the shipped one drops to 43%, and costs 7 points of recall at home. On an unseen map both are blind |
+| `artifacts/gatenet_best.pt` | GateNet, 5 M parameters, on 42k labelled frames from lap, speed and by-sight flights in both camera setups, relabelled so the NEAREST arch actually in view is labelled - including one already flown through - rather than only the next gate along the course | flying by sight (`--vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml`) — five clean 7/7 laps |
+| `artifacts/gatenet_colourblind.pt` | the same flights, three of them held out whole, trained with hue, saturation, gamma, sharpness, noise and scale augmentation, validated on whole held-out flights | studying generalisation, **not** for flying: it holds 77-80% recall through the whole colour battery where the shipped one drops to 43%, and costs 7 points of recall at home. On an unseen map both are blind |
 
 ## Prior art
 
@@ -907,22 +924,29 @@ Working end to end on this machine: connectome download and graph construction o
 the simulator, the brain model (custom sparse backward, sign constraints), imitation and flight-cost
 training, the Liftoff telemetry and virtual-pad loop, automated calibration, and connectome brains
 that hover, fly patterns, race a taught lap and fly by sight inside Liftoff. The lap brain flies the
-Straw Bale gates at 4.8 m/s (gate 0 to 6 in 38 s, peaks of 8.0 m/s) with a steady horizon, now that the
+Straw Bale gates at 4.8 m/s (gate 0 to 6 in 38 s, peaks of 8.3 m/s) with a steady horizon, now that the
 pilot inverts Liftoff's radial stick deadzone exactly and commands speed through the brain's own
 speed senses; a human lap on the same track runs at 14 m/s.
 
-**By sight the lap is clean.** Four laps have gone 7/7 with the shipped detector and defaults — the
-last of them gate 0 to 6 in 64 s at 3.19 m/s, every arch crossed within 0.4 m of its centre, no
-contacts, with the horizon steady to 0.48 degrees. The fix that bought it was not in the pilot: the
-gate LABELS were wrong, marking a passed or second arch as "nothing", and relabelling every arch
-actually in view was worth three gates a lap.
+**By sight the lap is clean, and repeatably so.** Five flights with the shipped detector and pilot
+have gone 7/7 between gates 0 and 6 (w22, w23, w24, w29, w30); the two that did not were flying the
+two pilot changes this release reverts. The footage above is gate 0 to 6 in 64 s at 3.19 m/s on the
+shipped defaults, every arch crossed within 0.4 m of its centre, no contacts, horizon steady to
+0.48 degrees; the fastest clean lap is w24 at 58 s and 3.35 m/s with `--sight-speed 4.5`.
+
+The fix that bought this was not in the pilot: the gate LABELS were wrong, marking an arch already
+flown through, or a second one in view, as "nothing". Relabelling so the nearest arch actually in
+view is labelled is worth about 1.5 gates against the previous detector's six-flight mean — and, more
+to the point, all the difference in repeatability: three of three flights clean afterwards against
+one of six before (the earlier detector did fly one clean lap, w20, in six tries).
 
 Open, and measured rather than guessed:
 
-- **Another environment.** On Pine Valley the detector fires on 2.7-3.0% of frames, below its own
-  8.7% false-positive rate at home, and its most confident detections there are the game's countdown
-  ring. Strong colour augmentation removed the palette dependence completely (43% -> 80% recall under
-  a hue rotation) and changed nothing on the unseen map: a detector that has seen one gate *type*
+- **Another environment.** On Pine Valley the shipped detector fires on 3.0% of frames (pine1) and
+  6.2% (pine2), below its own 11.6% false-positive rate on gate-less frames at home, and its most
+  confident detections there are tree trunks and foliage. Strong colour augmentation removed the
+  palette dependence completely (51% -> 79% recall under a 180 degree hue rotation, 43% -> 80% in
+  grayscale) and changed nothing on the unseen map: a detector that has seen one gate *type*
   does not recognise another. It needs a second gate type in training, which needs a flight that
   completes a course it cannot yet see. `haltere vision beacon` is the way out of that circle.
 - **Course shapes the pilot has never met.** An offline bench (`haltere vision oddcourse`) flies ten
