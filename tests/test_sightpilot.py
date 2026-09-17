@@ -398,7 +398,7 @@ def test_a_frame_that_showed_another_arch_on_the_same_bearing_still_counts_again
     near, far = np.array([20.0, 0.0, 2.7]), np.array([24.15, 6.47, 2.7])         # 15 deg apart, both in view
     out = {}
     for name, fed in (('off_bearing', far), ('same_bearing', np.array([34.0, 0.0, 2.7]))):
-        rig = Rig(ScriptVision(lambda t, f=fed: f), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0))
+        rig = Rig(ScriptVision(lambda t, f=fed: f), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0, ghost_evidence='other'))
         rig.hover_at((0.0, 0.0, 2.0))
         T = _crafted_target(rig, near, min_a=math.inf)
         for _ in range(400):
@@ -414,7 +414,8 @@ def test_a_target_nothing_sees_any_more_is_dropped_but_not_while_the_detector_is
     far = np.array([40.0, 0.0, 2.7])                       # beyond ghost_range: the ghost rule cannot touch it
 
     def run(target_life, feed):
-        rig = Rig(ScriptVision(feed), SightParams(yaw_rate=3.8, range_corr=None, target_life=target_life))
+        rig = Rig(ScriptVision(feed), SightParams(yaw_rate=3.8, range_corr=None, target_life=target_life,
+                                             ghost_keep_d=12.0, ghost_evidence='other', offaxis_max=40.0))
         rig.hover_at((0.0, 0.0, 2.0))
         T = _crafted_target(rig, far, min_a=math.inf)
         for _ in range(2500):                              # 25 s
@@ -428,7 +429,8 @@ def test_a_target_nothing_sees_any_more_is_dropped_but_not_while_the_detector_is
     assert sp.target is T and sp.stale_targets == 0
     sp, T = run(20.0, lambda t: None)                      # ScriptVision still delivers empty frames: alive
     assert sp.target is not T and sp.stale_targets == 1
-    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, target_life=20.0))
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, target_life=20.0,
+                                                        ghost_keep_d=12.0, ghost_evidence='other'))
     rig.hover_at((0.0, 0.0, 2.0))
     T = _crafted_target(rig, far, min_a=math.inf)
     rig.pilot.vision.next_t = 1e9                          # the detector stops sending frames altogether
@@ -440,7 +442,7 @@ def test_a_target_nothing_sees_any_more_is_dropped_but_not_while_the_detector_is
 def test_the_same_arch_passed_twice_under_two_ids_counts_one_gate():
     # an orphan books the arch from its (short) estimate and the surviving track books it again a moment later
     arch, far = np.array([22.0, 0.0, 2.7]), np.array([60.0, 0.0, 6.7])
-    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0))
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0, orphan_d=8.0))
     rig.hover_at((2.0, 0.0, 2.0))
     sp = rig.sp
     short = _crafted_target(rig, np.array([12.0, 0.0, 2.7]), min_a=math.inf)     # the same arch, 10 m short
@@ -461,7 +463,7 @@ def test_the_same_arch_passed_twice_under_two_ids_counts_one_gate():
 
 def test_a_dropped_then_passed_track_registers_a_travel_pass_without_taking_the_target():
     arch, nxt = np.array([10.0, 0.0, 2.7]), np.array([40.0, 0.0, 2.7])
-    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0))
+    rig = Rig(ScriptVision(lambda t: None), SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=0.0, orphan_d=8.0))
     rig.hover_at((2.0, 0.0, 2.0))
     sp = rig.sp
     T = _crafted_target(rig, arch, min_a=math.inf)
@@ -504,7 +506,7 @@ def test_the_altitude_floor_stays_on_the_last_passage_height():
     # only the ceiling rides the grade line: a floor that climbed with it would push the approach UP (+1.9 m on w21),
     # which is the failure the ceiling was written against
     low = np.array([20.0, 0.0, 2.7])                                    # an arch whose passage point is at 1.2 m
-    P = SightParams(yaw_rate=3.8, range_corr=None)
+    P = SightParams(yaw_rate=3.8, range_corr=None, ghost_keep_d=12.0, ghost_evidence='other')
     rig = Rig(ScriptVision(lambda t: None), P)
     rig.hover_at((0.0, 0.0, 2.0))
     sp = rig.sp
@@ -535,7 +537,7 @@ def test_a_fragment_beyond_the_target_is_neither_selected_nor_used_as_the_next_g
         sp._axis(ts[0], near, p, 0.5, 0.01)
         return sp, ts, p
 
-    sp, ts, p = build()
+    sp, ts, p = build(frag_gap=15.0)
     assert sp.next is None                                     # not a gate of its own: it is 3 m, not 24-35 m, away
     assert not sp._ahead_fragment(ts[0], ts[1], p) and sp._ahead_fragment(ts[1], ts[0], p)
     ts[0].t_last = -5.0                                        # the target goes stale, the fragment is seen now
@@ -559,7 +561,7 @@ def test_a_detection_far_off_the_optical_axis_does_not_move_the_target():
         sp._intake(now, det, (pos, R), pos)
 
     for off, moves in ((50.0, False), (10.0, True)):
-        sp = SightPilot(type('H', (), {'vision': type('V', (), {'cam': cam})()})(), SightParams(range_corr=None))
+        sp = SightPilot(type('H', (), {'vision': type('V', (), {'cam': cam})()})(), SightParams(range_corr=None, offaxis_max=40.0))
         sp._full_init(np.zeros(3), 0.0, 0.0)
         pos, R = np.array([0.0, 0.0, 2.0]), np.eye(3)
         before = sp.rej_offaxis
@@ -572,7 +574,7 @@ def test_an_arch_level_with_the_drone_dead_ahead_is_not_cut_off_axis():
     # the off-axis angle is the box's image radius, and the camera's 30 deg uptilt already spends 30 deg of it on an
     # arch at the drone's own height straight ahead: the cut has to sit above that, or the commonest geometry is lost
     cam = CAM.scaled(IN_W, IN_H)
-    P = SightParams(range_corr=None)
+    P = SightParams(range_corr=None, offaxis_max=40.0)
     assert P.offaxis_max > 30.0 + 5.0, P.offaxis_max
     for dx, dy in ((15.0, 0.0), (15.0, 4.0), (8.0, 0.0)):                 # dead ahead, 15 deg off, and closer in
         sp = SightPilot(type('H', (), {'vision': type('V', (), {'cam': cam})()})(), P)

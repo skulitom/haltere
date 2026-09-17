@@ -100,9 +100,9 @@ class SightParams:
     # of w16 the pilot then sat on an unseen estimate for 45 s. At 40 deg that is 11 %, at 45 deg 6 %; both fix w16,
     # and 40 is the one the rehearsal likes (the synthetic detector has no off-axis degradation, so every sighting
     # let in there is a good one and the pilot commits to the turn out of gate 1 harder the wider this is opened).
-    offaxis_max: float = 40.0             # a detection further than this off the optical axis is not used (0 = off);
+    offaxis_max: float = 0.0              # a detection further than this off the optical axis is not used (0 = off);
                                           # 40 deg = 84 px of the 184 to the corner: the tail, not the bulk
-    offaxis_sig_deg: float = 15.0         # its covariance is scaled by 1 + off_axis_deg / this (0 = off)
+    offaxis_sig_deg: float = 0.0          # its covariance is scaled by 1 + off_axis_deg / this (0 = off)
     q: float = 0.02                       # m^2/s process noise per track
     perp_gate: tuple = (1.5, 0.12)        # association: ray passes within max(a, b * along) of the estimate
     log_gate: float = 0.45                # |ln(range / along)| for confirmed tracks
@@ -118,21 +118,21 @@ class SightParams:
     # the target is exempt from conf_life, and the ghost rule cannot retire it beyond ghost_range or while
     # ghost_keep_d holds it: nothing then retires an estimate that is simply never seen again (in replay the pilot
     # flew at one for 45 s). Time while the detector is stalled does not count: a remembered target is flown blind.
-    target_life: float = 20.0             # a confirmed target unseen this long, the detector alive, is dropped
+    target_life: float = 0.0              # a confirmed target unseen this long, the detector alive, is dropped
                                           # (0 = off; the longest honest gap over the six game flights is 15 s)
     passed_life: float = 90.0
     ghost_s: float = 2.0
     ghost_range: tuple = (6.0, 30.0)
     # the detector reports at most ONE arch per frame, so an arch in view is "unseen" on every frame that showed the
     # other one: the gate being flown at collected 2 s of it and was deleted 39 times in the game (task a)
-    ghost_keep_d: float = 12.0            # never ghost the current target inside this horizontal range (0 = legacy)
-    ghost_evidence: str = 'other'         # what a fresh frame must show to charge an in-view estimate: 'any' (legacy,
+    ghost_keep_d: float = 0.0             # never ghost the current target inside this horizontal range (0 = legacy)
+    ghost_evidence: str = 'any'           # what a fresh frame must show to charge an in-view estimate: 'any' (legacy,
                                           # every frame), 'other' (its sighting went to another track off this one's
                                           # bearing), 'empty_or_other' (that, or the frame held no arch at all)
     ghost_other_deg: float = 4.0          # "off this one's bearing" = the rays differ by more than this
     ghost_s_hits: int = 20                # a confirmed track earns a longer ghost timer per this many sightings ...
     ghost_s_max: float = 5.0              # ... up to this (one with 88 hits died 2 s before its gate; 0 = legacy)
-    orphan_d: float = 8.0                 # a dropped confirmed track that came this close was a gate, not a phantom:
+    orphan_d: float = 0.0                 # a dropped confirmed track that came this close was a gate, not a phantom:
     orphan_a: float = 1.5                 # ... once the drone is this far past it along its line ...
     orphan_lat: float = 5.0               # ... and within this of the line, register a 'travel' pass (0 = legacy)
     orphan_dedup_d: float = 15.0          # any pass within this of the one on the books is the same arch under a
@@ -160,7 +160,7 @@ class SightParams:
                                           # 24-35 m apart, so anything nearer is a fragment of the target (task d)
     # a displaced sighting spawns a second confirmed track 5-10 m beyond the target along the same bearing; it is the
     # same arch badly ranged, so it must not be selected, act as the next gate, or survive (task d)
-    frag_gap: float = 15.0                # a confirmed track this far ahead of the target along its ray is its
+    frag_gap: float = 0.0                 # a confirmed track this far ahead of the target along its ray is its
                                           # fragment (0 = off) ...
     frag_gap_frac: float = 0.6            # ... or this much of the course's own measured gate spacing, once known
     frag_lat_ahead: float = 4.0           # ... if it is also this close to the ray
@@ -294,7 +294,21 @@ class SightParams:
     yaw_slew: float = 3.0                 # stick per s
     # detector quality is governed by how far off the optical axis the arch is, and extra yaw is free (the brain flies
     # a body-frame goal): keep the nose on the target instead of letting it sit 35 deg out of frame (task e)
-    look_free: float = 10.0               # bearing beyond which the nose starts following the target (legacy 35)
+    look_free: float = 35.0               # bearing beyond which the nose starts following the target (legacy 35)
+    # THE EIGHT FIELDS ABOVE AND BELOW MARKED "off by default" ARE THE 2026-09-16 TRACKER FIXES, AND THEY ARE OFF.
+    # They were measured by replaying six recorded flights and by the rehearsal, and both said they helped. The game
+    # said otherwise the first time it saw them: 3/7 gates with yaw shake at 21 deg/s, against 7/7 and 2.4 deg/s with
+    # them off, on the same command, camera and detector (w27/w29, docs/flight_cards/2026-09-17_*).
+    #
+    # What neither harness could show: a replay is open loop - the trajectory is already recorded, so a target on a
+    # phantom cannot steer the drone anywhere - and the rehearsal's synthetic detector emits no false positives at
+    # all. The failure needs both. A phantom becomes the target, the target switch swings the rabbit's heading, the
+    # nose follows it, the detections smear across bearings, and that builds the next phantom. In the game the pilot
+    # confirmed 17 phantoms to the good lap's 8 and declared 7 of its 11 passes at no arch at all.
+    #
+    # The code stays, and every switch still works, because the faults these fixed are real and measured (one arch
+    # booking two gates, a target nothing could see never retiring). What they need before they come back on is a
+    # rehearsal detector that lies the way the real one does.
     look_max: float = 45.0                # ... up to this much lead (legacy 25)
     look_tau: float = 0.3
     look_kappa: float = 0.20              # the look is given up as the rabbit's curvature approaches this (legacy .04)
