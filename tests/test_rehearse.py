@@ -286,7 +286,11 @@ def _scripted_flight(detector, seed, v=3.2, dt=0.02, wobble_deg=8.0, gates=None)
             'seconds': poses[-1][0], 'false_box_frac': (st['phantoms'] + st['clutter']) / max(boxes, 1),
             'false_per_frame': (st['phantoms'] + st['clutter']) / max(st['frames'], 1),
             'no_arch_points': [np.asarray(s['m'], dtype=float)
-                               for s in res['sightings'] if 'm' in s and s['arch'] is None]}
+                               for s in res['sightings'] if 'm' in s and s['arch'] is None],
+            'off_deg': {k: [math.degrees(math.atan(math.hypot(s['u'] - vision.cam.width / 2,
+                                                              s['v'] - vision.cam.height / 2) / vision.cam.f))
+                            for s in res['sightings'] if 'm' in s and (s['arch'] is None) == (k == 'false')]
+                        for k in ('false', 'arch')}}
 
 
 def _grouped_fraction(runs, radius=4.0):
@@ -359,6 +363,12 @@ def test_the_calibrated_clutter_lies_at_the_rate_the_game_logs_measured():
     assert 4 <= np.median(hits) <= 12 and hits[0] >= 12
     over = sum(r['stats']['clutter_over_arch'] for r in runs) / max(sum(r['stats']['detected'] for r in runs), 1)
     assert 0.018 <= over <= 0.159                # the box an arch would have had, taken by something else
+    # where in the image they land, which is what SightParams.offaxis_max = 40 (one of the eight switches) acts on:
+    # place them further out than the game does and that switch deletes them, which is not what it did in the game
+    false = [a for r in runs for a in r['off_deg']['false']]
+    arch = [a for r in runs for a in r['off_deg']['arch']]
+    assert 27.0 <= np.median(false) <= 39.0 and 0.25 <= np.mean(np.asarray(false) > 40.0) <= 0.45
+    assert np.median(arch) < np.median(false) and np.mean(np.asarray(arch) > 40.0) < 0.20
 
 
 def test_the_rehearsal_reports_its_phantoms(tmp_path):

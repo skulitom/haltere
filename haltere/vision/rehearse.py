@@ -80,25 +80,35 @@ class ClutterModel:
         as the broken ones), built from 4-8 sightings each, living 3-9 s, sitting 12-27 m from the drone and
         7-43 m from the nearest arch;
       * the boxes are confident (median p 0.77-0.98) and 15-56 px wide (median 29), which the pilot's 4 m width
-        conversion reads as 6-27 m of range (median 12-22).
+        conversion reads as 6-27 m of range (median 12-22);
+      * WHERE in the image they sit decides what ``SightParams.offaxis_max`` does to them, so it is calibrated
+        too: their off-axis angle has a median of 27-39 deg and 25-45 % of them lie beyond the 40 deg cut, against
+        23-25 deg and 7-15 % for the boxes that are on an arch.
 
-    The defaults are ``n_per_100m`` and ``fire`` set together so that an open-loop pass along Straw Bale at the
-    pace the pilot keeps (the scripted-path harness of ``tests/test_rehearse.py``) lands inside every one of those
-    measured spreads at once: 8 % of detector frames carry a false box (games 4.2-13.9 %), 11 % of the boxes
-    reported are false (games 6.7-26.9 %), 4 % of the frames where an arch WAS found hand its box to an object
-    instead (games 1.8-15.9 %), 71-77 % of the false boxes are placed on the same thing as two or more others
-    (games 62-92 %; ``false_pos``, at ten times its shipped rate, manages 4-6 %), and the tracker confirms 6.2
-    phantoms per 100 s (games 3.3-7.1) of a median 8 sightings each, the largest 18 (games: a median of 4-8, the
-    largest 13-34).
+    The defaults are set so that an open-loop pass along Straw Bale at the pace the game keeps (the scripted-path
+    harness of ``tests/test_rehearse.py``, 3.2 m/s) lands inside every one of those measured spreads at once:
+    9 % of detector frames carry a false box (games 4.2-13.9 %), 13 % of the boxes reported are false (games
+    6.7-26.9 %), 4 % of the frames where an arch WAS found hand its box to an object instead (the games' nearest
+    equivalent: the box sat on something else on 1.8-15.9 % of the frames that had an arch in view), 86 % of the
+    false boxes are placed on the same thing as two or more others (games 62-92 %; ``false_pos``, at ten times its
+    shipped rate, manages 4-6 %), their off-axis angle has a median of 38 deg with 43 % beyond 40 deg (games 27-39
+    and 25-45 %), and the tracker confirms 1.7 phantoms per 100 m flown (games 1.19-2.19) = 5.4 per 100 s (games
+    3.3-7.1). They are more persistent than the game's, which is the one target missed: a median of 11 sightings
+    each against 4-8, with the largest 19 against 13-34.
+
+    Per 100 m flown, not only per second, because a closed-loop rehearsal flies this course at about 1.8 m/s
+    against the game's 2.8-3.6, so the same per-frame rate hands its pilot nearly twice the false sightings per
+    metre. ``--clutter-set fire=0.10`` puts the per-metre pressure back where the game has it.
     """
     n_per_100m: float = 3.0          # objects per 100 m of course line (Straw Bale is 205 m -> 6 of them)
-    lateral_m: tuple = (4.0, 22.0)   # placed this far to either side of the course line ...
+    lateral_m: tuple = (4.0, 14.0)   # placed this far to either side of the course line ...
     min_arch_m: float = 8.0          # ... and never within this of an arch's centre (nearer than that the tracker
                                      # folds the sightings into the arch's own track, which is range error, not a
                                      # phantom: the measured phantoms sat 7-43 m from the nearest arch)
-    up_m: tuple = (-0.5, 4.0)        # height above the course's own passage height where it stands
+    up_m: tuple = (1.0, 8.0)         # height above the course's own passage height where it stands: a tent, a
+                                     # banner or a tree, not a mark on the ground
     size_m: tuple = (3.0, 5.5)       # apparent width, which is what the pilot's 4 m conversion ranges it by
-    fire: float = 0.20               # per-frame probability that one object in view is reported
+    fire: float = 0.16               # per-frame probability that one object in view is reported
     range_m: tuple = (3.0, 35.0)     # only reported within this range (and above the detector's width floor)
     beats_arch: float = 0.35         # when an arch was found in the same frame, this often the object wins the box
     conf_log10: tuple = (-1.0, 0.8)  # confidence 1 - 10 ** normal(mu, sigma), clipped to [0.5, 0.9999]
