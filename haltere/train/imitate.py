@@ -94,9 +94,11 @@ def imitate(cfg: ExperimentConfig, ic: ImitateConfig) -> Path:
 
     with open(run_dir / 'config.json', 'w', encoding='utf-8') as f:
         json.dump({'experiment': cfg.to_dict(), 'imitate': ic.__dict__}, f, indent=2)
-    log_f = open(run_dir / 'log.csv', 'a', newline='', encoding='utf-8')
+    log_path = run_dir / 'log.csv'
+    new_log = not log_path.exists() or log_path.stat().st_size == 0
+    log_f = open(log_path, 'a', newline='', encoding='utf-8')
     log = csv.writer(log_f)
-    if start_iter == 0:
+    if new_log:        # not `start_iter == 0`: a run resumed into a fresh directory needs its header too
         log.writerow(['iter', 'mse', 'r2_thr', 'r2_roll', 'r2_pitch', 'r2_yaw', 'student_frac', 'grad_norm', 'time'])
 
     vs = vehicle.wrap(task.reset_all(ic.difficulty))

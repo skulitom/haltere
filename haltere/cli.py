@@ -120,6 +120,9 @@ def cmd_summarize(a):
         log = run / 'log.csv'
         if log.exists():
             rows = list(csv.DictReader(open(log, encoding='utf-8')))
+            if rows and 'iter' not in rows[0]:
+                print('  log.csv has no header (written by a resumed run before that was fixed); skipping it')
+                rows = []
             if rows:
                 step = max(1, len(rows) // a.rows)
                 sel = rows[::step] + ([rows[-1]] if (len(rows) - 1) % step else [])
@@ -446,7 +449,8 @@ def main(argv=None):
     q.add_argument('dataset')
     q.add_argument('--observations', required=True, help='JSON list of observations')
     q.add_argument('--camera', default='configs/camera.yaml')
-    q.add_argument('--out', default='configs/gates_strawbale.json')
+    q.add_argument('--out', required=True, help='gate list to write, e.g. configs/gates_<track>.json (no '
+                   'default: defaulting to the home course overwrote its gates when another track was built)')
     q = vs.add_parser('beacon', help="gate positions from Liftoff's own next-checkpoint marker (automatic; needs a "
                                      'flight that actually progresses through the checkpoints)')
     q.add_argument('dataset')

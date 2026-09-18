@@ -863,8 +863,9 @@ def describe(summary: dict, name: str = 'rehearsal') -> str:
             continue
         gj = r['goal_jumps']
         fg = r['far_goal']
+        zr = r.get('z_range') or [float('nan'), float('nan')]   # absent under a second airborne
         s = (f'  attempt {k + 1}: slow (<1 m/s) {r["slow_s"]:.1f} s, stopped (<0.3 m/s) {r["crawl_s"]:.1f} s, height '
-             f'{r["z_range"][0]:.1f}-{r["z_range"][1]:.1f} m | goal jumps: {gj["target_gt_0.5m"]} > 0.5 m, '
+             f'{zr[0]:.1f}-{zr[1]:.1f} m | goal jumps: {gj["target_gt_0.5m"]} > 0.5 m, '
              f'{gj["target_gt_2m"]} > 2 m (max {gj["target_max_m"]:.1f} m), encoded goal steps > 0.25: '
              f'{gj["encoded_gt_0.25"]} (p99 {gj["encoded_p99"]:.3f}), goal distance median {gj["body_goal_median_m"]:.1f} m | '
              f'goal beyond 8 m for {fg["s"]:.1f} s (target height {fg["target_dz_mean"]:+.1f} m relative to the drone, body goal z '
