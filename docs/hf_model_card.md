@@ -34,6 +34,11 @@ Code, training pipeline, Liftoff integration and videos: https://github.com/skul
 with a steady horizon (roll and pitch rate shake 2 deg/s, against 26 before the pilot inverted Liftoff's
 radial stick deadzone exactly).*
 
+![The whole Straw Bale lap by sight](liftoff_by_sight_v05.gif)
+
+*v0.5.0: the whole lap by sight at four times speed - gates 0 to 6 in 64 s, every arch within 0.4 m
+of its centre, no contacts. Nothing in the loop knows where the gates are.*
+
 ![Flying by sight through the two hill gates](liftoff_sight_hill.gif)
 
 *By sight: the gate detector finds the arches in the FPV image and the rabbit pilot turns them into a
@@ -59,7 +64,7 @@ smooth line the brain follows; six of the seven gates in one run, both hill gate
 | `imJ_best.pt` | imitation of the MLP controller with the premotor readout | |
 | `mlp_baseline.pt` | the MLP teacher (no connectome) | control experiment |
 | `gatenet_best.pt` | gate detector (5 M parameters) on the FPV image, 42k labelled frames | `--vision gatenet_best.pt --camera camera_seat.yaml --sight rabbit` |
-| `gatenet_colourblind.pt` | the same flights, three held out whole, with hue/saturation/gamma/sharpness/scale augmentation | studying generalisation, not flying — see the results table |
+| `gatenet_colourblind.pt` | 43,263 frames with run29/30/31 held out whole (gatenet9 saw 41,842), with hue/saturation/gamma/sharpness/scale augmentation | studying generalisation, not flying — see the results table |
 | `liftoff.yaml` | the Liftoff mapping: stick and gyro signs, hover point, and the radial stick-deadzone model | `--liftoff-config liftoff.yaml` |
 | `track_strawbale.yaml` | the taught Straw Bale Field Day lap (174 waypoints) | `--waypoints-file`, `liftoff score --track` |
 | `gates_strawbale.json` | the lap's seven gates (position, heading) | `liftoff score --gates` |
@@ -68,8 +73,8 @@ smooth line the brain follows; six of the seven gates in one run, both hill gate
 
 The checkpoints are slim (parameters only, about 12 MB); the graph is loaded next to them. Full
 checkpoints with optimizer state are on the
-[GitHub releases](https://github.com/skulitom/haltere/releases) (v0.4.0 has the videos of the fast lap and of
-the flight by sight).
+[GitHub releases](https://github.com/skulitom/haltere/releases) (v0.5.0 has the video of the whole lap by sight,
+v0.4.0 the fast lap).
 
 ## Results
 
@@ -79,9 +84,9 @@ the flight by sight).
 | `imJ_best` (imitation) | 0.22 m, 95% | drifts 1.4 m on the physics stand-in |
 | `ftRobust_best` (+ domain randomization) | 0.20 m, 99.6% | 2 m hover, 0.34 m mean error over 40 s; 3 m square pattern |
 | `ftSmooth_best` (+ latency, smoothness) | 0.30 m, 95% (50 ms delay) | 2 m hover, 0.35 m mean error with a quarter of the stick jitter; orbit (0.75 m tracking error at 0.8 m/s) and climb-and-dive (1.1 m at about 1 m/s), no crashes; taught lap at 1.2 m/s with 0.9-1.0 m error |
-| `ftPath2_best` (+ moving targets) | 0.37 m, 80% static; 0.76 m following a 1 m/s target, 3.1 m at 2 m/s | taught race lap: the seven gates in 38 s at 4.8 m/s (peaks 8.0 m/s) with `--flow-gain 0.5`, no contact, roll and pitch rate shake 2 deg/s; **by sight with the rabbit pilot, all seven gates in 64 s at 3.19 m/s**, every arch within 0.4 m of centre, no contacts between gates 0 and 6, yaw shake 2.0 deg/s |
+| `ftPath2_best` (+ moving targets) | 0.37 m, 80% static; 0.76 m following a 1 m/s target, 3.1 m at 2 m/s | taught race lap: the seven gates in 38 s at 4.8 m/s (peaks 8.3 m/s) with `--flow-gain 0.5`, no contact, roll and pitch rate shake 2 deg/s; **by sight with the rabbit pilot, all seven gates in 64 s at 3.19 m/s**, every arch within 0.4 m of centre, no contacts between gates 0 and 6, yaw shake 2.0 deg/s |
 | `gatenet_best` (gate detector, 5 M parameters) | on whole flights recorded AFTER it was trained: 85.6% recall, centre error 2.9 px at 320 wide, 11.6% false positives on gate-less frames (9.6% pooled over all the gate-less frames of those flights). (An earlier card said 98% on "a held-out tenth" — that split took single frames from the same flights, and frames 130 ms apart are the same picture, so it could not fall) | flies by sight: five clean 7/7 laps of Straw Bale Field Day (clean between gates 0 and 6), the shipped-defaults one gates 0-6 in 64 s at 3.19 m/s with every arch within 0.4 m of centre and no contacts; the fastest 58 s at 3.35 m/s |
-| `gatenet_colourblind` (same frames, strong augmentation) | 78.7% recall as itself and **77-80% through the whole colour battery** — grayscale, desaturation, hue 60 and 180, darkness, gamma, blur — where `gatenet_best` falls to 43.1% in grayscale and 51.1% at hue+180 with 40.6 px of centre error | **not for flying** (7 points of in-domain recall). On an unseen map (Pine Valley) it fires on 2.7% of frames against the shipped one's 3.0%, both below their false-positive rates at home (8.7% and 11.6%): colour invariance was necessary and is not sufficient |
+| `gatenet_colourblind` (43,263 frames, three flights held out, strong augmentation) | 78.7% recall as itself and **77-80% through the whole colour battery** — grayscale, desaturation, hue 60 and 180, darkness, gamma, blur — where `gatenet_best` falls to 43.1% in grayscale and 51.1% at hue+180 with 40.6 px of centre error | **not for flying** (7 points of in-domain recall). On an unseen map (Pine Valley) it fires on 2.7% of frames against the shipped one's 3.0%, both below their false-positive rates at home (8.7% and 11.6%): colour invariance was necessary and is not sufficient |
 
 Full difficulty: 25 degrees of tilt, 90 deg/s rotation, 1 m/s velocity and 1 m offset at the start,
 targets anywhere in a 6 x 6 x 2 m box, physics jittered by 35%.

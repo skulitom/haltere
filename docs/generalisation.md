@@ -81,8 +81,15 @@ today and cannot be bought back later.
 | **D — detector** | Belongs to the checkpoint: `RANGE_CORR`, the noise model, `p_min` | Ships with the `.pt`, refitted whenever the detector changes, frozen before a sealed flight |
 | **C — course** | Gate width, gate spacing, gate height profile, turn direction | **Zero hand-set values on a sealed track.** Each of these is a bug until it estimates itself |
 
+**The D rule is not met by what ships.** `sightpilot.RANGE_CORR` was fitted to gatenet8, and v0.5.0
+flies gatenet9 on it. The five clean laps were flown with exactly that pairing, so it is the
+measured-good combination - but it is an inherited table, not a refitted one, and `vision rangefit`
+gives gatenet9's own (it reads 0.90 at 13 m and 0.89 at 18 m where the shipped table reads 0.99 and
+1.08). Refitting it is a flight-tested change, not a free one.
+
 The course-knowledge register — every place a Straw Bale fact is currently baked in, and what has
-to replace it — is tracked in the issue list rather than here, because it shrinks as the work lands.
+to replace it — is the odd-course bench (`haltere vision oddcourse`), one synthetic course per
+assumption, rather than a list here, because it shrinks as the work lands.
 
 ## 5. Training-side hold-out
 
@@ -103,7 +110,7 @@ numbers still have to be checked by hand.
 
 ## 6. What the first round measured (2026-09-16)
 
-`gatenet10`: the same 43,263 frames as gatenet9, `--augment strong`, `--holdout run29 run30 run31`,
+`gatenet10`: 43,263 frames (gatenet9 saw 41,842), `--augment strong`, `--holdout run29 run30 run31`,
 16 epochs from scratch. The augmentation did exactly what it was aimed at, and it was not enough.
 
 | on held-out home flights | gatenet9 | gatenet10 |

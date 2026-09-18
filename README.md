@@ -36,7 +36,7 @@ Liftoff really processes a gamepad stick.*
 
 Earlier flights. The first one, take-off and a hover 2 m above the reset point, mean error 0.34 m
 over 40 s ([video](docs/liftoff_hover.mp4), recorded with
-`haltere liftoff fly runs/ftRobust_best.pt --record ...`), and a 3 m square pattern
+`haltere liftoff fly artifacts/ftRobust_best.pt --record ...`), and a 3 m square pattern
 ([video](docs/liftoff_square.mp4)):
 
 ![The fly brain flying the drone in Liftoff](docs/liftoff_hover.gif)
@@ -201,9 +201,9 @@ Copy the fitted `quad`/`ctl` sections into `configs/train.yaml`, train (or fine-
 then:
 
 ```bash
-haltere liftoff fly runs/imJ_best.pt --offset 0,0,2            # hover 2 m above the reset point
-haltere liftoff fly runs/imJ_best.pt --waypoints "3,0,2;3,3,2;0,3,2;0,0,2" --dwell 4
-haltere liftoff fly runs/imJ_best.pt --dry-run                  # brain runs on telemetry, no pad output
+haltere liftoff fly artifacts/imJ_best.pt --offset 0,0,2            # hover 2 m above the reset point
+haltere liftoff fly artifacts/imJ_best.pt --waypoints "3,0,2;3,3,2;0,3,2;0,0,2" --dwell 4
+haltere liftoff fly artifacts/imJ_best.pt --dry-run                  # brain runs on telemetry, no pad output
 ```
 
 Reset the drone in Liftoff (with it on the ground) to re-zero the pilot's reference frame.
@@ -216,7 +216,7 @@ a freestyle line is any path you like, and both are taught by flying them once y
 ```bash
 haltere liftoff record --seconds 90 --out data/liftoff/track.csv      # fly the track manually, reset first
 haltere liftoff waypoints --csv data/liftoff/track.csv --spacing 3 --out configs/track.yaml
-haltere liftoff fly runs/imJ_best.pt --waypoints-file configs/track.yaml --advance-radius 1.0 \
+haltere liftoff fly artifacts/imJ_best.pt --waypoints-file configs/track.yaml --advance-radius 1.0 \
         --record docs/liftoff_race.mp4 --show
 ```
 
@@ -254,7 +254,9 @@ from the screen and composes it with a live panel of the brain's activity into a
 separate process so the 100 Hz control loop is never slowed down; `--show` opens that panel in a
 window while you watch the game. `--capture-rect x,y,w,h` records a screen region instead of a window.
 
-**Which checkpoint to fly in Liftoff: `runs/ftRobust_best.pt`.** It is the imitation brain
+**The first brain to fly in Liftoff was `artifacts/ftRobust_best.pt`** (for laps and flying by sight
+use `artifacts/ftPath2_best.pt`, for hover and patterns `artifacts/ftSmooth_best.pt` - see the
+checkpoint table). It is the imitation brain
 fine-tuned with wide domain randomization (thrust, thrust curve, motor lag, drag, yaw torque and
 the per-axis controller gains all jittered by 35 to 40%, `configs/train_premotor_robust.yaml`). On
 the stand-in, whose physics were never fitted, it holds 0.6 m from the target without crashing,
@@ -271,14 +273,14 @@ vision pipeline (`haltere/vision/`) replaces the telemetry goal with one that co
 image, so the fly flies toward what it sees:
 
 ```bash
-haltere liftoff fly runs/ftPath2_best.pt --waypoints-file configs/track_strawbale.yaml --path-speed 1.5     --face-travel 0.8 --face-ahead 6 --face-wobble 35 --seconds 280 --dataset data/vision/run11   # lap frames + pose, camera sweeping
+haltere liftoff fly artifacts/ftPath2_best.pt --waypoints-file configs/track_strawbale.yaml --path-speed 1.5     --face-travel 0.8 --face-ahead 6 --face-wobble 35 --seconds 280 --dataset data/vision/run11   # lap frames + pose, camera sweeping
 haltere vision calibrate data/vision/run11 --tilts 20,25,30,35 --out configs/camera_seat.yaml    # focal length and tilt of the FPV camera
 haltere vision gates-from-frames data/vision/run2 --frames 105,240,338,468,578,700,805    # passage frames -> gate list
 haltere vision label data/vision/run11 --camera configs/camera_seat.yaml   # project the next gate into every frame
 haltere vision train data/vision/run9 data/vision/run10 data/vision/run11 --out runs/gatenet --max-gpu-temp 70
 haltere vision eval runs/gatenet/best.pt data/vision/run10       # accuracy, false positives, centre/range bias per distance
 haltere vision inspect data/vision/run10 --ckpt runs/gatenet/best.pt     # labels (green) and predictions (red) on frames
-haltere liftoff fly runs/ftPath2_best.pt --vision runs/gatenet/best.pt --camera configs/camera_seat.yaml     --face-travel 0.8 --dataset data/vision/run12   # fly by sight, recording the frames for the next round
+haltere liftoff fly artifacts/ftPath2_best.pt --vision runs/gatenet/best.pt --camera configs/camera_seat.yaml     --face-travel 0.8 --dataset data/vision/run12   # fly by sight, recording the frames for the next round
 haltere vision passes data/vision/run12                          # which gates that flight went through
 ```
 
@@ -316,8 +318,8 @@ wider than at the centre). Retrained on the flights' own frames plus a sweeping 
 detector of that round agreed with the projected labels on 98% of a held-out tenth of the frames
 (centre error 4 px at 320 wide) - a number that could not fall, because that split took single frames
 out of the same flights, and frames 130 ms apart are the same picture. Measured on whole flights
-recorded after it was trained, the detector that ships now holds 85.6% recall at 2.9 px. It no longer
-hallucinates gates on the flights' gate-less views and places the
+recorded after it was trained, the detector that ships now holds 85.6% recall at 2.9 px, and still
+fires on 11.6% of gate-less frames - false positives the tracker has to absorb. It places the
 gates within 8 px on their frames. Every flight by sight records its frames with
 the pose, and the gate list labels them, so each round of flying adds exactly the views the last
 round got wrong. The detector is no longer the weak part; the pilot's habits are. The flights
@@ -392,10 +394,10 @@ for the fake, which is how it was built.
 The by-sight pilot has its own rehearsal, entirely inside the simulator and faster than real time:
 
 ```bash
-haltere vision rehearse runs/ftPath2/best.pt --camera configs/camera_seat.yaml \
+haltere vision rehearse artifacts/ftPath2_best.pt --camera configs/camera_seat.yaml \
     --gates configs/gates_strawbale.json --seconds 120 --log data/rehearse/sight.csv
-haltere vision rehearse runs/ftPath2/best.pt --set vision_speed=3 --seed 1   # a pilot change, another noise draw
-haltere vision rehearse runs/ftPath2/best.pt --sight rabbit --clutter --tracks   # with false positives that stick
+haltere vision rehearse artifacts/ftPath2_best.pt --set vision_speed=3 --seed 1   # a pilot change, another noise draw
+haltere vision rehearse artifacts/ftPath2_best.pt --sight rabbit --clutter --tracks   # with false positives that stick
 ```
 
 The brain flies the simulated drone (its training physics and 60 ms latency) through the real
@@ -439,7 +441,7 @@ what a detection is good for from what the brain needs:
 - **Guidance.** A virtual lead vehicle, the rabbit, flies a world-frame course with bounded speed,
   acceleration, curvature and curvature rate: onto the target gate's approach axis (along the course,
   turned toward the next gate when it is known, pivoting onto the exact bearing close up), through the
-  gate, straight on for 4 m, and around a search circle when nothing is in sight. It waits for the
+  gate, straight on for 8 m, and around a search circle when nothing is in sight. It waits for the
   drone, 3 m ahead along its own trail. The brain's goal is the rabbit (clipped to 5 m horizontally and
   1.2 m vertically); a new target or a moved estimate only bends the rabbit, so the goal cannot jump.
 - **Heading and speed.** The yaw stick follows the rabbit's heading, with a lead onto the target so the
@@ -456,8 +458,9 @@ and that 14 of 17 bad crossings were perception or bookkeeping. Six things were 
 `SightParams` field, and the values in brackets restore the old behaviour exactly.
 
 > **These switches are OFF in the shipping build, and this section describes what they do when on.**
-> The first flight that met them in the game went 3/7 with ten times the yaw shake, against 7/7 with
-> them off on the same command, camera and detector; the bisection is in
+> With them on alongside the course-order change (since reverted), the first game flight went 3/7 at
+> 21 deg/s of yaw shake; reverting course order alone gave 5/7 at 18 deg/s, and switching these off
+> too gave 7/7 at 2.4 deg/s - same command, camera and detector. The bisection is in
 > `docs/flight_cards/2026-09-17_strawbale_1..3.md`. They were measured by replaying recorded flights
 > and by the rehearsal, and neither could produce the loop that broke it - a replay cannot steer the
 > drone onto a phantom, and the rehearsal's synthetic detector had only independent per-frame phantoms,
@@ -468,8 +471,8 @@ and that 14 of 17 bad crossings were perception or bookkeeping. Six things were 
 > switch remain, because the faults they fix are real and measured. Turn them on
 > with `--sight-set ghost_evidence=other --sight-set ghost_keep_d=12 --sight-set target_life=20
 > --sight-set orphan_d=8 --sight-set frag_gap=15 --sight-set offaxis_max=40 --sight-set
-> offaxis_sig_deg=15 --sight-set look_free=10`. Of the six below, only the pivot/axis bullet and the
-> height-window bullet are live by default.
+> offaxis_sig_deg=15 --sight-set look_free=10`. Those eight fields are exactly what is off; anything
+> else the bullets below describe is live.
 
 - **A neighbour no longer deletes the gate being flown at.** The detector reports at most *one* arch per
   frame, but "seen by the camera and not detected for 2 s" was charged to the nearest arch in view on
@@ -542,8 +545,8 @@ whole legs; `a_lat` 2.0 with `kappa_max` 0.30 makes that floor 2.58, the launch 
 the straight-on after a gate is 8 m (`v_launch`, `d_on`).
 
 ```bash
-haltere vision rehearse runs/ftPath2/best.pt --sight rabbit --seed 1 --log data/rehearse/rabbit.csv
-haltere liftoff fly runs/ftPath2/best.pt --vision runs/gatenet8/best.pt --camera configs/camera_seat.yaml \
+haltere vision rehearse artifacts/ftPath2_best.pt --sight rabbit --seed 1 --log data/rehearse/rabbit.csv
+haltere liftoff fly artifacts/ftPath2_best.pt --vision artifacts/gatenet_best.pt --camera configs/camera_seat.yaml \
     --sight rabbit --sight-speed 2.5 --log data/liftoff/logs/rabbit1.csv ...
 ```
 
@@ -701,7 +704,8 @@ committed flight graph in `data/built/`; the GitHub releases
 [v0.2.0](https://github.com/skulitom/haltere/releases/tag/v0.2.0): the lap brain, the race video and
 the taught track; [v0.3.0](https://github.com/skulitom/haltere/releases/tag/v0.3.0): the gate detector;
 [v0.4.0](https://github.com/skulitom/haltere/releases/tag/v0.4.0): the smooth and fast lap, the rabbit
-pilot by sight, and their videos) add the full checkpoints with optimizer state and the videos, and the same
+pilot by sight, and their videos; [v0.5.0](https://github.com/skulitom/haltere/releases/tag/v0.5.0): the whole lap by sight,
+five clean times, and its video) add the full checkpoints with optimizer state and the videos, and the same
 artifacts with a model card are on Hugging Face:
 [huggingface.co/Skulitom/haltere](https://huggingface.co/Skulitom/haltere) (`haltere publish-hf` mirrors them).
 
@@ -818,7 +822,7 @@ roll and pitch rates):
 
 | stick path, speed setting (flight) | median speed | gate 0 to 6 | gates, contacts | rate shake | horizon shake |
 |---|---|---|---|---|---|
-| per-axis inverse, gain 1.6, path speed 4 / lookahead 4.5 (w1, the published setting) | 2.4 m/s | 69 s | 7/7, none | 26 deg/s | 1.36 deg |
+| per-axis inverse, gain 1.6, path speed 4 / lookahead 4.5 (w1, the published setting) | 2.4 m/s | 69 s | 7/7, none | 26 deg/s | 1.37 deg |
 | radial inverse, gain 1, path speed 6 / lookahead 6 (w7) | 2.4 m/s | 69 s | 6/7, gate 5 clipped | 7 deg/s | 0.38 deg |
 | radial, path speed 6 / lookahead 6, flow gain 0.7 (w8) | 3.3 m/s | 51 s | 6/7, gate 5 clipped | 18 deg/s | 0.80 deg |
 | radial, path speed 8 / lookahead 6, flow gain 0.5, `--z-lead 1.5` (w12, the first clip) | 4.4 m/s | 38 s | 7/7, none | 2 deg/s | 0.37 deg |
@@ -943,17 +947,18 @@ Straw Bale gates at 4.8 m/s (gate 0 to 6 in 38 s, peaks of 8.3 m/s) with a stead
 pilot inverts Liftoff's radial stick deadzone exactly and commands speed through the brain's own
 speed senses; a human lap on the same track runs at 14 m/s.
 
-**By sight the lap is clean, and repeatably so.** Five flights with the shipped detector and pilot
-have gone 7/7 between gates 0 and 6 (w22, w23, w24, w29, w30); the two that did not were flying the
-two pilot changes this release reverts. The footage above is gate 0 to 6 in 64 s at 3.19 m/s on the
+**By sight the lap is clean, and repeatably so.** Five flights with the shipped detector have gone
+7/7 between gates 0 and 6: w22, w23 and w24 on the pilot build of 16 September, w29 and w30 on the one
+that ships. The two flights on this detector that did not were flying the two pilot changes this
+release reverts. The footage above is gate 0 to 6 in 64 s at 3.19 m/s on the
 shipped defaults, every arch crossed within 0.4 m of its centre, no contacts, horizon steady to
 0.48 degrees; the fastest clean lap is w24 at 58 s and 3.35 m/s with `--sight-speed 4.5`.
 
 The fix that bought this was not in the pilot: the gate LABELS were wrong, marking an arch already
 flown through, or a second one in view, as "nothing". Relabelling so the nearest arch actually in
 view is labelled is worth about 1.5 gates against the previous detector's six-flight mean — and, more
-to the point, all the difference in repeatability: three of three flights clean afterwards against
-one of six before (the earlier detector did fly one clean lap, w20, in six tries).
+to the point, all the difference in repeatability: every flight on the new detector with a working pilot went
+clean, five of five, against one of six before (the earlier detector did fly one clean lap, w20, in six tries).
 
 Open, and measured rather than guessed:
 
@@ -971,8 +976,9 @@ Open, and measured rather than guessed:
 - **Speed by sight**: about 3.2 m/s against the taught lap's 4.8.
 
 One methodological result is worth more than any of the numbers above. Two pilot changes that the
-replay harness and the rehearsal both said were improvements cost three gates and ten times the yaw
-shake the first time they met the game, and a third that the bench liked cost the control two gates.
+replay harness and the rehearsal both said were improvements cost four gates (3/7 against 7/7) and ten
+times the yaw shake the first time they met the game, and a third that the bench liked cost one
+course two gates on one seed and was reverted twice.
 A replay is open loop, so a target sitting on a phantom cannot steer the drone; the rehearsal's
 synthetic detector emitted only independent per-frame phantoms, no two of which can meet in the
 tracker's association gate, so none ever confirmed and none could start one. Neither could show the
