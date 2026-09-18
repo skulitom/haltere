@@ -13,13 +13,11 @@ sign conventions by correlation, optionally the physics fit.
 from __future__ import annotations
 
 import csv
-import sys
 import time
 from pathlib import Path
 
 import numpy as np
 
-from .frames import unity_quat_to_sim, unity_vec_to_sim, omega_from_quats
 from .telemetry import DEFAULT_STREAM, TelemetryFrame, TelemetryReceiver, read_config
 
 

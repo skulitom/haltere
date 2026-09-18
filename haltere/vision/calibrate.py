@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .camera import Camera, body_to_cam_matrix, quat_wxyz_to_mat
+from .camera import Camera, quat_wxyz_to_mat
 
 
 def load_index(dataset: str | Path) -> list[dict]:

@@ -51,13 +51,12 @@ def detection_geometry(cam: Camera, u: float, v: float, width_px: float) -> tupl
 
 class GateVision:
     def __init__(self, ckpt: str, cam: Camera, window_title: str = 'Liftoff', fps: float = 15.0,
-                 device: str = 'cuda', p_thresh: float = 0.5):
+                 device: str = 'cuda'):
         self.net = load_gatenet(ckpt, device)
         self.device = next(self.net.parameters()).device
         self.cam = cam.scaled(IN_W, IN_H)          # focal length at the network's input resolution
         self.title = window_title
         self.fps = fps
-        self.p_thresh = p_thresh
         self.latest = Detection()
         self._lock = threading.Lock()
         self._stop = False

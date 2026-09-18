@@ -6,7 +6,7 @@ import csv
 import json
 import time
 from collections import deque
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np

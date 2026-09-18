@@ -11,7 +11,6 @@ import numpy as np
 IN_W_PX = 320                              # GateNet input width: detections' pixel units
 import torch
 
-from ..sim.quad import G
 from ..sim.tasks import HoverTaskConfig, observe_from_sensors
 from .frames import omega_from_quats, quat_wxyz_to_mat, unity_quat_to_sim, unity_vec_to_sim, yaw_of
 from .telemetry import TelemetryFrame

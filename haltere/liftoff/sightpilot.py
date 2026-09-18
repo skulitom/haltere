@@ -1180,7 +1180,6 @@ class SightPilot:
         bear = abs(wrap(math.atan2(-dy, -dx) - self.psi))
         beside = a_d > P.beside_a or (self.d_gate < P.beside_d and bear > P.beside_bearing * DEG)
         seen_ahead = age < P.seen_ahead_age and T.last_along > P.seen_ahead_along
-        self.dbg = (a_d, lat_d, T.min_a, crossed, travelled, beside, seen_ahead, self.d_gate, math.degrees(bear))
         if not (self.t_air is not None and now - self.t_air > P.airborne_guard and (crossed or travelled or beside)
                 and not seen_ahead):
             return T

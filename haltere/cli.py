@@ -97,7 +97,6 @@ def cmd_imitate(a):
 
 def cmd_eval(a):
     import json
-    import torch
     from .train.bptt import load_checkpoint, evaluate
     brain, cfg, graph = load_checkpoint(a.ckpt, a.device)
     device = brain.device

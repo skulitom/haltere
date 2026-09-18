@@ -567,7 +567,6 @@ def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
 
 
 def cmd_fly(a):
-    import torch
     from ..train.bptt import load_checkpoint
     from .pilot import TelemetryPilot
     brain, cfg, graph = load_checkpoint(a.ckpt, a.device)

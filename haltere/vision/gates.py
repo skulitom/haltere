@@ -122,11 +122,6 @@ def save_gates(passages: list[dict], out: str | Path, width_m: float = GATE_WIDT
                          encoding='utf-8')
 
 
-def load_gates(path: str | Path) -> list[dict]:
-    d = json.loads(Path(path).read_text(encoding='utf-8'))
-    return d['gates']
-
-
 def load_gate_file(path: str | Path) -> tuple[list[dict], float, float]:
     """(gates, nominal width in m, centre height above the passage point in m)."""
     d = json.loads(Path(path).read_text(encoding='utf-8'))
