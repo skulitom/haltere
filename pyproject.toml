@@ -1,6 +1,6 @@
 [project]
 name = "haltere"
-version = "0.1.0"
+version = "0.5.0"
 description = "A connectome-constrained fruit-fly brain (male-CNS v1.0) trained to fly an FPV drone in Liftoff."
 requires-python = ">=3.11"
 dependencies = [
@@ -15,6 +15,10 @@ dependencies = [
 [project.optional-dependencies]
 neuprint = ["neuprint-python>=0.4"]
 liftoff = ["vgamepad>=0.1"]
+# flying by sight, recording video and training the gate detector (imported lazily, so the
+# connectome, simulator and training work without them)
+vision = ["opencv-python-headless>=4.8", "mss>=9"]
+publish = ["huggingface_hub>=0.23"]
 dev = ["pytest>=8", "matplotlib>=3.9"]
 
 [project.scripts]

@@ -8,6 +8,10 @@ __pycache__/
 data/raw/
 data/liftoff/
 data/tools/
+# recorded frames and labels (2.4 GB) and the rehearsal/replay outputs; data/oddcourse stays tracked
+data/vision/
+data/rehearse/
+data/replay/
 data/built/*
 !data/built/flight.npz
 !data/built/flight.nodes.parquet

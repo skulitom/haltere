@@ -114,7 +114,8 @@ Requirements: Windows (for Liftoff), an NVIDIA GPU, Python 3.11+, [uv](https://d
 ```bash
 uv venv --python 3.13 .venv
 uv pip install --python .venv/Scripts/python.exe torch --index-url https://download.pytorch.org/whl/cu128
-uv pip install --python .venv/Scripts/python.exe -e ".[dev,neuprint]"
+uv pip install --python .venv/Scripts/python.exe -e ".[dev,neuprint,liftoff,vision]"
+# add ,publish to mirror checkpoints to Hugging Face with `haltere publish-hf`
 .venv/Scripts/python.exe -m pytest -q
 ```
 
