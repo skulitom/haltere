@@ -36,7 +36,7 @@ import numpy as np
 from ..liftoff.sightpilot import SightParams
 from .gates import CENTRE_UP_M, GATE_WIDTH_M
 from .rehearse import LOG_COLUMNS as REHEARSE_COLUMNS
-from .rehearse import DetectorModel, RehearsalOptions, run_rehearsal, summarize
+from .rehearse import ClutterModel, DetectorModel, RehearsalOptions, run_rehearsal, summarize
 
 # the published by-sight preset (README: --sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8
 # --sight-flow-min 0.6 --sight-flow-alt ground), with the simulator's yaw rate as `vision rehearse` uses it
@@ -267,12 +267,15 @@ def _width_aware_passes(rows: list[list], course: Course) -> list[int]:
 
 def fly_course(course: Course, brain, cfg, cam, seed: int, seconds: float | None = None, verbose: bool = False,
                max_gpu_temp: float = 70.0, burst_s: float = 60.0, cool_s: float = 15.0,
-               log_path: str | Path | None = None) -> dict:
+               log_path: str | Path | None = None, clutter: bool = False, sight_params: SightParams | None = None,
+               tracks: bool = False) -> dict:
     """One rehearsal of one course with one seed. Returns the row the table and the JSON are built from."""
     opts = RehearsalOptions(seconds=float(seconds or course.budget_s), seed=seed, start=tuple(course.start),
-                            sight='rabbit', sight_params=preset_params(), flow_gain=1.0, verbose=verbose,
-                            max_gpu_temp=max_gpu_temp, burst_s=burst_s, cool_s=cool_s)
-    res = run_rehearsal(brain, cfg, course.gates, cam, log_path, opts, DetectorModel(), course.width_m, course.up_m)
+                            sight='rabbit', sight_params=sight_params or preset_params(), flow_gain=1.0,
+                            verbose=verbose, max_gpu_temp=max_gpu_temp, burst_s=burst_s, cool_s=cool_s,
+                            track_report=tracks)
+    det = DetectorModel(clutter=ClutterModel()) if clutter else DetectorModel()
+    res = run_rehearsal(brain, cfg, course.gates, cam, log_path, opts, det, course.width_m, course.up_m)
     s = summarize(res, course.gates, None, course.up_m)
     best = max(s['attempts'], key=lambda r: len(r.get('gates_through', [])), default={})
     through = list(best.get('gates_through', []))
@@ -292,6 +295,8 @@ def fly_course(course: Course, brain, cfg, cam, seed: int, seconds: float | None
                      for k in ('n_passes', 'pass_kinds', 'ghosts', 'unpasses', 'reseeds', 'goal_clips', 'rej_elev',
                                'rej_stale', 'absorbed', 'low', 'behind', 'sight_errors', 'mode_s')},
         'gate_estimate': best.get('gate_estimate'),
+        'yaw_shake_dps': best.get('yaw_shake_dps'),
+        'phantom_tracks': s.get('phantom_tracks'),
         'detector': s['detector'],
         'crashes': [{'kind': c['kind'], 'gate': c.get('gate'), 'ts': round(c['ts'], 1)} for c in s['crashes']],
         'z_range': best.get('z_range'),
@@ -335,7 +340,8 @@ def table(rows: list[dict], courses: dict[str, Course]) -> str:
 
 def run_bench(ckpt: str, camera_yaml: str = 'configs/camera_seat.yaml', names=None, seeds: int = 3,
               seconds: float | None = None, device: str = 'cuda', json_out: str | None = None,
-              verbose: bool = True) -> dict:
+              verbose: bool = True, clutter: bool = False, sight_set: dict | None = None,
+              tracks: bool = False) -> dict:
     """Fly every course in the suite with every seed and print the table. Returns the whole record."""
     import yaml
 
@@ -347,10 +353,24 @@ def run_bench(ckpt: str, camera_yaml: str = 'configs/camera_seat.yaml', names=No
     seed_list = list(FIXED_SEEDS[:max(1, int(seeds))])
     brain, cfg, _ = load_checkpoint(ckpt, device)
     warnings = [w for w in (c.width_warning() for c in courses) if w]
+
+    def mk_params() -> SightParams:                # fresh: run_rehearsal writes flow_max into it
+        p = preset_params()
+        for k, v in (sight_set or {}).items():
+            if not hasattr(p, k):
+                raise KeyError(f'SightParams has no field {k!r}')
+            setattr(p, k, v)
+        p.validate()
+        return p
+
+    params = mk_params()
     if verbose:
         print(f'odd-course bench: brain {ckpt} ({getattr(brain, "N", 0)} neurons on {brain.device}), '
               f'{len(courses)} courses x {len(seed_list)} seeds {seed_list}, camera {cam.hfov_deg:.0f} deg HFOV\n'
-              f'  pilot: the published by-sight preset, {preset_params().describe()}', flush=True)
+              f'  pilot: the published by-sight preset, {params.describe()}'
+              + (f'\n  pilot overrides: {sight_set}' if sight_set else '')
+              + ('\n  detector: with clutter (objects beside the course it keeps firing on)' if clutter else ''),
+              flush=True)
         for c in courses:
             legs = c.legs_m
             print(f'  {c.name:<14} {len(c.gates)} gates, width {c.width_m} m, legs '
@@ -362,17 +382,23 @@ def run_bench(ckpt: str, camera_yaml: str = 'configs/camera_seat.yaml', names=No
     t0 = time.time()
     for c in courses:
         for seed in seed_list:
-            r = fly_course(c, brain, cfg, cam, seed, seconds)
+            r = fly_course(c, brain, cfg, cam, seed, seconds, clutter=clutter, sight_params=mk_params(),
+                           tracks=tracks)
             rows.append(r)
             if verbose:
                 cn = r['counters']
+                pt = r.get('phantom_tracks')
                 print(f'  {c.name:<14} seed {seed}: through {r["n_through"]}/{r["n_gates"]} {r["through"]} '
                       f'(width-aware {len(r["through_w"])}), passes {cn["n_passes"]:.0f} {cn["pass_kinds"]}, '
                       f'ghosts {cn["ghosts"]:.0f}, low {cn["low"]:.0f}, behind {cn["behind"]:.0f}, absorbed '
                       f'{cn["absorbed"]:.0f}, unpasses {cn["unpasses"]:.0f}, reseeds {cn["reseeds"]:.0f}, rej_elev '
                       f'{cn["rej_elev"]:.0f}, errors {cn["sight_errors"]:.0f}, modes {cn["mode_s"]}, crashes '
-                      f'{len(r["crashes"])} [{r["wall_s"]:.0f} s wall]', flush=True)
+                      f'{len(r["crashes"])}, yaw shake {float(r["yaw_shake_dps"] if r["yaw_shake_dps"] is not None else np.nan):.1f} deg/s'
+                      + (f', phantoms {pt["phantoms"]}/{pt["confirmed"]} confirmed tracks, {pt["phantom_target_rows"]} '
+                         f'steps at one, {pt["phantom_passes"]} passes at one' if pt else '')
+                      + f' [{r["wall_s"]:.0f} s wall]', flush=True)
     out = {'ckpt': ckpt, 'camera': camera_yaml, 'seeds': seed_list, 'preset': PRESET, 'warnings': warnings,
+           'clutter': clutter, 'sight_set': sight_set or {},
            'courses': {c.name: {'breaks': c.breaks, 'width_m': c.width_m, 'n_gates': len(c.gates),
                                 'budget_s': c.budget_s, 'start': list(c.start), 'gates': c.as_gate_file()}
                        for c in courses},

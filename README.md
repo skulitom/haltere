@@ -394,6 +394,7 @@ The by-sight pilot has its own rehearsal, entirely inside the simulator and fast
 haltere vision rehearse runs/ftPath2/best.pt --camera configs/camera_seat.yaml \
     --gates configs/gates_strawbale.json --seconds 120 --log data/rehearse/sight.csv
 haltere vision rehearse runs/ftPath2/best.pt --set vision_speed=3 --seed 1   # a pilot change, another noise draw
+haltere vision rehearse runs/ftPath2/best.pt --sight rabbit --clutter --tracks   # with false positives that stick
 ```
 
 The brain flies the simulated drone (its training physics and 60 ms latency) through the real
@@ -408,6 +409,15 @@ the pilot's gate estimate, what it believed it passed, and how long the goal sat
 goal ahead of a pitched-down drone points up in its body frame, and the brain climbs). The ground
 is flat and only the arch posts and top bars are solid. Detections are stamped with the moment their
 frame was grabbed, as the live detector stamps them.
+
+`--clutter` adds the failure that matters most and was missing: objects standing beside the course
+that the detector fires on repeatedly, so its false positives triangulate, confirm as tracks and can
+become the target. The `false_pos` phantom it already had is an independent box at a random place in
+each frame; no two of them can meet in the tracker's association gate, so it never confirms and never
+reaches a pilot decision, which is why this bench could not see the 2026-09-17 regression.
+`haltere.vision.rehearse.ClutterModel` carries the rates, measured by replaying the six game flights.
+It is off by default, so every bench number taken without it stays comparable. `--tracks` then reports
+which tracks sat on no arch, with `liftoff replay-sight`'s own definition of a phantom.
 
 ### The rabbit pilot (`--sight rabbit`)
 
@@ -448,9 +458,13 @@ and that 14 of 17 bad crossings were perception or bookkeeping. Six things were 
 > The first flight that met them in the game went 3/7 with ten times the yaw shake, against 7/7 with
 > them off on the same command, camera and detector; the bisection is in
 > `docs/flight_cards/2026-09-17_strawbale_1..3.md`. They were measured by replaying recorded flights
-> and by the rehearsal, and neither can produce the loop that broke it - a replay cannot steer the
-> drone onto a phantom, and the rehearsal's synthetic detector emits no false positives to start one.
-> The code and every switch remain, because the faults they fix are real and measured. Turn them on
+> and by the rehearsal, and neither could produce the loop that broke it - a replay cannot steer the
+> drone onto a phantom, and the rehearsal's synthetic detector had only independent per-frame phantoms,
+> which never accumulate into a track. `vision rehearse --clutter` now gives it false positives that
+> do confirm, and they capture the target and get declared as passes; it still does not reproduce what
+> these switches did (3.75 gates with them off against 4.75 with them on, four seeds each - the wrong
+> way round and inside the noise), so this remains a question only the game answers. The code and every
+> switch remain, because the faults they fix are real and measured. Turn them on
 > with `--sight-set ghost_evidence=other --sight-set ghost_keep_d=12 --sight-set target_life=20
 > --sight-set orphan_d=8 --sight-set frag_gap=15 --sight-set offaxis_max=40 --sight-set
 > offaxis_sig_deg=15 --sight-set look_free=10`. Of the six below, only the pivot/axis bullet and the
@@ -959,6 +973,20 @@ One methodological result is worth more than any of the numbers above. Two pilot
 replay harness and the rehearsal both said were improvements cost three gates and ten times the yaw
 shake the first time they met the game, and a third that the bench liked cost the control two gates.
 A replay is open loop, so a target sitting on a phantom cannot steer the drone; the rehearsal's
-synthetic detector emits no false positives, so it cannot start one. Neither can show the loop the
-game shows — phantom, target switch, nose swing, smeared detection, next phantom. Offline harnesses
-here are filters, not verdicts, and the flight cards in `docs/flight_cards/` record which is which.
+synthetic detector emitted only independent per-frame phantoms, no two of which can meet in the
+tracker's association gate, so none ever confirmed and none could start one. Neither could show the
+loop the game shows — phantom, target switch, nose swing, smeared detection, next phantom. Offline
+harnesses here are filters, not verdicts, and the flight cards in `docs/flight_cards/` record which is
+which.
+
+`vision rehearse --clutter` (2026-09-18) closes part of that gap and measures the rest. Its false
+positives come from objects standing beside the course, calibrated off the six game flights on rate,
+coherence, image placement and confirmed-phantom count, and they behave like the game's: confirmed
+phantoms at 1.2-1.5 per 100 m flown (games 1.19-2.19), taking the target, and 2 to 4 of every 7 to 12
+declared passes at no arch (w27: 7 of 11). What it still cannot do is rank the tracker switches the way
+the game ranked them, for two measured reasons. The rehearsal flies the lap at 1.9 m/s against the
+game's 3.3 and takes 121 s against 62, so its pilot meets roughly twice the false sightings per metre
+and its baseline loses gates the game's baseline does not. And the synthetic detector reports an
+object's exact bearing however fast the nose is swinging, so the third link — detections smearing
+across bearings — has no mechanism here. A detector whose bearing error grows with yaw rate is the
+next thing this bench needs.

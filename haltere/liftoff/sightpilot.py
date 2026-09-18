@@ -301,14 +301,24 @@ class SightParams:
     # them off, on the same command, camera and detector (w27/w29, docs/flight_cards/2026-09-17_*).
     #
     # What neither harness could show: a replay is open loop - the trajectory is already recorded, so a target on a
-    # phantom cannot steer the drone anywhere - and the rehearsal's synthetic detector emits no false positives at
-    # all. The failure needs both. A phantom becomes the target, the target switch swings the rabbit's heading, the
-    # nose follows it, the detections smear across bearings, and that builds the next phantom. In the game the pilot
+    # phantom cannot steer the drone anywhere - and the rehearsal's synthetic detector had only INDEPENDENT
+    # per-frame phantoms, which no two of can meet in the association gate below, so none ever confirmed. The
+    # failure needs both. A phantom becomes the target, the target switch swings the rabbit's heading, the nose
+    # follows it, the detections smear across bearings, and that builds the next phantom. In the game the pilot
     # confirmed 17 phantoms to the good lap's 8 and declared 7 of its 11 passes at no arch at all.
     #
+    # `vision rehearse --clutter` (vision.rehearse.ClutterModel, 2026-09-18) gives the rehearsal false positives
+    # that DO confirm, at the rate, the coherence and the image placement measured on the six game flights. It
+    # closes the first links: phantoms confirm, take the target and are declared as passes, 2-4 of every 7-12
+    # passes at no arch. It does NOT yet reproduce what these switches did. On the home course, four seeds each,
+    # the rehearsal gives 3.75 gates with them off and 4.75 with them on - the wrong way round, inside the noise -
+    # while its own baseline already loses gates the game's flies. Two reasons, both measured: the rehearsal flies
+    # the lap at 1.9 m/s against the game's 3.3, so its pilot is far more exposed per lap; and the synthetic
+    # detector still reports an object's exact bearing however fast the nose is swinging, so the third link of the
+    # loop - detections smearing across bearings - cannot happen. Until it does, the game remains the instrument.
+    #
     # The code stays, and every switch still works, because the faults these fixed are real and measured (one arch
-    # booking two gates, a target nothing could see never retiring). What they need before they come back on is a
-    # rehearsal detector that lies the way the real one does.
+    # booking two gates, a target nothing could see never retiring).
     look_max: float = 45.0                # ... up to this much lead (legacy 25)
     look_tau: float = 0.3
     look_kappa: float = 0.20              # the look is given up as the rabbit's curvature approaches this (legacy .04)
