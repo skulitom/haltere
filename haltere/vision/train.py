@@ -17,7 +17,7 @@ from ..train.thermal import wait_if_hot
 
 
 def label_dataset(dataset: str | Path, gates_path: str | Path, cam: Camera, verbose: bool = True) -> Path:
-    """Write labels.json next to index.csv: one entry per frame with the next gate's image position and size."""
+    """Write labels.json next to index.csv: one entry per frame with the nearest in-view arch's image position and size."""
     from .gates import load_gate_file
     rows = load_index(dataset)
     gates, width_m, up_m = load_gate_file(gates_path)

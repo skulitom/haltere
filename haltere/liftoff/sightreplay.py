@@ -32,10 +32,13 @@ The flights of 15 Sep 2026 (the flags each was flown with; ``--preset`` adds the
   w17_rabbit_a2   --sight-speed 2.5 --sight-z-aim 0 --set up_bias=0 --set next_min_hits=10 --set bisector_cap=35
   w18_rabbit_b1   --sight-speed 3.5 --sight-gate-speed 3.2 --sight-turn-gate-speed 2.8 --sight-flow-min 0.6
   w19_rabbit_b2_ground   the w18 flags and --sight-flow-alt ground
-  w20_rabbit_rep1, w21_rabbit_rep2 (16 Sep)   the w19 flags (--preset w20 / w21 are the same list)
+  w20_rabbit_rep1, w21_rabbit_rep2 (15 Sep)   the w19 flags (--preset w20 / w21 are the same list)
 
-Every flight was flown on the defaults of its day; ``--set name=value`` puts a later default back, so
-`--preset w19 --set ghost_keep_d=0 ...` replays a flight under the pilot it actually flew with.
+Every flight was flown on the defaults of its day; ``--set name=value`` changes one, so a flight can be
+replayed under the pilot it actually flew with. The eight tracker switches have been off by default since
+2026-09-17, so w16-w21 already replay under their own pilot; w27 needs them ON (``--set
+ghost_evidence=other --set ghost_keep_d=12 --set target_life=20 --set orphan_d=8 --set frag_gap=15 --set
+offaxis_max=40 --set offaxis_sig_deg=15 --set look_free=10``) to reproduce.
 """
 from __future__ import annotations
 

@@ -310,3 +310,25 @@ def test_only_a_force_the_drone_cannot_make_is_a_contact():
     V[hit + 10:, 2] = -2.5
     P = np.cumsum(V * dt, axis=0)
     assert len(collisions(P, V, level, t, air)) == 1, 'being pushed down through the thrust axis is a contact'
+
+
+def test_fitting_the_mapping_keeps_what_other_commands_calibrated(tmp_path):
+    """`liftoff fit` wrote a fresh configs/liftoff.yaml by default, deleting the radial stick model -
+    the fix for the 2.4 Hz wobble - and the stick curves. It must update the file, not replace it."""
+    import yaml
+
+    from haltere.liftoff.commands import write_mapping_update
+
+    path = tmp_path / 'liftoff.yaml'
+    path.write_text(yaml.safe_dump({
+        'mapping': {'stick_sign': [1, 1, 1], 'hover_stick': 0.33},
+        'stick_curves': {'roll': [0.1, 0.2]},
+        'stick_model': {'type': 'radial', 'deadzone': 0.25},
+    }), encoding='utf-8')
+    write_mapping_update(path, {'mapping': {'stick_sign': [-1, 1, 1]}, 'quad': {'mass': 0.6}})
+    d = yaml.safe_load(path.read_text(encoding='utf-8'))
+    assert d['stick_model'] == {'type': 'radial', 'deadzone': 0.25}, 'the radial stick model was lost'
+    assert d['stick_curves'] == {'roll': [0.1, 0.2]}
+    assert d['mapping']['stick_sign'] == [-1, 1, 1], 'the fitted value did not land'
+    assert d['mapping']['hover_stick'] == 0.33, 'a calibrated key the fit did not produce was dropped'
+    assert d['quad'] == {'mass': 0.6}

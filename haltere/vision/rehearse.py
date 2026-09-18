@@ -7,7 +7,7 @@ simulated clock, and the brain's sticks going through the control latency into t
 
 GateNet is replaced by ``SyntheticGateVision``: every arch of the course is projected into the FPV camera with the
 drone's simulated attitude (the geometry of the dataset labels: visual centre 1.5 m above the passage point, 4 m
-wide, 5% image margin, at most 45 m, at least 22 px wide at 640) and the detector reports the widest arch in view
+wide, a 12% image margin (gates.VIEW_MARGIN, the labeller's), at most 45 m, at least 22 px wide at 640) and the detector reports the widest arch in view
 (arches look the same from behind), with the failure modes of the real one (``DetectorModel``, measured on recorded
 flights): centre noise, width noise with a range-dependent bias, frames at 15 Hz delivered ~80 ms after the pose they
 show, single-frame misses and dropout bursts, arches seen at an angle or far away found less often, flips to the

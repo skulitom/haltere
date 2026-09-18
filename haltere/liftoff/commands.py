@@ -34,6 +34,24 @@ Remaining one-time steps (these need you, not a script):
 """
 
 
+def write_mapping_update(path, update: dict) -> None:
+    """Update a Liftoff mapping file in place, keeping every section this command did not produce.
+
+    configs/liftoff.yaml carries sections calibrated by different commands: the stick curves, the radial
+    stick model and the measured hover sticks. `liftoff fit` and `liftoff autotest` used to write a fresh
+    file over it, which silently deleted the rest - including the radial stick model, the fix for the
+    2.4 Hz wobble. A section this command produces is merged key by key; anything else is left alone.
+    """
+    d = {}
+    if os.path.exists(path):
+        with open(path, encoding='utf-8') as f:
+            d = yaml.safe_load(f) or {}
+    for k, v in update.items():
+        d[k] = {**d[k], **v} if isinstance(v, dict) and isinstance(d.get(k), dict) else v
+    with open(path, 'w', encoding='utf-8') as f:
+        yaml.safe_dump(d, f, sort_keys=False)
+
+
 def cmd_setup(a):
     p = write_config(port=a.port, stream=DEFAULT_STREAM)
     print(SETUP_STEPS.format(path=p, port=a.port))
@@ -331,9 +349,8 @@ def cmd_autotest(a):
                            'gyro_sign': list(mapping.gyro_sign), 'use_quat_rates': True, 'max_rpm': mapping.max_rpm,
                            'throttle_scale': 1.0, 'notes': notes,
                            'hover_stick': res.get('hover'), 'lift_stick': res.get('lift_stick')}}
-        with open(a.write_mapping, 'w', encoding='utf-8') as f:
-            yaml.safe_dump(out, f, sort_keys=False)
-        print(f'mapping written to {a.write_mapping}')
+        write_mapping_update(a.write_mapping, out)
+        print(f'mapping updated in {a.write_mapping} (its other sections kept)')
 
 
 def cmd_fit(a):
@@ -355,9 +372,8 @@ def cmd_fit(a):
         'quad': res['quad'], 'ctl': res['ctl'],
         'fit': {'windows': res['windows'], 'dt': res['dt'], 'final_loss': res['loss'][-1]},
     }
-    with open(a.out, 'w', encoding='utf-8') as f:
-        yaml.safe_dump(out, f, sort_keys=False)
-    print(f'wrote {a.out}. Copy its quad/ctl sections into configs/train.yaml (or pass --config) before training,')
+    write_mapping_update(a.out, out)
+    print(f'updated {a.out} (its other sections kept). Copy its quad/ctl sections into configs/train.yaml (or pass --config) before training,')
     print('so the brain is trained on a simulator that matches Liftoff.')
 
 

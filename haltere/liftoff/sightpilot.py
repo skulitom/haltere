@@ -10,7 +10,8 @@ across the ray and loose along it (twice as loose when the arch is cropped by th
 in metres along and across the ray and in log-range, so two arches lined up on one bearing stay two tracks. A track
 confirms after three sightings over 0.2 s at a plausible height (hay bales and shadows on the ground do not); a
 confirmed estimate that the camera should see but does not for 2 s is a ghost, and one nothing has seen for
-``target_life`` while the detector is alive is dropped even when it is the target. Passed arches absorb their own
+``target_life`` while the detector is alive is dropped even when it is the target (``target_life`` is off
+by default: see the eight tracker switches in SightParams). Passed arches absorb their own
 sightings from behind. One arch can leave two estimates, so a second pass within ``orphan_dedup_d`` of the one on
 the books is that same gate: the pass declared from closer in is kept and the gate is counted once.
 
@@ -295,7 +296,8 @@ class SightParams:
     # detector quality is governed by how far off the optical axis the arch is, and extra yaw is free (the brain flies
     # a body-frame goal): keep the nose on the target instead of letting it sit 35 deg out of frame (task e)
     look_free: float = 35.0               # bearing beyond which the nose starts following the target (legacy 35)
-    # THE EIGHT FIELDS ABOVE AND BELOW MARKED "off by default" ARE THE 2026-09-16 TRACKER FIXES, AND THEY ARE OFF.
+    # EIGHT FIELDS IN THIS CLASS ARE THE 2026-09-16 TRACKER FIXES, AND THEY ARE OFF: ghost_evidence, ghost_keep_d,
+    # target_life, orphan_d, frag_gap, offaxis_max, offaxis_sig_deg and look_free.
     # They were measured by replaying six recorded flights and by the rehearsal, and both said they helped. The game
     # said otherwise the first time it saw them: 3/7 gates with yaw shake at 21 deg/s, against 7/7 and 2.4 deg/s with
     # them off, on the same command, camera and detector (w27/w29, docs/flight_cards/2026-09-17_*).

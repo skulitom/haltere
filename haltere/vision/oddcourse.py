@@ -1,7 +1,7 @@
 """The odd-course bench: what does the by-sight pilot assume about the Straw Bale course?
 
 The rabbit pilot (``haltere.liftoff.sightpilot``) flies clean 7/7 laps on Straw Bale. That course is one
-shape: seven 4 m arches, the passage height only ever rising (1.2 m -> 13.0 m), gates 15-40 m apart,
+shape: seven 4 m arches, the passage height only ever rising (1.2 m -> 13.0 m), gates 24-35 m apart,
 turns anticlockwise, the first gate straight ahead of the spawn. Every one of those is an assumption,
 and the pilot has constants that depend on them. This module generates synthetic gate lists (the shape
 ``gates.load_gate_file`` returns) for a suite of courses that break one assumption each, flies the real
@@ -165,8 +165,8 @@ def descending() -> Course:
     """Straw Bale's layout, the heights running the other way: high at the first gate, down to the ground.
 
     9 m, not the 14 m a true mirror of home would want: the pilot's altitude reference climbs at most
-    ``vz_max`` = 1.0 m/s (sightpilot.py:1147) and its target is clipped to ``z_aim_last + z_window[1]`` =
-    1.5 + 12 m on the first gate (sightpilot.py:1138), so a 14 m first gate is out of reach for reasons that
+    ``vz_max`` = 1.0 m/s and its target is clipped to ``z_ref + z_window[1]`` (6 m above the grade line
+    since the height-window review) on the first gate, so a 14 m first gate is out of reach for reasons that
     have nothing to do with descending and would mask what this course is for. Every drop here is larger than
     1.2 m, which is what it takes for the next arch's visual centre to sit below the last passage height."""
     z = [9.0, 7.0, 5.2, 3.6, 2.2, 1.4, 1.2]
@@ -210,7 +210,7 @@ def long_legs() -> Course:
     z = [1.2, 2.0, 3.0, 4.0, 5.0, 6.0]
     # a fixed budget, not the length: whatever happens here happens on the first leg, and the rest of the
     # course would only buy more searching
-    return Course('long_legs', _gates(pts, z), breaks='gates 85-95 m apart (Straw Bale is 15-40 m)', seconds=150.0)
+    return Course('long_legs', _gates(pts, z), breaks='gates 85-95 m apart (Straw Bale is 24-35 m)', seconds=150.0)
 
 
 def offaxis_start() -> Course:
