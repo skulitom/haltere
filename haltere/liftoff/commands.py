@@ -305,6 +305,14 @@ def cmd_pad(a):
         print('pad released', flush=True)
 
 
+def cmd_capture(a):
+    from .dataset import capture_dataset
+    report = capture_dataset(a.out, course=a.course, camera=a.camera, seconds=a.seconds,
+                             fps=a.fps, port=a.port, window=a.window, max_age=a.max_age,
+                             teacher_route=getattr(a, 'teacher_route', '') or None)
+    print(json.dumps(report, indent=2))
+
+
 def cmd_record(a):
     cfg = read_config()
     stream = (cfg or {}).get('StreamFormat', DEFAULT_STREAM)
@@ -480,6 +488,25 @@ def load_waypoints(spec: str, path: str) -> list | None:
     return None
 
 
+def cmd_import_replay(a):
+    from .replay import import_replay
+    report = import_replay(a.source, a.out)
+    print(json.dumps(report, indent=2))
+
+
+def cmd_bot_route(a):
+    from .bot_routes import extract_bot_route
+    report = extract_bot_route(a.game_dir, a.out, race_id=a.race_id, recording_key=a.recording_key)
+    print(json.dumps(report, indent=2))
+
+
+def cmd_prepare_route(a):
+    from .collection_route import prepare_route
+    route = prepare_route(a.source, a.out, length_m=a.length, speed_mps=a.speed)
+    print(f'Prepared {route["length_m"]:.1f} m at {route["speed_mps"]:.1f} m/s in {a.out}; '
+          f'{route["nominal_moving_seconds"]:.1f} s nominal moving time, live alignment pending')
+
+
 def cmd_waypoints(a):
     """Turn a manually flown recording into a waypoint list (a race track or a freestyle line)."""
     from .sysid import load_recording
@@ -569,6 +596,17 @@ def press_key_in_window(key: str, title_substring: str = 'Liftoff') -> bool:
 def cmd_fly(a):
     from ..train.bptt import load_checkpoint
     from .pilot import TelemetryPilot
+    world_route = None
+    if getattr(a, 'world_route', ''):
+        from .collection_route import CollectionRoute
+        world_route = CollectionRoute(a.world_route)
+        if a.waypoints or a.waypoints_file or a.vision or a.follow or a.pattern or a.path_speed:
+            raise SystemExit('--world-route supplies the path and speed; do not combine it with other goal modes')
+        if not np.isfinite(a.seconds) or a.seconds <= 0:
+            raise SystemExit('--world-route requires a positive, bounded --seconds duration')
+        if not a.log or Path(a.log).exists() or Path(a.log + '.route.json').exists():
+            raise SystemExit('--world-route requires a new --log CSV path for this attempt')
+        a.no_loop = True
     brain, cfg, graph = load_checkpoint(a.ckpt, a.device)
     mapping = load_mapping(a.liftoff_config)
     if a.stick_model == 'curves' and mapping.stick_model is not None:
@@ -650,7 +688,11 @@ def cmd_fly(a):
         recorder.start()
     tcfg = read_config()
     stream = (tcfg or {}).get('StreamFormat', DEFAULT_STREAM)
-    rx = TelemetryReceiver(port=a.port, stream=stream)
+    rx = TelemetryReceiver(port=a.port, stream=stream, forward_port=getattr(a, 'telemetry_copy_port', 0) or None)
+    telemetry_copy_port = rx.forward_port
+    # First receive drains the pre-reset backlog. Forward only subsequent packets,
+    # including in ordinary hover mode, so capture cannot start before our reset.
+    rx.forward_port = None
     pad = None
     if a.udp_out:
         from .gamepad import UdpSticks
@@ -706,6 +748,24 @@ def cmd_fly(a):
                     pad.neutral()
                 continue
             last_frame_time = now
+            if world_route is None and pilot.pos0 is None:
+                rx.forward_port = telemetry_copy_port
+            if world_route is not None:
+                if pilot.pos0 is None:
+                    error = world_route.bind(pilot, fr)
+                    rx.forward_port = telemetry_copy_port
+                    import hashlib
+                    Path(a.log + '.route.json').write_text(json.dumps({
+                        'route': str(world_route.path.resolve()),
+                        'route_sha256': hashlib.sha256(world_route.path.read_bytes()).hexdigest(),
+                        'origin_unity_xyz': fr.position.tolist(), 'source_start_error_m': error,
+                        'reset_timestamp': fr.timestamp, 'oracle_route': True,
+                    }, indent=2), encoding='utf-8')
+                    print(f'World route aligned to reset: {error:.3f} m from source start; '
+                          f'{pilot.path_s[-1]:.1f} m open path at {pilot.path_speed:.1f} m/s', flush=True)
+                elif fr.timestamp < pilot.last_timestamp - .5:
+                    print('World-route experiment stopped: game reset detected', flush=True)
+                    break
             if last_reset_ts is None or fr.timestamp < last_reset_ts - 0.5:
                 armed_since = now
                 grounded_since = None
@@ -739,6 +799,9 @@ def cmd_fly(a):
                 grounded_since = grounded_since or now
                 if now - grounded_since > (1.5 if grounded else 3.0) and not crashed:
                     crashed = True
+                    if world_route is not None:
+                        print('World-route experiment stopped: drone grounded or stuck', flush=True)
+                        break
                     print(f'[{time.strftime("%H:%M:%S")}] drone appears {"crashed/grounded" if grounded else "stuck in the air"} '
                           f'at {np.round(pilot.last_pos, 2)}; '
                           f'holding throttle low' + (f', pressing {a.reset_button}' if a.reset_button else '')
@@ -783,6 +846,10 @@ def cmd_fly(a):
             stick_hist.append(sticks.copy())
             if flog is not None:
                 flog.writerow(_fly_log_row(pilot, fr, now, sticks, phase, crashed))
+            if (world_route is not None and pilot.path_progress >= pilot.path_s[-1]
+                    and np.linalg.norm(pilot.last_pos - pilot.path_pts[-1]) < .8):
+                print('World-route experiment stopped: endpoint reached within 0.8 m', flush=True)
+                break
             if recorder is not None:
                 shared.publish(pilot.rates() if len(dists) % 2 == 0 else None, t=fr.timestamp - (pilot.t_start or 0.0),
                                dist=dists[-1], thr=sticks[0], roll=sticks[1], pitch=sticks[2], yaw=sticks[3],

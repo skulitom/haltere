@@ -18,6 +18,7 @@ liftoff = ["vgamepad>=0.1"]
 # flying by sight, recording video and training the gate detector (imported lazily, so the
 # connectome, simulator and training work without them)
 vision = ["opencv-python-headless>=4.8", "mss>=9"]
+replays = ["UnityPy==1.25.3"]  # optional, read-only installed bot recording extraction
 publish = ["huggingface_hub>=0.23"]
 dev = ["pytest>=8", "matplotlib>=3.9"]
 

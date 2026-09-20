@@ -203,7 +203,16 @@ def cmd_liftoff(a):
 def cmd_vision(a):
     import yaml
     from .vision.camera import Camera
-    if a.vision_cmd == 'calibrate':
+    if a.vision_cmd == 'audit':
+        from .vision.datasets import audit_split
+        report = audit_split(a.datasets, a.holdout)
+        text = json.dumps(report, indent=2)
+        if a.out:
+            path = Path(a.out)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding='utf-8')
+        print(text)
+    elif a.vision_cmd == 'calibrate':
         from .vision.calibrate import calibrate
         tilts = [float(x) for x in a.tilts.split(',')] if a.tilts else None
         r = calibrate(a.dataset, step=a.step, tilt_grid=tilts)
@@ -421,6 +430,10 @@ def main(argv=None):
 
     s = sp.add_parser('vision', help='gate vision: calibrate the FPV camera, find the gates, label frames, train GateNet')
     vs = s.add_subparsers(dest='vision_cmd', required=True)
+    q = vs.add_parser('audit', help='audit labelled flights and reject train/holdout overlap (including copied images)')
+    q.add_argument('datasets', nargs='+')
+    q.add_argument('--holdout', nargs='*', default=[])
+    q.add_argument('--out', default='', help='save the JSON inventory and content hashes')
     q = vs.add_parser('calibrate', help='focal length (and tilt) of the FPV camera from a flight dataset')
     q.add_argument('dataset')
     q.add_argument('--out', default='configs/camera.yaml')
@@ -647,6 +660,29 @@ def main(argv=None):
                                            '(validate it against the log, score it against the true gates)',
                       epilog=replay_epilog(), formatter_class=argparse.RawDescriptionHelpFormatter)
     add_replay_args(q)
+    q = ls.add_parser('capture', help='passively record player FPV images + telemetry for gate training; sends no input')
+    q.add_argument('--out', required=True, help='new dataset directory (existing directories are refused)')
+    q.add_argument('--course', required=True, help='map and race name for dataset provenance')
+    q.add_argument('--camera', required=True, help='camera calibration for this capture setup')
+    q.add_argument('--seconds', type=float, default=180.0)
+    q.add_argument('--fps', type=float, default=10.0)
+    q.add_argument('--port', type=int, default=9001)
+    q.add_argument('--window', default='Liftoff')
+    q.add_argument('--max-age', type=float, default=.05, help='maximum telemetry receive age at capture end, seconds')
+    q.add_argument('--teacher-route', default='', help='prepared route JSON: mark this capture as oracle-route collection')
+    q = ls.add_parser('import-replay', help='import a saved replay as an offline pose trajectory')
+    q.add_argument('source', help='LocalGhostStatesRecording XML or gzip file')
+    q.add_argument('--out', required=True, help='new directory for trajectory.csv and report.json')
+    q = ls.add_parser('bot-route', help='extract one course-specific route from the installed bot recording pool')
+    q.add_argument('--game-dir', required=True, help='Liftoff installation directory')
+    q.add_argument('--race-id', required=True, help='exact race content UUID (development course only)')
+    q.add_argument('--recording-key', help='optional exact key; default selects median reported race time')
+    q.add_argument('--out', required=True, help='new local research directory, e.g. runs/pine-bot-01')
+    q = ls.add_parser('prepare-route', help='prepare a slow, bounded world-coordinate route from a race recording')
+    q.add_argument('source', help='exported source.recording file')
+    q.add_argument('--out', required=True, help='new route JSON file')
+    q.add_argument('--length', type=float, default=80., help='maximum source path distance, metres')
+    q.add_argument('--speed', type=float, default=2., help='collection target speed, at most 3 m/s')
     q = ls.add_parser('record', help='record telemetry (fly manually) to a CSV for system identification')
     q.add_argument('--port', type=int, default=9001)
     q.add_argument('--seconds', type=float, default=120.0)
@@ -670,6 +706,8 @@ def main(argv=None):
     q.add_argument('--offset', default='0,0,2', help='hover target relative to the reset position, sim frame x,y,z (m)')
     q.add_argument('--waypoints', default='', help='x,y,z;x,y,z;... targets relative to the reset point (sim frame)')
     q.add_argument('--waypoints-file', default='', help='YAML from `haltere liftoff waypoints` (a taught track)')
+    q.add_argument('--world-route', default='', help='prepared collection-route JSON; aligns to live reset, stops on reset/crash')
+    q.add_argument('--telemetry-copy-port', type=int, default=0, help='copy valid UDP packets to a separate local capture port')
     q.add_argument('--dwell', type=float, default=4.0, help='seconds per waypoint (timer mode)')
     q.add_argument('--advance-radius', type=float, default=0.0,
                    help='advance to the next waypoint when this close (m); 0 = timer mode. Use ~1.0 for racing')

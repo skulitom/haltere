@@ -115,7 +115,11 @@ class FrameParser:
 class TelemetryReceiver:
     """Non-blocking UDP receiver that always exposes the newest frame."""
 
-    def __init__(self, port: int = DEFAULT_PORT, host: str = '127.0.0.1', stream: list[str] | None = None):
+    def __init__(self, port: int = DEFAULT_PORT, host: str = '127.0.0.1', stream: list[str] | None = None,
+                 forward_port: int | None = None):
+        if forward_port is not None and (not 1 <= forward_port <= 65535 or forward_port == port):
+            raise ValueError('Forward telemetry to a different valid local UDP port')
+        self.forward_port = forward_port
         self.parser = FrameParser(stream)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -141,6 +145,8 @@ class TelemetryReceiver:
                 self.bad += 1
                 continue
             self.frames += 1
+            if self.forward_port is not None:
+                self.sock.sendto(data, ('127.0.0.1', self.forward_port))
         if newest is not None:
             self.last = newest
         return newest

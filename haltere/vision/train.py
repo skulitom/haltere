@@ -168,7 +168,14 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
           width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0,
           max_gpu_temp: float = 70.0, batch_sleep: float = 0.15, init: str = '', augment: str = 'strong',
           holdout: list[str] | None = None) -> Path:
+    from .datasets import audit_split
+    # Run before loading/training: aliases and copied frames otherwise leak into a
+    # nominal whole-flight holdout. Retain exactly which labels and images were used.
+    provenance = audit_split(datasets, holdout or [])
+    if epochs <= 0 or batch <= 0 or not 0 < val_frac < 1:
+        raise ValueError('epochs and batch must be positive, and val_frac must be in (0, 1)')
     torch.manual_seed(seed)
+    np.random.seed(seed)
     random.seed(seed)
     dev = torch.device(device if torch.cuda.is_available() else 'cpu')
     full = GateFrames(datasets, augment=augment)
@@ -186,6 +193,8 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
         train_items = [full.items[i] for i in idx[n_val:]]
         train_ds = GateFrames([], augment=augment); train_ds.items = train_items; train_ds.cv2 = full.cv2
         val_ds = GateFrames([], augment=False); val_ds.items = val_items; val_ds.cv2 = full.cv2
+    if len(train_ds) < batch or not len(val_ds):
+        raise ValueError('Need at least one full training batch and a nonempty validation split')
     tl = torch.utils.data.DataLoader(train_ds, batch_size=batch, shuffle=True, num_workers=0, drop_last=True)
     vl = torch.utils.data.DataLoader(val_ds, batch_size=batch, shuffle=False, num_workers=0)
     net = GateNet(width).to(dev)
@@ -197,6 +206,13 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=max(1, epochs * len(tl)))
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
+    provenance.update(seed=seed, init=str(init), init_sha256=None,
+                      augment=augment, epochs=epochs, batch=batch, lr=lr,
+                      validation_kind='whole_flights' if holdout else 'random_frames_legacy')
+    if init:
+        from .datasets import sha256
+        provenance['init_sha256'] = sha256(init)
+    (out / 'datasets.json').write_text(json.dumps(provenance, indent=2), encoding='utf-8')
     best = float('inf')
     print(f'GateNet width {width}: {sum(p.numel() for p in net.parameters())} parameters; '
           f'{len(train_ds)} training frames, {len(val_ds)} validation frames on {dev}', flush=True)
@@ -239,10 +255,12 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
         if vloss < best:
             best = vloss
             torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': ep + 1, 'val_loss': vloss,
-                        'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])]},
+                        'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])],
+                        'data_provenance': provenance},
                        out / 'best.pt')
     torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': epochs,
-                'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])]}, out / 'last.pt')
+                'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])],
+                'data_provenance': provenance}, out / 'last.pt')
     return out
 
 

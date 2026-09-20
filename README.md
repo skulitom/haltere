@@ -939,6 +939,14 @@ than the lap brain.
 
 ## Status
 
+The next milestone is repeatable second-course flight. See the
+[collection workflow, bot-data findings and acceptance plan](docs/second_course.md).
+`haltere liftoff capture` now records manual FPV flights with telemetry without running
+the pilot, and `haltere vision audit` checks labelled flights and train/holdout overlap.
+`haltere liftoff bot-route` can now extract a route from the installed bot recording pool;
+[Pine Valley findings and reproduction](docs/bot_routes.md) explain why its sparse arches
+make navigation between gates a separate problem from detector training.
+
 Working end to end on this machine: connectome download and graph construction on the real data,
 the simulator, the brain model (custom sparse backward, sign constraints), imitation and flight-cost
 training, the Liftoff telemetry and virtual-pad loop, automated calibration, and connectome brains

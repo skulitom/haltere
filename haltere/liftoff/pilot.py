@@ -181,18 +181,26 @@ class TelemetryPilot:
         self.path_speed = 0.0                  # > 0: follow the waypoint polyline as a moving target at this speed
         self.path_lookahead = 1.5              # m ahead of the drone's progress along the path
         self.path_z_lead = None                # m; the carrot's height is taken this far ahead (None: at the carrot)
-        if self.waypoints:
-            P = np.stack(self.waypoints)
-            seg = np.linalg.norm(np.diff(np.vstack([P, P[:1]]), axis=0), axis=1)
-            self.path_s = np.r_[0.0, np.cumsum(seg)]          # arc length at each vertex (closed loop)
-            self.path_pts = np.vstack([P, P[:1]])
+        self.path_cross_track_gain = 0.0       # extra lateral goal correction, bounded to 0.8 m
+        self.path_cross_track_damping = 0.0    # damp sideways velocity before crossing the line
+        self.path_cross_track_integral = 0.0   # slowly cancel persistent vehicle tracking bias
+        self.set_waypoints(self.waypoints)
         self.W = brain.weight_matrix().detach()
         self.reset(None)
 
+    def set_waypoints(self, waypoints) -> None:
+        self.waypoints = [np.asarray(w, dtype=np.float64) for w in waypoints]
+        if self.waypoints:
+            P = np.stack(self.waypoints)
+            self.path_pts = np.vstack([P, P[:1]]) if self.loop else P
+            self.path_s = np.r_[0., np.cumsum(np.linalg.norm(np.diff(self.path_pts, axis=0), axis=1))]
+
     def path_point(self, s: float) -> np.ndarray:
-        """Point on the closed waypoint polyline at arc length s."""
+        """Point on the waypoint polyline, clamped at the final point for an open route."""
         total = self.path_s[-1]
-        s = s % total if self.loop else min(s, total)
+        if total <= 0:
+            return self.path_pts[0].copy()
+        s = s % total if self.loop else np.clip(s, 0, total)
         i = int(np.searchsorted(self.path_s, s, side='right') - 1)
         i = min(max(i, 0), len(self.path_pts) - 2)
         f = (s - self.path_s[i]) / max(self.path_s[i + 1] - self.path_s[i], 1e-6)
@@ -211,6 +219,8 @@ class TelemetryPilot:
         self.last_pos = np.zeros(3)
         self.filtered = None
         self.path_progress = 0.0
+        self._path_lateral_bias = 0.0
+        self._path_airborne = False
         self._last_t = None
         self.vision_gate_w = None
         self.vision_passed_t = None
@@ -246,6 +256,9 @@ class TelemetryPilot:
         if not self.waypoints:
             return self.offset
         if self.path_speed > 0:
+            # Height is relative to launch, not terrain. After takeoff a valley
+            # can legitimately put the route below zero without grounding us.
+            self._path_airborne = self._path_airborne or self.last_pos[2] >= .3
             # progress along the path only as fast as the drone keeps up: the carrot slows down smoothly as the
             # drone falls behind it (a hard stop/go gate excited a ~0.5 Hz pitch oscillation in Liftoff)
             dt = 0.0 if self._last_t is None else float(np.clip(t - self._last_t, 0.0, 0.05))
@@ -256,13 +269,37 @@ class TelemetryPilot:
                 # the top of a round arch sitting on the slope
                 carrot[2] = self.path_point(self.path_progress + min(self.path_z_lead, self.path_lookahead))[2]
             gap = float(np.linalg.norm(self.last_pos - carrot)) - self.path_lookahead
+            if (self.path_cross_track_gain > 0 or self.path_cross_track_damping > 0
+                    or self.path_cross_track_integral > 0):
+                # Correct sideways bias without increasing the forward or vertical goal.
+                # A moving target alone can settle beside the line, clipping nearby trees.
+                centre = self.path_point(self.path_progress)
+                tangent = (self.path_point(self.path_progress + .25)
+                           - self.path_point(self.path_progress - .25))[:2]
+                length = float(np.linalg.norm(tangent))
+                if length > 1e-6:
+                    normal = np.array([-tangent[1], tangent[0]]) / length
+                    error = float(np.dot(self.last_pos[:2] - centre[:2], normal))
+                    drift = float(np.dot(self.last_vel[:2], normal))
+                    correction = (self.path_cross_track_gain * error
+                                  + self.path_cross_track_damping * drift + self._path_lateral_bias)
+                    # Freeze integration when saturated in the same direction, or grounded.
+                    if self._path_airborne and (abs(correction) < .8 or error * correction < 0):
+                        self._path_lateral_bias = float(np.clip(
+                            self._path_lateral_bias + self.path_cross_track_integral * error * dt, -.8, .8))
+                        correction = (self.path_cross_track_gain * error
+                                      + self.path_cross_track_damping * drift + self._path_lateral_bias)
+                    carrot[:2] -= normal * np.clip(correction, -.8, .8)
             keep_up = float(np.clip(1.0 - gap / 1.5, 0.0, 1.0))
-            if self.last_pos[2] < 0.3:      # still on the ground (arming): hold the path
+            if not self._path_airborne:   # hold only until the first takeoff after reset
                 keep_up = 0.0
             self.path_progress += self.path_speed * keep_up * dt
+            if not self.loop:
+                self.path_progress = min(self.path_progress, self.path_s[-1])
             if self.face_ahead > 0:
                 self.face_target = self.path_point(self.path_progress + self.path_lookahead + self.face_ahead)
-            self.wp_index = int(np.searchsorted(self.path_s, self.path_progress % self.path_s[-1], side='right') - 1)
+            progress = self.path_progress % self.path_s[-1] if self.loop and self.path_s[-1] > 0 else self.path_progress
+            self.wp_index = min(len(self.waypoints) - 1, int(np.searchsorted(self.path_s, progress, side='right') - 1))
             return carrot
         if self.advance_radius > 0:
             if self.wp_index < len(self.waypoints):
