@@ -57,3 +57,39 @@ and stops on a reset or stale input. It does not load GateNet, the navigation
 predictor, a course route or a yaw assistant. Logs identify the exact checkpoint
 and whether any controls were sent. Videos of shadow runs must be labelled as
 shadow runs. Live qualification remains separate from offline imitation.
+
+## First experiment, 2026-09-21
+
+The 120-update run changed recurrent gains, neuron gains/biases, sensory encoders
+and motor readout. The exported candidate has SHA256
+`98ea6a1fba89b5c3045c50a6efac42c58ae25e13b84a97a76167f93ebe91e700`.
+The learned time constants stayed unchanged (their minimum clamp is active).
+
+On continuous validation replay, normalized control MSE was 0.499 for Minus Two
+and 0.613 for fence take 2, versus 0.810 and 1.575 for constant training-mean
+controls. Blanking images changed these to 0.517 and 0.619: visual dependence is
+still weak. A matched 120-update run with path-loss weight zero produced almost
+identical short-window errors (differences below 0.0001). The connection carries
+gradients, but this experiment shows **no meaningful benefit from the predictor**.
+
+All execution tests ran in Anode session 2, on `[Copy] New Drone`. A 15-second
+shadow run completed 1,491 updates. Ground axis verification confirmed actual
+processed inputs within 0.00005 of the commands and speed below 0.005 m/s.
+A 12-second live control test completed 1,194 updates with the teacher absent.
+The drone took off and climbed uncontrollably to 67.4 m: **flight qualification
+failed**. Requested and observed mean processed throttle after arming were 0.415
+and 0.414, so this was a controller failure, not a disconnected gamepad.
+
+The candidate is not promoted or published as an improved pilot. The next
+training work must preserve stabilization and teach recovery on states caused
+by the policy itself; short imitation errors alone cannot select a flight model.
+Experimental live attempts now also stop at configurable height, speed and
+distance limits (defaults 8 m, 10 m/s and 20 m). These abort limits do not steer
+the drone. The recorded first attempt predates those limits. Its first-second
+raw-stick CSV columns describe the requested output before the arming hold;
+later runs log the actual held-low command. The video is only five seconds long
+and is incomplete; telemetry covers the full attempt.
+
+Local outputs: `runs/human-brain-01/` and `runs/human-brain-no-teacher-01/`.
+Weights remain experimental local outputs; the existing deployed checkpoint
+has not been replaced.

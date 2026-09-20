@@ -102,3 +102,11 @@ def test_export_runs_without_teacher_or_training_head(tmp_path,monkeypatch):
         expected,_,_ = rollout(brain,batch)
         actual,_,_ = rollout(loaded,batch)
     assert torch.equal(expected,actual)
+
+
+def test_live_attempt_limits_detect_climb_and_departure():
+    from haltere.liftoff.visual_brain import flight_limit_reason
+    assert flight_limit_reason(np.array([0,0,2]),np.zeros(3),8,10,20) is None
+    assert 'height' in flight_limit_reason(np.array([0,0,9]),np.zeros(3),8,10,20)
+    assert 'speed' in flight_limit_reason(np.zeros(3),np.array([0,0,11]),8,10,20)
+    assert 'distance' in flight_limit_reason(np.array([21,0,2]),np.zeros(3),8,10,20)

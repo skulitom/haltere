@@ -122,12 +122,25 @@ class VisualController:
         return action[0].cpu().numpy(),processed,raw
 
 
+def flight_limit_reason(position, velocity, max_height, max_speed, max_distance):
+    """Bound experimental control attempts; these limits do not steer the drone."""
+    if position[2] > max_height:
+        return 'Flight height limit exceeded'
+    if np.linalg.norm(velocity) > max_speed:
+        return 'Flight speed limit exceeded'
+    if np.linalg.norm(position[:2]) > max_distance:
+        return 'Flight distance limit exceeded'
+    return None
+
+
 def run(args):
     from .gamepad import UdpSticks
     from .recorder import FlightRecorder, SharedFlightState
     from .manual_recording import live_pose
     if not 0 < args.seconds <= 120:
         raise ValueError('Use a bounded run of 0 < seconds <= 120')
+    if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
+        raise ValueError('Use finite positive flight limits')
     log_path = Path(args.log)
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
@@ -183,17 +196,20 @@ def run(args):
                     raise RuntimeError('Nonfinite motor output')
                 first_ts = frame.timestamp if first_ts is None else first_ts
                 elapsed = frame.timestamp-first_ts
+                pos = controller.senses['pos'][0].cpu().numpy()
+                velocity = controller.senses['vel_world'][0].cpu().numpy()
                 if pad:
+                    limit = flight_limit_reason(pos,velocity,args.max_height,args.max_speed,args.max_distance)
+                    if limit:
+                        raise RuntimeError(limit)
                     if elapsed<1:
-                        pad.neutral()
+                        raw = np.array([-1.,0.,0.,0.])
                     else:
                         ramp = min(1.,(elapsed-1)/2)
                         raw[0] = -1+ramp*(raw[0]+1)
                         raw[1:] *= ramp
-                        pad.send(*raw)
-                pos = controller.senses['pos'][0].cpu().numpy()
+                    pad.send(*raw)
                 q = controller.senses['quat'][0].cpu().numpy()
-                velocity = controller.senses['vel_world'][0].cpu().numpy()
                 writer.writerow([time.time(),frame.timestamp,now-capture_time,not bool(pad),*action,*processed,*pos,
                                  *frame.input,*raw,*velocity,*q])
                 count += 1
@@ -217,6 +233,7 @@ def run(args):
                       control_mode='visual fly brain' if pad else 'shadow: no control output',
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,
                       external_goal=False,yaw_assistance=False,
+                      limits=dict(height_m=args.max_height,speed_mps=args.max_speed,distance_m=args.max_distance),
                       process_session=windows_session_id())
         log_path.with_suffix('.json').write_text(json.dumps(result,indent=2))
         print(json.dumps(result),flush=True)
@@ -241,6 +258,9 @@ def main():
     p.add_argument('--udp-out',default='')
     p.add_argument('--port',type=int,default=9001)
     p.add_argument('--device',default='cuda')
+    p.add_argument('--max-height',type=float,default=8.)
+    p.add_argument('--max-speed',type=float,default=10.)
+    p.add_argument('--max-distance',type=float,default=20.)
     run(p.parse_args())
 
 
