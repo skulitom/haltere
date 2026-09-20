@@ -32,6 +32,9 @@ The first preparation produced 5,093 training examples (632 overlapping
 and 4,312 review-only examples. Additional recordings do not enter this version
 automatically; add their explicit paths to a new plan and prepare a new output.
 
+The v3 plan adds fence take 2 as validation and fence take 3 as a final `test`
+split. [Navigation training](navigation_training.md) consumes this version.
+
 The plan removes idle starts and finish/landing tails. The longest future-path
 horizon also removes one second of example starting points at each selected
 segment's end. Whole takes stay in one split. Nonuniform images are hashed across
@@ -70,9 +73,9 @@ batch = next(iter(DataLoader(train, batch_size=8, shuffle=True)))
 Use `future_body` as the navigation target and `controls` as recorded supervision,
 not as an input when evaluating control prediction. Liftoff Input is **not** a raw
 radio or Xbox command; the existing stick mapping must not be applied blindly.
-The current simulator imitation trainer consumes synthetic controller rollouts
-and does not yet consume these examples. The sequence loader is the handoff for
-an offline navigation learner; preparation itself does not improve the pilot.
+The simulator imitation trainer consumes synthetic controller rollouts.
+The separate `haltere.vision.train_navigation` experiment consumes these human
+examples as local-path targets; preparation itself does not improve the pilot.
 
 The inherited camera calibration and physical display delay remain unvalidated.
 Therefore these examples have no projected gate labels, and the fence is not

@@ -1,0 +1,14 @@
+{
+  "seed": 17,
+  "epochs": 25,
+  "batch": 16,
+  "lr": 0.001,
+  "weight_decay": 0.001,
+  "hidden": 64,
+  "length": 16,
+  "burn_in": 4,
+  "stride": 8,
+  "device": "cuda",
+  "max_gpu_temp": 70,
+  "batch_sleep": 0.04
+}

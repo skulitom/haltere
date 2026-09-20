@@ -137,3 +137,16 @@ def test_uniform_finish_images_are_excluded_not_mistaken_for_leakage(tmp_path):
     with np.load(out / 'a.npz') as x:
         assert '000030.jpg' not in x['filename']
         assert len(np.unique(x['run_id'])) == 2
+
+
+def test_final_test_take_is_separate_from_training_and_validation(tmp_path):
+    a, b, c = capture(tmp_path, 'a'), capture(tmp_path, 'b', 90), capture(tmp_path, 'c', 140)
+    path, plan = plan_for(tmp_path, a, b)
+    plan['takes'].append({'id': 'c', 'source': str(c), 'profile': 'c', 'split': 'test',
+                          'segments': [{'start_s': .2, 'end_s': 3.8}]})
+    path.write_text(json.dumps(plan))
+    out = tmp_path / 'prepared'
+    prepare(path, out)
+    assert [t['id'] for t, _ in DemonstrationSequences(out, 'train').takes] == ['a']
+    assert [t['id'] for t, _ in DemonstrationSequences(out, 'validation').takes] == ['b']
+    assert [t['id'] for t, _ in DemonstrationSequences(out, 'test').takes] == ['c']

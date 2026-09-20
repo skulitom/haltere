@@ -153,7 +153,7 @@ def prepare(plan_path, out, *, root='.'):
     for take in plan['takes']:
         ident, split = take['id'], take['split']
         if (Path(ident).name != ident or any(ch not in 'abcdefghijklmnopqrstuvwxyz0123456789_-' for ch in ident)
-                or not ident or ident in seen_ids or split not in ('train', 'validation', 'review')):
+                or not ident or ident in seen_ids or split not in ('train', 'validation', 'test', 'review')):
             raise ValueError('Invalid or repeated take ID/split')
         source = (root / take['source']).resolve()
         if source in seen_paths:
@@ -209,7 +209,7 @@ class DemonstrationSequences:
 
     def __init__(self, dataset, split='train', length=16, stride=8, image_size=(160, 90)):
         self.root = Path(dataset).resolve()
-        if split not in ('train', 'validation', 'review') or length <= 0 or stride <= 0:
+        if split not in ('train', 'validation', 'test', 'review') or length <= 0 or stride <= 0:
             raise ValueError('Use a valid split and positive sequence length/stride')
         self.length, self.image_size = length, image_size
         self.takes, self.windows = [], []
@@ -263,7 +263,7 @@ def main():
     parser.add_argument('--root', default='.')
     args = parser.parse_args()
     manifest = prepare(args.plan, args.out, root=args.root)
-    for split in ('train', 'validation', 'review'):
+    for split in ('train', 'validation', 'test', 'review'):
         selected = [t for t in manifest['takes'] if t['split'] == split]
         print(f'{split}: {len(selected)} takes, {sum(t["examples"] for t in selected):,} examples')
 
