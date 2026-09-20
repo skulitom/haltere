@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "horizons_s": [0.25, 0.5, 1.0],
+  "max_gap_s": 0.12,
+  "holdout_profiles": ["minus_two_race"],
+  "notes": "Whole-take split. Minus Two v2 is an unseen-course validation set. Earlier takes with user-reported mistakes are review-only. Bounds remove idle starts and finish/landing tails. Visual review is sampled, not proof of collision-free flight. No independent fence holdout yet.",
+  "takes": [
+    {
+      "id": "straw_bale_race_01",
+      "source": "data/vision/manual_sessions/straw_bale_race/20260920-192735-941600",
+      "profile": "straw_bale_race",
+      "split": "train",
+      "segments": [{"start_s": 2.5, "end_s": 94.5, "label": "race_demonstration"}],
+      "review": {"race_finish_seen": true, "evidence_frames": ["000000.jpg", "001155.jpg", "001450.jpg", "001732.jpg"]}
+    },
+    {
+      "id": "pine_valley_race_02",
+      "source": "data/vision/manual_sessions/pine_valley_race/20260920-193537-458900",
+      "profile": "pine_valley_race",
+      "split": "train",
+      "segments": [{"start_s": 2.0, "end_s": 131.2, "label": "race_demonstration"}],
+      "review": {"race_finish_seen": true, "evidence_frames": ["000000.jpg", "001201.jpg", "002162.jpg", "002402.jpg"]}
+    },
+    {
+      "id": "minus_two_race_02",
+      "source": "data/vision/manual_sessions/minus_two_race/20260920-194207-748300",
+      "profile": "minus_two_race",
+      "split": "validation",
+      "segments": [{"start_s": 1.9, "end_s": 94.0, "label": "race_demonstration"}],
+      "review": {"race_finish_seen": true, "evidence_frames": ["000000.jpg", "000856.jpg", "001541.jpg", "001712.jpg"]}
+    },
+    {
+      "id": "straw_bale_fence_01",
+      "source": "data/vision/manual_sessions/straw_bale_fence/20260920-194609-171000",
+      "profile": "straw_bale_fence",
+      "split": "train",
+      "segments": [{"start_s": 2.0, "end_s": 64.5, "label": "fence_navigation_demonstration"}],
+      "review": {"evidence_frames": ["000144.jpg", "000360.jpg", "000504.jpg", "000720.jpg", "000901.jpg", "001118.jpg"], "note": "Low, slow fence approaches and turns; landing excluded. Not labelled as gates or certified clear passages."}
+    },
+    {
+      "id": "pine_valley_race_01",
+      "source": "data/vision/manual_sessions/pine_valley_race/20260920-193159-569500",
+      "profile": "pine_valley_race",
+      "split": "review",
+      "segments": [{"start_s": 2.0, "end_s": 146.0, "label": "user_reported_mistake_take"}],
+      "review": {"user_reported_mistake": true, "candidate_events": [{"t_s": 54.17, "reason": "rapid_deceleration", "collision_confirmed": false}]}
+    },
+    {
+      "id": "minus_two_race_01",
+      "source": "data/vision/manual_sessions/minus_two_race/20260920-194011-245500",
+      "profile": "minus_two_race",
+      "split": "review",
+      "segments": [{"start_s": 2.4, "end_s": 97.6, "label": "user_reported_mistake_take"}],
+      "review": {"user_reported_mistake": true, "candidate_events": [{"t_s": 87.1, "reason": "rapid_deceleration", "collision_confirmed": false}]}
+    }
+  ]
+}

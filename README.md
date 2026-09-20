@@ -941,6 +941,8 @@ than the lap brain.
 
 The next milestone is repeatable second-course flight. See the
 [collection workflow, bot-data findings and acceptance plan](docs/second_course.md).
+Human recordings now have a [sequence preparation workflow](docs/human_demonstrations.md)
+with observed controls, future flight paths and a whole-course holdout.
 `haltere liftoff capture` now records manual FPV flights with telemetry without running
 the pilot, and `haltere vision audit` checks labelled flights and train/holdout overlap.
 `haltere liftoff bot-route` can now extract a route from the installed bot recording pool;
