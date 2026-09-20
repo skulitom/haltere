@@ -1,7 +1,8 @@
 """Small causal visual path predictor for offline human-flight experiments.
 
-This predicts body-frame waypoints for a future navigation layer. It neither
-outputs sticks nor replaces or updates the connectome motor controller.
+This predicts body-frame paths for training supervision and offline diagnostics.
+It is not a deployed navigation layer or an intended final product. The exported
+fly brain must run without this teacher.
 """
 from __future__ import annotations
 
