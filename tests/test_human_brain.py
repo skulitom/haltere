@@ -110,3 +110,46 @@ def test_live_attempt_limits_detect_climb_and_departure():
     assert 'height' in flight_limit_reason(np.array([0,0,9]),np.zeros(3),8,10,20)
     assert 'speed' in flight_limit_reason(np.zeros(3),np.array([0,0,11]),8,10,20)
     assert 'distance' in flight_limit_reason(np.array([21,0,2]),np.zeros(3),8,10,20)
+
+
+def test_motor_feedback_mask_is_exported_and_does_not_mutate_senses(tmp_path, monkeypatch):
+    brain, cfg, graph = small_brain()
+    cfg.brain.mask_motor_feedback = True
+    batch = {k: torch.rand(2, 12, d) for k, d in brain.channel_dims.items()}
+    batch['action'] = torch.zeros(2, 12, 4)
+    before = batch['wing_cs'].clone()
+    changed = copy.deepcopy(batch)
+    changed['wing_cs'][..., 2] = -100
+    with torch.no_grad():
+        a, _, _ = rollout(brain, batch)
+        b, _, _ = rollout(brain, changed)
+    assert torch.equal(a, b)
+    assert torch.equal(batch['wing_cs'], before)
+    path = tmp_path/'masked.pt'
+    export(path, brain, cfg, {'runtime_requires_teacher': False}, 1)
+    monkeypatch.setattr(BrainGraph, 'load', lambda path: graph)
+    loaded, _, _ = load_checkpoint(path, 'cpu')
+    assert loaded.cfg.mask_motor_feedback
+    with torch.no_grad():
+        c, _, _ = rollout(loaded, changed)
+    assert torch.equal(a, c)
+
+
+def test_recovery_rollout_updates_student_across_windows_without_teacher_gradients():
+    from haltere.train.recovery import RecoveryRollout
+    student, cfg, _ = small_brain()
+    teacher = copy.deepcopy(student).requires_grad_(False)
+    student.cfg.mask_motor_feedback = True
+    calibration = dict(hover_processed=.14, hover_stick_sim=-.5, throttle_scale=.8, stick_sign=[-1, 1, 1])
+    recovery = RecoveryRollout(teacher, cfg, calibration, batch_size=2)
+    optimizer = torch.optim.Adam(student.parameters(), lr=.001)
+    for _ in range(2):
+        optimizer.zero_grad()
+        loss = recovery.loss(student, torch.ones(4), steps=24)
+        assert torch.isfinite(loss)
+        loss.backward()
+        assert student.log_edge_gain.grad.abs().sum()>0
+        optimizer.step()
+    assert recovery.age == 48
+    assert not recovery.student_state['v'].requires_grad
+    assert all(p.grad is None for p in teacher.parameters())

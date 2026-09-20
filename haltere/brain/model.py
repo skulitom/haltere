@@ -48,6 +48,7 @@ class BrainConfig:
         'compass': 'compass', 'goal': 'goal'})
     motor: tuple[str, ...] = ('wing_mn',)
     n_actions: int = 4
+    mask_motor_feedback: bool = False  # prevents action imitation from copying action-correlated RPM
 
     @staticmethod
     def from_dict(d: dict) -> "BrainConfig":
@@ -206,7 +207,13 @@ class ConnectomeRNN(nn.Module):
         I = torch.zeros_like(v)
         for key, enc in self.encoders.items():
             idx = getattr(self, f'idx_{key}')
-            I = I.index_add(0, idx, enc(obs[self.encoder_channel[key]]).T)
+            ch = self.encoder_channel[key]
+            value = obs[ch]
+            if self.cfg.mask_motor_feedback and ch == 'wing_cs':
+                # Mask inside the exported brain so replay, simulation and live
+                # control cannot accidentally use different sensory contracts.
+                value = torch.cat((value[..., :2], torch.zeros_like(value[..., 2:3])), -1)
+            I = I.index_add(0, idx, enc(value).T)
         k = (self.cfg.dt / self.tau())[:, None]
         v = v + k * (-v + rec + I + self.bias[:, None])
         r_new = self.cfg.rate_max * torch.sigmoid(v)

@@ -156,6 +156,16 @@ def run(args):
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18) if shared else None
     if recorder:
         recorder.start()
+        try:
+            recorder.wait_ready()
+        except Exception:
+            recorder.stop()
+            camera.stop()
+            rx.close()
+            if pad:
+                pad.neutral()
+                pad.close()
+            raise
     log_path.parent.mkdir(parents=True,exist_ok=True)
     begin, next_tick, count, reason = time.monotonic(),time.monotonic(),0,'duration'
     frame, last_frame, first_ts, last_progress = None,begin,None,begin

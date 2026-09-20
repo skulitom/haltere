@@ -93,3 +93,39 @@ and is incomplete; telemetry covers the full attempt.
 Local outputs: `runs/human-brain-01/` and `runs/human-brain-no-teacher-01/`.
 Weights remain experimental local outputs; the existing deployed checkpoint
 has not been replaced.
+
+## Recovery training
+
+The first visual candidate reacts to independently increased motor RPM by
+raising throttle, and its climb-braking response has degraded. The exported
+brain can now mask the RPM component of `wing_cs` with
+`brain.mask_motor_feedback`; the mask is applied inside the model, identically
+in replay, simulation and live flight. It is off for existing checkpoints.
+
+`train_human_brain_recovery.json` adds fixed, counterfactual recovery examples
+from the original motor brain. `train_human_brain_onpolicy.json` continues that
+run with student-driven simulator rollouts. The frozen motor teacher labels
+the student's resulting states; gradients update the student, and both brain
+states persist between training windows. Physics and teacher outputs are
+detached. Navigation path supervision still comes exclusively from the cached,
+training-only predictor. Neither teacher is exported or loaded for live flight.
+
+```powershell
+.venv/Scripts/python.exe -m haltere.train.human_brain train --prepared data/vision/human_brain_v1b --initial artifacts/ftPath2_best.pt --config configs/train_human_brain_recovery.json --out runs/human-brain-recovery-01
+.venv/Scripts/python.exe -m haltere.train.human_brain train --prepared data/vision/human_brain_v1b --initial artifacts/ftPath2_best.pt --config configs/train_human_brain_onpolicy.json --out runs/human-brain-onpolicy-01
+.venv/Scripts/python.exe -m haltere.train.recovery CHECKPOINT --out NEW_RESULT.json
+```
+
+With `qualify_motor` enabled, each validation checkpoint also runs 24
+closed-loop simulator recovery episodes with blank images, control delay and
+physical variation. `best.pt` still denotes lowest replay error;
+`motor-qualified.pt` is saved only after the reflex check passes. This is a
+simulator check, **not live flight or navigation qualification**. Failure leaves
+no qualified checkpoint; there is no automatic switch to an older flight model.
+
+This check rejects the first visual candidate (maximum height 32.9 m in six
+seconds) and accepts the original motor reference (maximum 5.3 m). Fixed
+recovery examples plus RPM masking alone did not suffice: the 240-update run
+still failed the check, including a large tilt. Student-driven recovery is the
+next training stage. Live recordings now wait for their first encoded frame
+before the flight timer starts, so startup does not omit most of a short test.

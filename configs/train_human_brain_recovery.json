@@ -1,0 +1,16 @@
+{
+  "seed": 21,
+  "device": "cuda",
+  "iterations": 240,
+  "batch_size": 8,
+  "lr": 0.0001,
+  "lr_edges": 0.00003,
+  "lr_probe": 0.001,
+  "teacher_weight": 0.1,
+  "mask_motor_feedback": true,
+  "recovery_weight": 1.0,
+  "qualify_motor": true,
+  "eval_every": 60,
+  "validation_windows_per_take": 16,
+  "max_gpu_temp": 78
+}

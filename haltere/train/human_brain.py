@@ -296,6 +296,15 @@ def train(prepared, initial, out, config):
     if sha256(initial) != manifest['initial_brain_sha256']:
         raise ValueError('Initial brain differs from the prepared teacher run')
     brain, cfg, graph = student_from_motor(initial,device)
+    cfg.brain.mask_motor_feedback = bool(config.get('mask_motor_feedback', False))
+    if config.get('warm_start'):
+        warm, warm_cfg, _ = load_checkpoint(config['warm_start'], device)
+        warm_meta = torch.load(config['warm_start'], map_location='cpu', weights_only=True)['visual_brain']
+        if (warm_meta['prepared_sha256'] != sha256(prepared/'manifest.json')
+                or warm_cfg.brain.mask_motor_feedback != cfg.brain.mask_motor_feedback):
+            raise ValueError('Warm start sensory/data contract differs')
+        brain.load_state_dict(warm.state_dict())
+        del warm
     if sha256(Path(cfg.train.graph).with_suffix('.npz')) != manifest['graph_sha256']:
         raise ValueError('Connectome changed after preparation')
     if cfg.brain.dt != manifest['dt']:
@@ -317,10 +326,25 @@ def train(prepared, initial, out, config):
         ids = [i for i,(take,_) in enumerate(val.windows) if take==n]
         val_ids.extend(ids[i] for i in np.linspace(0,len(ids)-1,min(len(ids),config['validation_windows_per_take']),dtype=int))
     calibration = manifest['calibration']
+    recovery = recovery_rollout = None
+    if config.get('recovery_weight', 0) > 0:
+        from .recovery import recovery_examples
+        motor_teacher, motor_cfg, _ = load_checkpoint(initial, device)
+        if config.get('recovery_rollout', False):
+            from .recovery import RecoveryRollout
+            motor_teacher.requires_grad_(False)
+            recovery_rollout = RecoveryRollout(motor_teacher,motor_cfg,calibration,config['batch_size'])
+        else:
+            recovery = recovery_examples(motor_teacher, motor_cfg, calibration)
+            del motor_teacher
     provenance = dict(calibration=calibration, teacher_training_only=True,
                       teacher_sha256=manifest['teacher_sha256'], prepared_sha256=sha256(prepared/'manifest.json'),
                       initial_brain_sha256=manifest['initial_brain_sha256'], graph_sha256=manifest['graph_sha256'],
                       external_goal=False, yaw_assistance=False, runtime_requires_teacher=False,
+                      mask_motor_feedback=cfg.brain.mask_motor_feedback,
+                      recovery_weight=config.get('recovery_weight', 0),
+                      warm_start_sha256=sha256(config['warm_start']) if config.get('warm_start') else None,
+                      recovery_rollout=bool(config.get('recovery_rollout', False)),
                       assessment='experimental offline imitation; not flight-qualified')
     out.mkdir(parents=True)
     (out/'config.json').write_text(json.dumps(dict(config=config,provenance=provenance),indent=2))
@@ -328,6 +352,7 @@ def train(prepared, initial, out, config):
     (out/'baseline.json').write_text(json.dumps(baseline,indent=2))
     print('Before training: '+json.dumps(baseline),flush=True)
     best = sum(v['normalized_mse'] for v in baseline.values())/len(baseline)
+    best_reflex = float('inf')
     export(out/'initial.pt',brain,cfg,provenance,0)
     started = time.monotonic()
     by_take = [[i for i,(k,_) in enumerate(train_data.windows) if k==n] for n in range(len(train_data.takes))]
@@ -342,7 +367,17 @@ def train(prepared, initial, out, config):
         # This target cannot enter the sensory dict; it only supplies a detached loss.
         teacher = batch['teacher'][:,burn:].flatten(-2).detach()
         path_loss = F.smooth_l1_loss(path[:,burn:]/5,teacher/5)
-        loss = action_loss + config['teacher_weight']*path_loss + brain.regularization(aux)
+        loss = config.get('action_weight', 1.)*action_loss + config['teacher_weight']*path_loss + brain.regularization(aux)
+        recovery_loss = torch.zeros((), device=device)
+        if recovery is not None:
+            ri = torch.randint(len(recovery['action']), (config['batch_size'],), device=device)
+            rb = {k: v[ri] for k, v in recovery.items()}
+            ra, _, _ = rollout(brain, rb, detach_every=8)
+            recovery_loss = (((brain_to_processed(ra,calibration)-rb['action'])[:,burn:]/scale)**2).mean()
+            loss = loss + config['recovery_weight'] * recovery_loss
+        elif recovery_rollout is not None:
+            recovery_loss = recovery_rollout.loss(brain, scale)
+            loss = loss + config['recovery_weight'] * recovery_loss
         opt.zero_grad(set_to_none=True)
         loss.backward()
         if it == 1:
@@ -356,6 +391,7 @@ def train(prepared, initial, out, config):
             raise RuntimeError('Nonfinite training update')
         opt.step()
         row = dict(iteration=it,action_loss=float(action_loss.detach()),teacher_loss=float(path_loss.detach()),
+                   recovery_loss=float(recovery_loss.detach()),
                    elapsed_s=time.monotonic()-started)
         with (out/'training.jsonl').open('a') as f:
             f.write(json.dumps(row)+'\n')
@@ -365,6 +401,13 @@ def train(prepared, initial, out, config):
             result = evaluate(brain,val,calibration,scale,val_ids,device,mean_action=mean_action)
             score = sum(v['normalized_mse'] for v in result.values())/len(result)
             row = dict(iteration=it,score=score,takes=result)
+            if config.get('qualify_motor', False):
+                from .recovery import motor_check
+                row['motor_check'] = motor_check(brain, cfg)
+                if row['motor_check']['reflex_pass'] and score < best_reflex:
+                    best_reflex = score
+                    export(out/'motor-qualified.pt',brain,cfg,
+                           {**provenance,'assessment':'simulator reflex check passed; not live-flight-qualified'},it)
             print('Validation: '+json.dumps(row),flush=True)
             with (out/'validation.jsonl').open('a') as f:
                 f.write(json.dumps(row)+'\n')
@@ -380,6 +423,8 @@ def train(prepared, initial, out, config):
                   teacher_free_replay=evaluate(brain,val,calibration,scale,val_ids,device,mean_action=mean_action),
                   images_blanked=evaluate(brain,val,calibration,scale,val_ids,device,blank=True),
                   baseline=baseline,validation_windows=val_ids,flight_tested=False)
+    if config.get('qualify_motor', False):
+        result['motor_qualified_checkpoint'] = str(out/'motor-qualified.pt') if (out/'motor-qualified.pt').exists() else None
     (out/'result.json').write_text(json.dumps(result,indent=2))
     print('Finished: '+json.dumps(result),flush=True)
 

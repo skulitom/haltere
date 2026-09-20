@@ -73,6 +73,7 @@ class SharedFlightState:
         self.rates = mp.Array('f', n_neurons, lock=False)
         self.state = mp.Array('d', len(STATE_FIELDS), lock=False)
         self.stop = mp.Value('i', 0)
+        self.ready = mp.Event()
         self.n = n_neurons
 
     def publish(self, rates: np.ndarray | None, **kw) -> None:
@@ -207,6 +208,7 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
             vfig.canvas.flush_events()
             if not plt.fignum_exists(vfig.number):
                 break
+        shared.ready.set()  # first composed frame has reached the encoder/viewer
         now = time.perf_counter()
         if now - t_report > 5.0:
             n_interval = n_frames - getattr(_recorder_main, '_last_n', 0)
@@ -242,6 +244,16 @@ class FlightRecorder:
     def start(self) -> None:
         _scrub_cv2_from_sys_path()          # the child copies sys.path at spawn time
         self.proc.start()
+
+    def wait_ready(self, timeout: float = 30.) -> None:
+        """Wait before arming so short flights are captured from the start."""
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.shared.ready.wait(.1):
+                return
+            if not self.proc.is_alive():
+                raise RuntimeError(f'Flight recorder exited before its first frame ({self.proc.exitcode})')
+        raise TimeoutError('Flight recorder did not produce its first frame')
 
     def stop(self) -> None:
         self.shared.stop.value = 1
