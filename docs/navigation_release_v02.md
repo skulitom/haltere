@@ -3,6 +3,8 @@
 This release adds a small visual correction to the frozen motion predictor.
 It forecasts the human's future path at 0.25, 0.5 and 1 second; it does not
 emit sticks, operate the game, or replace the connectome motor controller.
+The predictor's project role is **training-only**, not an intended final product.
+The deployed controller must run without these navigation weights.
 
 The 30-epoch experiment selected epoch 3 using validation only. The underlying
 motion model stayed bitwise unchanged. A checkpoint was eligible only when

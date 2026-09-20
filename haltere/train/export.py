@@ -19,6 +19,8 @@ def export_slim(src: str | Path, dst: str | Path) -> dict:
         keep[k] = v
     slim = {'model': keep, 'config': ck['config'], 'iter': ck.get('iter', 0), 'graph': ck['graph'],
             'channels': ck['channels'], 'slim': True}
+    if 'visual_brain' in ck:
+        slim['visual_brain'] = ck['visual_brain']
     torch.save(slim, dst)
     size = Path(dst).stat().st_size
     return {'src': str(src), 'dst': str(dst), 'params_kept': len(keep), 'bytes': size}

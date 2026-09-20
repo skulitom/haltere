@@ -608,6 +608,9 @@ def cmd_fly(a):
             raise SystemExit('--world-route requires a new --log CSV path for this attempt')
         a.no_loop = True
     brain, cfg, graph = load_checkpoint(a.ckpt, a.device)
+    if 'retina' in brain.channel_dims:
+        raise SystemExit('This is a visual fly-brain checkpoint. Run python -m haltere.liftoff.visual_brain; '
+                         'the legacy goal/route pilot cannot supply its visual senses.')
     mapping = load_mapping(a.liftoff_config)
     if a.stick_model == 'curves' and mapping.stick_model is not None:
         mapping.stick_model = None

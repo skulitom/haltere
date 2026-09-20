@@ -2,7 +2,10 @@
 
 `NavigationNet` is an offline experiment: it predicts the next 0.25, 0.5 and
 1 second of the human's path in the drone's current forward/left/up frame.
-It does not output controller commands or change the connectome motor brain.
+It does not output controller commands. Training this predictor alone does not
+change the connectome motor brain. Its intended role is **training-only**;
+[human brain distillation](human_brain_training.md) uses its predictions as
+auxiliary supervision and exports the fly brain without the predictor.
 
 ```powershell
 .venv/Scripts/python.exe -m haltere.vision.demonstrations configs/human_demonstrations_v3.json --out data/vision/human_demonstrations_v3

@@ -3,6 +3,11 @@
 A fruit-fly brain, wired exactly as in the newest fly connectome, trained to fly an FPV drone in
 [Liftoff](https://store.steampowered.com/app/410340/Liftoff_FPV_Drone_Racing/).
 
+The intended controller is the **fly brain**. The experimental navigation
+predictor is a **training-only teacher**, not a deployed navigation product.
+Its offline path errors are not flight results. Human-flight distillation now
+trains the connectome itself; see [the training and evaluation workflow](docs/human_brain_training.md).
+
 ![The fly brain racing the Straw Bale lap in Liftoff](docs/liftoff_fast_lap.gif)
 
 *Left: the 30,000 neurons of the flight circuit drawn at their real positions in the male CNS
