@@ -1,0 +1,349 @@
+{
+  "provenance": {
+    "config": {
+      "seed": 17,
+      "epochs": 25,
+      "batch": 16,
+      "lr": 0.001,
+      "weight_decay": 0.001,
+      "hidden": 64,
+      "length": 16,
+      "burn_in": 4,
+      "stride": 8,
+      "device": "cuda",
+      "max_gpu_temp": 70,
+      "batch_sleep": 0.04
+    },
+    "dataset": "data/vision/human_demonstrations_v3",
+    "dataset_sha256": "eaf05e41ae03d04045efb3ef8d5f21c142346b7f6cd79b40ecfd7f626e78bcdb",
+    "train_sequences": 632,
+    "validation_sequences": 255,
+    "train_takes": [
+      "straw_bale_race_01",
+      "pine_valley_race_02",
+      "straw_bale_fence_01"
+    ],
+    "validation_takes": [
+      "minus_two_race_02",
+      "straw_bale_fence_02"
+    ],
+    "evaluation": "Nonoverlapping scored frames after causal warmup; validation selects best epoch, not an untouched test set",
+    "model_role": "Offline local-path predictor; no controller or game integration",
+    "overlays": "Stick display, timer, compass and standings masked; scene race guidance markers remain visible",
+    "test_takes": [
+      "straw_bale_fence_03"
+    ],
+    "test_sequences": 146,
+    "code_commit": "250564c158623d08dff12d847ab1f824f038ad59",
+    "scope": "Offline waypoint prediction only; no live policy deployment"
+  },
+  "results": {
+    "motion_only": {
+      "best_epoch": 22,
+      "selection_score": 0.5490833021988449,
+      "parameters": 31625,
+      "elapsed_s": 99.1947181224823,
+      "metrics": {
+        "minus_two_race_02": {
+          "model": {
+            "frames": 1632,
+            "mean_error_m": [
+              0.057967331260442734,
+              0.21784929931163788,
+              0.9302762150764465
+            ],
+            "p95_error_m": [
+              0.116227887570858,
+              0.4318748414516449,
+              1.962191104888916
+            ]
+          },
+          "constant_velocity": {
+            "frames": 1632,
+            "mean_error_m": [
+              0.1436547338962555,
+              0.5431696772575378,
+              2.021672487258911
+            ],
+            "p95_error_m": [
+              0.36359718441963196,
+              1.3746122121810913,
+              5.160342216491699
+            ]
+          },
+          "constant_acceleration": {
+            "frames": 1632,
+            "mean_error_m": [
+              0.04390900209546089,
+              0.2542092800140381,
+              1.3737611770629883
+            ],
+            "p95_error_m": [
+              0.09904171526432037,
+              0.5418679714202881,
+              2.843950033187866
+            ]
+          }
+        },
+        "straw_bale_fence_02": {
+          "model": {
+            "frames": 1428,
+            "mean_error_m": [
+              0.06443925201892853,
+              0.21960842609405518,
+              0.7435904741287231
+            ],
+            "p95_error_m": [
+              0.14630059897899628,
+              0.4801129400730133,
+              1.4871184825897217
+            ]
+          },
+          "constant_velocity": {
+            "frames": 1428,
+            "mean_error_m": [
+              0.10050471872091293,
+              0.3557657301425934,
+              1.1654752492904663
+            ],
+            "p95_error_m": [
+              0.1816258579492569,
+              0.638882040977478,
+              2.0650405883789062
+            ]
+          },
+          "constant_acceleration": {
+            "frames": 1428,
+            "mean_error_m": [
+              0.05018815025687218,
+              0.2721017003059387,
+              1.3040227890014648
+            ],
+            "p95_error_m": [
+              0.12734106183052063,
+              0.6294498443603516,
+              2.683605432510376
+            ]
+          }
+        }
+      },
+      "checkpoint_sha256": "9a0ddd387bf30a7d393dd1873fe9cc7d6a595cbbe165345b7d57df5023d27537",
+      "test_metrics": {
+        "straw_bale_fence_03": {
+          "model": {
+            "frames": 1752,
+            "mean_error_m": [
+              0.07715540379285812,
+              0.280905157327652,
+              1.17607581615448
+            ],
+            "p95_error_m": [
+              0.15893805027008057,
+              0.5715327858924866,
+              2.1348352432250977
+            ]
+          },
+          "constant_velocity": {
+            "frames": 1752,
+            "mean_error_m": [
+              0.1588159203529358,
+              0.5873525142669678,
+              2.0183489322662354
+            ],
+            "p95_error_m": [
+              0.2558094561100006,
+              0.9372563362121582,
+              3.2353744506835938
+            ]
+          },
+          "constant_acceleration": {
+            "frames": 1752,
+            "mean_error_m": [
+              0.0563582144677639,
+              0.3311551809310913,
+              1.877460241317749
+            ],
+            "p95_error_m": [
+              0.1272418200969696,
+              0.6999832391738892,
+              3.632575750350952
+            ]
+          }
+        }
+      }
+    },
+    "vision_motion": {
+      "best_epoch": 19,
+      "selection_score": 0.7778002459279167,
+      "parameters": 101769,
+      "elapsed_s": 98.32419729232788,
+      "metrics": {
+        "minus_two_race_02": {
+          "model": {
+            "frames": 1632,
+            "mean_error_m": [
+              0.13813260197639465,
+              0.5215728878974915,
+              1.9227917194366455
+            ],
+            "p95_error_m": [
+              0.2991067171096802,
+              1.1279579401016235,
+              4.18494176864624
+            ]
+          },
+          "constant_velocity": {
+            "frames": 1632,
+            "mean_error_m": [
+              0.1436547338962555,
+              0.5431696772575378,
+              2.021672487258911
+            ],
+            "p95_error_m": [
+              0.36359718441963196,
+              1.3746122121810913,
+              5.160342216491699
+            ]
+          },
+          "constant_acceleration": {
+            "frames": 1632,
+            "mean_error_m": [
+              0.04390900209546089,
+              0.2542092800140381,
+              1.3737611770629883
+            ],
+            "p95_error_m": [
+              0.09904171526432037,
+              0.5418679714202881,
+              2.843950033187866
+            ]
+          },
+          "images_blanked": {
+            "frames": 1632,
+            "mean_error_m": [
+              0.17712174355983734,
+              0.6612116694450378,
+              2.394824504852295
+            ],
+            "p95_error_m": [
+              0.24943822622299194,
+              0.9334618449211121,
+              3.8943028450012207
+            ]
+          }
+        },
+        "straw_bale_fence_02": {
+          "model": {
+            "frames": 1428,
+            "mean_error_m": [
+              0.06252588331699371,
+              0.20828868448734283,
+              0.7045424580574036
+            ],
+            "p95_error_m": [
+              0.13842415809631348,
+              0.4355893135070801,
+              1.388988733291626
+            ]
+          },
+          "constant_velocity": {
+            "frames": 1428,
+            "mean_error_m": [
+              0.10050471872091293,
+              0.3557657301425934,
+              1.1654752492904663
+            ],
+            "p95_error_m": [
+              0.1816258579492569,
+              0.638882040977478,
+              2.0650405883789062
+            ]
+          },
+          "constant_acceleration": {
+            "frames": 1428,
+            "mean_error_m": [
+              0.05018815025687218,
+              0.2721017003059387,
+              1.3040227890014648
+            ],
+            "p95_error_m": [
+              0.12734106183052063,
+              0.6294498443603516,
+              2.683605432510376
+            ]
+          },
+          "images_blanked": {
+            "frames": 1428,
+            "mean_error_m": [
+              0.16782011091709137,
+              0.6151259541511536,
+              2.1354565620422363
+            ],
+            "p95_error_m": [
+              0.25628340244293213,
+              0.883538007736206,
+              2.8845977783203125
+            ]
+          }
+        }
+      },
+      "checkpoint_sha256": "17d588d9cfec7239b6adee13e1c903be2aa82b8310682a62cf8649cc6f94f00e",
+      "test_metrics": {
+        "straw_bale_fence_03": {
+          "model": {
+            "frames": 1752,
+            "mean_error_m": [
+              0.07801570743322372,
+              0.2604575753211975,
+              1.0482244491577148
+            ],
+            "p95_error_m": [
+              0.15407757461071014,
+              0.5507255792617798,
+              2.086967945098877
+            ]
+          },
+          "constant_velocity": {
+            "frames": 1752,
+            "mean_error_m": [
+              0.1588159203529358,
+              0.5873525142669678,
+              2.0183489322662354
+            ],
+            "p95_error_m": [
+              0.2558094561100006,
+              0.9372563362121582,
+              3.2353744506835938
+            ]
+          },
+          "constant_acceleration": {
+            "frames": 1752,
+            "mean_error_m": [
+              0.0563582144677639,
+              0.3311551809310913,
+              1.877460241317749
+            ],
+            "p95_error_m": [
+              0.1272418200969696,
+              0.6999832391738892,
+              3.632575750350952
+            ]
+          },
+          "images_blanked": {
+            "frames": 1752,
+            "mean_error_m": [
+              0.147658571600914,
+              0.5606108903884888,
+              2.1169095039367676
+            ],
+            "p95_error_m": [
+              0.21974843740463257,
+              0.8129465579986572,
+              3.1632444858551025
+            ]
+          }
+        }
+      }
+    }
+  }
+}
