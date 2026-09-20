@@ -89,6 +89,19 @@ def _resize_rows_cols(img: np.ndarray, new_h: int, new_w: int) -> np.ndarray:
     return img[ys][:, xs]
 
 
+def _capture_game_frame(sct, capture, rect=None):
+    """Capture only the foreground game; never fall back to the user's desktop."""
+    from .commands import find_game_window, game_window_active
+    hwnd = find_game_window(capture)
+    if not hwnd or not game_window_active(hwnd):
+        return None
+    region = rect or find_window_rect(capture)
+    if region is None or min(region[2:]) < 64:
+        return None
+    shot = np.asarray(sct.grab(dict(zip(('left', 'top', 'width', 'height'), region))))[:, :, :3][:, :, ::-1]
+    return shot if game_window_active(hwnd) else None
+
+
 def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, capture: str | None,
                    rect: tuple | None, fps: int, show: bool, panel_height: int, dataset: str | None = None,
                    dataset_every: int = 2, dataset_size: tuple[int, int] = (640, 360)):
@@ -102,12 +115,10 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
     state_view = np.frombuffer(shared.state, dtype=np.float64)
     mu = var = None
 
-    sct = region = None
+    sct = None
     if capture or rect:
         import mss
         sct = mss.mss()
-        if rect:
-            region = {'left': rect[0], 'top': rect[1], 'width': rect[2], 'height': rect[3]}
     viewer = None
     if show:
         import matplotlib
@@ -148,16 +159,8 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
         img_panel = panel.render(r, mu, np.sqrt(var + 1e-4), st)
         frame = img_panel
         if sct is not None:
-            if region is None:
-                rr = find_window_rect(capture)
-                if rr is not None:
-                    region = {'left': rr[0], 'top': rr[1], 'width': rr[2], 'height': rr[3]}
-                else:
-                    mon = sct.monitors[1]
-                    region = {'left': mon['left'], 'top': mon['top'], 'width': mon['width'], 'height': mon['height']}
-                    print(f'recorder: window "{capture}" not found, capturing the primary monitor', file=sys.stderr, flush=True)
-            shot = np.asarray(sct.grab(region))[:, :, :3][:, :, ::-1]   # BGRA -> RGB
-            if ds_dir is not None and st['ts'] > 0 and n_frames % dataset_every == 0:
+            shot = _capture_game_frame(sct, capture or 'Liftoff', rect)
+            if shot is not None and ds_dir is not None and st['ts'] > 0 and n_frames % dataset_every == 0:
                 name = f'{n_ds:06d}.jpg'
                 Image.fromarray(np.ascontiguousarray(shot)).resize(dataset_size, Image.BILINEAR).save(
                     ds_dir / 'frames' / name, quality=90)
@@ -165,8 +168,14 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
                 n_ds += 1
                 if n_ds % 50 == 0:
                     ds_index.flush()
-            new_w = max(2, int(shot.shape[1] * panel.H / shot.shape[0]) // 2 * 2)
-            shot = _resize_rows_cols(shot, panel.H, new_w)
+            if shot is None:
+                from PIL import Image, ImageDraw
+                blank = Image.new('RGB', (frame_w-panel.W if frame_w else int(panel.H*16/9)//2*2, panel.H))
+                ImageDraw.Draw(blank).text((20, 20), 'Waiting for foreground Liftoff view', fill='white')
+                shot = np.asarray(blank)
+            else:
+                new_w = max(2, int(shot.shape[1] * panel.H / shot.shape[0]) // 2 * 2)
+                shot = _resize_rows_cols(shot, panel.H, new_w)
             frame = np.concatenate([img_panel, shot], axis=1)
         if frame.shape[1] % 2:
             frame = frame[:, :-1]

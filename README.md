@@ -253,6 +253,11 @@ camera, pointed at the carrot. `--stick-gain 1,0.7,1` scales roll, pitch and yaw
 from the screen and composes it with a live panel of the brain's activity into an MP4, encoded in a
 separate process so the 100 Hz control loop is never slowed down; `--show` opens that panel in a
 window while you watch the game. `--capture-rect x,y,w,h` records a screen region instead of a window.
+The recorder blanks the game view while Liftoff is missing, minimized or out of focus.
+Brain colours identify populations; brightness shows activity relative to each neuron's
+recent baseline. [Straw Bale figure-eight with live brain activity](https://github.com/skulitom/haltere/releases/download/navigation-v0.2.0/straw_bale_connectome_figure8.mp4)
+uses the existing `ftPath2` motor brain with a scripted moving target and yaw assistance;
+the experimental navigation forecaster is not used in this flight.
 
 **The first brain to fly in Liftoff was `artifacts/ftRobust_best.pt`** (for laps and flying by sight
 use `artifacts/ftPath2_best.pt`, for hover and patterns `artifacts/ftSmooth_best.pt` - see the
