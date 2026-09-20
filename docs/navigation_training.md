@@ -107,3 +107,8 @@ commit, dataset hash and checkpoint hashes. Experimental checkpoints:
 
 Neither checkpoint is wired into the live pilot. The game settings, controller
 mapping and shipped motor/vision models were not changed by this experiment.
+
+The [v0.2.0 follow-up](navigation_release_v02.md) freezes this motion model and
+learns a bounded visual correction, preserving the Minus Two result while
+slightly improving the motion baseline on the fence flights. It includes
+downloadable weights and labelled offline comparison videos.

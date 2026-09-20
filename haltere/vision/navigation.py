@@ -86,3 +86,46 @@ class NavigationNet(nn.Module):
         state, _ = self.recurrent(features)
         correction = self.head(state).reshape(b, t, len(self.horizons), 3)
         return constant_velocity(velocity, self.horizons) + correction*self.horizons[:, None].square()
+
+
+class ResidualNavigationNet(nn.Module):
+    """Frozen motion model plus a bounded correction; black images use the base."""
+
+    def __init__(self, base, hidden=64, max_correction_m=.6):
+        super().__init__()
+        if base.vision or max_correction_m <= 0:
+            raise ValueError('Expected a motion-only base and a positive correction bound')
+        self.base, self.vision, self.hidden = base, True, hidden
+        self.max_correction_m = float(max_correction_m)
+        self.register_buffer('horizons', base.horizons.detach().clone())
+        for p in self.base.parameters():
+            p.requires_grad_(False)
+        self.corrector = NavigationNet(vision=True, hidden=hidden, horizons=base.horizons.tolist())
+
+    def train(self, mode=True):
+        super().train(mode)
+        self.base.eval()
+        return self
+
+    def forward(self, images, velocity, attitude, time_s):
+        with torch.no_grad():
+            base = self.base(images, velocity, attitude, time_s)
+        raw = self.corrector(images, velocity, attitude, time_s) - constant_velocity(velocity, self.horizons)
+        # Separate bound for each horizon: 0.6 m at 1 s, scaled by horizon squared.
+        bound = self.max_correction_m*self.horizons[:, None].square()
+        scaled = raw/bound
+        delta = bound*scaled/(1+scaled.norm(dim=-1, keepdim=True))
+        available = (mask_hud(images).flatten(2).abs().sum(-1) > 0)[..., None, None]
+        return base + delta*available
+
+
+def load_navigation(path, device='cpu'):
+    """Load a self-contained inference checkpoint (including the frozen base)."""
+    checkpoint = torch.load(path, map_location=device, weights_only=True)
+    if checkpoint.get('architecture') == 'residual_navigation':
+        base = NavigationNet(vision=False, hidden=checkpoint['base_hidden'], horizons=checkpoint['horizons'])
+        model = ResidualNavigationNet(base, hidden=checkpoint['hidden'], max_correction_m=checkpoint['max_correction_m'])
+    else:
+        model = NavigationNet(vision=checkpoint['vision'], hidden=checkpoint['hidden'], horizons=checkpoint['horizons'])
+    model.load_state_dict(checkpoint['model'])
+    return model.to(device).eval(), checkpoint

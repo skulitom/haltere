@@ -85,3 +85,33 @@ def test_tiny_training_writes_selected_checkpoint_and_metrics(tmp_path):
     assert result['best_epoch']==1
     assert result['metrics']['synthetic']['model']['frames']==16
     assert (tmp_path/'run'/'best.pt').is_file()
+
+
+def test_residual_freezes_base_bounds_corrections_and_falls_back_on_blank():
+    from haltere.vision.navigation import ResidualNavigationNet
+    base=NavigationNet(vision=False)
+    model=ResidualNavigationNet(base,max_correction_m=.6).train()
+    images,v,q,t=batch(8)
+    anchor=base(images,v,q,t).detach()
+    torch.testing.assert_close(model(images,v,q,t),anchor)
+    frozen={k:a.clone() for k,a in base.state_dict().items()}
+    torch.nn.init.normal_(model.corrector.head[-1].weight,std=4.)
+    output=model(images,v,q,t)
+    bound=.6*model.horizons.square()
+    assert torch.all((output-anchor).norm(dim=-1) <= bound+1e-5)
+    output.square().mean().backward()
+    assert all(p.grad is None for p in base.parameters())
+    assert all(torch.equal(frozen[k],a) for k,a in base.state_dict().items())
+    assert base.training is False
+    torch.testing.assert_close(model(torch.zeros_like(images),v,q,t),anchor)
+
+
+def test_residual_checkpoint_roundtrip(tmp_path):
+    from haltere.vision.navigation import ResidualNavigationNet,load_navigation
+    m=ResidualNavigationNet(NavigationNet(vision=False)).eval()
+    path=tmp_path/'model.pt'
+    torch.save(dict(architecture='residual_navigation',model=m.state_dict(),base_hidden=64,
+                    hidden=64,horizons=[.25,.5,1.],max_correction_m=.6),path)
+    loaded,_=load_navigation(path)
+    args=batch(8)
+    with torch.no_grad():torch.testing.assert_close(m(*args),loaded(*args))

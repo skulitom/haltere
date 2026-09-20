@@ -13,3 +13,8 @@ Load with `NavigationNet` from `haltere.vision.navigation`. The checkpoint store
 epoch and dataset hash. Inputs are causal RGB sequences plus body velocity,
 body-to-world wxyz attitude, and actual elapsed seconds. Outputs are three
 future displacement vectors in the current body's forward/left/up frame.
+
+`navigation_human_v2_residual.pt` includes the frozen motion base and a bounded
+visual corrector. Load it with `load_navigation`, which handles both checkpoint
+architectures. See the [v0.2.0 release notes](../../docs/navigation_release_v02.md)
+for results, videos and the limits of the comparison.

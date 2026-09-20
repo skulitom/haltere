@@ -1,0 +1,15 @@
+{
+  "base_checkpoint": "artifacts/experimental/navigation_human_v1_motion_only.pt",
+  "seed": 29,
+  "epochs": 30,
+  "batch": 16,
+  "lr": 0.0005,
+  "hidden": 64,
+  "max_correction_m": 0.6,
+  "length": 16,
+  "burn_in": 4,
+  "stride": 8,
+  "device": "cuda",
+  "max_gpu_temp": 70,
+  "batch_sleep": 0.04
+}
