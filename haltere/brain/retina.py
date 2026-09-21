@@ -12,15 +12,24 @@ RETINA_SIZE = (12, 20)
 RETINA_DIM = 3 * RETINA_SIZE[0] * RETINA_SIZE[1]
 
 
-def retina_input(images):
+def retina_input(images, mode='legacy'):
     """RGB float images [...,3,H,W] -> fixed, HUD-masked samples [...,720]."""
     if images.shape[-3] != 3:
         raise ValueError('Expected RGB images')
     x = images.clone()
     h, w = x.shape[-2:]
-    x[..., :round(.23*h), :] = .5
-    x[..., round(.84*h):, :] = .5
-    x[..., round(.34*h):round(.78*h), round(.82*w):] = .5
+    if mode=='legacy':
+        x[..., :round(.23*h), :] = .5
+        x[..., round(.84*h):, :] = .5
+        x[..., round(.34*h):round(.78*h), round(.82*w):] = .5
+    elif mode=='scene_v2':
+        # Keep the ground and peripheral obstacles. Mask the actual HUD regions,
+        # including observed sticks, rather than deleting the whole lower view.
+        for left,top,right,bottom in ((0,0,.12,.13),(.86,0,1,.22),(.30,.08,.70,.23),
+                                      (.40,.84,.60,1),(0,.93,.08,1),(.90,.34,1,.78)):
+            x[...,round(top*h):round(bottom*h),round(left*w):round(right*w)]=.5
+    else:
+        raise ValueError('Unknown retinal sampling contract')
     shape = x.shape[:-3]
     return F.adaptive_avg_pool2d((x.reshape(-1, 3, h, w)-.5)*2, RETINA_SIZE).reshape(*shape, RETINA_DIM)
 

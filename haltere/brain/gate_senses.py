@@ -9,15 +9,15 @@ from ..sim.tasks import observe_from_sensors
 
 
 def gate_observation(sensors, motor, task, retina, relative_gate, height_invariant=False,
-                     gravity_aligned_height=False,search_height_error=None):
+                     gravity_aligned_height=False,search_height_error=None,raw_retina_active=False):
     if height_invariant:
         # Starting elevation is not height above terrain. Use a fixed velocity
         # normalization and constant legacy height channel; neither varies with
         # world coordinates. This contract requires a correspondingly trained brain.
         sensors = {**sensors,'altitude':torch.full_like(sensors['altitude'],1.5)}
-    # This stage is trained with the detector as its visual frontend. Keep the
-    # older raw-pixel channel inactive in both simulation and live flight.
-    obs = visual_observation(sensors, motor, task, torch.zeros_like(retina))
+    # Existing gate-only checkpoints retain their exact sensory contract. A
+    # separately trained scene adapter must explicitly enable image currents.
+    obs = visual_observation(sensors, motor, task, retina if raw_retina_active else torch.zeros_like(retina))
     if search_height_error is not None:
         # Local odometry relative to the start of a search, not launch altitude.
         # The velocity normalization remains constant. Zero is used when a gate

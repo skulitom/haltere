@@ -38,6 +38,34 @@ def test_images_mask_controls_and_causal_selection():
     assert causal_indices([1.,2.,3.],[.9,1.,1.9,2.,3.1]).tolist()==[-1,0,0,1,2]
 
 
+def test_scene_sampling_keeps_lower_obstacles_but_masks_observed_sticks():
+    base=torch.full((1,3,90,160),.5)
+    hud=base.clone();hud[...,round(.84*90):,round(.40*160):round(.60*160)]=1.
+    assert torch.equal(retina_input(base,'scene_v2'),retina_input(hud,'scene_v2'))
+    obstacle=base.clone();obstacle[...,76:90,110:114]=1.
+    assert torch.equal(retina_input(base),retina_input(obstacle))
+    assert not torch.equal(retina_input(base,'scene_v2'),retina_input(obstacle,'scene_v2'))
+
+
+def test_scene_adapter_training_cannot_change_blank_retina_parent_behaviour():
+    from haltere.train.scene_brain import visual_parameters_only
+    brain,_,_=small_brain();parent=copy.deepcopy(brain).requires_grad_(False)
+    parameters=visual_parameters_only(brain);opt=torch.optim.Adam(parameters,lr=.03)
+    obs={k:torch.randn(3,d) for k,d in brain.channel_dims.items()}
+    W=brain.weight_matrix();state=brain.init_state(3)
+    for _ in range(12):action,state,_=brain(obs,state,W)
+    action.square().sum().backward();opt.step()
+    assert not torch.equal(brain.encoders['retina__lptc'].U,parent.encoders['retina__lptc'].U)
+    for name,p in brain.named_parameters():
+        if name not in ('encoders.retina__lptc.U','encoders.retina__lptc.log_gain'):
+            assert torch.equal(p,parent.state_dict()[name])
+    obs['retina'].zero_();s=brain.init_state(3);p=parent.init_state(3)
+    with torch.no_grad():
+        for _ in range(30):
+            a,s,_=brain(obs,s);b,p,_=parent(obs,p)
+            assert torch.equal(a,b) and torch.equal(s['v'],p['v'])
+
+
 def test_processed_target_units_and_no_goal_input():
     calibration = dict(hover_processed=.14,hover_stick_sim=-.5,throttle_scale=.8,stick_sign=[-1,1,1])
     a = torch.tensor([[-.5,.2,-.3,.4]])

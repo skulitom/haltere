@@ -43,6 +43,10 @@ def test_gate_senses_keep_vertical_error_and_ignore_world_coordinates():
     assert torch.equal(obs['goal'],other['goal'])
     pixels=gate_observation(s,torch.zeros(1,1),task,torch.ones(1,RETINA_DIM),torch.tensor([[30.,0.,2.]]))
     assert torch.count_nonzero(pixels['retina'])==0
+    scene=gate_observation(s,torch.zeros(1,1),task,torch.ones(1,RETINA_DIM),torch.tensor([[30.,0.,2.]]),
+                           raw_retina_active=True)
+    assert torch.equal(scene['retina'],torch.ones(1,RETINA_DIM))
+    assert all(torch.equal(scene[k],pixels[k]) for k in scene if k!='retina')
 
 
 def test_height_invariant_contract_removes_launch_elevation_from_every_channel():

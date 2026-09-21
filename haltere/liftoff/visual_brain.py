@@ -121,10 +121,11 @@ class RetinaCamera:
                             p,u,v,width = pred
                             direction,distance = detection_geometry(self.gate_camera,(u+1)*160,(v+1)*90,width)
                             detection = dict(p=float(p),point=direction*distance,width=float(width))
-                        if self.detector is None:
+                        if self.detector is None or self.gate_sensor.get('raw_retina_active',False):
                             small = cv2.resize(small,(160,90),interpolation=cv2.INTER_AREA)
                             with torch.no_grad():
-                                retina = retina_input(torch.tensor(small.transpose(2,0,1)[None],dtype=torch.float32)/255)
+                                retina = retina_input(torch.tensor(small.transpose(2,0,1)[None],dtype=torch.float32)/255,
+                                                      mode=(self.gate_sensor or {}).get('retina_mode','legacy'))
                         else:
                             retina = torch.zeros(1,720)
                         inferred = self._phase('publish')
@@ -150,6 +151,11 @@ class VisualController:
         self.meta = ck.get('visual_brain')
         if not self.meta or self.meta.get('runtime_requires_teacher') is not False:
             raise ValueError('Expected an exported, teacher-free visual brain')
+        if self.meta.get('gate_sensor',{}).get('raw_retina_active',False):
+            scene=self.meta.get('scene_training',{})
+            if (not scene or scene.get('iteration',0)<scene.get('iterations',1)
+                    or self.meta['gate_sensor'].get('retina_mode')!='scene_v2'):
+                raise ValueError('Expected a completed scene-adapter training checkpoint')
         self.mapping = load_mapping(mapping_path)
         self.calibration = self.meta['calibration']
         c = self.calibration
@@ -250,7 +256,8 @@ class VisualController:
                                    torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None],
                                    height_invariant=self.meta['gate_sensor'].get('height_invariant',False),
                                    gravity_aligned_height=self.meta['gate_sensor'].get('gravity_aligned_height',False),
-                                   search_height_error=height_error)
+                                   search_height_error=height_error,
+                                   raw_retina_active=self.meta['gate_sensor'].get('raw_retina_active',False))
         action,self.state,_ = self.brain(obs,self.state,self.W)
         processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)
@@ -512,7 +519,8 @@ def run(args):
                       external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=False,
                       goal_source='camera detector' if controller.meta.get('gate_sensor') else 'absent',
                       gate_sensor=controller.meta.get('gate_sensor'),runtime_route_oracle=False,
-                      raw_retina_active=not (args.blank_retina or controller.meta.get('gate_sensor')),
+                      raw_retina_active=not args.blank_retina and (not controller.meta.get('gate_sensor')
+                                         or controller.meta['gate_sensor'].get('raw_retina_active',False)),
                       camera_fps=camera.fps,
                       capture_backend=camera.backend,
                       close_gate_memory_s=2.,
