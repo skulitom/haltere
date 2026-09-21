@@ -129,3 +129,40 @@ recovery examples plus RPM masking alone did not suffice: the 240-update run
 still failed the check, including a large tilt. Student-driven recovery is the
 next training stage. Live recordings now wait for their first encoded frame
 before the flight timer starts, so startup does not omit most of a short test.
+
+The student-driven 240-update run passed the airborne simulator check. Its
+actual Anode flights, with full images and with images blanked, both moved into
+the nearby barrier below 0.8 m and reset. The runaway climb was absent, but
+neither run qualified as sustained flight. Blanking images did not remove the
+launch bias. Both used the same new checkpoint, SHA256
+`dd019c9fbe3e72a673e12e54f7590f5c3d1def382619fcedabf0858e345c9c70`.
+
+## Takeoff curriculum
+
+An optional `altitude` sensory channel carries `tanh(height / 3 m)` into the
+wing sensory population. Height is relative to the recording/launch origin,
+**not terrain clearance**. It remains observable at rest, when the existing
+velocity/height optic-flow channel carries no height information. Older brains
+ignore this new observation. The takeoff curriculum starts half its simulated
+episodes at rest and gives the training-only motor teacher a two-metre vertical
+goal. The student still receives zero external goal and compass inputs. Ground
+contact before first lift is treated as resting contact; later impacts are
+crashes. This simplified contact model requires independent Liftoff testing.
+
+```powershell
+.venv/Scripts/python.exe -m haltere.train.human_brain add-altitude --prepared data/vision/human_brain_v1b --dataset data/vision/human_demonstrations_v3 --out data/vision/human_brain_v2_altitude
+.venv/Scripts/python.exe -m haltere.train.human_brain train --prepared data/vision/human_brain_v2_altitude --initial artifacts/ftPath2_best.pt --config configs/train_human_brain_takeoff.json --out runs/human-brain-takeoff-01
+.venv/Scripts/python.exe -m haltere.train.recovery runs/human-brain-takeoff-01/last.pt --takeoff --seconds 30 --out NEW_RESULT.json
+```
+
+The cache extension verifies source hashes and uses each existing causal raw
+row; it neither changes raw recordings nor regenerates the navigation targets.
+Takeoff qualification additionally requires settling near two metres, including
+the worst remaining vertical speed. `--blank-retina` is an explicit diagnostic
+ablation in the live runner and is identified in the result metadata.
+
+Final training selection prefers a simulator-qualified trained checkpoint when
+requested. If none qualifies, it reports the last trained candidate as
+unqualified. It never silently selects `initial.pt`; that file is a baseline.
+Qualification still does not establish navigation, gate completion or readiness
+to publish an improved pilot.

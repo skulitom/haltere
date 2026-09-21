@@ -1,0 +1,21 @@
+{
+  "seed": 23,
+  "device": "cuda",
+  "iterations": 240,
+  "batch_size": 8,
+  "lr": 0.0001,
+  "lr_edges": 0.00003,
+  "lr_probe": 0.001,
+  "teacher_weight": 0.1,
+  "action_weight": 0.25,
+  "mask_motor_feedback": true,
+  "altitude_input": true,
+  "takeoff_recovery": true,
+  "recovery_weight": 3.0,
+  "recovery_rollout": true,
+  "qualify_motor": true,
+  "eval_every": 60,
+  "validation_windows_per_take": 16,
+  "max_gpu_temp": 78,
+  "warm_start": "runs/human-brain-onpolicy-01/last.pt"
+}

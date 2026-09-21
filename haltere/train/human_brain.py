@@ -39,6 +39,39 @@ def columns(rows, names):
     return np.column_stack([rows[n] for n in names])
 
 
+def add_altitude(prepared, dataset, out):
+    """Add a causal sensor to an existing cache without regenerating teacher labels."""
+    from ..liftoff.frames import unity_vec_to_sim
+    prepared, dataset, out = Path(prepared), Path(dataset), Path(out)
+    if out.exists():
+        raise FileExistsError(out)
+    manifest = json.loads((prepared/'manifest.json').read_text())
+    if sha256(dataset/'manifest.json') != manifest['dataset_sha256']:
+        raise ValueError('Source dataset differs from prepared replay')
+    manifest['parent_prepared_sha256'] = sha256(prepared/'manifest.json')
+    manifest['altitude_input'] = 'tanh(height above recording origin / 3 metres); terrain height is not known'
+    sources = {t['id']:t for t in json.loads((dataset/'manifest.json').read_text())['takes']}
+    out.mkdir(parents=True)
+    for entry in manifest['takes']:
+        source = sources[entry['id']]
+        path = (dataset/source['source']).resolve()
+        for name, digest in source['source_hashes'].items():
+            if sha256(path/name) != digest:
+                raise ValueError(f'Changed raw source: {path/name}')
+        if sha256(prepared/entry['arrays']) != entry['sha256']:
+            raise ValueError('Changed prepared replay')
+        raw = read_csv(path/'telemetry.csv')
+        origin = json.loads((path/'capture.json').read_text())['origin_sim']
+        with np.load(prepared/entry['arrays']) as z:
+            arrays = {k:z[k] for k in z.files}
+        height = unity_vec_to_sim(columns(raw,('px','py','pz')))[:,2]-origin[2]
+        arrays['altitude'] = np.tanh(height[arrays['raw_row'],None]/3).astype(np.float32)
+        np.savez_compressed(out/entry['arrays'],**arrays)
+        entry['sha256'] = sha256(out/entry['arrays'])
+    (out/'manifest.json').write_text(json.dumps(manifest,indent=2))
+    return manifest
+
+
 def prepare(dataset, teacher_path, brain_path, mapping_path, out, device='cuda', throttle_scale=.8):
     from ..liftoff.commands import load_mapping
     from ..liftoff.frames import unity_quat_to_sim, unity_vec_to_sim, omega_from_quats
@@ -176,16 +209,20 @@ class Replay:
         return {k:torch.stack([self.takes[n][1][k][s:s+self.length] for n,s in windows]).to(device) for k in keys}
 
 
-def student_from_motor(path, device):
+def student_from_motor(path, device, altitude=False):
     original, cfg, graph = load_checkpoint(path, device)
     if not isinstance(original, ConnectomeRNN):
         raise ValueError('A fly connectome checkpoint is required')
     cfg = copy.deepcopy(cfg)
     cfg.brain.sensory['retina'] = 'lptc'
+    channels = {**original.channel_dims, 'retina':RETINA_DIM}
+    if altitude:
+        cfg.brain.sensory['altitude'] = 'wing_cs'
+        channels['altitude'] = 1
     cfg.brain.encoder_gain = 1.0  # applies to the new retina; old parameters are restored below
-    student = ConnectomeRNN(graph, {**original.channel_dims, 'retina':RETINA_DIM}, cfg.brain, device)
+    student = ConnectomeRNN(graph, channels, cfg.brain, device)
     missing, unexpected = student.load_state_dict(original.state_dict(), strict=False)
-    if unexpected or any('retina' not in key for key in missing):
+    if unexpected or any(not any(ch in key for ch in ('retina', 'altitude')) for key in missing):
         raise ValueError('Unexpected checkpoint migration')
     # Keep normalization fixed: changing running statistics can masquerade as learning.
     student.eval()
@@ -239,6 +276,18 @@ def export(path, brain, cfg, provenance, iteration):
     torch.save(ck, staging)
     export_slim(staging,path)
     staging.unlink()
+
+
+def selected_checkpoint(out, qualify_motor):
+    """Select a trained candidate explicitly; the initial model is only a baseline."""
+    out = Path(out)
+    if qualify_motor:
+        if (out/'motor-qualified.pt').exists():
+            return out/'motor-qualified.pt', 'lowest replay error among simulator-qualified trained candidates'
+        return out/'last.pt', 'last trained candidate; no candidate passed simulator qualification'
+    if (out/'best.pt').exists():
+        return out/'best.pt', 'lowest replay error among improved trained candidates'
+    return out/'last.pt', 'last trained candidate; replay did not improve on initialization'
 
 
 @torch.no_grad()
@@ -295,15 +344,17 @@ def train(prepared, initial, out, config):
     manifest = json.loads((prepared/'manifest.json').read_text())
     if sha256(initial) != manifest['initial_brain_sha256']:
         raise ValueError('Initial brain differs from the prepared teacher run')
-    brain, cfg, graph = student_from_motor(initial,device)
+    brain, cfg, graph = student_from_motor(initial,device,altitude=config.get('altitude_input',False))
     cfg.brain.mask_motor_feedback = bool(config.get('mask_motor_feedback', False))
     if config.get('warm_start'):
         warm, warm_cfg, _ = load_checkpoint(config['warm_start'], device)
         warm_meta = torch.load(config['warm_start'], map_location='cpu', weights_only=True)['visual_brain']
-        if (warm_meta['prepared_sha256'] != sha256(prepared/'manifest.json')
+        if (warm_meta['prepared_sha256'] not in (sha256(prepared/'manifest.json'),manifest.get('parent_prepared_sha256'))
                 or warm_cfg.brain.mask_motor_feedback != cfg.brain.mask_motor_feedback):
             raise ValueError('Warm start sensory/data contract differs')
-        brain.load_state_dict(warm.state_dict())
+        missing,unexpected = brain.load_state_dict(warm.state_dict(),strict=False)
+        if unexpected or any('altitude' not in k for k in missing):
+            raise ValueError('Unexpected warm-start migration')
         del warm
     if sha256(Path(cfg.train.graph).with_suffix('.npz')) != manifest['graph_sha256']:
         raise ValueError('Connectome changed after preparation')
@@ -333,7 +384,8 @@ def train(prepared, initial, out, config):
         if config.get('recovery_rollout', False):
             from .recovery import RecoveryRollout
             motor_teacher.requires_grad_(False)
-            recovery_rollout = RecoveryRollout(motor_teacher,motor_cfg,calibration,config['batch_size'])
+            recovery_rollout = RecoveryRollout(motor_teacher,motor_cfg,calibration,config['batch_size'],
+                                              takeoff=config.get('takeoff_recovery',False))
         else:
             recovery = recovery_examples(motor_teacher, motor_cfg, calibration)
             del motor_teacher
@@ -345,6 +397,8 @@ def train(prepared, initial, out, config):
                       recovery_weight=config.get('recovery_weight', 0),
                       warm_start_sha256=sha256(config['warm_start']) if config.get('warm_start') else None,
                       recovery_rollout=bool(config.get('recovery_rollout', False)),
+                      altitude_input=bool(config.get('altitude_input',False)),
+                      takeoff_recovery=bool(config.get('takeoff_recovery',False)),
                       assessment='experimental offline imitation; not flight-qualified')
     out.mkdir(parents=True)
     (out/'config.json').write_text(json.dumps(dict(config=config,provenance=provenance),indent=2))
@@ -403,7 +457,7 @@ def train(prepared, initial, out, config):
             row = dict(iteration=it,score=score,takes=result)
             if config.get('qualify_motor', False):
                 from .recovery import motor_check
-                row['motor_check'] = motor_check(brain, cfg)
+                row['motor_check'] = motor_check(brain, cfg,takeoff=config.get('takeoff_recovery',False))
                 if row['motor_check']['reflex_pass'] and score < best_reflex:
                     best_reflex = score
                     export(out/'motor-qualified.pt',brain,cfg,
@@ -417,9 +471,10 @@ def train(prepared, initial, out, config):
             export(out/'last.pt',brain,cfg,provenance,it)
     differences = {n:float((p.detach().cpu()-initial_params[n]).abs().max()) for n,p in brain.named_parameters()}
     (out/'parameter_changes.json').write_text(json.dumps(differences,indent=2))
-    selected = out/'best.pt' if (out/'best.pt').exists() else out/'initial.pt'
+    selected, selection_reason = selected_checkpoint(out,config.get('qualify_motor',False))
     brain, _, _ = load_checkpoint(selected,device)
     result = dict(checkpoint=str(selected),sha256=sha256(selected),predictor_loaded_in_training_process=False,
+                  selection_reason=selection_reason,
                   teacher_free_replay=evaluate(brain,val,calibration,scale,val_ids,device,mean_action=mean_action),
                   images_blanked=evaluate(brain,val,calibration,scale,val_ids,device,blank=True),
                   baseline=baseline,validation_windows=val_ids,flight_tested=False)
@@ -444,6 +499,10 @@ def main():
     a.add_argument('--initial',required=True)
     a.add_argument('--out',required=True)
     a.add_argument('--config',required=True)
+    a = sub.add_parser('add-altitude')
+    a.add_argument('--prepared',required=True)
+    a.add_argument('--dataset',required=True)
+    a.add_argument('--out',required=True)
     a = sub.add_parser('evaluate-stream')
     a.add_argument('--checkpoint',required=True)
     a.add_argument('--prepared',required=True)
@@ -454,6 +513,8 @@ def main():
         prepare(args.dataset,args.teacher,args.brain,args.mapping,args.out,args.device)
     elif args.command=='train':
         train(args.prepared,args.initial,args.out,json.loads(Path(args.config).read_text()))
+    elif args.command=='add-altitude':
+        add_altitude(args.prepared,args.dataset,args.out)
     else:
         evaluate_stream(args.checkpoint,args.prepared,args.out,args.device)
 

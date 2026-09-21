@@ -49,7 +49,7 @@ class RecoveryRollout:
     Physics is detached; gradients update the student's recurrent connectome.
     Both neural states persist across windows, and the teacher is training-only.
     """
-    def __init__(self, teacher, cfg, calibration, batch_size=8):
+    def __init__(self, teacher, cfg, calibration, batch_size=8, takeoff=False):
         import copy
         from .bptt import make_world
         self.teacher, self.calibration, self.B = teacher, calibration, batch_size
@@ -60,6 +60,7 @@ class RecoveryRollout:
         self.W = teacher.weight_matrix().detach()
         self.age = 0
         self.student_state = None
+        self.takeoff = takeoff
 
     def reset(self, student):
         from ..sim.quad import QuadState
@@ -69,9 +70,18 @@ class RecoveryRollout:
         q.vel = torch.randn(B, 3, device=dev) * .8
         q.quat = quat_from_euler(.15*torch.randn(B, device=dev), .15*torch.randn(B, device=dev),
                                 torch.zeros(B, device=dev))
+        if self.takeoff:
+            # Half the batch starts quietly at launch; half tests recovery at
+            # varied heights. The student sees height, never the teacher goal.
+            q.pos[:,2] = .3+4.*torch.rand(B,device=dev)
+            q.pos[:B//2,2] = .03
+            q.vel[:B//2] = 0
+            q.quat[:B//2] = torch.tensor([1.,0.,0.,0.],device=dev)
+            q.motor[:B//2] = .04
         self.vs = self.vehicle.wrap(q)
         self.student_state, self.teacher_state = student.init_state(B), self.teacher.init_state(B)
         self.age = 0
+        self.airborne = q.pos[:,2]>.3
         self.delay = deque([torch.full((B, 4), 0., device=dev) for _ in range(self.cfg.train.delay_steps)])
         for a in self.delay:
             a[:, 0] = self.calibration['hover_stick_sim']
@@ -89,6 +99,14 @@ class RecoveryRollout:
                 teacher_obs = {k:v for k,v in obs.items() if k in self.teacher.channel_dims}
                 teacher_obs['compass'] = torch.zeros_like(obs['compass'])
                 teacher_obs['compass'][:, 0] = 1
+                if self.takeoff:
+                    # Stable motor teacher has the explicit 2 m goal only in
+                    # training; the student must learn the height response.
+                    from ..sim.tasks import observe_from_sensors
+                    target_pos = q.pos.clone()
+                    target_pos[:,2] = 2.
+                    teacher_obs['goal'] = observe_from_sensors(self.vehicle.sim.sensors(q,noise=False),
+                        target_pos,q.motor.mean(-1,keepdim=True),self.cfg.task)['goal']
                 target, self.teacher_state, _ = self.teacher(teacher_obs,self.teacher_state,self.W)
             if t and t%8 == 0:
                 state = student.detach_state(state)
@@ -99,13 +117,18 @@ class RecoveryRollout:
             with torch.no_grad():
                 self.delay.append(action.detach())
                 self.vs = self.vehicle.step(self.vs,self.delay.popleft())
+                if self.takeoff:
+                    self.airborne |= self.vs.quad.pos[:,2]>.3
+                    # Resting contact before first lift is not a crashed
+                    # episode. Later ground impacts still terminate recovery.
+                    self.vs.quad.crashed &= self.airborne
         self.age += steps
         self.student_state = student.detach_state(state)
         return torch.stack(losses).mean()
 
 
 @torch.no_grad()
-def motor_check(brain, cfg, steps=600, seed=881):
+def motor_check(brain, cfg, steps=600, seed=881, takeoff=False):
     """Closed-loop reflex check with blank imagery, independent of replay score.
 
     This checks braking/recovery in the training simulator, not navigation or
@@ -128,6 +151,13 @@ def motor_check(brain, cfg, steps=600, seed=881):
         quad.vel[:, 2] = torch.tensor([0., 2., -2.], device=brain.device).repeat_interleave(8)
         quad.quat = quat_from_euler(.1*torch.randn(B, device=brain.device),
                                    .1*torch.randn(B, device=brain.device), torch.zeros(B, device=brain.device))
+        if takeoff:
+            quad.pos[:8,2] = .03
+            quad.vel[:8] = 0
+            quad.quat[:8] = torch.tensor([1.,0.,0.,0.],device=brain.device)
+            quad.motor[:8] = .04
+            vehicle.sim.p.gyro_noise = 0.
+        airborne = quad.pos[:,2]>.3
         vs, state, W = vehicle.wrap(quad), brain.init_state(B), brain.weight_matrix()
         retina = torch.zeros(B, RETINA_DIM, device=brain.device)
 
@@ -148,6 +178,9 @@ def motor_check(brain, cfg, steps=600, seed=881):
             action, state, _ = brain(observe(vs.quad), state, W)
             delay.append(action)
             vs = vehicle.step(vs, delay.popleft())
+            if takeoff:
+                airborne |= vs.quad.pos[:,2]>.3
+                vs.quad.crashed &= airborne
             heights.append(vs.quad.pos[:, 2])
             speeds.append(vs.quad.vel.norm(dim=-1))
             vertical.append(vs.quad.vel[:, 2])
@@ -161,9 +194,18 @@ def motor_check(brain, cfg, steps=600, seed=881):
                       max_speed_mps=float(speed.max()), max_vertical_speed_mps=float(vertical.abs().max()),
                       final_median_abs_vertical_speed_mps=float(vertical[-1].abs().median()),
                       min_up=float(upright.min()), final_median_height_m=float(height[-1].median()))
+        result['takeoff'] = takeoff
+        if takeoff:
+            result['takeoff_min_final_height_m'] = float(height[-1,:8].min())
+            result['final_p95_height_error_m'] = float((height[-1]-2.).abs().quantile(.95))
+            result['final_max_abs_vertical_speed_mps'] = float(vertical[-1].abs().max())
         result['reflex_pass'] = bool(result['crashed_fraction']==0 and result['max_height_m']<8
                                     and result['max_speed_mps']<5 and result['min_up']>.7
                                     and result['final_median_abs_vertical_speed_mps']<.5)
+        if takeoff:
+            result['reflex_pass'] &= (result['takeoff_min_final_height_m']>1.0
+                                     and result['final_p95_height_error_m']<1.
+                                     and result['final_max_abs_vertical_speed_mps']<.75)
         return result
 
 
@@ -176,13 +218,19 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('checkpoint')
     p.add_argument('--out', required=True)
+    p.add_argument('--takeoff',action='store_true')
+    p.add_argument('--seed',type=int,default=881)
+    p.add_argument('--seconds',type=float,default=6.)
     args = p.parse_args()
     target = Path(args.out)
     if target.exists():
         raise FileExistsError(target)
     torch.set_num_threads(2)
     brain, cfg, _ = load_checkpoint(args.checkpoint, 'cuda')
-    result = dict(checkpoint_sha256=sha256(args.checkpoint), **motor_check(brain, cfg))
+    if not 1<=args.seconds<=120:
+        raise ValueError('Use a bounded simulation of 1 to 120 seconds')
+    result = dict(checkpoint_sha256=sha256(args.checkpoint), **motor_check(brain, cfg,
+        steps=round(args.seconds/cfg.brain.dt),takeoff=args.takeoff,seed=args.seed))
     target.write_text(json.dumps(result, indent=2))
     print(json.dumps(result), flush=True)
 

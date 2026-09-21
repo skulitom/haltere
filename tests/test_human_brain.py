@@ -48,6 +48,10 @@ def test_processed_target_units_and_no_goal_input():
     obs = visual_observation(s,torch.zeros(1,1),HoverTaskConfig(),torch.zeros(1,RETINA_DIM))
     assert torch.count_nonzero(obs['goal'])==0
     assert torch.count_nonzero(obs['compass'])==0
+    higher = visual_observation({**s, 'altitude':torch.full((1,1),3.)},torch.zeros(1,1),
+                                 HoverTaskConfig(),torch.zeros(1,RETINA_DIM))
+    assert torch.equal(obs['lptc'],higher['lptc'])  # motion cannot reveal height at rest
+    assert not torch.equal(obs['altitude'],higher['altitude'])
 
 
 def test_processed_commands_match_radial_gamepad_path():
@@ -153,3 +157,32 @@ def test_recovery_rollout_updates_student_across_windows_without_teacher_gradien
     assert recovery.age == 48
     assert not recovery.student_state['v'].requires_grad
     assert all(p.grad is None for p in teacher.parameters())
+
+
+def test_takeoff_teacher_goal_does_not_enter_student_observation():
+    from haltere.train.recovery import RecoveryRollout
+    student, cfg, _ = small_brain()
+    teacher = copy.deepcopy(student).requires_grad_(False)
+    goals = {'student': [], 'teacher': []}
+    handles = [b.register_forward_pre_hook(lambda module,args,name=name:goals[name].append(args[0]['goal'].clone()))
+               for name,b in [('student',student),('teacher',teacher)]]
+    calibration = dict(hover_processed=.14,hover_stick_sim=-.5,throttle_scale=.8,stick_sign=[-1,1,1])
+    recovery = RecoveryRollout(teacher,cfg,calibration,batch_size=2,takeoff=True)
+    recovery.loss(student,torch.ones(4),steps=24).backward()
+    for h in handles:
+        h.remove()
+    assert all(torch.count_nonzero(v)==0 for v in goals['student'])
+    assert any(torch.count_nonzero(v)>0 for v in goals['teacher'])
+
+
+def test_selection_never_silently_falls_back_to_initial_model(tmp_path):
+    from haltere.train.human_brain import selected_checkpoint
+    for name in ('initial.pt','last.pt','best.pt'):
+        (tmp_path/name).touch()
+    selected, reason = selected_checkpoint(tmp_path,True)
+    assert selected.name == 'last.pt' and 'no candidate passed' in reason
+    (tmp_path/'motor-qualified.pt').touch()
+    assert selected_checkpoint(tmp_path,True)[0].name == 'motor-qualified.pt'
+    assert selected_checkpoint(tmp_path,False)[0].name == 'best.pt'
+    (tmp_path/'best.pt').unlink()
+    assert selected_checkpoint(tmp_path,False)[0].name == 'last.pt'

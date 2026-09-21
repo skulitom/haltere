@@ -34,6 +34,9 @@ def visual_observation(sensors, motor_mean, task_config, retina):
     # decide from what it sees and its body motion, rather than a compass lookup.
     obs['compass'] = torch.zeros_like(obs['compass'])
     obs['retina'] = retina
+    # Explicit height is observable even at rest, when velocity/height optic
+    # flow is zero. Older checkpoints ignore this additional sensory channel.
+    obs['altitude'] = torch.tanh(sensors['altitude']/3.)
     return obs
 
 

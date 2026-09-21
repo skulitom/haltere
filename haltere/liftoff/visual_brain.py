@@ -196,6 +196,8 @@ def run(args):
                 capture_time,retina = camera.latest
                 if now-capture_time>.12:
                     raise RuntimeError(f'Image stale or game hidden: {camera.error}')
+                if args.blank_retina:
+                    retina = torch.zeros_like(retina)
                 if now<next_tick:
                     continue
                 if now-next_tick>.12 and count:
@@ -243,6 +245,7 @@ def run(args):
                       control_mode='visual fly brain' if pad else 'shadow: no control output',
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,
                       external_goal=False,yaw_assistance=False,
+                      images_blanked=args.blank_retina,
                       limits=dict(height_m=args.max_height,speed_mps=args.max_speed,distance_m=args.max_distance),
                       process_session=windows_session_id())
         log_path.with_suffix('.json').write_text(json.dumps(result,indent=2))
@@ -268,6 +271,7 @@ def main():
     p.add_argument('--udp-out',default='')
     p.add_argument('--port',type=int,default=9001)
     p.add_argument('--device',default='cuda')
+    p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
     p.add_argument('--max-height',type=float,default=8.)
     p.add_argument('--max-speed',type=float,default=10.)
     p.add_argument('--max-distance',type=float,default=20.)
