@@ -189,6 +189,11 @@ class VisualController:
         self.searching = False
         self.search_since = None
         self.search_height = None
+        from .gate_memory import PassedGateMemory
+        inhibition = self.meta.get('gate_sensor',{}).get('passed_gate_inhibition')
+        if inhibition not in (None, PassedGateMemory.contract):
+            raise ValueError('Unknown passed-gate sensory memory contract')
+        self.passed_gate_memory = PassedGateMemory() if inhibition else None
         from .camera_pose import CameraPoseHistory
         self.camera_poses = CameraPoseHistory()
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
@@ -228,6 +233,10 @@ class VisualController:
             from ..vision.camera import quat_wxyz_to_mat
             R = quat_wxyz_to_mat(self.senses['quat'][0].cpu().numpy())
             pos = self.senses['pos'][0].cpu().numpy()
+            if self.passed_gate_memory is not None:
+                passed = self.passed_gate_memory.advance(pos,observation_time)
+                if passed is not None and self.gate_point is not None and np.linalg.norm(self.gate_point-passed)<2.:
+                    self.gate_point = self.gate_time = None
             self.gate_confidence = detection['p'] if detection else 0.
             if capture_time != self.last_detection_time:
                 self.last_detection_time = capture_time
@@ -237,8 +246,11 @@ class VisualController:
                     point[2] -= self.meta['gate_sensor']['centre_offset_m']
                     # Smooth only measured position, using odometry to remove
                     # camera rotation. No route or steering controller exists here.
-                    self.gate_point,self.gate_time = fuse_gate_detection(
-                        self.gate_point,self.gate_time,point,capture_time,pos,R)
+                    if self.passed_gate_memory is None or not self.passed_gate_memory.rejects(point,observation_time,pos):
+                        self.gate_point,self.gate_time = fuse_gate_detection(
+                            self.gate_point,self.gate_time,point,capture_time,pos,R)
+            if self.passed_gate_memory is not None:
+                self.passed_gate_memory.observe(self.gate_point,self.gate_time,pos,observation_time)
             relative = R.T@(self.gate_point-pos) if self.gate_point is not None else np.zeros(3)
             # Memory must age on the control clock even if capture stops. Never
             # grant an old point a new lifetime by repeatedly reading its frame.
@@ -534,6 +546,9 @@ def run(args):
                       capture_backend=camera.backend,
                       close_gate_memory_s=2.,
                       close_gate_outlier_rejection=dict(radius_m=6.,innovation_m=2.,max_age_s=2.),
+                      passed_gate_memory=dict(estimated_passages=controller.passed_gate_memory.passages,
+                                              rejected_detections=controller.passed_gate_memory.rejected_detections,
+                                              radius_m=2.,reverse_radius_m=5.,lifetime_s=30.) if controller.passed_gate_memory else None,
                       neural_search_timeout_s=15.,
                       camera_pose_alignment='interpolated telemetry receipt times',
                       pause_key_sent=pause_key_sent,

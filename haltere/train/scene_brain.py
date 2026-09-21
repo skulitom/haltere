@@ -54,6 +54,8 @@ def prepare(parent,prepared,dataset,out):
     if sha256(meta['gate_sensor']['checkpoint'])!=meta['gate_sensor']['sha256']:
         raise ValueError('Detector changed')
     detector=load_gatenet(meta['gate_sensor']['checkpoint'],'cuda')
+    if meta['gate_sensor'].get('passed_gate_inhibition'):
+        raise ValueError('Scene replay does not yet reproduce passed-gate sensory inhibition')
     camera=Camera(320,180,100.,30.)
     sources={t['id']:t for t in json.loads((dataset/'manifest.json').read_text())['takes']}
     result=dict(schema=1,parent_sha256=sha256(parent),prepared_sha256=sha256(prepared/'manifest.json'),
