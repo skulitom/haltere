@@ -133,6 +133,15 @@ def test_inventory_records_content_and_coverage_limits(tmp_path):
     assert changed['train'][0]['labels_sha256'] == row['labels_sha256']
 
 
+def test_audit_rejects_resampled_frames_from_same_flight(tmp_path):
+    first = labelled_dataset(tmp_path / 'train')
+    second = labelled_dataset(tmp_path / 'validation', (25, 200))
+    for path in (first,second):
+        (path/'capture.json').write_text(json.dumps({'source_flight_sha256':'same-flight'}))
+    with pytest.raises(ValueError,match='source flight'):
+        audit_split([first],[second])
+
+
 def test_audit_rejects_missing_and_escaping_frame_paths(tmp_path):
     first = labelled_dataset(tmp_path / 'train')
     labels_path = first / 'labels.json'

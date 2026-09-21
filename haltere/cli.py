@@ -597,9 +597,10 @@ def main(argv=None):
     q.add_argument('--max-gpu-temp', type=float, default=70.0, help='pause training while the GPU is hotter than this (C); 0 = off')
     q.add_argument('--batch-sleep', type=float, default=0.15, help='seconds to idle after every batch (keeps the machine cool)')
     q.add_argument('--init', default='', help='start from the weights of this checkpoint (a few epochs then suffice)')
-    q.add_argument('--augment', default='strong', choices=['light', 'strong'],
+    q.add_argument('--augment', default='strong', choices=['light', 'strong', 'appearance'],
                    help='strong also varies hue, saturation, gamma, sharpness, noise and bank angle, so the detector '
-                        'cannot key on the palette of one track (light is brightness and contrast only, as before)')
+                        'cannot key on the palette of one track; appearance keeps calibrated range geometry '
+                        '(no crops or warps); light uses brightness and contrast')
     q.add_argument('--holdout', nargs='*', default=None,
                    help='validate on these datasets alone instead of a random slice of the training frames (a random '
                         'slice is not a test: the neighbouring frames of a flight are the same picture)')

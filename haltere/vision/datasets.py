@@ -67,6 +67,7 @@ def inventory(dataset, *, hashes=False):
         'images_sha256': hashlib.sha256(json.dumps(image_hashes, sort_keys=True).encode()).hexdigest() if hashes else None,
         'capture_sha256': sha256(capture_path) if capture_path.exists() else None,
         'course': capture.get('course'), 'source': capture.get('source', 'legacy/unknown'),
+        'source_flight_sha256': capture.get('source_flight_sha256'),
         'warnings': warnings,
     }, fingerprints
 
@@ -83,12 +84,17 @@ def audit_split(datasets, holdout=(), *, hashes=True):
     report = {'schema': 1, 'split': 'whole_flights' if validation else 'inventory_only',
               'exact_image_overlap_checked': hashes, 'train': [], 'validation': []}
     train_images = set()
+    train_flights = set()
     for split, paths in (('train', train), ('validation', validation)):
         for path in paths:
             row, images = inventory(path, hashes=hashes)
             if split == 'train':
                 train_images.update(images)
+                if row['source_flight_sha256']:
+                    train_flights.add(row['source_flight_sha256'])
             elif images & train_images:
                 raise ValueError(f'{path}: {len(images & train_images)} exact images also occur in training')
+            elif row['source_flight_sha256'] in train_flights:
+                raise ValueError(f'{path}: source flight also occurs in training')
             report[split].append(row)
     return report

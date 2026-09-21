@@ -422,3 +422,26 @@ In the five-arch run, all brain steps were below 8.3 ms, control-update gaps sta
 below 21 ms, and there were no stale images or camera errors. The 120 ms guards
 remain in place, including rejection of an over-deadline command before sending.
 This runtime evidence covers that partial flight, not sustained lap reliability.
+
+The next perception experiment targets the actual opening 1.2 m above each
+gate's base along its local up axis. `haltere.vision.flight_gate_labels` projects
+the installed track geometry **offline only** into recorded frames. For combined
+brain/flight videos it reads the rendered clock to align telemetry; `--indexed`
+uses an original DatasetWriter recording and copies its frames without editing
+the source. The size output encodes true range through the existing 4 m nominal
+width decoder; it is not a silhouette bounding box. This detector requires
+`centre_offset_m=0`, not the previous 1.5 m offset. The `appearance` augmentation
+keeps calibrated geometry while changing colour, lighting, sharpness and mirror
+direction. Dataset auditing rejects both copied images and resampling of the
+same source flight across training and validation.
+
+`gatenet-opening-01` fine-tunes the previous detector for 45 epochs on 594 frames
+from two flights, with 231 frames from the separate `gate-brain-live-02/dxgi`
+flight held out. Contact sheets were sampled for projection review, including
+close approaches and gate changes; projection alone cannot establish visibility
+through occluders. On held-out visible gates at 2–10 m, median horizontal goal
+error fell from 2.08 m to 0.69 m and vertical error from 0.19 m to 0.12 m.
+This is same-course validation, not evidence of transfer. Detector SHA256 is
+`31ba0c024b7fedc51caaa29663af39a29614ea2e525f9b7d02f4144f1aaee932`.
+`gate-brain-05-opening-01/candidate.pt` changes only the sensory metadata; every
+brain tensor is verified identical to trained brain 05. Neither is qualified.

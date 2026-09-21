@@ -155,3 +155,22 @@ def test_perturbations_change_appearance_and_nothing_else():
     hsv_in = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[..., 0].astype(float)
     hsv_out = cv2.cvtColor(perturb(img, 'hue180'), cv2.COLOR_RGB2HSV)[..., 0].astype(float)
     assert abs(float(np.median((hsv_out - hsv_in) % 180)) - 90) < 2      # 180 degrees is 90 in OpenCV units
+
+
+def test_appearance_augmentation_preserves_calibrated_range(tmp_path):
+    import cv2
+    from haltere.vision.train import GateFrames
+    from haltere.vision.runtime import detection_geometry
+
+    (tmp_path/'frames').mkdir()
+    cv2.imwrite(str(tmp_path/'frames/a.jpg'),np.full((360,640,3),100,np.uint8))
+    (tmp_path/'labels.json').write_text(json.dumps([
+        dict(file='a.jpg',visible=1,u=200.,v=240.,width_px=80.)]))
+    data = GateFrames([tmp_path],augment='appearance')
+    camera = Camera(320,180,100.,30.)
+    _,expected = detection_geometry(camera,100.,120.,40.)
+    for _ in range(10):
+        _,label = data[0]
+        _,distance = detection_geometry(camera,(float(label[1])+1)*160,
+                                       (float(label[2])+1)*90,np.exp(float(label[3]))*100)
+        assert abs(distance-expected)<1e-5

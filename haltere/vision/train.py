@@ -127,7 +127,11 @@ class GateFrames(torch.utils.data.Dataset):
             if random.random() < 0.5:
                 img = img[:, ::-1]
                 lu = w - lu
-            if strength == 'light':
+            if strength == 'appearance':
+                # Range-encoded labels must retain the calibrated projection.
+                # Mirroring above preserves range; arbitrary crops/warps do not.
+                pass
+            elif strength == 'light':
                 if random.random() < 0.7:                      # the small crop the first detectors were trained with
                     fx, fy = random.uniform(0.0, 0.08), random.uniform(0.0, 0.08)
                     x0, y0 = int(fx * w * random.random()), int(fy * h * random.random())
