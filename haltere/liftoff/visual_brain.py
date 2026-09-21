@@ -150,7 +150,11 @@ class RetinaCamera:
 
 class VisualController:
     """All four axes come from the brain; optional camera gate measurement only."""
-    def __init__(self, checkpoint, mapping_path, device='cuda'):
+    def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True):
+        # Offline demonstration replay must preserve missing-gate observations
+        # even when the demonstrator safely continues beyond the live stop limit.
+        # Every live caller retains the default stop condition.
+        self.stop_on_search_timeout = stop_on_search_timeout
         self.brain,self.cfg,self.graph = load_checkpoint(checkpoint,device)
         ck = torch.load(checkpoint,map_location='cpu',weights_only=True)
         self.meta = ck.get('visual_brain')
@@ -261,7 +265,7 @@ class VisualController:
                 if self.search_since is None:
                     self.search_height=float(pos[2])
                 self.search_since = observation_time if self.search_since is None else self.search_since
-                if observation_time-self.search_since>15.:
+                if self.stop_on_search_timeout and observation_time-self.search_since>15.:
                     raise RuntimeError('Neural gate search timed out')
                 # A newly acquired gate must not be blended with an expired
                 # target. This clears sensory memory; it supplies no steering.

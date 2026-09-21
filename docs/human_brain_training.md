@@ -535,3 +535,20 @@ Only `encoders.retina__lptc.U` and `.log_gain` are trainable. The recurrent grap
 known transmitter signs, all other brain weights and detector remain unchanged.
 No route, progress index, world position or teacher is a student input. Evaluate
 the exported student's continuous replay and live flight before publishing it.
+
+Scene 05 retained the first eleven Straw Bale arches in live flight 17, but
+failed the hilltop turn. Two separate slow route-teacher recordings now provide
+observed controls through the full course (`straw_slow_route_01` for training,
+`02` for development validation). These are oracle-guided demonstrations, not
+autonomous race qualifications. `demonstration_scene` replays only causally
+available images and telemetry, retains full preceding neural state, and inverts
+the deployed throttle/sign calibration to obtain action labels. Teacher controls,
+route geometry and progress never enter the student's sensory channels.
+
+The optional `onpolicy_scene --motor-refit` also fits `readout.weight`, with
+explicit retention losses on the successful autonomous opening, both with
+images and with a blank retina. This mode does **not** claim exact blank-retina
+invariance. Continuous evaluation uses the original parent's readout in its
+reference branch and reports matched, shuffled and blank-image student errors.
+Recurrent weights, graph structure, known transmitter signs and detector remain
+fixed. Weights remain experimental until continuous and live checks pass.

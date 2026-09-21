@@ -201,14 +201,16 @@ def prepare(parent,flights,track,race,route,out,after_passages=11):
 @torch.no_grad()
 def targets(parent,batch):
     base,_,_=rollout(parent,batch,blank=True)
+    if 'teacher_action' in batch:
+        return base,base*(1-batch['correct'])+batch['teacher_action']*batch['correct']
     goal=batch['goal']*(1-batch['correct'])+batch['teacher_goal']*batch['correct']
     target,_,_=rollout(parent,{**batch,'goal':goal},blank=True)
     return base,target
 
 
 @torch.no_grad()
-def assess(brain,parent,replay,ids):
-    sums={k:np.zeros(4) for k in ('prefix','correction','parent_correction','shuffled_correction')}
+def assess(brain,parent,replay,ids,require_blank_parent=True):
+    sums={k:np.zeros(4) for k in ('prefix','correction','parent_correction','shuffled_correction','blank_correction')}
     counts=dict(prefix=0,correction=0);blank_max=0.
     for start in range(0,len(ids),8):
         b=replay.batch(ids[start:start+8],brain.device);base,target=targets(parent,b)
@@ -222,20 +224,27 @@ def assess(brain,parent,replay,ids):
             if name=='correction':
                 sums['parent_correction']+=((base[:,20:]-target[:,20:])[mask]**2).sum(0).cpu().numpy()
                 sums['shuffled_correction']+=((shuffled[:,20:]-target[:,20:])[mask]**2).sum(0).cpu().numpy()
-    if blank_max>1e-5:raise RuntimeError('Blank-retina retention failed')
+                sums['blank_correction']+=((blank[:,20:]-target[:,20:])[mask]**2).sum(0).cpu().numpy()
+    if require_blank_parent and blank_max>1e-5:raise RuntimeError('Blank-retina retention failed')
     result={k:(v/max(1,counts['prefix' if k=='prefix' else 'correction'])).tolist() for k,v in sums.items()}
     return dict(mse_axes=result,sample_counts=counts,blank_parent_max_delta=blank_max)
 
 
-def train(parent,prepared,out,iterations=400):
+def train(parent,prepared,out,iterations=400,motor_refit=False):
     if iterations<=0:raise ValueError('Positive iteration count required')
     torch.set_num_threads(2);torch.manual_seed(1839);rng=np.random.default_rng(1839)
     parent,prepared,out=map(Path,(parent,prepared,out));m=json.loads((prepared/'manifest.json').read_text())
     if sha256(parent)!=m['parent_sha256']:raise ValueError('Parent changed')
     brain,cfg,_=load_checkpoint(parent,'cuda');frozen,_,_=load_checkpoint(parent,'cuda')
     frozen.eval().requires_grad_(False);parameters=visual_parameters_only(brain)
-    with torch.no_grad():parameters[1].fill_(math.log(.003))
-    opt=torch.optim.Adam([dict(params=[parameters[0]],lr=.003),dict(params=[parameters[1]],lr=.008)])
+    initial_gain=.01 if motor_refit else .003
+    with torch.no_grad():parameters[1].fill_(math.log(initial_gain))
+    groups=[dict(params=[parameters[0]],lr=.003),dict(params=[parameters[1]],lr=.008)]
+    if motor_refit:
+        brain.readout.weight.requires_grad_(True)
+        parameters.append(brain.readout.weight)
+        groups.append(dict(params=[brain.readout.weight],lr=.00001))
+    opt=torch.optim.Adam(groups)
     original=torch.load(parent,map_location='cpu',weights_only=True)
     tr,val=WarmReplay(prepared,'train'),WarmReplay(prepared,'validation')
     def partitions(replay):
@@ -250,7 +259,8 @@ def train(parent,prepared,out,iterations=400):
     ids=[*rng.choice(vp,min(16,len(vp)),replace=False),*rng.choice(vc,min(24,len(vc)),replace=False)]
     out.mkdir(parents=True,exist_ok=False);started=time.monotonic()
     (out/'config.json').write_text(json.dumps(dict(parent=str(parent),prepared=str(prepared),iterations=iterations,
-        seed=1839,batch_size=8,window_ticks=128,initial_gain=.003,max_gain=.15,
+        seed=1839,batch_size=8,window_ticks=128,initial_gain=initial_gain,max_gain=.15,
+        motor_refit=motor_refit,motor_readout_learning_rate=.00001 if motor_refit else None,
         training_code_sha256=sha256(__file__)),indent=2))
     for it in range(1,iterations+1):
         if it%10==1:wait_if_hot(70.)
@@ -260,6 +270,12 @@ def train(parent,prepared,out,iterations=400):
         scale=torch.where(b['correct']>.5,action.new_tensor([.015,.04,.04,.04]),
                           action.new_tensor([.004,.012,.012,.012]))
         loss=(((action-target)[:,20:]/scale[:,20:])**2).mean()
+        if motor_refit:
+            # Retain body/gate control even if the camera scene is blank. This
+            # is measured retention, not the exact invariance of encoder-only fits.
+            blank,_,_=rollout(brain,b,blank=True,detach_every=8)
+            prefix_mask=(b['correct'][:,20:,0]<.01)
+            loss+=(((blank-base)[:,20:]/blank.new_tensor([.004,.012,.012,.012]))[prefix_mask]**2).mean()
         opt.zero_grad(set_to_none=True);loss.backward();norm=torch.nn.utils.clip_grad_norm_(parameters,1.)
         if not torch.isfinite(loss) or not torch.isfinite(norm):raise RuntimeError('Nonfinite update')
         opt.step()
@@ -268,17 +284,19 @@ def train(parent,prepared,out,iterations=400):
         with (out/'training.jsonl').open('a') as f:f.write(json.dumps(row)+'\n')
         if it==1 or it%10==0:print(json.dumps(row),flush=True)
         if it%50==0 or it==iterations:
-            result=assess(brain,frozen,val,ids);print('validation',it,json.dumps(result),flush=True)
+            result=assess(brain,frozen,val,ids,not motor_refit);print('validation',it,json.dumps(result),flush=True)
             candidate=copy.deepcopy(original);state=brain.state_dict()
             candidate['model']={k:state[k].detach().cpu() for k in original['model']}
             changed=[k for k,v in candidate['model'].items() if not torch.equal(v,original['model'][k])]
-            if set(changed)-{'encoders.retina__lptc.U','encoders.retina__lptc.log_gain'}:
+            allowed={'encoders.retina__lptc.U','encoders.retina__lptc.log_gain'}|({'readout.weight'} if motor_refit else set())
+            if set(changed)-allowed:
                 raise RuntimeError('Unexpected weight changes')
             meta=candidate['visual_brain'];meta['qualified']=False
             meta['scene_training']=dict(parent_sha256=sha256(parent),prepared_sha256=sha256(prepared/'manifest.json'),
                 teacher_training_only=True,iterations=iterations,iteration=it,training_code_sha256=sha256(__file__),
                 path_supervision=m['path_supervision'],changed_weights=changed,closed_loop=False,
-                blank_retina_parent_tolerance=1e-5,validation=result,
+                motor_refit=motor_refit,recurrent_weights_unchanged=True,
+                blank_retina_parent_tolerance=None if motor_refit else 1e-5,validation=result,
                 purpose='on-policy visual correction with successful-prefix retention')
             meta['gate_sensor']['raw_retina_active']=True
             torch.save(candidate,out/'last.pt')
@@ -292,8 +310,9 @@ if __name__=='__main__':
     p.add_argument('--prepared');p.add_argument('--train-flight',action='append',default=[])
     p.add_argument('--validation-flight',action='append',default=[])
     p.add_argument('--track');p.add_argument('--race');p.add_argument('--route');p.add_argument('--after-passages',type=int,default=11)
+    p.add_argument('--motor-refit',action='store_true',help='Also fit motor readout weights with successful-prefix retention')
     p.add_argument('--iterations',type=int,default=400);a=p.parse_args()
     if a.command=='prepare':
         prepare(a.parent,[(f,'train') for f in a.train_flight]+[(f,'validation') for f in a.validation_flight],
                 a.track,a.race,a.route,a.out,a.after_passages)
-    else:train(a.parent,a.prepared,a.out,a.iterations)
+    else:train(a.parent,a.prepared,a.out,a.iterations,a.motor_refit)
