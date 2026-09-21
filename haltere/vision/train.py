@@ -207,16 +207,35 @@ class GateFrames(torch.utils.data.Dataset):
         return x, y
 
 
+@torch.no_grad()
+def hard_example_weights(net, dataset, device, batch=32):
+    """Mine only the supplied training frames, without random augmentation.
+
+    Bound each frame's sampling multiplier so easy frames and gate-less views
+    remain represented. Validation frames must never enter this sampler.
+    """
+    clean=GateFrames([],augment=False);clean.items=dataset.items
+    net.eval();weights=[]
+    for x,y in torch.utils.data.DataLoader(clean,batch_size=batch,shuffle=False,num_workers=0):
+        x,y=x.to(device),y.to(device);p=decode(net(x))
+        centre=((p[:,1:3]-y[:,1:3])/torch.tensor([.1,.18],device=device)).square().mean(1).sqrt()
+        error=(p[:,0]-y[:,0]).abs()
+        weights.append((1+4*centre.clamp(0,1)*y[:,0]+2*error).cpu().double())
+    return torch.cat(weights)
+
+
 def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, batch: int = 64, lr: float = 1e-3,
           width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0,
           max_gpu_temp: float = 70.0, batch_sleep: float = 0.15, init: str = '', augment: str = 'strong',
-          holdout: list[str] | None = None) -> Path:
+          holdout: list[str] | None = None, hard_mining: bool = False) -> Path:
     from .datasets import audit_split
     # Run before loading/training: aliases and copied frames otherwise leak into a
     # nominal whole-flight holdout. Retain exactly which labels and images were used.
     provenance = audit_split(datasets, holdout or [])
     if epochs <= 0 or batch <= 0 or not 0 < val_frac < 1:
         raise ValueError('epochs and batch must be positive, and val_frac must be in (0, 1)')
+    if hard_mining and (not init or not holdout):
+        raise ValueError('Hard-example sampling requires an initial detector and whole-flight validation')
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -238,13 +257,22 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
         val_ds = GateFrames([], augment=False); val_ds.items = val_items; val_ds.cv2 = full.cv2
     if len(train_ds) < batch or not len(val_ds):
         raise ValueError('Need at least one full training batch and a nonempty validation split')
-    tl = torch.utils.data.DataLoader(train_ds, batch_size=batch, shuffle=True, num_workers=0, drop_last=True)
     vl = torch.utils.data.DataLoader(val_ds, batch_size=batch, shuffle=False, num_workers=0)
     net = GateNet(width).to(dev)
     if init:
         ck = torch.load(init, map_location=dev, weights_only=False)
         net.load_state_dict(ck['model'])
         print(f'initialised from {init} (epoch {ck.get("epoch")})', flush=True)
+    sampler=None
+    if hard_mining:
+        weights=hard_example_weights(net,train_ds,dev,batch)
+        sampler=torch.utils.data.WeightedRandomSampler(weights,len(train_ds),replacement=True,
+                                                       generator=torch.Generator().manual_seed(seed))
+        provenance['hard_example_sampling']=dict(source='unaugmented training frames only',
+            visibility_weight=2.,centre_weight=4.,centre_scale_normalized=[.1,.18],
+            weights=weights.tolist(),replacement=True)
+    tl = torch.utils.data.DataLoader(train_ds, batch_size=batch, shuffle=sampler is None,
+                                    sampler=sampler,num_workers=0,drop_last=True)
     opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=max(1, epochs * len(tl)))
     out = Path(out_dir)

@@ -178,6 +178,12 @@ def test_tiny_training_retains_split_provenance(tmp_path):
         out = train([str(first)], holdout=[str(second)], out_dir=str(tmp_path / 'run'),
                     epochs=1, batch=2, width=2, device='cpu', max_gpu_temp=0, batch_sleep=0)
         checkpoint = torch.load(out / 'best.pt', map_location='cpu', weights_only=True)
+        mined = train([str(first)],holdout=[str(second)],out_dir=str(tmp_path/'mined'),
+                      init=str(out/'best.pt'),hard_mining=True,epochs=1,batch=2,width=2,
+                      device='cpu',max_gpu_temp=0,batch_sleep=0)
+        mining_report=json.loads((mined/'datasets.json').read_text())
+        assert len(mining_report['hard_example_sampling']['weights'])==2
+        assert mining_report['init_sha256'] and mining_report['validation_kind']=='whole_flights'
     finally:
         torch.set_num_threads(previous)
     report = json.loads((out / 'datasets.json').read_text())
@@ -186,3 +192,36 @@ def test_tiny_training_retains_split_provenance(tmp_path):
     with pytest.raises(ValueError, match='same dataset'):
         train([str(first)], holdout=[str(first)], out_dir=str(tmp_path / 'bad'))
     assert not (tmp_path / 'bad').exists()
+
+
+def test_hard_sampling_uses_only_clean_training_frames_and_is_bounded(tmp_path):
+    import torch
+    from haltere.vision.train import GateFrames,hard_example_weights
+
+    path=labelled_dataset(tmp_path/'train',(20,40,60,80))
+    labels=json.loads((path/'labels.json').read_text())
+    # The fixed detector has one easy positive and one off-centre miss.
+    labels[1].update(u=32.,v=18.)
+    labels[3].update(u=60.,v=18.)
+    (path/'labels.json').write_text(json.dumps(labels))
+    dataset=GateFrames([path],augment='strong')
+    class CentreDetector(torch.nn.Module):
+        def forward(self,x):
+            return x.new_tensor([5.,0.,0.,0.]).expand(len(x),-1)
+    first=hard_example_weights(CentreDetector(),dataset,'cpu',2)
+    second=hard_example_weights(CentreDetector(),dataset,'cpu',3)
+    assert torch.equal(first,second)  # mining does not use the stochastic augmentation
+    assert len(first)==len(labels) and torch.all((first>=1)&(first<=7))
+    assert first[3]>4*first[1]  # spend more updates on the missed centre
+    assert first[0]>2*first[1]  # and on false positives
+
+
+def test_hard_sampling_requires_independent_validation_and_parent(tmp_path):
+    from haltere.vision.train import train
+    first=labelled_dataset(tmp_path/'train')
+    second=labelled_dataset(tmp_path/'validation',(25,200))
+    with pytest.raises(ValueError,match='initial detector'):
+        train([str(first)],holdout=[str(second)],hard_mining=True,out_dir=str(tmp_path/'bad'))
+    with pytest.raises(ValueError,match='whole-flight'):
+        train([str(first)],init='unused.pt',hard_mining=True,out_dir=str(tmp_path/'bad'))
+    assert not (tmp_path/'bad').exists()
