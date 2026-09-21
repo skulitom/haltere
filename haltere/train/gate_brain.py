@@ -131,6 +131,10 @@ class GateRollout:
         self.searching = self.crossed.clone()
         self.ever_searched = self.crossed.clone()
         self.reacquired = self.crossed.clone()
+        self.search_streak = torch.zeros(B,device=dev)
+        self.max_search = torch.zeros(B,device=dev)
+        self.first_crossing_s = torch.full((B,),float('nan'),device=dev)
+        self.crashed_before_crossing = self.crossed.clone()
         a = torch.zeros(B,4,device=dev)
         a[:,0] = 2*self.vehicle.sim.hover_command()-1
         self.delay = deque(a.clone() for _ in range(self.cfg.train.delay_steps))
@@ -155,6 +159,8 @@ class GateRollout:
         self.reacquired |= self.searching & visible & ~self.crossed
         self.searching = ~valid
         self.ever_searched |= self.searching & ~self.crossed
+        self.search_streak = torch.where(self.searching,self.search_streak+self.cfg.brain.dt,0.)
+        self.max_search = torch.maximum(self.max_search,torch.where(self.crossed,0.,self.search_streak))
         # Hidden gate coordinates are never delivered to the brain. The same
         # zero goal marks an expired camera measurement in the live runtime.
         return torch.where(valid[:,None],relative,torch.zeros_like(relative))
@@ -210,7 +216,10 @@ class GateRollout:
             self.airborne |= after.pos[:,2].detach()>.3
             after.crashed = after.crashed & self.airborne
             self.ever_crashed |= after.crashed.detach()
+            self.crashed_before_crossing |= after.crashed.detach() & ~self.crossed
             crossed,_ = aperture_crossing(q.pos.detach(),after.pos.detach(),self.gate,normal=self.normal)
+            self.first_crossing_s = torch.where(crossed & ~self.crossed & ~self.ever_crashed,
+                                                (self.age+t+1)*self.cfg.brain.dt,self.first_crossing_s)
             self.crossed |= crossed & ~self.ever_crashed
             # Move through the opening, rather than stopping at its centre.
             # Desired velocities exist only in this differentiable training loss.
@@ -250,7 +259,12 @@ def evaluate(brain,cfg,seconds=25,seed=481,turns=False,search=False):
             max_height = max(max_height,float(r.vs.quad.pos[:,2].max()))
         return dict(seed=seed,episodes=r.B,seconds=seconds,turns=turns,crossings=int(r.crossed.sum()),
                     search=search,searched=int(r.ever_searched.sum()),reacquired=int(r.reacquired.sum()),
-                    camera_viable_crossings=int((r.crossed & ~r.lost_gate).sum()),lost_gate=int(r.lost_gate.sum()),
+                    recovered_gate_crossings=int((r.crossed & r.reacquired).sum()),
+                    camera_viable_crossings=int((r.crossed & ~(r.max_search>15.) & ~r.crashed_before_crossing).sum())
+                        if search else int((r.crossed & ~r.lost_gate).sum()),
+                    lost_gate=int(r.lost_gate.sum()),search_timeouts=int((r.max_search>15.).sum()),
+                    max_search_seconds=r.max_search.tolist(),
+                    first_crossing_seconds=[float(t) if torch.isfinite(t) else None for t in r.first_crossing_s],
                     crashed=int(r.ever_crashed.sum()),max_speed=max_speed,max_height=max_height,
                     final_positions=r.vs.quad.pos.tolist(),gates=r.gate.tolist(),
                     measured_gate_input=True,synthetic_perception=True,runtime_requires_teacher=False)

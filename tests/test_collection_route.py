@@ -10,10 +10,12 @@ from haltere.liftoff.collection_route import CollectionRoute, prepare_route
 from haltere.liftoff.frames import sim_vec_to_unity
 from haltere.liftoff.pilot import LiftoffMapping, TelemetryPilot
 from haltere.liftoff.telemetry import TelemetryFrame
-from haltere.sim.tasks import HoverTaskConfig
+from haltere.sim.tasks import HoverTask, HoverTaskConfig
 
 
 class DummyBrain:
+    channel_dims = dict(HoverTask.channels)
+
     def weight_matrix(self):
         return torch.zeros(1)
 
@@ -330,3 +332,17 @@ def test_hover_copy_waits_until_reset_backlog_has_been_drained(tmp_path, monkeyp
           '--telemetry-copy-port', '9011', '--log', str(tmp_path / 'hover.csv')])
     assert Receiver.forwarding == [None, 9011]
     assert Receiver.closed
+
+
+def test_legacy_pilot_rejects_visual_brains_before_opening_telemetry(monkeypatch):
+    from types import SimpleNamespace
+    from haltere.cli import main
+    from haltere.liftoff import commands
+    from haltere.train import bptt
+    brain=SimpleNamespace(channel_dims={**HoverTask.channels,'retina':720})
+    monkeypatch.setattr(bptt,'load_checkpoint',lambda *args:(brain,None,None))
+    def unexpected_receiver(**kwargs):
+        raise AssertionError('Wrong controller must fail before opening telemetry')
+    monkeypatch.setattr(commands,'TelemetryReceiver',unexpected_receiver)
+    with pytest.raises(SystemExit,match='visual fly-brain checkpoint'):
+        main(['liftoff','fly','unused.pt','--dry-run','--device','cpu'])
