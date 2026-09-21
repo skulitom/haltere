@@ -155,7 +155,9 @@ def assess(brain,parent,replay,ids,device):
     return dict(zip(('parent_mse','scene_mse','blank_mse'),(totals/count).tolist()),blank_parent_max_delta=maximum)
 
 
-def train(parent,prepared,out,iterations=200):
+def train(parent,prepared,out,iterations=200,throttle_scale=.01):
+    if iterations<=0 or not 0<throttle_scale<=.04:
+        raise ValueError('Positive iterations and 0 < throttle scale <= .04 required')
     torch.set_num_threads(2);torch.manual_seed(3821);rng=np.random.default_rng(3821)
     parent,prepared,out=map(Path,(parent,prepared,out));manifest=json.loads((prepared/'manifest.json').read_text())
     if sha256(parent)!=manifest['parent_sha256']:raise ValueError('Replay parent differs')
@@ -172,7 +174,8 @@ def train(parent,prepared,out,iterations=200):
     out.mkdir(parents=True,exist_ok=False)
     code_hash=sha256(__file__)
     (out/'config.json').write_text(json.dumps(dict(parent=str(parent),prepared=str(prepared),iterations=iterations,
-        seed=3821,batch_size=8,tuning_lr=.003,gain_lr=.01,training_code_sha256=code_hash),indent=2))
+        seed=3821,batch_size=8,tuning_lr=.003,gain_lr=.01,throttle_scale=throttle_scale,
+        training_code_sha256=code_hash),indent=2))
     baseline=assess(brain,frozen,val,ids,'cuda');print('baseline',json.dumps(baseline),flush=True)
     (out/'baseline.json').write_text(json.dumps(baseline,indent=2));best=float('inf');started=time.monotonic()
     for it in range(1,iterations+1):
@@ -180,7 +183,7 @@ def train(parent,prepared,out,iterations=200):
         chosen=[int(rng.choice(by_take[int(rng.integers(len(by_take)))])) for _ in range(8)]
         b=tr.batch(chosen,'cuda');base,target=targets(frozen,b)
         action,_,_=rollout(brain,b,detach_every=8)
-        scale=action.new_tensor([.04,.04,.04,.04])
+        scale=action.new_tensor([throttle_scale,.04,.04,.04])
         loss=(((action-target)[:,20:]/scale)**2).mean()+.1*(((action-base)[:,20:]/scale)**2).mean()
         opt.zero_grad(set_to_none=True);loss.backward();norm=torch.nn.utils.clip_grad_norm_(parameters,1.)
         if not torch.isfinite(loss) or not torch.isfinite(norm):raise RuntimeError('Nonfinite update')
@@ -202,6 +205,7 @@ def train(parent,prepared,out,iterations=200):
                 navigation_teacher_sha256=manifest['teacher_sha256'],teacher_training_only=True,iterations=iterations,iteration=it,
                 training_code_sha256=code_hash,
                 path_supervision=manifest.get('path_supervision',{'navigation_predictor_weight':1.}),
+                throttle_retention_scale=throttle_scale,
                 changed_weights=changed,blank_retina_parent_tolerance=1e-5,closed_loop=False,validation=result,
                 purpose='experimental visual correction of gate approaches from recorded training-only paths')
             if previous:meta['scene_training']['parent_perception_rebind']=previous
@@ -216,6 +220,7 @@ def train(parent,prepared,out,iterations=200):
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('command',choices=['prepare','train'])
     p.add_argument('--parent',required=True);p.add_argument('--prepared',required=True);p.add_argument('--dataset')
-    p.add_argument('--out',required=True);p.add_argument('--iterations',type=int,default=200);a=p.parse_args()
+    p.add_argument('--out',required=True);p.add_argument('--iterations',type=int,default=200)
+    p.add_argument('--throttle-scale',type=float,default=.01);a=p.parse_args()
     if a.command=='prepare':prepare(a.parent,a.prepared,a.dataset,a.out)
-    else:train(a.parent,a.prepared,a.out,a.iterations)
+    else:train(a.parent,a.prepared,a.out,a.iterations,a.throttle_scale)
