@@ -260,3 +260,38 @@ of gate navigation, generalization or a benefit attributable to the predictor.
 The next navigation experiment should train corrections on states visited by
 the visual student and qualify one gate before attempting laps. These weights
 have not been promoted to GitHub/Hugging Face model releases.
+
+## Camera gate measurements and learned approach
+
+`haltere.train.gate_brain` continues the newest human-trained brain with
+differentiable gate approaches. GateNet supplies a camera-derived relative point
+to the brain's existing goal population during flight. This is a change in the
+sensory interface: the earlier raw-pixel channel is inactive in this stage,
+and the detector is a required visual frontend. It is distinct from the
+training-only navigation predictor, which is still absent at runtime.
+
+All four control axes come from the recurrent brain. The optional frozen motor
+teacher and camera-facing yaw labels are used only during training; there is
+no deployed yaw helper or route. Checkpoints record the parent and detector
+hashes and changes to recurrent, sensory and motor weights. Aperture crossings
+and camera visibility are evaluated separately: flying sideways to a synthetic
+point is insufficient when the real camera loses the gate. Live testing must
+use a distance boundary beyond the intended gate (the two Field Day launch
+arches are approximately 23 and 27 m from spawn).
+
+The second gate candidate (SHA256
+`648127de98937cfc7a7ed315c4584856c9681629d389dc1bc4dac97df3d9483a`)
+cleared both launch arches in three recorded Anode attempts on the original
+drone. Start-gate lateral errors were -4.2, -3.0 and +1.7 cm, at heights of
+0.82, 0.67 and 0.90 m above the gate base. These are physical crossings in free
+flight, checked against video and track planes, not a completed timed race.
+A fourth attempt stopped before reaching the arches. All four were eventually
+stopped by the 120 ms camera freshness check; faster sampling and a GPU detector
+trial did not eliminate that limitation. The longest reached 49.8 m.
+
+The final simulator check recorded 8/12 aperture crossings, no crashes and no
+prolonged loss of gate visibility. This is an initial approach milestone, not
+lap qualification or generalization. The navigation predictor and motor teacher
+were absent in every live attempt, and no yaw override was applied. Raw evidence
+and synchronized brain/flight videos are in `runs/gate-brain-live-01/`; these
+weights remain local and unqualified for a model release.

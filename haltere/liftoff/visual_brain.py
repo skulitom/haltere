@@ -24,8 +24,19 @@ from .telemetry import TelemetryReceiver, read_config, DEFAULT_STREAM
 
 
 class RetinaCamera:
-    def __init__(self, title='Liftoff', fps=18):
+    def __init__(self, title='Liftoff', fps=24, gate_sensor=None):
         self.title, self.fps = title, fps
+        self.gate_sensor = gate_sensor
+        self.detector = None
+        if gate_sensor:
+            from ..vision.train import load_gatenet
+            from ..vision.camera import Camera
+            if sha256(gate_sensor['checkpoint']) != gate_sensor['sha256']:
+                raise ValueError('Camera detector differs from the trained sensory contract')
+            self.detector = load_gatenet(gate_sensor['checkpoint'],'cpu')
+            self.gate_camera = Camera(320,180,gate_sensor['focal_320'],gate_sensor['tilt_deg'])
+            with torch.no_grad():
+                self.detector(torch.zeros(1,3,180,320))
         self.latest = None
         self.error = None
         self.done = threading.Event()
@@ -54,17 +65,31 @@ class RetinaCamera:
                         if not ok:
                             raise RuntimeError('Image encoding failed')
                         small = cv2.cvtColor(cv2.imdecode(enc,cv2.IMREAD_COLOR),cv2.COLOR_BGR2RGB)
-                        small = cv2.resize(small,(160,90),interpolation=cv2.INTER_AREA)
-                        with torch.no_grad():
-                            retina = retina_input(torch.tensor(small.transpose(2,0,1)[None],dtype=torch.float32)/255)
-                        self.latest = (time.monotonic(),retina)
+                        detection = None
+                        if self.detector is not None:
+                            from ..vision.model import decode
+                            from ..vision.runtime import detection_geometry
+                            gate_rgb = cv2.resize(small,(320,180),interpolation=cv2.INTER_AREA)
+                            with torch.no_grad():
+                                pixels = torch.tensor(gate_rgb.transpose(2,0,1)[None],dtype=torch.float32)/255
+                                pred = decode(self.detector(pixels))[0].cpu().numpy()
+                            p,u,v,width = pred
+                            direction,distance = detection_geometry(self.gate_camera,(u+1)*160,(v+1)*90,width)
+                            detection = dict(p=float(p),point=direction*distance,width=float(width))
+                        if self.detector is None:
+                            small = cv2.resize(small,(160,90),interpolation=cv2.INTER_AREA)
+                            with torch.no_grad():
+                                retina = retina_input(torch.tensor(small.transpose(2,0,1)[None],dtype=torch.float32)/255)
+                        else:
+                            retina = torch.zeros(1,720)
+                        self.latest = (begin,retina,detection)
                     self.done.wait(max(0,1/self.fps-(time.monotonic()-begin)))
         except Exception as e:
             self.error = repr(e)
 
 
 class VisualController:
-    """The exported fly brain controls all four axes; no external target/yaw logic."""
+    """All four axes come from the brain; optional camera gate measurement only."""
     def __init__(self, checkpoint, mapping_path, device='cuda'):
         self.brain,self.cfg,self.graph = load_checkpoint(checkpoint,device)
         ck = torch.load(checkpoint,map_location='cpu',weights_only=True)
@@ -87,6 +112,11 @@ class VisualController:
         self.W = self.brain.weight_matrix().detach()
         self.last_ts = None
         self.senses = self.motor = None
+        self.gate_point = None
+        self.gate_time = None
+        self.last_detection_time = None
+        self.relative_gate = np.zeros(3)
+        self.gate_confidence = 0.
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
         # kernels before the timed flight, then discard this synthetic state.
         with torch.no_grad():
@@ -98,7 +128,7 @@ class VisualController:
                 torch.cuda.synchronize(self.brain.device)
 
     @torch.no_grad()
-    def step(self,frame,retina):
+    def step(self,frame,retina,detection=None,capture_time=None):
         if self.last_ts is not None and frame.timestamp < self.last_ts-.1:
             raise RuntimeError('Game reset; stop this attempt')
         if self.last_ts != frame.timestamp:
@@ -116,6 +146,27 @@ class VisualController:
             motor = float(np.clip(np.mean(frame.motor_rpm)/self.mapping.max_rpm,0,1))
             self.motor = torch.tensor([[motor]],device=self.brain.device)
         obs = visual_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device))
+        if self.meta.get('gate_sensor'):
+            from ..brain.gate_senses import gate_observation
+            from ..vision.camera import quat_wxyz_to_mat
+            R = quat_wxyz_to_mat(self.senses['quat'][0].cpu().numpy())
+            pos = self.senses['pos'][0].cpu().numpy()
+            if capture_time != self.last_detection_time:
+                self.last_detection_time = capture_time
+                self.gate_confidence = detection['p'] if detection else 0.
+                if detection and detection['p']>.8 and np.isfinite(detection['point']).all():
+                    point = pos+R@detection['point']
+                    point[2] -= self.meta['gate_sensor']['centre_offset_m']
+                    # Smooth only measured position, using odometry to remove
+                    # camera rotation. No route or steering controller exists here.
+                    alpha = 1. if self.gate_point is None else .2
+                    self.gate_point = point if self.gate_point is None else (1-alpha)*self.gate_point+alpha*point
+                    self.gate_time = capture_time
+            if self.gate_time is None or capture_time-self.gate_time>.5:
+                raise RuntimeError('Camera gate measurement unavailable')
+            self.relative_gate = R.T@(self.gate_point-pos)
+            obs = gate_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device),
+                                   torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None])
         action,self.state,_ = self.brain(obs,self.state,self.W)
         processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)
@@ -146,7 +197,7 @@ def run(args):
         raise FileExistsError('Use new log and video paths')
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device)
-    camera = RetinaCamera().start()
+    camera = RetinaCamera(gate_sensor=controller.meta.get('gate_sensor')).start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -176,7 +227,7 @@ def run(args):
             writer.writerow(['wall','ts','image_age','shadow','thr','roll','pitch','yaw',
                              'processed_thr','processed_roll','processed_pitch','processed_yaw','x','y','z',
                              'in_thr','in_yaw','in_pitch','in_roll','raw_thr','raw_roll','raw_pitch','raw_yaw',
-                             'vx','vy','vz','qw','qx','qy','qz'])
+                             'vx','vy','vz','qw','qx','qy','qz','gate_p','gate_bx','gate_by','gate_bz'])
             while time.monotonic()-begin < args.seconds:
                 new = rx.wait(.001)
                 now = time.monotonic()
@@ -193,7 +244,7 @@ def run(args):
                     continue
                 if now-last_frame>.12 or now-last_progress>.5 or not live_pose(frame):
                     raise RuntimeError('Telemetry stale, paused or outside live flight')
-                capture_time,retina = camera.latest
+                capture_time,retina,detection = camera.latest
                 if now-capture_time>.12:
                     raise RuntimeError(f'Image stale or game hidden: {camera.error}')
                 if args.blank_retina:
@@ -203,7 +254,7 @@ def run(args):
                 if now-next_tick>.12 and count:
                     raise RuntimeError('Controller missed its real-time deadline')
                 next_tick = max(next_tick+controller.cfg.brain.dt,now)
-                action,processed,raw = controller.step(frame,retina)
+                action,processed,raw = controller.step(frame,retina,detection,capture_time)
                 if not np.isfinite(action).all():
                     raise RuntimeError('Nonfinite motor output')
                 first_ts = frame.timestamp if first_ts is None else first_ts
@@ -223,12 +274,13 @@ def run(args):
                     pad.send(*raw)
                 q = controller.senses['quat'][0].cpu().numpy()
                 writer.writerow([time.time(),frame.timestamp,now-capture_time,not bool(pad),*action,*processed,*pos,
-                                 *frame.input,*raw,*velocity,*q])
+                                 *frame.input,*raw,*velocity,*q,controller.gate_confidence,*controller.relative_gate])
                 count += 1
                 if shared:
                     rates = (controller.brain.cfg.rate_max*torch.sigmoid(controller.state['v'][:,0])).cpu().numpy()
-                    shared.publish(rates,t=elapsed,dist=0,thr=raw[0],roll=raw[1],pitch=raw[2],yaw=raw[3],
-                                   px=pos[0],py=pos[1],pz=pos[2],tx=pos[0],ty=pos[1],tz=pos[2],
+                    target = controller.gate_point if controller.gate_point is not None else pos
+                    shared.publish(rates,t=elapsed,dist=float(np.linalg.norm(target-pos)),thr=raw[0],roll=raw[1],pitch=raw[2],yaw=raw[3],
+                                   px=pos[0],py=pos[1],pz=pos[2],tx=target[0],ty=target[1],tz=target[2],
                                    qw=q[0],qx=q[1],qy=q[2],qz=q[3],ts=frame.timestamp)
     except Exception as e:
         reason = str(e)
@@ -244,7 +296,12 @@ def run(args):
         result = dict(checkpoint_sha256=sha256(args.checkpoint),runtime_requires_teacher=False,
                       control_mode='visual fly brain' if pad else 'shadow: no control output',
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,
-                      external_goal=False,yaw_assistance=False,
+                      external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=False,
+                      goal_source='camera detector' if controller.meta.get('gate_sensor') else 'absent',
+                      gate_sensor=controller.meta.get('gate_sensor'),runtime_route_oracle=False,
+                      raw_retina_active=not (args.blank_retina or controller.meta.get('gate_sensor')),
+                      camera_fps=camera.fps,
+                      origin_sim=controller.pose.pos0.tolist() if controller.pose.pos0 is not None else None,
                       images_blanked=args.blank_retina,
                       limits=dict(height_m=args.max_height,speed_mps=args.max_speed,distance_m=args.max_distance),
                       process_session=windows_session_id())
