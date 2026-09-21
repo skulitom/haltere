@@ -30,6 +30,7 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend):
     torch.set_num_threads(2)
     queue.cancel_join_thread()
     camera = None
+    priority = None
     last_diagnostics = 0.
     def publish(frame):
         nonlocal last_diagnostics
@@ -40,15 +41,17 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend):
                           detection['width'] if detection else 0.,*(detection['point'] if detection else [0.,0.,0.])]
             shared[7:] = retina.numpy().ravel()
         if time.monotonic()-last_diagnostics>.5:
-            put_latest(queue,dict(diagnostics=camera.diagnostics(),error=camera.error))
+            put_latest(queue,dict(diagnostics=dict(camera.diagnostics(),priority=priority),error=camera.error))
             last_diagnostics = time.monotonic()
     try:
+        from .scheduling import flight_process_priority
+        priority = flight_process_priority()
         camera = RetinaCamera(title,fps,gate_sensor,backend,phase_status=phase,on_frame=publish)
         camera.done = done
         gc.collect()
         gc.disable()
         camera.run()
-        put_latest(queue,dict(diagnostics=camera.diagnostics(),error=camera.error))
+        put_latest(queue,dict(diagnostics=dict(camera.diagnostics(),priority=priority),error=camera.error))
     except Exception as e:
         put_latest(queue,dict(error=repr(e)))
     finally:

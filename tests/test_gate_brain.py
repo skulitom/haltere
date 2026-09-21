@@ -51,6 +51,48 @@ def test_expired_camera_memory_is_zeroed_only_for_search_trained_brains():
     assert not searching and np.array_equal(measurement,old)
 
 
+def test_close_gate_outlier_does_not_refresh_or_move_sensory_memory():
+    import numpy as np
+    from haltere.liftoff.visual_brain import fuse_gate_detection
+    previous=np.array([3.,.1,1.2]); jumped=np.array([8.,4.,.5]); position=np.array([1.,0.,1.])
+    point,stamp=fuse_gate_detection(previous,10.,jumped,10.1,position,np.eye(3))
+    np.testing.assert_array_equal(point,previous)
+    assert stamp==10.
+    # A bad detector cannot preserve an old target forever.
+    point,stamp=fuse_gate_detection(previous,10.,jumped,12.1,position,np.eye(3))
+    np.testing.assert_array_equal(point,jumped)
+    assert stamp==12.1
+    # After passage, do not average two distinct gates into a phantom target.
+    point,stamp=fuse_gate_detection(previous,10.,jumped,10.1,np.array([4.,0.,1.]),np.eye(3))
+    np.testing.assert_array_equal(point,jumped)
+    assert stamp==10.1
+
+
+def test_close_gate_association_is_invariant_to_global_coordinates():
+    import numpy as np
+    from haltere.liftoff.visual_brain import fuse_gate_detection
+    R=np.array([[0.,-1.,0.],[1.,0.,0.],[0.,0.,1.]])
+    shift=np.array([999.,100.,2.])
+    old=np.array([3.,0.,1.]); measured=np.array([3.2,.1,1.2]); position=np.array([1.,0.,1.])
+    point,stamp=fuse_gate_detection(old,1.,measured,1.1,position,np.eye(3))
+    transformed,t=fuse_gate_detection(R@old+shift,1.,R@measured+shift,1.1,R@position+shift,R)
+    np.testing.assert_allclose(transformed,R@point+shift)
+    assert t==stamp
+
+
+def test_short_camera_gap_discards_image_and_long_gap_stops():
+    import pytest
+    from haltere.liftoff.visual_brain import camera_measurement_fresh
+    assert camera_measurement_fresh(.1,True)
+    assert not camera_measurement_fresh(.14,True)
+    assert not camera_measurement_fresh(.25,True)
+    for age,memory in [(.251,True),(.121,False),(-.1,True),(float('nan'),True)]:
+        with pytest.raises(RuntimeError,match='unavailable'):
+            camera_measurement_fresh(age,memory)
+    with pytest.raises(RuntimeError,match='hidden'):
+        camera_measurement_fresh(.01,True,foreground=False)
+
+
 def test_search_training_hides_unseen_gate_and_updates_recurrent_weights():
     from tests.test_human_brain import small_brain
     from haltere.train.gate_brain import GateRollout

@@ -186,7 +186,8 @@ class VisualController:
                 torch.cuda.synchronize(self.brain.device)
 
     @torch.no_grad()
-    def step(self,frame,retina,detection=None,capture_time=None,frame_time=None):
+    def step(self,frame,retina,detection=None,capture_time=None,frame_time=None,observation_time=None):
+        observation_time = time.monotonic() if observation_time is None else observation_time
         if self.last_ts is not None and frame.timestamp < self.last_ts-.1:
             raise RuntimeError('Game reset; stop this attempt')
         if self.last_ts != frame.timestamp:
@@ -211,25 +212,26 @@ class VisualController:
             from ..vision.camera import quat_wxyz_to_mat
             R = quat_wxyz_to_mat(self.senses['quat'][0].cpu().numpy())
             pos = self.senses['pos'][0].cpu().numpy()
+            self.gate_confidence = detection['p'] if detection else 0.
             if capture_time != self.last_detection_time:
                 self.last_detection_time = capture_time
-                self.gate_confidence = detection['p'] if detection else 0.
                 if detection and detection['p']>.8 and np.isfinite(detection['point']).all():
                     capture_pos,capture_quat = self.camera_poses.at(capture_time)
                     point = capture_pos+quat_wxyz_to_mat(capture_quat)@detection['point']
                     point[2] -= self.meta['gate_sensor']['centre_offset_m']
                     # Smooth only measured position, using odometry to remove
                     # camera rotation. No route or steering controller exists here.
-                    alpha = 1. if self.gate_point is None else .2
-                    self.gate_point = point if self.gate_point is None else (1-alpha)*self.gate_point+alpha*point
-                    self.gate_time = capture_time
+                    self.gate_point,self.gate_time = fuse_gate_detection(
+                        self.gate_point,self.gate_time,point,capture_time,pos,R)
             relative = R.T@(self.gate_point-pos) if self.gate_point is not None else np.zeros(3)
-            age = capture_time-self.gate_time if self.gate_time is not None else float('inf')
+            # Memory must age on the control clock even if capture stops. Never
+            # grant an old point a new lifetime by repeatedly reading its frame.
+            age = observation_time-self.gate_time if self.gate_time is not None else float('inf')
             allow_search = self.meta['gate_sensor'].get('missing_gate')=='zero_goal_neural_search'
             self.relative_gate,self.searching = gate_measurement_or_search(age,relative,allow_search)
             if self.searching:
-                self.search_since = capture_time if self.search_since is None else self.search_since
-                if capture_time-self.search_since>15.:
+                self.search_since = observation_time if self.search_since is None else self.search_since
+                if observation_time-self.search_since>15.:
                     raise RuntimeError('Neural gate search timed out')
                 # A newly acquired gate must not be blended with an expired
                 # target. This clears sensory memory; it supplies no steering.
@@ -242,6 +244,39 @@ class VisualController:
         processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)
         return action[0].cpu().numpy(),processed,raw
+
+
+def fuse_gate_detection(previous,previous_time,point,stamp,position,rotation):
+    """Associate static visual landmarks without using course order or geometry.
+
+    Close-up size regression can jump several metres to a distant arch. Retain
+    a recent nearby point through that outlier, without refreshing its age. A
+    passed/expired target can be replaced immediately rather than interpolating
+    between two different gates. All positions originate in camera measurements.
+    """
+    if previous is None or previous_time is None:
+        return point,stamp
+    relative=rotation.T@(previous-position)
+    age=stamp-previous_time
+    innovation=np.linalg.norm(point-previous)
+    if np.linalg.norm(relative)<6. and relative[0]>-.5 and 0<=age<=2. and innovation>2.:
+        return previous,previous_time
+    if age>2. or relative[0]<=-.5 or innovation>8.:
+        return point,stamp
+    return .8*previous+.2*point,stamp
+
+
+def camera_measurement_fresh(age,allow_memory,foreground=True):
+    """A short image gap can use odometry-backed memory, never stale pixels.
+
+    This is restricted to gate/search-trained brains. Raw-retina controllers
+    have no trained landmark memory and retain their original 120 ms deadline.
+    """
+    if not foreground:
+        raise RuntimeError('Game hidden during visual control')
+    if not np.isfinite(age) or age<0 or age>(.25 if allow_memory else .12):
+        raise RuntimeError('Fresh camera measurements unavailable')
+    return age<=.12
 
 
 def gate_memory_valid(age, relative_gate):
@@ -293,6 +328,7 @@ def run(args):
     from .manual_recording import live_pose
     from .flight_guard import ImpactMonitor
     from .camera_process import ProcessRetinaCamera
+    from .commands import find_game_window,game_window_active
     if not 0 < args.seconds <= 1800:
         raise ValueError('Use a bounded run of 0 < seconds <= 1800')
     if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
@@ -303,7 +339,7 @@ def run(args):
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device)
     gc.collect()
-    camera = ProcessRetinaCamera(gate_sensor=controller.meta.get('gate_sensor'),backend=args.capture_backend).start()
+    camera = ProcessRetinaCamera(gate_sensor=controller.meta.get('gate_sensor'),backend=args.capture_backend,fps=48).start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -326,6 +362,12 @@ def run(args):
     log_path.parent.mkdir(parents=True,exist_ok=True)
     # Collection can pause every Python thread. Reclaim startup objects before
     # the bounded real-time interval, retaining normal reference-count cleanup.
+    # Set this after spawning the recorder so video encoding keeps its existing
+    # background priority. The independent camera raises its own priority.
+    from .scheduling import flight_process_priority
+    priority = flight_process_priority()
+    game_hwnd = find_game_window('Liftoff')
+    memory_gap_allowed = controller.meta.get('gate_sensor',{}).get('missing_gate')=='zero_goal_neural_search'
     gc_was_enabled = gc.isenabled()
     gc.disable()
     begin, next_tick, count, reason = time.monotonic(),time.monotonic(),0,'duration'
@@ -335,6 +377,8 @@ def run(args):
     last_timestamp = None
     step_times = deque(maxlen=4096)
     deadline_failure = None
+    memory_only_ticks = 0
+    max_image_age = 0.
     try:
         with log_path.open('w',newline='') as f:
             writer = csv.writer(f)
@@ -362,9 +406,17 @@ def run(args):
                 if now-last_frame>.12 or now-last_progress>.5 or not live_pose(frame):
                     raise RuntimeError('Telemetry stale, paused or outside live flight')
                 capture_time,retina,detection = camera_frame
-                if now-capture_time>.12:
+                image_age = now-capture_time
+                max_image_age = max(max_image_age,image_age)
+                try:
+                    fresh = camera_measurement_fresh(image_age,memory_gap_allowed,game_window_active(game_hwnd))
+                    if camera.error:
+                        raise RuntimeError(f'Camera failed: {camera.error}')
+                except RuntimeError:
                     camera_failure = camera.diagnostics()
-                    raise RuntimeError(f'Image stale or game hidden: {camera.error}')
+                    raise
+                if not fresh:
+                    retina,detection = torch.zeros_like(retina),None
                 if args.blank_retina:
                     retina = torch.zeros_like(retina)
                 if now<next_tick:
@@ -374,7 +426,8 @@ def run(args):
                     raise RuntimeError('Controller missed its real-time deadline')
                 next_tick = max(next_tick+controller.cfg.brain.dt,now)
                 step_begin = time.monotonic()
-                action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame)
+                action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame,now)
+                memory_only_ticks += int(not fresh)
                 step_times.append(time.monotonic()-step_begin)
                 if not np.isfinite(action).all():
                     raise RuntimeError('Nonfinite motor output')
@@ -401,7 +454,7 @@ def run(args):
                     pad.send(*raw)
                 writer.writerow([time.time(),frame.timestamp,now-capture_time,not bool(pad),*action,*processed,*pos,
                                  *frame.input,*raw,*velocity,*q,controller.gate_confidence,*controller.relative_gate,
-                                 capture_time-controller.gate_time if controller.gate_time is not None else -1,
+                                 now-controller.gate_time if controller.gate_time is not None else -1,
                                  capture_time,last_frame,*(detection['point'] if detection else [0.,0.,0.]),
                                  detection['width'] if detection else 0.,controller.searching])
                 count += 1
@@ -436,6 +489,9 @@ def run(args):
         result = dict(checkpoint_sha256=sha256(args.checkpoint),runtime_requires_teacher=False,
                       control_mode='visual fly brain' if pad else 'shadow: no control output',
                       brain_device=str(controller.brain.device),
+                      process_priority=priority,
+                      image_freshness_s=.12,camera_outage_limit_s=.25 if memory_gap_allowed else .12,
+                      stale_image_memory_only_ticks=memory_only_ticks,max_image_age_ms=1000*max_image_age,
                       recurrent_matrix_layout=str(controller.W.layout),
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,
                       external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=False,
@@ -445,6 +501,7 @@ def run(args):
                       camera_fps=camera.fps,
                       capture_backend=camera.backend,
                       close_gate_memory_s=2.,
+                      close_gate_outlier_rejection=dict(radius_m=6.,innovation_m=2.,max_age_s=2.),
                       neural_search_timeout_s=15.,
                       camera_pose_alignment='interpolated telemetry receipt times',
                       pause_key_sent=pause_key_sent,

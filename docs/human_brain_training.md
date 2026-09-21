@@ -445,3 +445,31 @@ This is same-course validation, not evidence of transfer. Detector SHA256 is
 `31ba0c024b7fedc51caaa29663af39a29614ea2e525f9b7d02f4144f1aaee932`.
 `gate-brain-05-opening-01/candidate.pt` changes only the sensory metadata; every
 brain tensor is verified identical to trained brain 05. Neither is qualified.
+
+The first two opening-detector flights reached three and four arches but stopped
+for image gaps at 60.0 and 72.4 seconds. Further Anode benchmarks reproduced
+130–141 ms image gaps with recording disabled and with corrected scheduling.
+The controller and camera had inherited BelowNormal priority; they now request
+AboveNormal for their own bounded processes, leaving the recorder at its existing
+priority. The camera targets 48 Hz (actual measured throughput is lower).
+
+The runtime now distinguishes image freshness from a complete camera outage.
+Images older than 120 ms are discarded. Gate/search-trained brains may use
+their existing odometry-backed landmark memory for a gap up to 250 ms; beyond
+that, flight stops. Raw-retina controllers retain the original 120 ms limit.
+Foreground loss, camera errors, stale telemetry and missed control deadlines
+still stop flight. Memory and search age advance on the control clock even
+when the image timestamp is frozen. Logs retain original image ages and count
+ticks using memory alone. Close gate association also rejects position jumps
+over 2 m while a target is within 6 m, until passage or expiry of its existing
+two-second memory; rejected measurements cannot refresh that memory.
+
+`gatenet-opening-02` adds all 1,733 frames of the user's first complete Straw
+Bale recording, covering gate IDs 0–16. Its 2,327 training frames exclude the
+same whole-flight holdout. The 35-epoch run selected epoch 27. Held-out close
+horizontal error is 0.66 m median, with 0.15 m vertical error. The detector SHA
+is `2e07df560e9f5482307fb894edf55dbd65056d85332b3e29910840b32d050be6`.
+The corresponding brain-05 metadata-only candidate SHA is
+`44ad38507d1f95fbdb23041016c964aef6ed1f27fe4bb8aa659278815d8fd6ca`.
+Neither the detector's wider training coverage nor held-out image metrics
+constitute a completed autonomous lap.
