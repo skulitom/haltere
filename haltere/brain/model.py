@@ -49,6 +49,8 @@ class BrainConfig:
     motor: tuple[str, ...] = ('wing_mn',)
     n_actions: int = 4
     mask_motor_feedback: bool = False  # prevents action imitation from copying action-correlated RPM
+    blank_encoders: tuple[str, ...] = ()  # retain a frozen encoder's zero-input baseline
+    opponent_encoders: tuple[str, ...] = ()  # enc(x)-enc(-x), exactly zero for missing input
 
     @staticmethod
     def from_dict(d: dict) -> "BrainConfig":
@@ -149,6 +151,13 @@ class ConnectomeRNN(nn.Module):
                                                        seed=sum(map(ord, key)), learn_tuning=cfg.learn_tuning)
                 self.encoder_channel[key] = ch
 
+        for option in ('blank_encoders', 'opponent_encoders'):
+            unknown = set(getattr(cfg, option)) - set(self.encoders)
+            if unknown:
+                raise ValueError(f'{option} names unknown encoders: {sorted(unknown)}')
+        if set(cfg.blank_encoders) & set(cfg.opponent_encoders):
+            raise ValueError('An encoder cannot be both blank and opponent')
+
         # --- motor readout
         motor_idx = np.concatenate([graph.population(p) for p in cfg.motor])
         self.register_buffer('motor_idx', torch.as_tensor(motor_idx, dtype=torch.long))
@@ -219,11 +228,16 @@ class ConnectomeRNN(nn.Module):
             idx = getattr(self, f'idx_{key}')
             ch = self.encoder_channel[key]
             value = obs[ch]
+            if key in self.cfg.blank_encoders:
+                value = torch.zeros_like(value)
             if self.cfg.mask_motor_feedback and ch == 'wing_cs':
                 # Mask inside the exported brain so replay, simulation and live
                 # control cannot accidentally use different sensory contracts.
                 value = torch.cat((value[..., :2], torch.zeros_like(value[..., 2:3])), -1)
-            I = I.index_add(0, idx, enc(value).T)
+            current = enc(value)
+            if key in self.cfg.opponent_encoders:
+                current = current - enc(-value)
+            I = I.index_add(0, idx, current.T)
         k = (self.cfg.dt / self.tau())[:, None]
         v = v + k * (-v + rec + I + self.bias[:, None])
         r_new = self.cfg.rate_max * torch.sigmoid(v)

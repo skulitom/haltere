@@ -81,3 +81,45 @@ def test_state_reset_masking():
     s = ConnectomeRNN.where_state(mask, s0, s1)
     assert torch.allclose(s['v'][:, 0], s0['v'][:, 0]) and torch.allclose(s['v'][:, 1], s1['v'][:, 1])
     assert torch.allclose(s['act'][2], s0['act'][2]) and torch.allclose(s['act'][1], s1['act'][1])
+
+
+def test_navigation_images_preserve_complete_blank_dynamics_and_receive_gradients():
+    from haltere.train.bptt import ExperimentConfig
+    from haltere.train.navigation_scene import add_navigation_input, KEY
+    torch.manual_seed(82)
+    graph = random_graph(N=100, E=900)
+    graph.populations['lptc'] = graph.population('sense_a')
+    graph.populations['goal'] = graph.population('sense_b')
+    cfg = ExperimentConfig.from_dict({'brain': dict(sensory={'a':'sense_a','retina':'lptc'},
+                                motor=['motor'],readout_init=.1)})
+    parent = ConnectomeRNN(graph, {'a':3,'retina':12}, cfg.brain).eval().requires_grad_(False)
+    student, _, parameters = add_navigation_input(parent, cfg, graph)
+    original = {k:v.clone() for k,v in parent.state_dict().items()}
+    optimizer = torch.optim.Adam(parameters, lr=.01)
+    # Exercise an actual update first, then prove the full state still matches
+    # over a changing nonvisual input history, including cold startup.
+    for _ in range(3):
+        state = student.init_state(2)
+        for _ in range(12):
+            action,state,_ = student({'a':torch.randn(2,3),'retina':torch.randn(2,12)},state)
+        optimizer.zero_grad();action.square().mean().backward();optimizer.step()
+    assert student.encoders[KEY].U.grad.abs().sum() > 0
+    assert all(torch.equal(v,student.state_dict()[k]) for k,v in original.items())
+    with torch.no_grad():
+        sp, ss = parent.init_state(2),student.init_state(2)
+        for _ in range(100):
+            obs = {'a':torch.randn(2,3),'retina':torch.zeros(2,12)}
+            ap,sp,_ = parent(obs,sp)
+            actual,ss,_ = student(obs,ss)
+            assert torch.equal(ap,actual)
+            assert torch.equal(sp['v'],ss['v'])
+
+
+def test_sensory_override_rejects_unknown_or_conflicting_encoders():
+    import pytest
+    cfg = BrainConfig(sensory={'a':'sense_a'},motor=('motor',),blank_encoders=('typo',))
+    with pytest.raises(ValueError,match='unknown encoders'):
+        ConnectomeRNN(random_graph(),{'a':3},cfg)
+    cfg.blank_encoders = cfg.opponent_encoders = ('a__sense_a',)
+    with pytest.raises(ValueError,match='both blank and opponent'):
+        ConnectomeRNN(random_graph(),{'a':3},cfg)

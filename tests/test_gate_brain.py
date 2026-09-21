@@ -31,6 +31,16 @@ def test_crossing_requires_forward_plane_intersection_inside_aperture():
     assert torch.allclose(point[0],centre[0])
 
 
+def test_scene_brain_synthetic_check_requires_explicit_blank_image_ablation():
+    from haltere.train.evaluate_gate_brain import sensory_contract
+    meta=dict(runtime_requires_teacher=False,gate_sensor=dict(focal_320=100.,tilt_deg=30.,
+              missing_gate='zero_goal_neural_search',raw_retina_active=True,centre_offset_m=0.))
+    with pytest.raises(ValueError,match='raw retina'):
+        sensory_contract(meta)
+    assert sensory_contract(meta,blank_retina_ablation=True)['centre_offset']==0.
+    assert meta['gate_sensor']['raw_retina_active'] is True
+
+
 def test_gate_senses_keep_vertical_error_and_ignore_world_coordinates():
     s=dict(gyro=torch.zeros(1,3),gravity_body=torch.tensor([[0.,0.,-1.]]),vel_body=torch.zeros(1,3),
            vel_world=torch.zeros(1,3),pos=torch.tensor([[100.,999.,1.]]),quat=torch.tensor([[1.,0.,0.,0.]]),

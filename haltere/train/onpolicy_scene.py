@@ -230,15 +230,21 @@ def assess(brain,parent,replay,ids,require_blank_parent=True):
     return dict(mse_axes=result,sample_counts=counts,blank_parent_max_delta=blank_max)
 
 
-def train(parent,prepared,out,iterations=400,motor_refit=False,prefix_lock=False):
+def train(parent,prepared,out,iterations=400,motor_refit=False,prefix_lock=False,navigation_input=False):
     if iterations<=0:raise ValueError('Positive iteration count required')
     if prefix_lock and not motor_refit:raise ValueError('Prefix lock requires motor refitting')
+    if navigation_input and motor_refit:raise ValueError('Navigation input keeps the original readout frozen')
     torch.set_num_threads(2);torch.manual_seed(1839);rng=np.random.default_rng(1839)
     parent,prepared,out=map(Path,(parent,prepared,out));m=json.loads((prepared/'manifest.json').read_text())
     if sha256(parent)!=m['parent_sha256']:raise ValueError('Parent changed')
-    brain,cfg,_=load_checkpoint(parent,'cuda');frozen,_,_=load_checkpoint(parent,'cuda')
-    frozen.eval().requires_grad_(False);parameters=visual_parameters_only(brain)
-    initial_gain=.01 if motor_refit else .003
+    brain,cfg,graph=load_checkpoint(parent,'cuda');frozen,_,_=load_checkpoint(parent,'cuda')
+    frozen.eval().requires_grad_(False)
+    if navigation_input:
+        from .navigation_scene import add_navigation_input,validate_navigation_retention,ADDED_PARAMETERS
+        brain,cfg,parameters=add_navigation_input(frozen,cfg,graph)
+    else:parameters=visual_parameters_only(brain)
+    initial_gain=.1 if navigation_input else (.01 if motor_refit else .003)
+    max_gain=2. if navigation_input else .15
     with torch.no_grad():parameters[1].fill_(math.log(initial_gain))
     groups=[dict(params=[parameters[0]],lr=.003),dict(params=[parameters[1]],lr=.008)]
     if motor_refit:
@@ -269,7 +275,8 @@ def train(parent,prepared,out,iterations=400,motor_refit=False,prefix_lock=False
         lock=dict(rank=len(basis),sha256=sha256(out/'prefix-basis.npz'),source='training successful-prefix parent neural states',
                   relative_singular_threshold=1e-5,max_relative_readout_norm=.5)
     (out/'config.json').write_text(json.dumps(dict(parent=str(parent),prepared=str(prepared),iterations=iterations,
-        seed=1839,batch_size=8,window_ticks=128,initial_gain=initial_gain,max_gain=.15,
+        seed=1839,batch_size=8,window_ticks=128,initial_gain=initial_gain,max_gain=max_gain,
+        navigation_input=navigation_input,
         motor_refit=motor_refit,motor_readout_learning_rate=(.0003 if prefix_lock else .00001) if motor_refit else None,
         motor_prefix_lock=lock,
         training_code_sha256=sha256(__file__)),indent=2))
@@ -294,16 +301,22 @@ def train(parent,prepared,out,iterations=400,motor_refit=False,prefix_lock=False
         if not torch.isfinite(loss) or not torch.isfinite(norm):raise RuntimeError('Nonfinite update')
         opt.step()
         if basis is not None:constrain_readout(brain.readout.weight,frozen.readout.weight,basis)
-        with torch.no_grad():parameters[1].clamp_(max=math.log(.15))
+        with torch.no_grad():parameters[1].clamp_(max=math.log(max_gain))
         row=dict(iteration=it,loss=float(loss.detach()),elapsed_s=time.monotonic()-started)
         with (out/'training.jsonl').open('a') as f:f.write(json.dumps(row)+'\n')
         if it==1 or it%10==0:print(json.dumps(row),flush=True)
         if it%50==0 or it==iterations:
             result=assess(brain,frozen,val,ids,not motor_refit);print('validation',it,json.dumps(result),flush=True)
             candidate=copy.deepcopy(original);state=brain.state_dict()
-            candidate['model']={k:state[k].detach().cpu() for k in original['model']}
-            changed=[k for k,v in candidate['model'].items() if not torch.equal(v,original['model'][k])]
+            keys=set(original['model'])|(ADDED_PARAMETERS if navigation_input else set())
+            candidate['model']={k:state[k].detach().cpu() for k in sorted(keys)}
+            if navigation_input:
+                from ..config import dataclass_to_dict
+                candidate['config']['brain']=dataclass_to_dict(cfg.brain)
+                validate_navigation_retention(candidate,original)
+            changed=[k for k,v in candidate['model'].items() if k not in original['model'] or not torch.equal(v,original['model'][k])]
             allowed={'encoders.retina__lptc.U','encoders.retina__lptc.log_gain'}|({'readout.weight'} if motor_refit else set())
+            if navigation_input:allowed=ADDED_PARAMETERS
             if set(changed)-allowed:
                 raise RuntimeError('Unexpected weight changes')
             meta=candidate['visual_brain'];meta['qualified']=False
@@ -311,6 +324,9 @@ def train(parent,prepared,out,iterations=400,motor_refit=False,prefix_lock=False
                 teacher_training_only=True,iterations=iterations,iteration=it,training_code_sha256=sha256(__file__),
                 path_supervision=m['path_supervision'],changed_weights=changed,closed_loop=False,
                 motor_refit=motor_refit,recurrent_weights_unchanged=True,
+                input_contract='retinal_navigation_currents_v1' if navigation_input else 'retinal_motion_currents_v1',
+                original_weights_unchanged=navigation_input,
+                trained_weights=[name for name,value in brain.named_parameters() if value.requires_grad],
                 motor_prefix_lock=lock,
                 blank_retina_parent_tolerance=None if motor_refit else 1e-5,validation=result,
                 purpose='on-policy visual correction with successful-prefix retention')
@@ -328,8 +344,9 @@ if __name__=='__main__':
     p.add_argument('--track');p.add_argument('--race');p.add_argument('--route');p.add_argument('--after-passages',type=int,default=11)
     p.add_argument('--motor-refit',action='store_true',help='Also fit motor readout weights with successful-prefix retention')
     p.add_argument('--prefix-lock',action='store_true',help='Project motor updates outside measured successful-prefix activity')
+    p.add_argument('--navigation-input',action='store_true',help='Learn only added zero-centred image currents into existing goal neurons')
     p.add_argument('--iterations',type=int,default=400);a=p.parse_args()
     if a.command=='prepare':
         prepare(a.parent,[(f,'train') for f in a.train_flight]+[(f,'validation') for f in a.validation_flight],
                 a.track,a.race,a.route,a.out,a.after_passages)
-    else:train(a.parent,a.prepared,a.out,a.iterations,a.motor_refit,a.prefix_lock)
+    else:train(a.parent,a.prepared,a.out,a.iterations,a.motor_refit,a.prefix_lock,a.navigation_input)

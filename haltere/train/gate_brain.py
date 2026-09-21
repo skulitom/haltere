@@ -209,7 +209,14 @@ class GateRollout:
 
     def window(self, steps=64):
         brain = self.brain
-        W = brain.weight_matrix()
+        if self.evaluation and not torch.is_grad_enabled():
+            # Evaluation uses the same frozen CSR path as deployed inference.
+            # Keep training on the differentiable per-edge representation.
+            if not hasattr(self, '_evaluation_weights'):
+                self._evaluation_weights = brain.inference_matrix()
+            W = self._evaluation_weights
+        else:
+            W = brain.weight_matrix()
         self.state = brain.detach_state(self.state)
         costs, imitation, motor_errors = [], [], []
         retina = torch.zeros(self.B,RETINA_DIM,device=brain.device)
@@ -309,18 +316,33 @@ class GateRollout:
 
 @torch.no_grad()
 def evaluate(brain,cfg,seconds=25,seed=481,turns=False,search=False,elevation=False,
-             height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,search_height_anchor=False):
+             height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,search_height_anchor=False,
+             neural_warmup_seconds=0.):
+    if not 0<=neural_warmup_seconds<=3:raise ValueError('Neural prefill must be between zero and three seconds')
     with torch.random.fork_rng(devices=[brain.device] if brain.device.type=='cuda' else []):
         torch.manual_seed(seed)
         r = GateRollout(brain,cfg,batch=12,evaluation=True,turns=turns,search=search,elevation=elevation,
                         height_invariant=height_invariant,centre_offset=centre_offset,
                         gravity_aligned_height=gravity_aligned_height,search_height_anchor=search_height_anchor)
+        if neural_warmup_seconds:
+            # Separate diagnostic: observe the stationary initial state before
+            # releasing control. Air starts assume a held hover. This does not
+            # replace cold-start testing or simulate the live two-second ramp.
+            W=brain.inference_matrix();q=r.vs.quad;R=quat_to_mat(q.quat)
+            retina=torch.zeros(r.B,RETINA_DIM,device=brain.device)
+            for _ in range(round(neural_warmup_seconds/cfg.brain.dt)):
+                relative=(R.transpose(-1,-2)@(r.gate+r.bias-q.pos)[...,None]).squeeze(-1)
+                if search:relative=r.camera_measurement(relative,R)
+                obs=gate_observation(r.vehicle.sim.sensors(q),q.motor.mean(-1,keepdim=True),cfg.task,retina,relative,
+                                     height_invariant,gravity_aligned_height,r.search_height_cue())
+                _,r.state,_=brain(obs,r.state,W)
         max_speed, max_height = 0., 0.
         for _ in range(round(seconds/cfg.brain.dt/50)):
             r.window(50)
             max_speed = max(max_speed,float(r.vs.quad.vel.norm(dim=-1).max()))
             max_height = max(max_height,float(r.vs.quad.pos[:,2].max()))
         return dict(seed=seed,episodes=r.B,seconds=seconds,turns=turns,crossings=int(r.crossed.sum()),
+                    neural_warmup_seconds=neural_warmup_seconds,
                     elevation=elevation,height_invariant=height_invariant,centre_offset_m=centre_offset,
                     gravity_aligned_height=gravity_aligned_height,
                     search_height_anchor=search_height_anchor,

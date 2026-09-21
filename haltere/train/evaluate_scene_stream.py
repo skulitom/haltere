@@ -27,11 +27,15 @@ def evaluate(checkpoint,parent,prepared,out):
     m=json.loads((prepared/'manifest.json').read_text())
     if scene['parent_sha256']!=sha256(parent) or scene['prepared_sha256']!=sha256(prepared/'manifest.json'):
         raise ValueError('Training provenance differs')
-    changed={k for k,v in ck['model'].items() if not torch.equal(v,original['model'][k])}
-    allowed={'encoders.retina__lptc.U','encoders.retina__lptc.log_gain'}
-    if scene.get('motor_refit'):allowed.add('readout.weight')
-    if changed-allowed:
-        raise ValueError('This ablation requires exact nonvisual parent retention')
+    if scene.get('input_contract')=='retinal_navigation_currents_v1':
+        from .navigation_scene import validate_navigation_retention
+        validate_navigation_retention(ck,original)
+    else:
+        changed={k for k,v in ck['model'].items() if k not in original['model'] or not torch.equal(v,original['model'][k])}
+        allowed={'encoders.retina__lptc.U','encoders.retina__lptc.log_gain'}
+        if scene.get('motor_refit'):allowed.add('readout.weight')
+        if changed-allowed:
+            raise ValueError('This ablation requires exact nonvisual parent retention')
     brain,_,_=load_checkpoint(checkpoint,'cuda');brain.eval().requires_grad_(False)
     parent_weight=original['model']['readout.weight'].to('cuda')
     parent_bias=original['model']['readout.bias'].to('cuda')
