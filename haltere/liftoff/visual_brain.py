@@ -361,6 +361,22 @@ def pause_active_game():
     return True
 
 
+def telemetry_still_progressing(receiver):
+    """Confirm live simulation before Escape; a recent cached frame isn't enough.
+
+    An agent/user pause can race the 120 ms telemetry deadline. Sending Escape
+    based on the cached frame would then resume the game during pad shutdown.
+    Drain that frame and require fresh progress across a bounded quiet interval.
+    """
+    from .manual_recording import live_pose
+    before = receiver.poll() or receiver.last
+    if before is None or not live_pose(before):
+        return False
+    time.sleep(.2)
+    after = receiver.poll()
+    return bool(after is not None and live_pose(after) and after.timestamp-before.timestamp > .03)
+
+
 def run(args):
     from .gamepad import UdpSticks
     from .recorder import FlightRecorder, SharedFlightState
@@ -516,8 +532,7 @@ def run(args):
             pad.close()
             # A terminal stop used to leave the drone falling while the video
             # encoder closed. Do not toggle an already-paused/stalled game.
-            if (args.pause_on_stop and time.monotonic()-last_progress<.15
-                    and frame is not None and live_pose(frame)):
+            if args.pause_on_stop and telemetry_still_progressing(rx):
                 try:
                     pause_key_sent = pause_active_game()
                 except OSError:
