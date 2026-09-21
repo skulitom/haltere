@@ -131,7 +131,10 @@ def prepare(parent,prepared,dataset,out):
 @torch.no_grad()
 def targets(parent,batch):
     base,_,_=rollout(parent,batch,blank=True)
-    teacher_batch={**batch,'goal':batch['teacher_goal']}
+    goal=batch['teacher_goal']
+    if 'demonstration_goal' in batch:
+        goal=.8*batch['demonstration_goal']+.2*goal
+    teacher_batch={**batch,'goal':goal}
     target,_,_=rollout(parent,teacher_batch,blank=True)
     target=target.clone();target[:,:,0]=base[:,:,0]  # retain the calibrated climb
     return base,target
@@ -198,6 +201,7 @@ def train(parent,prepared,out,iterations=200):
             meta['scene_training']=dict(parent_sha256=sha256(parent),prepared_sha256=sha256(prepared/'manifest.json'),
                 navigation_teacher_sha256=manifest['teacher_sha256'],teacher_training_only=True,iterations=iterations,iteration=it,
                 training_code_sha256=code_hash,
+                path_supervision=manifest.get('path_supervision',{'navigation_predictor_weight':1.}),
                 changed_weights=changed,blank_retina_parent_tolerance=1e-5,closed_loop=False,validation=result,
                 purpose='experimental visual correction of gate approaches from recorded training-only paths')
             if previous:meta['scene_training']['parent_perception_rebind']=previous

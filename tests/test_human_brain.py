@@ -66,6 +66,21 @@ def test_scene_adapter_training_cannot_change_blank_retina_parent_behaviour():
             assert torch.equal(a,b) and torch.equal(s['v'],p['v'])
 
 
+def test_future_path_labels_change_supervision_but_never_student_outputs():
+    from haltere.train.scene_brain import targets
+    brain,_,_=small_brain();brain.requires_grad_(False)
+    batch={k:torch.randn(2,32,d) for k,d in brain.channel_dims.items()}
+    batch.update(action=torch.zeros(2,32,4),teacher_goal=torch.zeros(2,32,4),
+                 demonstration_goal=torch.ones(2,32,4))
+    with torch.no_grad():
+        first,_,_=rollout(brain,batch);base,target=targets(brain,batch)
+        batch['demonstration_goal']=-batch['demonstration_goal']
+        second,_,_=rollout(brain,batch);other_base,other_target=targets(brain,batch)
+    assert torch.equal(first,second) and torch.equal(base,other_base)
+    assert not torch.equal(target[:,:,1:],other_target[:,:,1:])
+    assert torch.equal(target[:,:,0],base[:,:,0])
+
+
 def test_processed_target_units_and_no_goal_input():
     calibration = dict(hover_processed=.14,hover_stick_sim=-.5,throttle_scale=.8,stick_sign=[-1,1,1])
     a = torch.tensor([[-.5,.2,-.3,.4]])
