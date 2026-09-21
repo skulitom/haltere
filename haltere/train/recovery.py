@@ -46,21 +46,28 @@ def recovery_examples(teacher, cfg, calibration, count=256, length=64):
 class RecoveryRollout:
     """DAgger-style recovery: the student causes states, the motor teacher labels them.
 
-    Physics is detached; gradients update the student's recurrent connectome.
+    Physics is detached for imitation alone. An optional differentiable flight
+    cost also trains height and damping through physics and student senses.
     Both neural states persist across windows, and the teacher is training-only.
     """
-    def __init__(self, teacher, cfg, calibration, batch_size=8, takeoff=False):
+    def __init__(self, teacher, cfg, calibration, batch_size=8, takeoff=False, physics_weight=0.):
         import copy
         from .bptt import make_world
         self.teacher, self.calibration, self.B = teacher, calibration, batch_size
         self.cfg = copy.deepcopy(cfg)
         self.cfg.train.randomize = .2
         self.cfg.train.randomize_ctl = .2
+        if takeoff:
+            self.cfg.quad.gyro_noise = 0.
         self.vehicle, self.task = make_world(self.cfg, batch_size, teacher.device)
         self.W = teacher.weight_matrix().detach()
         self.age = 0
         self.student_state = None
         self.takeoff = takeoff
+        self.physics_weight = physics_weight
+        self.last_metrics = {}
+        if physics_weight and not takeoff:
+            raise ValueError('Height-cost training requires the takeoff curriculum')
 
     def reset(self, student):
         from ..sim.quad import QuadState
@@ -82,6 +89,8 @@ class RecoveryRollout:
         self.student_state, self.teacher_state = student.init_state(B), self.teacher.init_state(B)
         self.age = 0
         self.airborne = q.pos[:,2]>.3
+        self.previous_action = torch.zeros(B,4,device=dev)
+        self.previous_action[:,0] = self.calibration['hover_stick_sim']
         self.delay = deque([torch.full((B, 4), 0., device=dev) for _ in range(self.cfg.train.delay_steps)])
         for a in self.delay:
             a[:, 0] = self.calibration['hover_stick_sim']
@@ -90,12 +99,13 @@ class RecoveryRollout:
         if self.student_state is None or self.age >= 512 or bool(self.vs.quad.crashed.any()):
             self.reset(student)
         state, W = student.detach_state(self.student_state), student.weight_matrix()
-        losses = []
+        losses, costs = [], []
         retina = torch.zeros(self.B, RETINA_DIM, device=student.device)
         for t in range(steps):
-            with torch.no_grad():
+            with torch.set_grad_enabled(bool(self.physics_weight)):
                 q = self.vs.quad
                 obs = visual_observation(self.vehicle.sim.sensors(q),q.motor.mean(-1,keepdim=True),self.cfg.task,retina)
+            with torch.no_grad():
                 teacher_obs = {k:v for k,v in obs.items() if k in self.teacher.channel_dims}
                 teacher_obs['compass'] = torch.zeros_like(obs['compass'])
                 teacher_obs['compass'][:, 0] = 1
@@ -114,17 +124,31 @@ class RecoveryRollout:
             if self.age+t >= 20:
                 losses.append(((brain_to_processed(action,self.calibration)
                                 -brain_to_processed(target,self.calibration))/scale).square().mean())
-            with torch.no_grad():
-                self.delay.append(action.detach())
+            with torch.set_grad_enabled(bool(self.physics_weight)):
+                self.delay.append(action if self.physics_weight else action.detach())
                 self.vs = self.vehicle.step(self.vs,self.delay.popleft())
                 if self.takeoff:
-                    self.airborne |= self.vs.quad.pos[:,2]>.3
+                    self.airborne = self.airborne | (self.vs.quad.pos[:,2]>.3)
                     # Resting contact before first lift is not a crashed
                     # episode. Later ground impacts still terminate recovery.
-                    self.vs.quad.crashed &= self.airborne
+                    self.vs.quad.crashed = self.vs.quad.crashed & self.airborne
+                if self.physics_weight:
+                    q = self.vs.quad
+                    up = quat_to_mat(q.quat)[:,2,2]
+                    cost = ((q.pos[:,2]-2.).square()+q.vel[:,2].square()
+                            +.2*q.vel[:,:2].square().sum(-1)+4.*(1-up)
+                            +.02*q.omega.square().sum(-1)
+                            +.5*(action-self.previous_action).square().sum(-1))
+                    costs.append(cost.mean())
+                self.previous_action = action.detach()
         self.age += steps
         self.student_state = student.detach_state(state)
-        return torch.stack(losses).mean()
+        self.vs = self.vs.detach()
+        self.delay = deque(a.detach() for a in self.delay)
+        imitation = torch.stack(losses).mean()
+        physics = torch.stack(costs).mean() if costs else imitation.new_zeros(())
+        self.last_metrics = dict(recovery_imitation=float(imitation.detach()),physics_cost=float(physics.detach()))
+        return imitation+self.physics_weight*physics
 
 
 @torch.no_grad()

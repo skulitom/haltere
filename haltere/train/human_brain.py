@@ -367,7 +367,8 @@ def train(prepared, initial, out, config):
     probe = nn.Linear(len(graph.population('goal')),3*len(manifest['teacher_horizons'])).to(device)
     probe.register_buffer('neuron_idx',torch.tensor(graph.population('goal'),device=device))
     groups = [dict(params=[p for n,p in brain.named_parameters() if p.requires_grad and n=='log_edge_gain'],lr=config['lr_edges']),
-              dict(params=[p for n,p in brain.named_parameters() if p.requires_grad and n!='log_edge_gain'],lr=config['lr']),
+              dict(params=[p for n,p in brain.named_parameters() if p.requires_grad and n!='log_edge_gain' and 'encoders.altitude__' not in n],lr=config['lr']),
+              dict(params=[p for n,p in brain.named_parameters() if p.requires_grad and 'encoders.altitude__' in n],lr=config.get('lr_altitude',config['lr'])),
               dict(params=probe.parameters(),lr=config['lr_probe'])]
     opt = torch.optim.Adam(groups)
     initial_params = {n:p.detach().cpu().clone() for n,p in brain.named_parameters()}
@@ -385,7 +386,8 @@ def train(prepared, initial, out, config):
             from .recovery import RecoveryRollout
             motor_teacher.requires_grad_(False)
             recovery_rollout = RecoveryRollout(motor_teacher,motor_cfg,calibration,config['batch_size'],
-                                              takeoff=config.get('takeoff_recovery',False))
+                                              takeoff=config.get('takeoff_recovery',False),
+                                              physics_weight=config.get('recovery_physics_weight',0.))
         else:
             recovery = recovery_examples(motor_teacher, motor_cfg, calibration)
             del motor_teacher
@@ -399,6 +401,7 @@ def train(prepared, initial, out, config):
                       recovery_rollout=bool(config.get('recovery_rollout', False)),
                       altitude_input=bool(config.get('altitude_input',False)),
                       takeoff_recovery=bool(config.get('takeoff_recovery',False)),
+                      recovery_physics_weight=config.get('recovery_physics_weight',0.),
                       assessment='experimental offline imitation; not flight-qualified')
     out.mkdir(parents=True)
     (out/'config.json').write_text(json.dumps(dict(config=config,provenance=provenance),indent=2))
@@ -447,6 +450,8 @@ def train(prepared, initial, out, config):
         row = dict(iteration=it,action_loss=float(action_loss.detach()),teacher_loss=float(path_loss.detach()),
                    recovery_loss=float(recovery_loss.detach()),
                    elapsed_s=time.monotonic()-started)
+        if recovery_rollout is not None:
+            row.update(recovery_rollout.last_metrics)
         with (out/'training.jsonl').open('a') as f:
             f.write(json.dumps(row)+'\n')
         if it==1 or it%10==0:

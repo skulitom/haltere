@@ -166,3 +166,26 @@ requested. If none qualifies, it reports the last trained candidate as
 unqualified. It never silently selects `initial.pt`; that file is a baseline.
 Qualification still does not establish navigation, gate completion or readiness
 to publish an improved pilot.
+
+`train_human_brain_damping.json` continues the takeoff run with a differentiable
+height, velocity, attitude and action-change cost through the simulated vehicle
+and the student's senses. Teacher outputs remain detached. This differs from
+the earlier recovery stage, which learned control labels only. The new altitude
+encoder has a separate learning rate; existing recurrent weights still update.
+The takeoff examples include a noiseless gyro to match the quiet launch state.
+The first takeoff model failed a 30-second check because one case kept
+oscillating vertically, despite its good median height; it was not flight-tested
+or promoted. Qualification checks the worst remaining vertical speed as well
+as the median. A passing short test must be followed by longer simulator and
+independent live evaluation.
+
+The damping candidate at update 40 (SHA256
+`750fec168032ba9789341e5366a01e6891cb10fb0b4c4f17597f43090af74f3c`)
+passed 24 simulated takeoff/recovery cases for 30 seconds on seed 882. In Anode,
+it then completed a 30-second camera-enabled flight on the original drone:
+maximum height 2.066 m, maximum speed 1.462 m/s, minimum upright cosine 0.997.
+It drifted 12.54 m, so this demonstrates takeoff and vertical stabilization,
+not position holding or navigation. A separate blank-image run also completed
+30 seconds and drifted 8.26 m with a similar slow yaw. Both tests had no teacher,
+external goal or yaw assistant. Local evidence is under
+`runs/human-brain-damping-01/`; no gate completion is claimed.

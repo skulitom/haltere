@@ -186,3 +186,20 @@ def test_selection_never_silently_falls_back_to_initial_model(tmp_path):
     assert selected_checkpoint(tmp_path,False)[0].name == 'best.pt'
     (tmp_path/'best.pt').unlink()
     assert selected_checkpoint(tmp_path,False)[0].name == 'last.pt'
+
+
+def test_differentiable_recovery_cost_survives_ground_contact_and_window_boundary():
+    from haltere.train.recovery import RecoveryRollout
+    student,cfg,_ = small_brain()
+    teacher = copy.deepcopy(student).requires_grad_(False)
+    calibration = dict(hover_processed=.14,hover_stick_sim=-.5,throttle_scale=.8,stick_sign=[-1,1,1])
+    recovery = RecoveryRollout(teacher,cfg,calibration,batch_size=2,takeoff=True,physics_weight=1.)
+    optimizer = torch.optim.Adam(student.parameters(),lr=.001)
+    for _ in range(2):
+        optimizer.zero_grad()
+        loss = recovery.loss(student,torch.ones(4),steps=24)
+        loss.backward()
+        assert torch.isfinite(student.readout.weight.grad).all()
+        assert recovery.last_metrics['physics_cost']>0
+        assert not recovery.vs.quad.vel.requires_grad
+        optimizer.step()
