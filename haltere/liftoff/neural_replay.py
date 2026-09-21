@@ -22,13 +22,14 @@ def replay_camera_sensor(sensor, enabled):
 
 
 class NeuralReplay:
-    def __init__(self, path, channels, capacity):
+    def __init__(self, path, channels, capacity, passive_retina=True):
         self.path = Path(path)
         if self.path.exists():
             raise FileExistsError(self.path)
         self.n = 0
         self.capacity = capacity
         self.channels = dict(channels)
+        self.passive_retina = bool(passive_retina)
         shapes = {**channels, 'action': 4, 'position': 3, 'quaternion': 4,
                   'clock': 4, 'fresh': 1}
         self.arrays = {k: np.empty((capacity, d), np.float32) for k, d in shapes.items()}
@@ -54,4 +55,4 @@ class NeuralReplay:
             np.savez_compressed(f, **{k: v[:self.n] for k, v in self.arrays.items()})
         return dict(path=str(self.path), ticks=self.n,
                     timing='Exact controller observations and original camera presentation timestamps',
-                    passive_retina=True, route_labels_present=False)
+                    passive_retina=self.passive_retina, route_labels_present=False)

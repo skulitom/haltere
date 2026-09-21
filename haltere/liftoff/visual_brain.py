@@ -397,7 +397,8 @@ def run(args):
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
-                          int(args.seconds/controller.cfg.brain.dt)+100) if replay_out else None
+                          int(args.seconds/controller.cfg.brain.dt)+100,
+                          passive_retina=args.blank_retina or not controller.meta.get('gate_sensor',{}).get('raw_retina_active',False)) if replay_out else None
     camera_sensor = replay_camera_sensor(controller.meta.get('gate_sensor'),bool(replay))
     gc.collect()
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=48).start()

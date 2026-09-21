@@ -233,7 +233,9 @@ def student_from_motor(path, device, altitude=False):
 
 def rollout(brain, batch, detach_every=0, blank=False, probe=None):
     B, T = batch['action'].shape[:2]
-    state, W, outputs, paths = brain.init_state(B), brain.weight_matrix(), [], []
+    state = (dict(v=batch['initial_v'].T.contiguous(),act=batch['initial_act'])
+             if 'initial_v' in batch else brain.init_state(B))
+    W, outputs, paths = brain.weight_matrix(), [], []
     for t in range(T):
         if detach_every and t and t % detach_every == 0:
             state = brain.detach_state(state)

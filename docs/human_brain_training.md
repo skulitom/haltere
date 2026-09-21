@@ -507,3 +507,31 @@ This candidate needs teacher-free elevation, level-retention, search and live
 course checks before any release qualification. The runtime also checks that
 the last telemetry pose is live before sending its automatic pause key, so a
 user/agent pause is not immediately toggled back off.
+
+## Causal on-policy scene correction (2026-09-21, experimental)
+
+`liftoff.visual_brain --replay-out FILE.npz` records the exact deployed sensory
+samples and original camera timestamps. A gate-only parent can collect frozen
+scene features passively: its retinal input still remains zero. Projection and
+detector fingerprints must match. Flight 15 supplied training states; a separate
+flight 16 supplies development validation. Both retain the original drone and
+run inside Anode. Neither is a completed lap or a release qualification.
+
+An important replay mismatch was measured before this correction training:
+resetting the recurrent state at each 64-tick window produced a maximum 0.139
+stick error versus the parent's actual flight controls, despite identical
+sensory samples. Replaying the complete preceding flight reduced the maximum
+error below 0.000004. Do not rely on 20 warm-up ticks to reconstruct these states.
+`onpolicy_scene` saves pre-window states from the full causal parent history;
+route labels never enter that reconstruction. Its optimizer uses 128-tick
+windows initialized from those saved states and checks blank-retina retention.
+
+The reviewed successful prefix is retained. Subsequent correction labels use
+the recorded route's four-metre lookahead, restricted to the current ordered
+segment. Pointing directly at the distant downhill gate would miss the rise
+around intervening bales. All four target sticks come from the frozen parent
+connectome with that offline goal; descent supervision is no longer suppressed.
+Only `encoders.retina__lptc.U` and `.log_gain` are trainable. The recurrent graph,
+known transmitter signs, all other brain weights and detector remain unchanged.
+No route, progress index, world position or teacher is a student input. Evaluate
+the exported student's continuous replay and live flight before publishing it.
