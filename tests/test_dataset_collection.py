@@ -142,6 +142,20 @@ def test_audit_rejects_resampled_frames_from_same_flight(tmp_path):
         audit_split([first],[second])
 
 
+def test_projective_frames_require_calibrated_range_labels(tmp_path):
+    from haltere.vision.train import GateFrames
+    first=labelled_dataset(tmp_path/'train')
+    metadata=first/'capture.json'
+    metadata.write_text(json.dumps(dict(size_target='silhouette',camera=dict(width=640,f=200.))))
+    with pytest.raises(ValueError,match='equivalent-range'):
+        GateFrames([first],augment='projective')
+    metadata.write_text(json.dumps(dict(size_target='equivalent 4m range',camera=dict(width=640,f=200.))))
+    dataset=GateFrames([first],augment='projective')
+    x,y=dataset[1]
+    assert x.shape==(3,180,320) and y.shape==(4,)
+    assert np.isfinite(y.numpy()).all()
+
+
 def test_audit_rejects_missing_and_escaping_frame_paths(tmp_path):
     first = labelled_dataset(tmp_path / 'train')
     labels_path = first / 'labels.json'

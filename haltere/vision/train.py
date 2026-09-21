@@ -93,6 +93,27 @@ def occlude(img: np.ndarray, n_max: int = 2, frac: float = 0.12) -> np.ndarray:
     return img
 
 
+def rotated_range_label(u, v, width, rotation, *, focal=100., image_width=IN_W, image_height=IN_H):
+    """Rotate a calibrated view about its optical centre, preserving gate range.
+
+    ``width`` encodes range, not a silhouette box. An affine width multiplier
+    would change the range label incorrectly away from the optical axis.
+    Return None if the labelled centre leaves the view; callers retain the
+    original image rather than relabelling a different visible gate negative.
+    """
+    ray=np.array([(u-image_width/2)/focal,(v-image_height/2)/focal,1.])
+    moved=np.asarray(rotation)@ray
+    if moved[2]<=0:
+        return None
+    x,y=moved[:2]/moved[2]
+    new_u,new_v=focal*x+image_width/2,focal*y+image_height/2
+    if not (5<=new_u<image_width-5 and 5<=new_v<image_height-5):
+        return None
+    before=np.sqrt(1+ray[0]**2)*np.linalg.norm(ray)
+    after=np.sqrt(1+x*x)*np.sqrt(1+x*x+y*y)
+    return float(new_u),float(new_v),float(width*after/before)
+
+
 class GateFrames(torch.utils.data.Dataset):
     """Frames + labels from one or more datasets; the images are resized to the network's input size."""
 
@@ -101,6 +122,12 @@ class GateFrames(torch.utils.data.Dataset):
         self.items = []
         for d in datasets:
             d = Path(d)
+            if augment=='projective':
+                meta=json.loads((d/'capture.json').read_text())
+                camera=meta.get('camera',{})
+                if ('equivalent 4m' not in meta.get('size_target','')
+                        or not np.isclose(camera.get('f',0)*IN_W/camera.get('width',1),100.)):
+                    raise ValueError('Projective augmentation requires calibrated equivalent-range labels')
             labels = json.loads((d / 'labels.json').read_text(encoding='utf-8'))
             for lab in labels:
                 self.items.append((d / 'frames' / lab['file'], lab))
@@ -127,7 +154,19 @@ class GateFrames(torch.utils.data.Dataset):
             if random.random() < 0.5:
                 img = img[:, ::-1]
                 lu = w - lu
-            if strength == 'appearance':
+            if strength == 'projective':
+                if vis and random.random()<.8:
+                    # A camera rotation is an exact perspective warp for every
+                    # depth. It changes framing without inventing gate distance.
+                    R,_=cv2.Rodrigues(np.array([random.uniform(-.12,.12),
+                                               random.uniform(-.2,.2),random.uniform(-.1,.1)]))
+                    moved=rotated_range_label(lu,lv,lw,R)
+                    if moved is not None:
+                        K=np.array([[100.,0.,w/2],[0.,100.,h/2],[0.,0.,1.]])
+                        img=cv2.warpPerspective(np.ascontiguousarray(img),K@R@np.linalg.inv(K),(w,h),
+                                                flags=cv2.INTER_LINEAR,borderMode=cv2.BORDER_REPLICATE)
+                        lu,lv,lw=moved
+            elif strength == 'appearance':
                 # Range-encoded labels must retain the calibrated projection.
                 # Mirroring above preserves range; arbitrary crops/warps do not.
                 pass

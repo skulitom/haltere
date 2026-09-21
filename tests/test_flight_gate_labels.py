@@ -30,6 +30,28 @@ def test_nearest_visible_opening_and_empty_view():
     assert opening_label(np.zeros(3),np.eye(3),gates[:1],camera) == dict(visible=0)
 
 
+@pytest.mark.parametrize('pixel', ([160.,90.], [220.,130.], [80.,50.]))
+def test_projective_augmentation_rotates_bearing_without_changing_range(pixel):
+    from scipy.spatial.transform import Rotation
+    from haltere.vision.train import rotated_range_label
+    camera=Camera(320,180,100.,0.)
+    R=Rotation.from_euler('xyz',[.07,-.12,.05]).as_matrix()
+    label=rotated_range_label(*pixel,45.,R)
+    assert label is not None
+    _,old_range=detection_geometry(camera,*pixel,45.)
+    _,new_range=detection_geometry(camera,*label)
+    assert new_range==pytest.approx(old_range)
+    # Independent homogeneous projection establishes the bearing as well.
+    ray=R@np.array([(pixel[0]-160)/100,(pixel[1]-90)/100,1.])
+    np.testing.assert_allclose(label[:2],100*ray[:2]/ray[2]+[160,90])
+
+
+def test_projective_augmentation_retains_original_when_gate_leaves_view():
+    from scipy.spatial.transform import Rotation
+    from haltere.vision.train import rotated_range_label
+    assert rotated_range_label(160.,90.,45.,Rotation.from_euler('y',2.).as_matrix()) is None
+
+
 def test_panel_clock_matches_rendered_time():
     from PIL import Image,ImageDraw
     from haltere.viz.fastpanel import _font
