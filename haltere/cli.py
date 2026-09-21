@@ -331,7 +331,7 @@ def cmd_vision(a):
         fit_range_corr(a.ckpt, a.datasets, a.camera, device=a.device, limit=a.limit)
     elif a.vision_cmd == 'train':
         from .vision.train import train
-        out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, max_gpu_temp=a.max_gpu_temp, batch_sleep=a.batch_sleep, init=a.init, device=a.device, augment=a.augment, holdout=a.holdout, hard_mining=a.hard_mining)
+        out = train(a.datasets, out_dir=a.out, epochs=a.epochs, batch=a.batch, lr=a.lr, width=a.width, max_gpu_temp=a.max_gpu_temp, batch_sleep=a.batch_sleep, init=a.init, device=a.device, augment=a.augment, holdout=a.holdout, hard_mining=a.hard_mining, architecture=a.architecture)
         print(f'gate detector saved in {out}')
 
 
@@ -590,6 +590,7 @@ def main(argv=None):
     q.add_argument('datasets', nargs='+')
     q.add_argument('--out', default='runs/gatenet')
     q.add_argument('--hard-mining',action='store_true',help='Sample difficult training frames more often; requires --init and --holdout')
+    q.add_argument('--architecture', choices=['regression', 'spatial_v1'], default='regression')
     q.add_argument('--epochs', type=int, default=25)
     q.add_argument('--batch', type=int, default=64)
     q.add_argument('--lr', type=float, default=1e-3)

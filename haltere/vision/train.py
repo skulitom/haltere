@@ -12,7 +12,7 @@ import torch
 from .calibrate import load_index
 from .camera import Camera
 from .gates import gate_label
-from .model import IN_H, IN_W, GateNet, decode
+from .model import IN_H, IN_W, GateNet, decode, make_gatenet
 from ..train.thermal import wait_if_hot
 
 
@@ -227,7 +227,8 @@ def hard_example_weights(net, dataset, device, batch=32):
 def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, batch: int = 64, lr: float = 1e-3,
           width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0,
           max_gpu_temp: float = 70.0, batch_sleep: float = 0.15, init: str = '', augment: str = 'strong',
-          holdout: list[str] | None = None, hard_mining: bool = False) -> Path:
+          holdout: list[str] | None = None, hard_mining: bool = False,
+          architecture: str = 'regression') -> Path:
     from .datasets import audit_split
     # Run before loading/training: aliases and copied frames otherwise leak into a
     # nominal whole-flight holdout. Retain exactly which labels and images were used.
@@ -258,10 +259,18 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
     if len(train_ds) < batch or not len(val_ds):
         raise ValueError('Need at least one full training batch and a nonempty validation split')
     vl = torch.utils.data.DataLoader(val_ds, batch_size=batch, shuffle=False, num_workers=0)
-    net = GateNet(width).to(dev)
+    net = make_gatenet(architecture, width).to(dev)
     if init:
         ck = torch.load(init, map_location=dev, weights_only=False)
-        net.load_state_dict(ck['model'])
+        if ck.get('architecture', 'regression') == architecture:
+            net.load_state_dict(ck['model'])
+        elif architecture == 'spatial_v1' and ck.get('architecture', 'regression') == 'regression':
+            # Transfer visual filters only; an MLP position head has no spatial
+            # correspondence to the new opening map.
+            net.features.load_state_dict({k.removeprefix('features.'): v for k, v in ck['model'].items()
+                                          if k.startswith('features.')})
+        else:
+            raise ValueError('Unsupported gate detector architecture migration')
         print(f'initialised from {init} (epoch {ck.get("epoch")})', flush=True)
     sampler=None
     if hard_mining:
@@ -277,7 +286,7 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=max(1, epochs * len(tl)))
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    provenance.update(seed=seed, init=str(init), init_sha256=None,
+    provenance.update(seed=seed, init=str(init), init_sha256=None, architecture=architecture,
                       augment=augment, epochs=epochs, batch=batch, lr=lr,
                       validation_kind='whole_flights' if holdout else 'random_frames_legacy')
     if init:
@@ -294,7 +303,7 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
         tot = 0.0
         for x, y in tl:
             x, y = x.to(dev), y.to(dev)
-            loss, parts = GateNet.loss(net(x), y)
+            _, loss, parts = net.predict_and_loss(x, y)
             opt.zero_grad(set_to_none=True)
             loss.backward()
             opt.step()
@@ -310,8 +319,7 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
         with torch.no_grad():
             for x, y in vl:
                 x, y = x.to(dev), y.to(dev)
-                o = net(x)
-                loss, _ = GateNet.loss(o, y)
+                o, loss, _ = net.predict_and_loss(x, y)
                 vtot += float(loss) * len(x); n += len(x)
                 d = decode(o)
                 vis_ok += int(((d[:, 0] > 0.5).float() == y[:, 0]).sum())
@@ -325,11 +333,11 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
               flush=True)
         if vloss < best:
             best = vloss
-            torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': ep + 1, 'val_loss': vloss,
+            torch.save({'model': net.state_dict(), 'architecture': architecture, 'width': width, 'in_size': (IN_W, IN_H), 'epoch': ep + 1, 'val_loss': vloss,
                         'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])],
                         'data_provenance': provenance},
                        out / 'best.pt')
-    torch.save({'model': net.state_dict(), 'width': width, 'in_size': (IN_W, IN_H), 'epoch': epochs,
+    torch.save({'model': net.state_dict(), 'architecture': architecture, 'width': width, 'in_size': (IN_W, IN_H), 'epoch': epochs,
                 'datasets': [str(d) for d in datasets], 'augment': augment, 'holdout': [str(d) for d in (holdout or [])],
                 'data_provenance': provenance}, out / 'last.pt')
     return out
@@ -338,7 +346,7 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
 def load_gatenet(path: str | Path, device='cuda') -> GateNet:
     dev = torch.device(device if torch.cuda.is_available() else 'cpu')
     ck = torch.load(path, map_location=dev, weights_only=False)
-    net = GateNet(ck.get('width', 32)).to(dev)
+    net = make_gatenet(ck.get('architecture', 'regression'), ck.get('width', 32)).to(dev)
     net.load_state_dict(ck['model'])
     net.eval()
     return net

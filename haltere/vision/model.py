@@ -8,6 +8,7 @@ goal vector the connectome brain expects.
 """
 from __future__ import annotations
 
+import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,6 +23,8 @@ def _block(cin: int, cout: int, k: int = 3, s: int = 2) -> nn.Sequential:
 
 
 class GateNet(nn.Module):
+    architecture = 'regression'
+
     def __init__(self, width: int = 32):
         super().__init__()
         w = width
@@ -45,6 +48,11 @@ class GateNet(nn.Module):
         x = (x - self.mean) / self.std
         return self.head(self.features(x))
 
+    def predict_and_loss(self, x, target):
+        out = self(x)
+        loss, parts = self.loss(out, target)
+        return out, loss, parts
+
     @staticmethod
     def loss(out: torch.Tensor, target: torch.Tensor) -> tuple[torch.Tensor, dict]:
         """target: (B, 4) [visible, u, v, logw]; position/size terms only count for visible gates."""
@@ -57,6 +65,77 @@ class GateNet(nn.Module):
         else:
             l_pos = l_size = out.sum() * 0
         return l_vis + 3.0 * l_pos + 0.5 * l_size, {'vis': float(l_vis), 'pos': float(l_pos), 'size': float(l_size)}
+
+
+class SpatialGateNet(GateNet):
+    """Localize an opening with a dense image map instead of an absolute-position MLP.
+
+    The public four-value sensory contract stays unchanged. A spatial training
+    target makes off-centre arches distinguishable from the common central
+    approach. Background images suppress every candidate location. There is no
+    route, gate identity, pose or future trajectory in this model.
+    """
+    architecture = 'spatial_v1'
+    grid_height, grid_width = 23, 40
+
+    def __init__(self, width=32):
+        super().__init__(width)
+        del self.head
+        self.spatial_head = nn.Sequential(
+            _block(12 * width, 4 * width, 3, 1),
+            _block(4 * width, 2 * width, 3, 1),
+            nn.Conv2d(2 * width, 2, 1),
+        )
+
+    @staticmethod
+    def coordinates(reference):
+        y = (torch.arange(SpatialGateNet.grid_height, device=reference.device,
+                          dtype=reference.dtype) + .5) * (2 / SpatialGateNet.grid_height) - 1
+        x = (torch.arange(SpatialGateNet.grid_width, device=reference.device,
+                          dtype=reference.dtype) + .5) * (2 / SpatialGateNet.grid_width) - 1
+        yy, xx = torch.meshgrid(y, x, indexing='ij')
+        return torch.stack((xx, yy), -1).reshape(-1, 2)
+
+    @classmethod
+    def decode_maps(cls, maps):
+        scores = maps[:, 0].flatten(1)
+        probability = scores.softmax(-1)
+        centre = probability @ cls.coordinates(maps)
+        log_width = (probability * maps[:, 1].flatten(1)).sum(-1)
+        visibility = scores.logsumexp(-1) - math.log(scores.shape[1])
+        return torch.cat((visibility[:, None], centre, log_width[:, None]), -1)
+
+    def forward_details(self, x):
+        early = self.features[:6]((x - self.mean) / self.std)
+        context = self.features[6:](early)
+        context = F.interpolate(context, size=early.shape[-2:], mode='bilinear', align_corners=False)
+        maps = self.spatial_head(torch.cat((early, context), 1))
+        return self.decode_maps(maps), maps
+
+    def forward(self, x):
+        return self.forward_details(x)[0]
+
+    def predict_and_loss(self, x, target):
+        out, maps = self.forward_details(x)
+        loss, parts = self.loss(out, target)
+        visible = target[:, 0] > .5
+        if visible.any():
+            scale = target.new_tensor([self.grid_width / 2, self.grid_height / 2])
+            distance = (self.coordinates(target)[None] - target[visible, None, 1:3]) * scale
+            distribution = (-distance.square().sum(-1) / (2 * .8 ** 2)).softmax(-1)
+            location = -(distribution * maps[visible, 0].flatten(1).log_softmax(-1)).sum(-1).mean()
+        else:
+            location = maps.sum() * 0
+        parts['heatmap'] = float(location.detach())
+        return out, loss + .5 * location, parts
+
+
+def make_gatenet(architecture='regression', width=32):
+    if architecture == 'regression':
+        return GateNet(width)
+    if architecture == 'spatial_v1':
+        return SpatialGateNet(width)
+    raise ValueError(f'Unknown gate detector architecture: {architecture}')
 
 
 def decode(out: torch.Tensor) -> torch.Tensor:
