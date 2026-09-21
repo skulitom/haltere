@@ -5,6 +5,28 @@ from scipy.spatial.transform import Rotation
 from haltere.liftoff.fit_drag import fit_drag
 
 
+def test_vertical_fit_recovers_hover_and_local_acceleration_gain():
+    from haltere.liftoff.fit_vertical import G,fit_vertical,equivalent_power_curve
+    t=np.arange(0,30,.01)
+    # A known airborne trajectory provides an independent derivative target.
+    vz=.10+.08*np.sin(2*t)
+    az=.16*np.cos(2*t)
+    slope,hover=18.,.12
+    d=pd.DataFrame(dict(ts=t,z=1.5+.1*t,vx=0.,vy=0.,vz=vz,
+                        qx=0.,qy=0.,qz=0.,qw=1.,in_thr=hover+az/slope))
+    # Add a separate low-frequency climb variation to excite the gain.
+    d.vz+=.04*np.sin(6*t)
+    d.in_thr+=.24*np.cos(6*t)/slope
+    result=fit_vertical(d,2.,28.)
+    assert abs(result['hover_processed']-hover)<.001
+    assert abs(result['slope_mps2_per_processed']-slope)<.3
+    c=dict(throttle_scale=.8,hover_stick_sim=-.43,hover_processed=.135)
+    p=equivalent_power_curve(result,c)
+    u=p['twr']**(-1/p['thrust_exp'])
+    assert abs(c['hover_processed']+.8*(2*u-1-c['hover_stick_sim'])-hover)<.001
+    assert abs(.5*p['thrust_exp']*G/u-.8*slope)<.3
+
+
 def test_horizontal_drag_recovers_known_coasting_motion():
     # With level attitude and vertical thrust balancing gravity, horizontal
     # coasting acceleration is exactly the body drag. Excite both axes.

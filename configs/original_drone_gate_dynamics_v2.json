@@ -1,0 +1,158 @@
+{
+  "schema": "haltere.partial_dynamics.v1",
+  "drone": "[Copy] New Drone",
+  "drone_id": "85e3d358-5b42-4f16-b3d3-398a7d18f650",
+  "overrides": {
+    "rates": {
+      "rc_rate": [
+        1.55,
+        1.55,
+        1.0
+      ],
+      "expo": [
+        0.3,
+        0.3,
+        0.3
+      ],
+      "super_rate": [
+        0.73,
+        0.73,
+        0.73
+      ]
+    },
+    "ctl": {
+      "P": [
+        34,
+        29,
+        30
+      ],
+      "I": [
+        28,
+        25,
+        32
+      ],
+      "D": [
+        29,
+        22,
+        0
+      ]
+    },
+    "quad": {
+      "drag_lin": [
+        0.0062,
+        0.0062,
+        0.1
+      ],
+      "drag_quad": [
+        0.00248,
+        0.00248,
+        0.45
+      ],
+      "twr": 2.6949257135173643,
+      "thrust_exp": 0.7682591120662782
+    }
+  },
+  "sources": {
+    "drone_configuration_sha256": "7e75ec7b5e36ddcf8be176157cfe686fb1966ee2e2768cb71f458a9b8788bee8",
+    "flight_logs": [
+      {
+        "path": "runs/camera-profile-01/occlusion.csv",
+        "sha256": "1b6a9e7ba2fe533f228d5618a66fe8c06015b87672b3aa91dc38341a8c840558",
+        "end_s": 85
+      },
+      {
+        "path": "runs/gate-brain-live-02/turns.csv",
+        "sha256": "1351422b90330fc714ddd492afc7dad9c785d0e75fcfc08d2819c7e2b2684323",
+        "end_s": 36
+      }
+    ]
+  },
+  "method": "Horizontal body specific acceleration from smoothed velocity derivative and attitude. Fit drag per mass using positive robust linear plus quadratic coefficients. Forward fits: linear 0.0070/0.0144 s^-1, quadratic 0.00447/0.00259 m^-1. Use 0.01/0.004 at the existing simulator mass 0.62 kg, isotropically because lateral excitation is weak.",
+  "limits": "Local horizontal drag and near-hover thrust calibration only. Effective power curve includes the existing stick mapping; not a physical full-throttle thrust estimate. Keeps mass, inertia, vertical drag and motor lag. Uses development flights; requires independent flight validation.",
+  "vertical_calibration": {
+    "fits": [
+      {
+        "source": "runs/gate-brain-live-04/full-course-vision.csv",
+        "sha256": "07a8f427d4f3718fb9289ced94b0bd9f6023afa7c4f2700435a2615e289491b4",
+        "start_s": 7.0,
+        "end_s": 110.0,
+        "fit": {
+          "input_lag_s": 0.0,
+          "bias_mps2": 7.754231264957919,
+          "slope_mps2_per_processed": 17.11501211910694,
+          "hover_processed": 0.11991921015064849,
+          "samples": 10029,
+          "throttle_range": [
+            0.007894539832430728,
+            0.26084687579845456
+          ],
+          "acceleration_rms": 0.03706511647632693,
+          "robust_error": 0.0013738228594036821
+        },
+        "equivalent": {
+          "twr": 2.695026615967028,
+          "thrust_exp": 0.7680832141347828
+        }
+      },
+      {
+        "source": "runs/gate-brain-live-05/elevation.csv",
+        "sha256": "ddfdfdd618147ef440f3d2e2d0b8636c32b9527e4afece644f2728d1f6cd350d",
+        "start_s": 7.0,
+        "end_s": 125.0,
+        "fit": {
+          "input_lag_s": 0.0,
+          "bias_mps2": 7.749518560196222,
+          "slope_mps2_per_processed": 17.111066341130897,
+          "hover_processed": 0.12022228181413376,
+          "samples": 9835,
+          "throttle_range": [
+            0.007031051711064023,
+            0.2509587852524952
+          ],
+          "acceleration_rms": 0.03801534617585718,
+          "robust_error": 0.0014451665448702595
+        },
+        "equivalent": {
+          "twr": 2.6948245218462064,
+          "thrust_exp": 0.7684349490262142
+        }
+      }
+    ],
+    "mean": {
+      "hover_processed": 0.12007074598239112,
+      "slope_mps2_per_processed": 17.11303923011892
+    },
+    "mapping_calibration": {
+      "hover_processed": 0.13566076755523682,
+      "throttle_scale": 0.8,
+      "hover_stick_sim": -0.43019758448357537,
+      "stick_sign": [
+        -1.0,
+        1.0,
+        1.0
+      ],
+      "max_rpm": 40278.14442235099
+    },
+    "method": "Robust affine specific-force/throttle fit near hover; resampled at 100 Hz; bounded airborne windows; body vertical speed <0.25 m/s; candidate lags 0..80 ms. Power equivalent preserves hover and local slope under unchanged gamepad mapping. Same 40 ms Gaussian bandwidth applied to input and acceleration; avoids gain attenuation from smoothing only the output.",
+    "independent_flight_check": {
+      "source": "runs/gate-brain-live-06/vision.csv",
+      "sha256": "310a19bc29a0aa6cc55ec4e839e1994560c45b4b5142cd7895750efce0c5a86e",
+      "start_s": 7.0,
+      "end_s": 110.0,
+      "fit": {
+        "input_lag_s": 0.0,
+        "bias_mps2": 7.747684774837232,
+        "slope_mps2_per_processed": 17.223142311353403,
+        "hover_processed": 0.11954643281357018,
+        "samples": 8952,
+        "throttle_range": [
+          -0.0016372767814943883,
+          0.268054093717892
+        ],
+        "acceleration_rms": 0.03712022353268399,
+        "robust_error": 0.0013779109951164263
+      },
+      "used_for_fitted_parameters": false
+    }
+  }
+}
