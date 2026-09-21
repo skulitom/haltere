@@ -240,7 +240,8 @@ class VisualController:
                 self.search_since = None
             obs = gate_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device),
                                    torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None],
-                                   height_invariant=self.meta['gate_sensor'].get('height_invariant',False))
+                                   height_invariant=self.meta['gate_sensor'].get('height_invariant',False),
+                                   gravity_aligned_height=self.meta['gate_sensor'].get('gravity_aligned_height',False))
         action,self.state,_ = self.brain(obs,self.state,self.W)
         processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)

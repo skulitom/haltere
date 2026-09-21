@@ -67,7 +67,7 @@ def search_objective(velocity, rotation, omega):
 
 class GateRollout:
     def __init__(self, brain, cfg, batch=12, evaluation=False, teacher=None, turns=False, motor_anchor=.25,
-                 search=False,elevation=False,height_invariant=False,centre_offset=1.5):
+                 search=False,elevation=False,height_invariant=False,centre_offset=1.5,gravity_aligned_height=False):
         self.cfg = copy.deepcopy(cfg)
         self.cfg.train.randomize = .1
         self.cfg.train.randomize_ctl = .1
@@ -76,6 +76,7 @@ class GateRollout:
         self.turns = turns
         self.search = search
         self.elevation,self.height_invariant,self.centre_offset = elevation,height_invariant,centre_offset
+        self.gravity_aligned_height = gravity_aligned_height
         self.motor_anchor = motor_anchor
         self.teacher = teacher
         self.teacher_W = teacher.weight_matrix().detach() if teacher is not None else None
@@ -157,7 +158,7 @@ class GateRollout:
         if self.search:
             relative = self.camera_measurement(relative,R)
         obs = gate_observation(self.vehicle.sim.sensors(q),q.motor.mean(-1,keepdim=True),self.cfg.task,
-                               torch.zeros(B,RETINA_DIM,device=dev),relative,self.height_invariant)
+                               torch.zeros(B,RETINA_DIM,device=dev),relative,self.height_invariant,self.gravity_aligned_height)
         with torch.no_grad():
             W = self.brain.weight_matrix()
             for _ in range(50):
@@ -197,7 +198,7 @@ class GateRollout:
             if self.search:
                 relative = self.camera_measurement(relative,R)
             obs = gate_observation(self.vehicle.sim.sensors(q),q.motor.mean(-1,keepdim=True),self.cfg.task,retina,relative,
-                                   self.height_invariant)
+                                   self.height_invariant,self.gravity_aligned_height)
             if t and t%8 == 0:
                 self.state = brain.detach_state(self.state)
             action,self.state,_ = brain(obs,self.state,W)
@@ -271,11 +272,12 @@ class GateRollout:
 
 @torch.no_grad()
 def evaluate(brain,cfg,seconds=25,seed=481,turns=False,search=False,elevation=False,
-             height_invariant=False,centre_offset=1.5):
+             height_invariant=False,centre_offset=1.5,gravity_aligned_height=False):
     with torch.random.fork_rng(devices=[brain.device] if brain.device.type=='cuda' else []):
         torch.manual_seed(seed)
         r = GateRollout(brain,cfg,batch=12,evaluation=True,turns=turns,search=search,elevation=elevation,
-                        height_invariant=height_invariant,centre_offset=centre_offset)
+                        height_invariant=height_invariant,centre_offset=centre_offset,
+                        gravity_aligned_height=gravity_aligned_height)
         max_speed, max_height = 0., 0.
         for _ in range(round(seconds/cfg.brain.dt/50)):
             r.window(50)
@@ -283,6 +285,7 @@ def evaluate(brain,cfg,seconds=25,seed=481,turns=False,search=False,elevation=Fa
             max_height = max(max_height,float(r.vs.quad.pos[:,2].max()))
         return dict(seed=seed,episodes=r.B,seconds=seconds,turns=turns,crossings=int(r.crossed.sum()),
                     elevation=elevation,height_invariant=height_invariant,centre_offset_m=centre_offset,
+                    gravity_aligned_height=gravity_aligned_height,
                     search=search,searched=int(r.ever_searched.sum()),reacquired=int(r.reacquired.sum()),
                     recovered_gate_crossings=int((r.crossed & r.reacquired).sum()),
                     camera_viable_crossings=int((r.crossed & ~(r.max_search>15.) & ~r.crashed_before_crossing).sum())
@@ -317,11 +320,13 @@ def train(args):
     if not 0<=args.centre_offset_m<=3:
         raise ValueError('Invalid detector centre offset')
     evaluation_args=dict(turns=args.turns,search=args.search,elevation=args.elevation,
-                         height_invariant=args.elevation,centre_offset=args.centre_offset_m)
+                         height_invariant=args.elevation,centre_offset=args.centre_offset_m,
+                         gravity_aligned_height=args.gravity_aligned_height)
     meta.pop('schema',None)
     meta.update(runtime_requires_teacher=False,gate_sensor=dict(
         checkpoint=args.detector,sha256=sha256(args.detector),focal_320=100.,tilt_deg=30.,
         centre_offset_m=args.centre_offset_m,raw_retina_active=False,height_invariant=args.elevation,
+        gravity_aligned_height=args.gravity_aligned_height,
         goal_encoding='horizontal magnitude bounded at 3m, vertical error bounded at 3m'),
         gate_training=dict(parent_sha256=sha256(args.checkpoint),objective='2 m/s through varied gate apertures',
                            seed=args.seed,teacher_used=False,learning_rate=args.lr,
@@ -337,6 +342,8 @@ def train(args):
         meta['gate_training'].update(elevation=True,altitude_range_m=[2.,28.],gate_height_delta_m=[-5.,5.],
                                     vertical_teacher='measured relative-height velocity target; training only',
                                     height_invariant=True,flow_velocity_reference_m=1.5)
+    if args.gravity_aligned_height:
+        meta['gate_sensor']['goal_encoding']='gravity-aligned horizontal distance and height bounded at 3m; expressed in body frame'
     (out/'config.json').write_text(json.dumps(vars(args),indent=2))
     if args.dynamics:
         meta['gate_training']['dynamics'] = dict(path=args.dynamics,sha256=sha256(args.dynamics),
@@ -394,6 +401,7 @@ def main():
     p.add_argument('--turns',action='store_true',help='Train moving approaches with varied gate bearing and world heading')
     p.add_argument('--search',action='store_true',help='Train neural search with missing-gate inputs and camera visibility')
     p.add_argument('--elevation',action='store_true',help='Train climbs/descents without launch-altitude sensory dependence')
+    p.add_argument('--gravity-aligned-height',action='store_true',help='Preserve true vertical error while bounding distant gates')
     p.add_argument('--dynamics',default='',help='JSON with measured quad/rates/ctl overrides and source provenance')
     p.add_argument('--motor-anchor',type=float,default=.25,help='Roll/pitch motor-teacher loss weight in turn training')
     train(p.parse_args())

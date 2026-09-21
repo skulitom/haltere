@@ -53,6 +53,25 @@ def test_visibility_uses_the_configured_opening_offset():
     assert not gate_in_view(relative,rotation,camera,0.).item()
 
 
+def test_gravity_aligned_gate_scaling_does_not_invent_height_when_pitching():
+    from haltere.sim.quad import quat_from_euler,quat_to_mat
+    angle=torch.tensor([.25]);q=quat_from_euler(angle*.3,angle,angle*2)
+    R=quat_to_mat(q)
+    up=R[:,2,:]
+    s=dict(gyro=torch.zeros(1,3),gravity_body=-up,vel_body=torch.zeros(1,3),vel_world=torch.zeros(1,3),
+           pos=torch.tensor([[0.,0.,10.]]),quat=q,up=R[:,2,2],altitude=torch.full((1,1),10.),yaw=(angle*2)[:,None])
+    task=HoverTaskConfig()
+    for distance in (5.,20.,40.):
+        for height in (0.,2.):
+            world=torch.tensor([[distance,0.,height]])
+            body=(R.transpose(-1,-2)@world[...,None]).squeeze(-1)
+            obs=gate_observation(s,torch.zeros(1,1),task,torch.zeros(1,RETINA_DIM),body,
+                                  height_invariant=True,gravity_aligned_height=True)
+            encoded=torch.atanh(obs['goal'][:,:3])*task.goal_scale
+            actual=(R@encoded[...,None]).squeeze(-1)
+            torch.testing.assert_close(actual,torch.tensor([[3.,0.,height]]),atol=1e-5,rtol=1e-5)
+
+
 def test_elevation_training_includes_climbs_and_descents_and_updates_brain():
     from tests.test_human_brain import small_brain
     from haltere.train.gate_brain import GateRollout
