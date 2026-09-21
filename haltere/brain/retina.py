@@ -12,8 +12,8 @@ RETINA_SIZE = (12, 20)
 RETINA_DIM = 3 * RETINA_SIZE[0] * RETINA_SIZE[1]
 
 
-def retina_input(images, mode='legacy'):
-    """RGB float images [...,3,H,W] -> fixed, HUD-masked samples [...,720]."""
+def mask_retina_pixels(images, mode='legacy'):
+    """Remove observed controls/HUD before any visual feature extraction."""
     if images.shape[-3] != 3:
         raise ValueError('Expected RGB images')
     x = images.clone()
@@ -30,6 +30,12 @@ def retina_input(images, mode='legacy'):
             x[...,round(top*h):round(bottom*h),round(left*w):round(right*w)]=.5
     else:
         raise ValueError('Unknown retinal sampling contract')
+    return x
+
+
+def retina_input(images, mode='legacy'):
+    """RGB float images [...,3,H,W] -> fixed, HUD-masked samples [...,720]."""
+    x=mask_retina_pixels(images,mode);h,w=x.shape[-2:]
     shape = x.shape[:-3]
     return F.adaptive_avg_pool2d((x.reshape(-1, 3, h, w)-.5)*2, RETINA_SIZE).reshape(*shape, RETINA_DIM)
 

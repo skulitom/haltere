@@ -121,7 +121,12 @@ class RetinaCamera:
                             p,u,v,width = pred
                             direction,distance = detection_geometry(self.gate_camera,(u+1)*160,(v+1)*90,width)
                             detection = dict(p=float(p),point=direction*distance,width=float(width))
-                        if self.detector is None or self.gate_sensor.get('raw_retina_active',False):
+                        if (self.detector is not None and self.gate_sensor.get('raw_retina_active',False)
+                                and self.gate_sensor.get('retina_mode')=='gatenet_scene_v1'):
+                            from ..vision.scene_features import scene_map,project_scene
+                            with torch.no_grad():
+                                retina=project_scene(scene_map(self.detector,pixels),self.gate_sensor['scene_projection'])
+                        elif self.detector is None or self.gate_sensor.get('raw_retina_active',False):
                             small = cv2.resize(small,(160,90),interpolation=cv2.INTER_AREA)
                             with torch.no_grad():
                                 retina = retina_input(torch.tensor(small.transpose(2,0,1)[None],dtype=torch.float32)/255,
@@ -154,8 +159,12 @@ class VisualController:
         if self.meta.get('gate_sensor',{}).get('raw_retina_active',False):
             scene=self.meta.get('scene_training',{})
             if (not scene or scene.get('iteration',0)<scene.get('iterations',1)
-                    or self.meta['gate_sensor'].get('retina_mode')!='scene_v2'):
+                    or self.meta['gate_sensor'].get('retina_mode') not in ('scene_v2','gatenet_scene_v1')):
                 raise ValueError('Expected a completed scene-adapter training checkpoint')
+            if (self.meta['gate_sensor']['retina_mode']=='gatenet_scene_v1'
+                    and self.meta['gate_sensor'].get('scene_projection',{}).get('detector_sha256')
+                    !=self.meta['gate_sensor']['sha256']):
+                raise ValueError('Scene features require their exact frozen detector')
         self.mapping = load_mapping(mapping_path)
         self.calibration = self.meta['calibration']
         c = self.calibration

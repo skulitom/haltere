@@ -201,7 +201,9 @@ def train(parent,prepared,out,iterations=200):
                 changed_weights=changed,blank_retina_parent_tolerance=1e-5,closed_loop=False,validation=result,
                 purpose='experimental visual correction of gate approaches from recorded training-only paths')
             if previous:meta['scene_training']['parent_perception_rebind']=previous
-            meta['gate_sensor'].update(raw_retina_active=True,retina_mode='scene_v2')
+            meta['gate_sensor'].update(raw_retina_active=True,retina_mode=manifest['retina_mode'])
+            if manifest.get('scene_projection'):
+                meta['gate_sensor']['scene_projection']=manifest['scene_projection']
             torch.save(candidate,out/'last.pt')
             if result['scene_mse']<best:best=result['scene_mse'];torch.save(candidate,out/'best.pt')
             with (out/'validation.jsonl').open('a') as f:f.write(json.dumps(dict(iteration=it,**result))+'\n')
