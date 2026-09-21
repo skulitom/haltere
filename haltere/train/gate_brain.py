@@ -67,7 +67,8 @@ def search_objective(velocity, rotation, omega):
 
 class GateRollout:
     def __init__(self, brain, cfg, batch=12, evaluation=False, teacher=None, turns=False, motor_anchor=.25,
-                 search=False,elevation=False,height_invariant=False,centre_offset=1.5,gravity_aligned_height=False):
+                 search=False,elevation=False,height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,
+                 throttle_anchor=1.,height_gain=.6):
         self.cfg = copy.deepcopy(cfg)
         self.cfg.train.randomize = .1
         self.cfg.train.randomize_ctl = .1
@@ -78,6 +79,7 @@ class GateRollout:
         self.elevation,self.height_invariant,self.centre_offset = elevation,height_invariant,centre_offset
         self.gravity_aligned_height = gravity_aligned_height
         self.motor_anchor = motor_anchor
+        self.throttle_anchor,self.height_gain=throttle_anchor,height_gain
         self.teacher = teacher
         self.teacher_W = teacher.weight_matrix().detach() if teacher is not None else None
         if evaluation or search:
@@ -223,7 +225,7 @@ class GateRollout:
                         # Use only the visible/remembered measurement (zero in
                         # search), so a hidden gate cannot leak into supervision.
                         measured_world=(R@relative.detach()[...,None]).squeeze(-1)
-                        desired_vz=(.6*measured_world[:,2]).clamp(-1.2,1.2)
+                        desired_vz=(self.height_gain*measured_world[:,2]).clamp(-1.2,1.2)
                         hover=self.vehicle.sim.hover_command()/R[:,2,2].clamp_min(.6).sqrt()
                         target[:,0]=(2*hover-1+.1*(desired_vz-q.vel[:,2])).clamp(-.8,.2)
                 scale = action.new_tensor([.23,.19,.084,.184])
@@ -231,7 +233,7 @@ class GateRollout:
                 if self.turns:
                     # Preserve learned motor stabilization while allowing the
                     # physical loss to teach braking and sideways correction.
-                    errors = errors*action.new_tensor([1.,self.motor_anchor,self.motor_anchor,1.])
+                    errors = errors*action.new_tensor([self.throttle_anchor,self.motor_anchor,self.motor_anchor,1.])
                 imitation.append(errors.mean())
             self.delay.append(action)
             self.vs = self.vehicle.step(self.vs,self.delay.popleft())
@@ -303,6 +305,8 @@ def train(args):
         raise ValueError('Search training requires --turns')
     if args.elevation and not (args.turns and args.search and args.motor_teacher):
         raise ValueError('Elevation training requires --turns, --search and a training-only motor teacher')
+    if not 0<args.throttle_anchor<=100 or not 0<args.height_gain<=3:
+        raise ValueError('Use 0 < throttle anchor <= 100 and 0 < height gain <= 3')
     torch.set_num_threads(2)
     torch.manual_seed(args.seed)
     out = Path(args.out)
@@ -341,7 +345,8 @@ def train(args):
     if args.elevation:
         meta['gate_training'].update(elevation=True,altitude_range_m=[2.,28.],gate_height_delta_m=[-5.,5.],
                                     vertical_teacher='measured relative-height velocity target; training only',
-                                    height_invariant=True,flow_velocity_reference_m=1.5)
+                                    height_invariant=True,flow_velocity_reference_m=1.5,
+                                    throttle_anchor=args.throttle_anchor,height_gain=args.height_gain)
     if args.gravity_aligned_height:
         meta['gate_sensor']['goal_encoding']='gravity-aligned horizontal distance and height bounded at 3m; expressed in body frame'
     (out/'config.json').write_text(json.dumps(vars(args),indent=2))
@@ -361,7 +366,8 @@ def train(args):
     baseline = evaluate(brain,cfg,seconds=45 if args.search else 25,**evaluation_args)
     (out/'baseline.json').write_text(json.dumps(baseline,indent=2))
     print(json.dumps({'baseline':baseline}),flush=True)
-    rollout = GateRollout(brain,cfg,teacher=teacher,motor_anchor=args.motor_anchor,**evaluation_args)
+    rollout = GateRollout(brain,cfg,teacher=teacher,motor_anchor=args.motor_anchor,
+                          throttle_anchor=args.throttle_anchor,height_gain=args.height_gain,**evaluation_args)
     started = time.time()
     with (out/'training.jsonl').open('w') as log:
         for it in range(args.iters):
@@ -404,6 +410,8 @@ def main():
     p.add_argument('--gravity-aligned-height',action='store_true',help='Preserve true vertical error while bounding distant gates')
     p.add_argument('--dynamics',default='',help='JSON with measured quad/rates/ctl overrides and source provenance')
     p.add_argument('--motor-anchor',type=float,default=.25,help='Roll/pitch motor-teacher loss weight in turn training')
+    p.add_argument('--throttle-anchor',type=float,default=1.,help='Throttle imitation weight in turn/elevation training')
+    p.add_argument('--height-gain',type=float,default=.6,help='Training-only vertical velocity target per metre of height error')
     train(p.parse_args())
 
 

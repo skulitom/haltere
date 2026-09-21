@@ -1,8 +1,25 @@
 import torch
+import pytest
 
 from haltere.brain.gate_senses import aperture_crossing, gate_observation
 from haltere.brain.retina import RETINA_DIM
 from haltere.sim.tasks import HoverTaskConfig
+
+
+def test_evaluation_uses_checkpoint_sensory_contract_without_changing_legacy_defaults():
+    from haltere.train.evaluate_gate_brain import sensory_contract
+    meta=dict(runtime_requires_teacher=False,gate_sensor=dict(focal_320=100.,tilt_deg=30.,
+                                                             missing_gate='zero_goal_neural_search'))
+    assert sensory_contract(meta)==dict(height_invariant=False,centre_offset=1.5,gravity_aligned_height=False)
+    meta['gate_sensor'].update(height_invariant=True,centre_offset_m=0.,gravity_aligned_height=True)
+    assert sensory_contract(meta)==dict(height_invariant=True,centre_offset=0.,gravity_aligned_height=True)
+    meta['runtime_requires_teacher']=True
+    with pytest.raises(ValueError,match='teacher-free'):
+        sensory_contract(meta)
+    meta['runtime_requires_teacher']=False
+    meta['gate_sensor']['tilt_deg']=20.
+    with pytest.raises(ValueError,match='calibration'):
+        sensory_contract(meta)
 
 
 def test_crossing_requires_forward_plane_intersection_inside_aperture():
@@ -77,7 +94,8 @@ def test_elevation_training_includes_climbs_and_descents_and_updates_brain():
     from haltere.train.gate_brain import GateRollout
     brain,cfg,_=small_brain()
     rollout=GateRollout(brain,cfg,batch=12,evaluation=True,teacher=brain,turns=True,search=True,
-                        elevation=True,height_invariant=True,centre_offset=0.)
+                        elevation=True,height_invariant=True,centre_offset=0.,gravity_aligned_height=True,
+                        throttle_anchor=4.,height_gain=1.)
     delta=rollout.gate[:,2]-rollout.vs.quad.pos[:,2]
     assert (delta>4.).any() and (delta< -4.).any()
     assert rollout.vs.quad.pos[:,2].max()>=28.
