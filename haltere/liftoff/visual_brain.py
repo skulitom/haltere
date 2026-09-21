@@ -279,6 +279,7 @@ class VisualController:
                                    gravity_aligned_height=self.meta['gate_sensor'].get('gravity_aligned_height',False),
                                    search_height_error=height_error,
                                    raw_retina_active=self.meta['gate_sensor'].get('raw_retina_active',False))
+        self.last_observation = obs
         action,self.state,_ = self.brain(obs,self.state,self.W)
         processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)
@@ -393,8 +394,13 @@ def run(args):
         raise FileExistsError('Use new log and video paths')
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device)
+    from .neural_replay import NeuralReplay,replay_camera_sensor
+    replay_out = getattr(args,'replay_out','')
+    replay = NeuralReplay(replay_out,controller.brain.channel_dims,
+                          int(args.seconds/controller.cfg.brain.dt)+100) if replay_out else None
+    camera_sensor = replay_camera_sensor(controller.meta.get('gate_sensor'),bool(replay))
     gc.collect()
-    camera = ProcessRetinaCamera(gate_sensor=controller.meta.get('gate_sensor'),backend=args.capture_backend,fps=48).start()
+    camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=48).start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -515,6 +521,9 @@ def run(args):
                                  detection['width'] if detection else 0.,controller.searching,
                                  float(controller.motor[0,0]),*controller.pose.omega,
                                  controller.search_height if controller.search_height is not None else float('nan')])
+                if replay is not None:
+                    replay.append(controller.last_observation,retina,action,pos,q,
+                                  frame.timestamp,now,capture_time,fresh)
                 count += 1
                 if shared:
                     rates = (controller.brain.cfg.rate_max*torch.sigmoid(controller.state['v'][:,0])).cpu().numpy()
@@ -577,6 +586,9 @@ def run(args):
                       images_blanked=args.blank_retina,
                       limits=dict(height_m=args.max_height,speed_mps=args.max_speed,distance_m=args.max_distance),
                       process_session=windows_session_id())
+        if replay is not None:
+            result['neural_replay'] = replay.save()
+            result['neural_replay']['sha256'] = sha256(replay.path)
         log_path.with_suffix('.json').write_text(json.dumps(result,indent=2))
         print(json.dumps(result),flush=True)
 
@@ -597,6 +609,7 @@ def main():
     p.add_argument('--seconds',type=float,default=15)
     p.add_argument('--log',required=True)
     p.add_argument('--record',default='')
+    p.add_argument('--replay-out',default='',help='Save exact causal senses and passive frozen scene features for offline correction')
     p.add_argument('--udp-out',default='')
     p.add_argument('--port',type=int,default=9001)
     p.add_argument('--device',default='cuda')
