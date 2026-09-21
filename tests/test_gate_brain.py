@@ -38,6 +38,36 @@ def test_nearby_gate_can_be_remembered_briefly_but_never_indefinitely():
     assert not gate_memory_valid(-.1,np.array([3.,.2,.1]))
 
 
+def test_expired_camera_memory_is_zeroed_only_for_search_trained_brains():
+    import numpy as np
+    import pytest
+    from haltere.liftoff.visual_brain import gate_measurement_or_search
+    old=np.array([20.,5.,1.])
+    with pytest.raises(RuntimeError,match='unavailable'):
+        gate_measurement_or_search(1.,old)
+    measurement,searching=gate_measurement_or_search(1.,old,allow_search=True)
+    assert searching and np.count_nonzero(measurement)==0
+    measurement,searching=gate_measurement_or_search(.1,old,allow_search=True)
+    assert not searching and np.array_equal(measurement,old)
+
+
+def test_search_training_hides_unseen_gate_and_updates_recurrent_weights():
+    from tests.test_human_brain import small_brain
+    from haltere.train.gate_brain import GateRollout
+    brain,cfg,_=small_brain()
+    rollout=GateRollout(brain,cfg,batch=3,turns=True,search=True)
+    rollout.measurement_age[:]=float('inf')
+    relative=torch.tensor([[-10.,0.,0.],[10.,0.,0.],[0.,10.,0.]])
+    measured=rollout.camera_measurement(relative,torch.eye(3)[None].expand(3,-1,-1))
+    assert torch.count_nonzero(measured[[0,2]])==0
+    assert torch.equal(measured[1],relative[1])
+    loss=rollout.window(12)
+    loss.backward()
+    assert torch.isfinite(loss)
+    assert brain.log_edge_gain.grad.abs().sum()>0
+    assert brain.readout.weight.grad.abs().sum()>0
+
+
 def test_turn_cost_and_aperture_are_invariant_to_world_heading():
     from haltere.train.gate_brain import turn_objective
     from haltere.sim.quad import quat_from_euler, quat_to_mat

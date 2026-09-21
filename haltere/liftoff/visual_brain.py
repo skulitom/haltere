@@ -25,9 +25,11 @@ from .telemetry import TelemetryReceiver, read_config, DEFAULT_STREAM
 
 
 class RetinaCamera:
-    def __init__(self, title='Liftoff', fps=24, gate_sensor=None):
+    def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss'):
         self.title, self.fps = title, fps
         self.gate_sensor = gate_sensor
+        self.backend = backend
+        self.capture = None
         self.detector = None
         if gate_sensor:
             from ..vision.train import load_gatenet
@@ -43,6 +45,7 @@ class RetinaCamera:
         self.phase = 'starting'
         self.phase_started = time.monotonic()
         self.timings = deque(maxlen=4096)
+        self.frames = 0
         self.missing_frames = 0
         self.done = threading.Event()
         self.thread = threading.Thread(target=self.run,daemon=True)
@@ -53,6 +56,8 @@ class RetinaCamera:
 
     def stop(self):
         self.done.set()
+        if self.capture is not None:
+            self.capture.close()
         self.thread.join(timeout=2)
 
     def _phase(self, name):
@@ -63,7 +68,7 @@ class RetinaCamera:
     def diagnostics(self):
         samples = list(self.timings)
         result = dict(phase=self.phase,phase_age_ms=1000*(time.monotonic()-self.phase_started),
-                      frames=len(samples),missing_frames=self.missing_frames,error=self.error)
+                      frames=self.frames,timing_samples=len(samples),missing_frames=self.missing_frames,error=self.error)
         if samples:
             values = np.asarray(samples)*1000
             result['stages_ms'] = {name:dict(p50=float(np.percentile(values[:,i],50)),
@@ -76,10 +81,20 @@ class RetinaCamera:
         import mss
         from .recorder import _capture_game_frame
         try:
-            with mss.mss() as screen:
+            if self.backend=='dxgi':
+                from .game_capture import DxGameCapture
+                self.capture = DxGameCapture(self.title)
+            with (self.capture if self.capture is not None else getattr(mss,'MSS',mss.mss)()) as screen:
                 while not self.done.is_set():
                     begin = self._phase('capture')
-                    rgb = _capture_game_frame(screen,self.title)
+                    capture_time = begin
+                    if self.capture is not None:
+                        frame = screen.read()
+                        rgb = None if frame is None else frame[1]
+                        if frame is not None:
+                            capture_time = frame[0]
+                    else:
+                        rgb = _capture_game_frame(screen,self.title)
                     captured = self._phase('preprocess')
                     if rgb is not None:
                         small = cv2.resize(rgb,(640,360),interpolation=cv2.INTER_LINEAR)
@@ -106,7 +121,8 @@ class RetinaCamera:
                         else:
                             retina = torch.zeros(1,720)
                         inferred = self._phase('publish')
-                        self.latest = (begin,retina,detection)
+                        self.latest = (capture_time,retina,detection)
+                        self.frames += 1
                         published = self._phase('wait')
                         self.timings.append((captured-begin,prepared-captured,inferred-prepared,
                                              published-inferred,published-begin))
@@ -146,6 +162,8 @@ class VisualController:
         self.last_detection_time = None
         self.relative_gate = np.zeros(3)
         self.gate_confidence = 0.
+        self.searching = False
+        self.search_since = None
         from .camera_pose import CameraPoseHistory
         self.camera_poses = CameraPoseHistory()
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
@@ -196,11 +214,19 @@ class VisualController:
                     alpha = 1. if self.gate_point is None else .2
                     self.gate_point = point if self.gate_point is None else (1-alpha)*self.gate_point+alpha*point
                     self.gate_time = capture_time
-            if self.gate_time is None:
-                raise RuntimeError('Camera gate measurement unavailable')
-            self.relative_gate = R.T@(self.gate_point-pos)
-            if not gate_memory_valid(capture_time-self.gate_time,self.relative_gate):
-                raise RuntimeError('Camera gate measurement unavailable')
+            relative = R.T@(self.gate_point-pos) if self.gate_point is not None else np.zeros(3)
+            age = capture_time-self.gate_time if self.gate_time is not None else float('inf')
+            allow_search = self.meta['gate_sensor'].get('missing_gate')=='zero_goal_neural_search'
+            self.relative_gate,self.searching = gate_measurement_or_search(age,relative,allow_search)
+            if self.searching:
+                self.search_since = capture_time if self.search_since is None else self.search_since
+                if capture_time-self.search_since>15.:
+                    raise RuntimeError('Neural gate search timed out')
+                # A newly acquired gate must not be blended with an expired
+                # target. This clears sensory memory; it supplies no steering.
+                self.gate_point = self.gate_time = None
+            else:
+                self.search_since = None
             obs = gate_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device),
                                    torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None])
         action,self.state,_ = self.brain(obs,self.state,self.W)
@@ -218,6 +244,14 @@ def gate_memory_valid(age, relative_gate):
     """
     nearby = np.linalg.norm(relative_gate) < 8. and relative_gate[0] > -1.
     return 0 <= age <= (2. if nearby else .5)
+
+
+def gate_measurement_or_search(age, relative_gate, allow_search=False):
+    if gate_memory_valid(age,relative_gate):
+        return relative_gate,False
+    if not allow_search:
+        raise RuntimeError('Camera gate measurement unavailable')
+    return np.zeros(3),True
 
 
 def flight_limit_reason(position, velocity, max_height, max_speed, max_distance):
@@ -248,6 +282,7 @@ def run(args):
     from .gamepad import UdpSticks
     from .recorder import FlightRecorder, SharedFlightState
     from .manual_recording import live_pose
+    from .flight_guard import ImpactMonitor
     if not 0 < args.seconds <= 1800:
         raise ValueError('Use a bounded run of 0 < seconds <= 1800')
     if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
@@ -257,7 +292,7 @@ def run(args):
         raise FileExistsError('Use new log and video paths')
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device)
-    camera = RetinaCamera(gate_sensor=controller.meta.get('gate_sensor')).start()
+    camera = RetinaCamera(gate_sensor=controller.meta.get('gate_sensor'),backend=args.capture_backend).start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -281,6 +316,7 @@ def run(args):
     begin, next_tick, count, reason = time.monotonic(),time.monotonic(),0,'duration'
     frame, last_frame, first_ts, last_progress = None,begin,None,begin
     camera_failure = None
+    impacts = ImpactMonitor()
     last_timestamp = None
     try:
         with log_path.open('w',newline='') as f:
@@ -289,7 +325,7 @@ def run(args):
                              'processed_thr','processed_roll','processed_pitch','processed_yaw','x','y','z',
                              'in_thr','in_yaw','in_pitch','in_roll','raw_thr','raw_roll','raw_pitch','raw_yaw',
                              'vx','vy','vz','qw','qx','qy','qz','gate_p','gate_bx','gate_by','gate_bz','gate_age',
-                             'capture_time','frame_time','det_bx','det_by','det_bz','det_width'])
+                             'capture_time','frame_time','det_bx','det_by','det_bz','det_width','neural_search'])
             while time.monotonic()-begin < args.seconds:
                 new = rx.wait(.001)
                 now = time.monotonic()
@@ -324,7 +360,10 @@ def run(args):
                 elapsed = frame.timestamp-first_ts
                 pos = controller.senses['pos'][0].cpu().numpy()
                 velocity = controller.senses['vel_world'][0].cpu().numpy()
+                q = controller.senses['quat'][0].cpu().numpy()
                 if pad:
+                    if impacts.update(frame.timestamp,pos,velocity,q):
+                        raise RuntimeError('Impact detected from flight motion')
                     limit = flight_limit_reason(pos,velocity,args.max_height,args.max_speed,args.max_distance)
                     if limit:
                         raise RuntimeError(limit)
@@ -335,12 +374,11 @@ def run(args):
                         raw[0] = -1+ramp*(raw[0]+1)
                         raw[1:] *= ramp
                     pad.send(*raw)
-                q = controller.senses['quat'][0].cpu().numpy()
                 writer.writerow([time.time(),frame.timestamp,now-capture_time,not bool(pad),*action,*processed,*pos,
                                  *frame.input,*raw,*velocity,*q,controller.gate_confidence,*controller.relative_gate,
                                  capture_time-controller.gate_time if controller.gate_time is not None else -1,
                                  capture_time,last_frame,*(detection['point'] if detection else [0.,0.,0.]),
-                                 detection['width'] if detection else 0.])
+                                 detection['width'] if detection else 0.,controller.searching])
                 count += 1
                 if shared:
                     rates = (controller.brain.cfg.rate_max*torch.sigmoid(controller.state['v'][:,0])).cpu().numpy()
@@ -376,9 +414,12 @@ def run(args):
                       gate_sensor=controller.meta.get('gate_sensor'),runtime_route_oracle=False,
                       raw_retina_active=not (args.blank_retina or controller.meta.get('gate_sensor')),
                       camera_fps=camera.fps,
+                      capture_backend=camera.backend,
                       close_gate_memory_s=2.,
+                      neural_search_timeout_s=15.,
                       camera_pose_alignment='interpolated telemetry receipt times',
                       pause_key_sent=pause_key_sent,
+                      impact=impacts.impact,
                       camera_diagnostics=camera_status,camera_failure=camera_failure,
                       origin_sim=controller.pose.pos0.tolist() if controller.pose.pos0 is not None else None,
                       images_blanked=args.blank_retina,
@@ -409,6 +450,7 @@ def main():
     p.add_argument('--device',default='cuda')
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
+    p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)
     p.add_argument('--max-speed',type=float,default=10.)
     p.add_argument('--max-distance',type=float,default=20.)

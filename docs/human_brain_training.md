@@ -359,3 +359,37 @@ Live attempts can now use `--pause-on-stop` so a terminal stop pauses the still
 active game before the recorder closes. The flag sends no key in shadow mode
 or when the game is hidden; verify the pause before disconnecting the bridge.
 The bounded duration limit is 1800 seconds to permit eventual full-lap checks.
+
+The corrected-dynamics candidate (`gate-brain-04`, SHA256
+`5bdba93ed99be2c85c7a85a6378f7a2647003f0433bf5cdde2d477e9ba69efd5`)
+reached four physical arches, including the first sharp turn, in the recorded
+Anode attempt `runs/gate-brain-live-02/dxgi.*`. The turn's plane intersection was
+9.3 cm from centre laterally and 1.15 m above the base; video shows passage
+through the opening. No impact was detected. The run stopped at 79.1 seconds
+when the next gate remained outside the camera. This is partial course progress,
+not a completed race lap (the first physical arch is before the race start).
+
+An earlier attempt with the same brain stopped after a slow screen capture.
+The optional Windows DXGI backend consumes original frame presentation times,
+checks that the game remains foreground, and discards buffered frames from
+before its foreground check. Install `.[fast-capture]` and pass
+`--capture-backend dxgi` inside Anode. The recorded four-arch attempt had no stale
+images; its 120 ms image deadline was unchanged. Live flight now also stops for
+a large acceleration inconsistent with rotor thrust, to distinguish a collision
+from an ordinary throttle change. Neither guard supplies steering commands.
+
+The next search experiment continues candidate 04 and uses that same frozen
+brain for training-only stabilization labels:
+
+```powershell
+.venv/Scripts/python.exe -m haltere.train.gate_brain runs/gate-brain-04/last.pt --out runs/gate-brain-05 --iters 200 --lr 0.00005 --motor-teacher runs/gate-brain-04/last.pt --turns --search --motor-anchor 1 --dynamics configs/original_drone_gate_dynamics.json
+```
+
+`--search` masks synthetic gates outside the camera, retains only the same
+bounded camera memory as live flight, and encodes a missing measurement as a
+zero goal. Training labels encourage braking, level flight and a slow leftward
+scan until a gate becomes visible. Only checkpoints explicitly trained for this
+contract may continue on a missing gate; older checkpoints still stop. Every
+live stick remains a recurrent-brain output. An uninterrupted neural search
+times out after 15 seconds. This remains an experimental single-gate curriculum;
+it does not establish track ordering, sustained lap completion or transfer.
