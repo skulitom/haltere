@@ -58,17 +58,18 @@ def gate_in_view(relative, rotation, camera_rotation, centre_offset=1.5):
             & (100*point[:,1].abs()/depth<90))
 
 
-def search_objective(velocity, rotation, omega):
+def search_objective(velocity, rotation, omega, height_error=None):
     # No hidden gate direction or altitude enters the search target. Learn to
     # brake and keep vertical velocity near zero while looking to the left.
-    return (4.*velocity.square().sum(-1)+2.*(1-rotation[:,2,2])
-            +.15*omega[:,:2].square().sum(-1)+(omega[:,2]-.65).square())
+    cost=(4.*velocity.square().sum(-1)+2.*(1-rotation[:,2,2])
+          +.15*omega[:,:2].square().sum(-1)+(omega[:,2]-.65).square())
+    return cost if height_error is None else cost+6.*height_error.square()
 
 
 class GateRollout:
     def __init__(self, brain, cfg, batch=12, evaluation=False, teacher=None, turns=False, motor_anchor=.25,
                  search=False,elevation=False,height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,
-                 throttle_anchor=1.,height_gain=.6):
+                 throttle_anchor=1.,height_gain=.6,search_height_anchor=False):
         self.cfg = copy.deepcopy(cfg)
         self.cfg.train.randomize = .1
         self.cfg.train.randomize_ctl = .1
@@ -78,6 +79,7 @@ class GateRollout:
         self.search = search
         self.elevation,self.height_invariant,self.centre_offset = elevation,height_invariant,centre_offset
         self.gravity_aligned_height = gravity_aligned_height
+        self.search_height_anchor=search_height_anchor
         self.motor_anchor = motor_anchor
         self.throttle_anchor,self.height_gain=throttle_anchor,height_gain
         self.teacher = teacher
@@ -144,6 +146,7 @@ class GateRollout:
         self.lost_gate = self.crossed.clone()
         self.measurement_age = torch.full((B,),float('inf'),device=dev)
         self.searching = self.crossed.clone()
+        self.search_height=q.pos[:,2].detach().clone()
         self.ever_searched = self.crossed.clone()
         self.reacquired = self.crossed.clone()
         self.search_streak = torch.zeros(B,device=dev)
@@ -160,7 +163,8 @@ class GateRollout:
         if self.search:
             relative = self.camera_measurement(relative,R)
         obs = gate_observation(self.vehicle.sim.sensors(q),q.motor.mean(-1,keepdim=True),self.cfg.task,
-                               torch.zeros(B,RETINA_DIM,device=dev),relative,self.height_invariant,self.gravity_aligned_height)
+                               torch.zeros(B,RETINA_DIM,device=dev),relative,self.height_invariant,self.gravity_aligned_height,
+                               self.search_height_cue())
         with torch.no_grad():
             W = self.brain.weight_matrix()
             for _ in range(50):
@@ -171,6 +175,7 @@ class GateRollout:
         self.measurement_age = torch.where(visible,0.,self.measurement_age+self.cfg.brain.dt)
         nearby = (relative.detach().norm(dim=-1)<8.) & (relative[:,0].detach()>-1.)
         valid = self.measurement_age <= torch.where(nearby,2.,.5)
+        self.search_height=torch.where(~valid & ~self.searching,self.vs.quad.pos[:,2].detach(),self.search_height)
         self.reacquired |= self.searching & visible & ~self.crossed
         self.searching = ~valid
         self.ever_searched |= self.searching & ~self.crossed
@@ -179,6 +184,11 @@ class GateRollout:
         # Hidden gate coordinates are never delivered to the brain. The same
         # zero goal marks an expired camera measurement in the live runtime.
         return torch.where(valid[:,None],relative,torch.zeros_like(relative))
+
+    def search_height_cue(self):
+        if not self.search_height_anchor:
+            return None
+        return torch.where(self.searching,self.vs.quad.pos[:,2]-self.search_height,0.)[:,None]
 
     def window(self, steps=64):
         brain = self.brain
@@ -200,7 +210,7 @@ class GateRollout:
             if self.search:
                 relative = self.camera_measurement(relative,R)
             obs = gate_observation(self.vehicle.sim.sensors(q),q.motor.mean(-1,keepdim=True),self.cfg.task,retina,relative,
-                                   self.height_invariant,self.gravity_aligned_height)
+                                   self.height_invariant,self.gravity_aligned_height,self.search_height_cue())
             if t and t%8 == 0:
                 self.state = brain.detach_state(self.state)
             action,self.state,_ = brain(obs,self.state,W)
@@ -226,6 +236,9 @@ class GateRollout:
                         # search), so a hidden gate cannot leak into supervision.
                         measured_world=(R@relative.detach()[...,None]).squeeze(-1)
                         desired_vz=(self.height_gain*measured_world[:,2]).clamp(-1.2,1.2)
+                        if self.search_height_anchor:
+                            desired_vz=torch.where(self.searching,
+                                (-.6*(q.pos[:,2]-self.search_height)).clamp(-1.2,1.2),desired_vz)
                         hover=self.vehicle.sim.hover_command()/R[:,2,2].clamp_min(.6).sqrt()
                         target[:,0]=(2*hover-1+.1*(desired_vz-q.vel[:,2])).clamp(-.8,.2)
                 scale = action.new_tensor([.23,.19,.084,.184])
@@ -260,7 +273,8 @@ class GateRollout:
                 cost = (turn_objective(after.pos,after.vel,R2,self.gate,self.normal,self.crossed)
                         +.15*after.omega.square().sum(-1)+.04*action[:,1:].square().sum(-1))
             if self.search:
-                cost = torch.where(self.searching.clone(),search_objective(after.vel,R2,after.omega),cost)
+                height_error=after.pos[:,2]-self.search_height if self.search_height_anchor else None
+                cost = torch.where(self.searching.clone(),search_objective(after.vel,R2,after.omega,height_error),cost)
             costs.append(cost.mean())
         self.age += steps
         physical = torch.stack(costs).mean()
@@ -274,12 +288,12 @@ class GateRollout:
 
 @torch.no_grad()
 def evaluate(brain,cfg,seconds=25,seed=481,turns=False,search=False,elevation=False,
-             height_invariant=False,centre_offset=1.5,gravity_aligned_height=False):
+             height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,search_height_anchor=False):
     with torch.random.fork_rng(devices=[brain.device] if brain.device.type=='cuda' else []):
         torch.manual_seed(seed)
         r = GateRollout(brain,cfg,batch=12,evaluation=True,turns=turns,search=search,elevation=elevation,
                         height_invariant=height_invariant,centre_offset=centre_offset,
-                        gravity_aligned_height=gravity_aligned_height)
+                        gravity_aligned_height=gravity_aligned_height,search_height_anchor=search_height_anchor)
         max_speed, max_height = 0., 0.
         for _ in range(round(seconds/cfg.brain.dt/50)):
             r.window(50)
@@ -288,6 +302,7 @@ def evaluate(brain,cfg,seconds=25,seed=481,turns=False,search=False,elevation=Fa
         return dict(seed=seed,episodes=r.B,seconds=seconds,turns=turns,crossings=int(r.crossed.sum()),
                     elevation=elevation,height_invariant=height_invariant,centre_offset_m=centre_offset,
                     gravity_aligned_height=gravity_aligned_height,
+                    search_height_anchor=search_height_anchor,
                     search=search,searched=int(r.ever_searched.sum()),reacquired=int(r.reacquired.sum()),
                     recovered_gate_crossings=int((r.crossed & r.reacquired).sum()),
                     camera_viable_crossings=int((r.crossed & ~(r.max_search>15.) & ~r.crashed_before_crossing).sum())
@@ -305,6 +320,8 @@ def train(args):
         raise ValueError('Search training requires --turns')
     if args.elevation and not (args.turns and args.search and args.motor_teacher):
         raise ValueError('Elevation training requires --turns, --search and a training-only motor teacher')
+    if args.search_height_anchor and not args.elevation:
+        raise ValueError('Search height anchoring requires height-invariant elevation training')
     if not 0<args.throttle_anchor<=100 or not 0<args.height_gain<=3:
         raise ValueError('Use 0 < throttle anchor <= 100 and 0 < height gain <= 3')
     torch.set_num_threads(2)
@@ -325,12 +342,13 @@ def train(args):
         raise ValueError('Invalid detector centre offset')
     evaluation_args=dict(turns=args.turns,search=args.search,elevation=args.elevation,
                          height_invariant=args.elevation,centre_offset=args.centre_offset_m,
-                         gravity_aligned_height=args.gravity_aligned_height)
+                         gravity_aligned_height=args.gravity_aligned_height,search_height_anchor=args.search_height_anchor)
     meta.pop('schema',None)
     meta.update(runtime_requires_teacher=False,gate_sensor=dict(
         checkpoint=args.detector,sha256=sha256(args.detector),focal_320=100.,tilt_deg=30.,
         centre_offset_m=args.centre_offset_m,raw_retina_active=False,height_invariant=args.elevation,
         gravity_aligned_height=args.gravity_aligned_height,
+        search_height_anchor=args.search_height_anchor,
         goal_encoding='horizontal magnitude bounded at 3m, vertical error bounded at 3m'),
         gate_training=dict(parent_sha256=sha256(args.checkpoint),objective='2 m/s through varied gate apertures',
                            seed=args.seed,teacher_used=False,learning_rate=args.lr,
@@ -349,6 +367,8 @@ def train(args):
                                     throttle_anchor=args.throttle_anchor,height_gain=args.height_gain)
     if args.gravity_aligned_height:
         meta['gate_sensor']['goal_encoding']='gravity-aligned horizontal distance and height bounded at 3m; expressed in body frame'
+    if args.search_height_anchor:
+        meta['gate_sensor']['search_height_reference']='odometry height at start of each missing-gate search'
     (out/'config.json').write_text(json.dumps(vars(args),indent=2))
     if args.dynamics:
         meta['gate_training']['dynamics'] = dict(path=args.dynamics,sha256=sha256(args.dynamics),
@@ -408,6 +428,7 @@ def main():
     p.add_argument('--search',action='store_true',help='Train neural search with missing-gate inputs and camera visibility')
     p.add_argument('--elevation',action='store_true',help='Train climbs/descents without launch-altitude sensory dependence')
     p.add_argument('--gravity-aligned-height',action='store_true',help='Preserve true vertical error while bounding distant gates')
+    p.add_argument('--search-height-anchor',action='store_true',help='Train neural search to retain its starting height from local odometry')
     p.add_argument('--dynamics',default='',help='JSON with measured quad/rates/ctl overrides and source provenance')
     p.add_argument('--motor-anchor',type=float,default=.25,help='Roll/pitch motor-teacher loss weight in turn training')
     p.add_argument('--throttle-anchor',type=float,default=1.,help='Throttle imitation weight in turn/elevation training')

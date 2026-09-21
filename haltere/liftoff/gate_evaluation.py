@@ -33,12 +33,15 @@ def track_planes(path, origin):
     return planes
 
 
-def plane_intersections(positions,times,planes):
+def plane_intersections(positions,times,planes,both_directions=False):
     results=[]
     p,t=np.asarray(positions),np.asarray(times)
     for gate in planes:
         distance=(p-gate['base'])@gate['normal']
-        for i in np.flatnonzero((distance[:-1]<0)&(distance[1:]>=0)):
+        crossings=(distance[:-1]<0)&(distance[1:]>=0)
+        if both_directions:
+            crossings|=(distance[:-1]>0)&(distance[1:]<=0)
+        for i in np.flatnonzero(crossings):
             fraction=-distance[i]/(distance[i+1]-distance[i])
             point=p[i]+fraction*(p[i+1]-p[i])
             offset=point-gate['base']
@@ -47,6 +50,7 @@ def plane_intersections(positions,times,planes):
             if abs(lateral)>10 or abs(height)>10:
                 continue
             results.append(dict(gate_id=gate['id'],item=gate['item'],
+                                normal_direction=1 if distance[i+1]>distance[i] else -1,
                                 seconds=float(t[i]+fraction*(t[i+1]-t[i])),
                                 position=point.tolist(),lateral_m=lateral,height_above_base_m=height))
     return sorted(results,key=lambda r:r['seconds'])
@@ -56,6 +60,8 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('log'); parser.add_argument('--track',required=True)
     parser.add_argument('--out',required=True)
+    parser.add_argument('--both-directions',action='store_true',
+                        help='Include both mesh-normal directions; mesh facing is not race direction')
     args=parser.parse_args()
     out=Path(args.out)
     if out.exists():
@@ -63,11 +69,13 @@ def main():
     d=pd.read_csv(args.log)
     meta=json.loads(Path(args.log).with_suffix('.json').read_text())
     intersections=plane_intersections(d[['x','y','z']].values,d.wall.values-d.wall.iloc[0],
-                                    track_planes(args.track,meta['origin_sim']))
+                                    track_planes(args.track,meta['origin_sim']),args.both_directions)
     result=dict(checkpoint_sha256=meta['checkpoint_sha256'],stop_reason=meta['stop_reason'],
                 runtime_requires_teacher=meta['runtime_requires_teacher'],
                 runtime_route_oracle=meta['runtime_route_oracle'],
-                aperture_verified=False,race_completion_verified=False,intersections=intersections)
+                aperture_verified=False,race_completion_verified=False,
+                plane_crossing_directions='both' if args.both_directions else 'positive normal',
+                intersections=intersections)
     out.write_text(json.dumps(result,indent=2))
     print(json.dumps(result,indent=2))
 

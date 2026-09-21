@@ -10,9 +10,9 @@ def test_evaluation_uses_checkpoint_sensory_contract_without_changing_legacy_def
     from haltere.train.evaluate_gate_brain import sensory_contract
     meta=dict(runtime_requires_teacher=False,gate_sensor=dict(focal_320=100.,tilt_deg=30.,
                                                              missing_gate='zero_goal_neural_search'))
-    assert sensory_contract(meta)==dict(height_invariant=False,centre_offset=1.5,gravity_aligned_height=False)
-    meta['gate_sensor'].update(height_invariant=True,centre_offset_m=0.,gravity_aligned_height=True)
-    assert sensory_contract(meta)==dict(height_invariant=True,centre_offset=0.,gravity_aligned_height=True)
+    assert sensory_contract(meta)==dict(height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,search_height_anchor=False)
+    meta['gate_sensor'].update(height_invariant=True,centre_offset_m=0.,gravity_aligned_height=True,search_height_anchor=True)
+    assert sensory_contract(meta)==dict(height_invariant=True,centre_offset=0.,gravity_aligned_height=True,search_height_anchor=True)
     meta['runtime_requires_teacher']=True
     with pytest.raises(ValueError,match='teacher-free'):
         sensory_contract(meta)
@@ -70,6 +70,24 @@ def test_visibility_uses_the_configured_opening_offset():
     assert not gate_in_view(relative,rotation,camera,0.).item()
 
 
+def test_search_height_reference_is_latched_and_restarts_after_reacquisition():
+    from tests.test_human_brain import small_brain
+    from haltere.train.gate_brain import GateRollout
+    brain,cfg,_=small_brain()
+    r=GateRollout(brain,cfg,batch=3,turns=True,search=True,height_invariant=True,search_height_anchor=True)
+    r.searching.zero_();r.measurement_age.fill_(float('inf'));r.vs.quad.pos[:,2]=5.
+    hidden=torch.tensor([[-20.,0.,0.]]).repeat(3,1);rotation=torch.eye(3)[None].repeat(3,1,1)
+    r.camera_measurement(hidden,rotation)
+    assert torch.equal(r.search_height,torch.full((3,),5.))
+    r.vs.quad.pos[:,2]=6.;r.camera_measurement(hidden,rotation)
+    assert torch.equal(r.search_height_cue(),torch.ones(3,1))
+    r.camera_measurement(-hidden,rotation)
+    assert torch.count_nonzero(r.search_height_cue())==0
+    r.vs.quad.pos[:,2]=7.;r.measurement_age.fill_(float('inf'));r.camera_measurement(hidden,rotation)
+    assert torch.equal(r.search_height,torch.full((3,),7.))
+    assert torch.count_nonzero(r.search_height_cue())==0
+
+
 def test_gravity_aligned_gate_scaling_does_not_invent_height_when_pitching():
     from haltere.sim.quad import quat_from_euler,quat_to_mat
     angle=torch.tensor([.25]);q=quat_from_euler(angle*.3,angle,angle*2)
@@ -95,7 +113,7 @@ def test_elevation_training_includes_climbs_and_descents_and_updates_brain():
     brain,cfg,_=small_brain()
     rollout=GateRollout(brain,cfg,batch=12,evaluation=True,teacher=brain,turns=True,search=True,
                         elevation=True,height_invariant=True,centre_offset=0.,gravity_aligned_height=True,
-                        throttle_anchor=4.,height_gain=1.)
+                        throttle_anchor=4.,height_gain=1.,search_height_anchor=True)
     delta=rollout.gate[:,2]-rollout.vs.quad.pos[:,2]
     assert (delta>4.).any() and (delta< -4.).any()
     assert rollout.vs.quad.pos[:,2].max()>=28.
@@ -259,6 +277,10 @@ def test_offline_track_evaluation_interpolates_tilted_planes(tmp_path):
     assert abs(result[0]['lateral_m']-.4)<1e-6
     assert abs(result[0]['height_above_base_m']-1.2)<1e-6
     assert plane_intersections(p[::-1],[10.,13.],[gate])==[]
+    reverse=plane_intersections(p[::-1],[10.,13.],[gate],both_directions=True)
+    assert len(reverse)==1 and reverse[0]['normal_direction']==-1
+    assert abs(reverse[0]['seconds']-11.)<1e-6
+    assert abs(reverse[0]['height_above_base_m']-1.2)<1e-6
 
 
 def test_camera_pose_uses_capture_time_and_handles_quaternion_sign_flip():

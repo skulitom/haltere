@@ -9,7 +9,7 @@ from ..sim.tasks import observe_from_sensors
 
 
 def gate_observation(sensors, motor, task, retina, relative_gate, height_invariant=False,
-                     gravity_aligned_height=False):
+                     gravity_aligned_height=False,search_height_error=None):
     if height_invariant:
         # Starting elevation is not height above terrain. Use a fixed velocity
         # normalization and constant legacy height channel; neither varies with
@@ -18,6 +18,11 @@ def gate_observation(sensors, motor, task, retina, relative_gate, height_invaria
     # This stage is trained with the detector as its visual frontend. Keep the
     # older raw-pixel channel inactive in both simulation and live flight.
     obs = visual_observation(sensors, motor, task, torch.zeros_like(retina))
+    if search_height_error is not None:
+        # Local odometry relative to the start of a search, not launch altitude.
+        # The velocity normalization remains constant. Zero is used when a gate
+        # is available, so only the trained missing-gate behavior gets this cue.
+        obs['altitude']=torch.tanh((1.5+search_height_error)/3.)
     # Bound horizontal sensory magnitude without attenuating the measured
     # vertical error of distant gates. This is also used in the simulator.
     if gravity_aligned_height:

@@ -31,7 +31,8 @@ def sensory_contract(meta):
     if not math.isfinite(offset) or not 0<=offset<=3:
         raise ValueError('Invalid checkpoint gate centre offset')
     return dict(height_invariant=bool(sensor.get('height_invariant',False)),centre_offset=offset,
-                gravity_aligned_height=bool(sensor.get('gravity_aligned_height',False)))
+                gravity_aligned_height=bool(sensor.get('gravity_aligned_height',False)),
+                search_height_anchor=bool(sensor.get('search_height_anchor',False)))
 
 
 def run(checkpoint,out,device='cuda',seed=813):

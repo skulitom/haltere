@@ -173,6 +173,7 @@ class VisualController:
         self.gate_confidence = 0.
         self.searching = False
         self.search_since = None
+        self.search_height = None
         from .camera_pose import CameraPoseHistory
         self.camera_poses = CameraPoseHistory()
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
@@ -230,6 +231,8 @@ class VisualController:
             allow_search = self.meta['gate_sensor'].get('missing_gate')=='zero_goal_neural_search'
             self.relative_gate,self.searching = gate_measurement_or_search(age,relative,allow_search)
             if self.searching:
+                if self.search_since is None:
+                    self.search_height=float(pos[2])
                 self.search_since = observation_time if self.search_since is None else self.search_since
                 if observation_time-self.search_since>15.:
                     raise RuntimeError('Neural gate search timed out')
@@ -238,10 +241,16 @@ class VisualController:
                 self.gate_point = self.gate_time = None
             else:
                 self.search_since = None
+                self.search_height = None
+            height_error=None
+            if self.meta['gate_sensor'].get('search_height_anchor',False):
+                delta=float(pos[2])-self.search_height if self.search_height is not None else 0.
+                height_error=torch.tensor([[delta]],dtype=torch.float32,device=self.brain.device)
             obs = gate_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device),
                                    torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None],
                                    height_invariant=self.meta['gate_sensor'].get('height_invariant',False),
-                                   gravity_aligned_height=self.meta['gate_sensor'].get('gravity_aligned_height',False))
+                                   gravity_aligned_height=self.meta['gate_sensor'].get('gravity_aligned_height',False),
+                                   search_height_error=height_error)
         action,self.state,_ = self.brain(obs,self.state,self.W)
         processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)
