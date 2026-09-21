@@ -28,6 +28,47 @@ def test_gate_senses_keep_vertical_error_and_ignore_world_coordinates():
     assert torch.count_nonzero(pixels['retina'])==0
 
 
+def test_height_invariant_contract_removes_launch_elevation_from_every_channel():
+    s=dict(gyro=torch.ones(1,3),gravity_body=torch.tensor([[0.,0.,-1.]]),vel_body=torch.ones(1,3),
+           vel_world=torch.ones(1,3),pos=torch.tensor([[0.,0.,1.]]),quat=torch.tensor([[1.,0.,0.,0.]]),
+           up=torch.ones(1),altitude=torch.ones(1,1),yaw=torch.ones(1,1))
+    higher={**s,'pos':s['pos']+torch.tensor([0.,0.,20.]),'altitude':s['altitude']+20.}
+    args=(torch.zeros(1,1),HoverTaskConfig(),torch.zeros(1,RETINA_DIM),torch.tensor([[20.,0.,4.]]))
+    low=gate_observation(s,*args,height_invariant=True)
+    high=gate_observation(higher,*args,height_invariant=True)
+    assert all(torch.equal(low[k],high[k]) for k in low)
+    # The legacy sensory contract is retained for existing checkpoints.
+    legacy=gate_observation(s,*args)
+    legacy_high=gate_observation(higher,*args)
+    assert not torch.equal(legacy['lptc'],legacy_high['lptc'])
+
+
+def test_visibility_uses_the_configured_opening_offset():
+    from haltere.train.gate_brain import gate_in_view
+    from haltere.vision.camera import body_to_cam_matrix
+    camera=torch.tensor(body_to_cam_matrix(30.),dtype=torch.float32)
+    relative=torch.tensor([[4.,0.,-1.]])
+    rotation=torch.eye(3)[None]
+    assert gate_in_view(relative,rotation,camera,1.5).item()
+    assert not gate_in_view(relative,rotation,camera,0.).item()
+
+
+def test_elevation_training_includes_climbs_and_descents_and_updates_brain():
+    from tests.test_human_brain import small_brain
+    from haltere.train.gate_brain import GateRollout
+    brain,cfg,_=small_brain()
+    rollout=GateRollout(brain,cfg,batch=12,evaluation=True,teacher=brain,turns=True,search=True,
+                        elevation=True,height_invariant=True,centre_offset=0.)
+    delta=rollout.gate[:,2]-rollout.vs.quad.pos[:,2]
+    assert (delta>4.).any() and (delta< -4.).any()
+    assert rollout.vs.quad.pos[:,2].max()>=28.
+    loss=rollout.window(12)
+    loss.backward()
+    assert torch.isfinite(loss)
+    assert brain.log_edge_gain.grad.abs().sum()>0
+    assert brain.readout.weight.grad.abs().sum()>0
+
+
 def test_nearby_gate_can_be_remembered_briefly_but_never_indefinitely():
     import numpy as np
     from haltere.liftoff.visual_brain import gate_memory_valid

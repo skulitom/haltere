@@ -8,7 +8,12 @@ from .retina import visual_observation
 from ..sim.tasks import observe_from_sensors
 
 
-def gate_observation(sensors, motor, task, retina, relative_gate):
+def gate_observation(sensors, motor, task, retina, relative_gate, height_invariant=False):
+    if height_invariant:
+        # Starting elevation is not height above terrain. Use a fixed velocity
+        # normalization and constant legacy height channel; neither varies with
+        # world coordinates. This contract requires a correspondingly trained brain.
+        sensors = {**sensors,'altitude':torch.full_like(sensors['altitude'],1.5)}
     # This stage is trained with the detector as its visual frontend. Keep the
     # older raw-pixel channel inactive in both simulation and live flight.
     obs = visual_observation(sensors, motor, task, torch.zeros_like(retina))

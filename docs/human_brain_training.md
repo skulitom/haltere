@@ -473,3 +473,37 @@ The corresponding brain-05 metadata-only candidate SHA is
 `44ad38507d1f95fbdb23041016c964aef6ed1f27fe4bb8aa659278815d8fd6ca`.
 Neither the detector's wider training coverage nor held-out image metrics
 constitute a completed autonomous lap.
+
+`gate-brain-live-04/full-course-vision.*` then reached six physical arches.
+The fifth arch's intersection was 0.01 m from centre laterally; the sixth was
+-0.59 m laterally and 0.49 m above its tilted base, visibly passing through.
+It subsequently contacted the hillside before gate 6. The agent paused the
+attempt at 178 seconds after persistent ground contact. No lap was completed.
+One 128 ms image gap used memory for one control tick; there was no camera or
+control deadline failure. The largest recorded brain step was 9.3 ms.
+
+The uphill trace shows throttle falling as home-relative altitude increases,
+despite a positive vertical gate error. Both the explicit height channel and
+the velocity/altitude flow proxy previously depended on height above the
+launch point, which is not height above terrain. The new opt-in
+`height_invariant` gate sensory contract holds that legacy normalization at
+1.5 m: all sensory channels are invariant to translating the flight vertically.
+It is a fixed kinematic normalization, not a ground-height measurement. Old
+checkpoints retain their original sensory behavior.
+
+The elevation curriculum retains level/takeoff cases and adds starts between
+2 and 28 m with gate height changes of up to 5 m in either direction. Frozen
+brain 05 supplies training-only stabilization labels; measured relative height
+and vertical velocity supply the vertical teacher label, with zero desired
+vertical velocity during missing-gate search. Recurrent, sensory and readout
+weights are updated; no teacher runs in flight. Detector offset defaults to
+the parent's explicit contract and is used in synthetic camera visibility too.
+
+```powershell
+.venv/Scripts/python.exe -m haltere.train.gate_brain runs/gate-brain-05-opening-02/candidate.pt --out runs/gate-brain-06 --iters 300 --lr .00005 --motor-teacher runs/gate-brain-05/last.pt --turns --search --elevation --motor-anchor 1 --dynamics configs/original_drone_gate_dynamics.json
+```
+
+This candidate needs teacher-free elevation, level-retention, search and live
+course checks before any release qualification. The runtime also checks that
+the last telemetry pose is live before sending its automatic pause key, so a
+user/agent pause is not immediately toggled back off.

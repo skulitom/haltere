@@ -239,7 +239,8 @@ class VisualController:
             else:
                 self.search_since = None
             obs = gate_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device),
-                                   torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None])
+                                   torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None],
+                                   height_invariant=self.meta['gate_sensor'].get('height_invariant',False))
         action,self.state,_ = self.brain(obs,self.state,self.W)
         processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)
@@ -474,7 +475,8 @@ def run(args):
             pad.close()
             # A terminal stop used to leave the drone falling while the video
             # encoder closed. Do not toggle an already-paused/stalled game.
-            if args.pause_on_stop and time.monotonic()-last_progress<.15:
+            if (args.pause_on_stop and time.monotonic()-last_progress<.15
+                    and frame is not None and live_pose(frame)):
                 try:
                     pause_key_sent = pause_active_game()
                 except OSError:
