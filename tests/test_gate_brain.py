@@ -124,6 +124,19 @@ def test_elevation_training_includes_climbs_and_descents_and_updates_brain():
     assert brain.readout.weight.grad.abs().sum()>0
 
 
+def test_vertical_recovery_exposes_airborne_training_states_without_changing_evaluation():
+    from tests.test_human_brain import small_brain
+    from haltere.train.gate_brain import GateRollout
+    brain,cfg,_=small_brain()
+    args=dict(batch=12,turns=True,search=True,elevation=True,vertical_recovery_speed=1.2)
+    r=GateRollout(brain,cfg,**args)
+    assert torch.count_nonzero(r.vs.quad.vel[:4,2])==0
+    assert torch.count_nonzero(r.vs.quad.vel[4:,2])==8
+    assert r.vs.quad.vel[:,2].abs().max()<=1.2
+    evaluated=GateRollout(brain,cfg,evaluation=True,**args)
+    assert torch.count_nonzero(evaluated.vs.quad.vel[:,2])==0
+
+
 def test_hover_teacher_balances_simulated_gravity_with_randomized_thrust_and_tilt():
     from haltere.train.gate_brain import teacher_hover_command
     from haltere.sim.quad import QuadSim,QuadParams,QuadState,quat_from_euler

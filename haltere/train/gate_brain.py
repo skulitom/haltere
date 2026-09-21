@@ -80,7 +80,7 @@ def teacher_hover_command(sim, vertical):
 class GateRollout:
     def __init__(self, brain, cfg, batch=12, evaluation=False, teacher=None, turns=False, motor_anchor=.25,
                  search=False,elevation=False,height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,
-                 throttle_anchor=1.,height_gain=.6,search_height_anchor=False):
+                 throttle_anchor=1.,height_gain=.6,search_height_anchor=False,vertical_recovery_speed=0.):
         self.cfg = copy.deepcopy(cfg)
         self.cfg.train.randomize = .1
         self.cfg.train.randomize_ctl = .1
@@ -93,6 +93,7 @@ class GateRollout:
         self.search_height_anchor=search_height_anchor
         self.motor_anchor = motor_anchor
         self.throttle_anchor,self.height_gain=throttle_anchor,height_gain
+        self.vertical_recovery_speed=vertical_recovery_speed
         self.teacher = teacher
         self.teacher_W = teacher.weight_matrix().detach() if teacher is not None else None
         if evaluation or search:
@@ -146,6 +147,11 @@ class GateRollout:
                 q.pos[B//3:,2]=torch.linspace(2.,28.,count,device=dev)
                 dz=torch.tensor([5.,-1.,3.,-4.,5.,-5.,2.,-3.],device=dev).repeat((count+7)//8)[:count]
             self.gate[B//3:,2]=(q.pos[B//3:,2]+dz).clamp_min(1.2)
+            if not self.evaluation and self.vertical_recovery_speed:
+                # Expose the student to climbs/descents it does not yet produce
+                # on its own. Otherwise an over-damped parent never visits the
+                # vertical speeds needed to learn a sustained hillside climb.
+                q.vel[B//3:,2]=self.vertical_recovery_speed*(2*torch.rand(count,device=dev)-1)
         self.bias = torch.randn(B,3,device=dev)*torch.tensor([.2,.08,.08],device=dev)
         self.vs, self.state = self.vehicle.wrap(q), self.brain.init_state(B)
         self.teacher_state = self.teacher.init_state(B) if self.teacher is not None else None
@@ -205,7 +211,7 @@ class GateRollout:
         brain = self.brain
         W = brain.weight_matrix()
         self.state = brain.detach_state(self.state)
-        costs, imitation = [], []
+        costs, imitation, motor_errors = [], [], []
         retina = torch.zeros(self.B,RETINA_DIM,device=brain.device)
         for t in range(steps):
             q = self.vs.quad
@@ -253,6 +259,7 @@ class GateRollout:
                         hover=teacher_hover_command(self.vehicle.sim,R[:,2,2])
                         target[:,0]=(2*hover-1+.1*(desired_vz-q.vel[:,2])).clamp(-.8,.2)
                 scale = action.new_tensor([.23,.19,.084,.184])
+                motor_errors.append((action.detach()-target).square().mean(0))
                 errors = ((action-target)/scale).square()
                 if self.turns:
                     # Preserve learned motor stabilization while allowing the
@@ -289,6 +296,9 @@ class GateRollout:
             costs.append(cost.mean())
         self.age += steps
         physical = torch.stack(costs).mean()
+        self.last_diagnostics=dict(physical_loss=float(physical.detach()))
+        if motor_errors:
+            self.last_diagnostics['motor_teacher_rmse']=torch.stack(motor_errors).mean(0).sqrt().tolist()
         return (.8 if self.turns else .3)*physical+3.*torch.stack(imitation).mean() if imitation else physical
 
     def detach(self):
@@ -333,6 +343,8 @@ def train(args):
         raise ValueError('Elevation training requires --turns, --search and a training-only motor teacher')
     if args.search_height_anchor and not args.elevation:
         raise ValueError('Search height anchoring requires height-invariant elevation training')
+    if not 0<=args.vertical_recovery_speed<=2 or (args.vertical_recovery_speed and not args.elevation):
+        raise ValueError('Vertical recovery requires elevation training and a speed in [0, 2] m/s')
     if not 0<args.throttle_anchor<=100 or not 0<args.height_gain<=3:
         raise ValueError('Use 0 < throttle anchor <= 100 and 0 < height gain <= 3')
     torch.set_num_threads(2)
@@ -377,6 +389,7 @@ def train(args):
                                     height_invariant=True,flow_velocity_reference_m=1.5,
                                     throttle_anchor=args.throttle_anchor,height_gain=args.height_gain)
         meta['gate_training']['hover_teacher']='per-environment randomized thrust law and tilt; training only'
+        meta['gate_training']['initial_vertical_speed_range_mps']=[-args.vertical_recovery_speed,args.vertical_recovery_speed]
     if args.gravity_aligned_height:
         meta['gate_sensor']['goal_encoding']='gravity-aligned horizontal distance and height bounded at 3m; expressed in body frame'
     if args.search_height_anchor:
@@ -399,7 +412,8 @@ def train(args):
     (out/'baseline.json').write_text(json.dumps(baseline,indent=2))
     print(json.dumps({'baseline':baseline}),flush=True)
     rollout = GateRollout(brain,cfg,teacher=teacher,motor_anchor=args.motor_anchor,
-                          throttle_anchor=args.throttle_anchor,height_gain=args.height_gain,**evaluation_args)
+                          throttle_anchor=args.throttle_anchor,height_gain=args.height_gain,
+                          vertical_recovery_speed=args.vertical_recovery_speed,**evaluation_args)
     started = time.time()
     with (out/'training.jsonl').open('w') as log:
         for it in range(args.iters):
@@ -416,7 +430,8 @@ def train(args):
             rollout.detach()
             if it%10==0 or it+1==args.iters:
                 row = dict(iter=it+1,loss=float(loss.detach()),grad=float(norm),seconds=time.time()-started,
-                           mean_pos=rollout.vs.quad.pos.mean(0).tolist(),crossings=int(rollout.crossed.sum()))
+                           mean_pos=rollout.vs.quad.pos.mean(0).tolist(),crossings=int(rollout.crossed.sum()),
+                           **rollout.last_diagnostics)
                 print(json.dumps(row),flush=True)
                 log.write(json.dumps(row)+'\n'); log.flush()
             if (it+1)%50==0 or it+1==args.iters:
@@ -441,6 +456,8 @@ def main():
     p.add_argument('--elevation',action='store_true',help='Train climbs/descents without launch-altitude sensory dependence')
     p.add_argument('--gravity-aligned-height',action='store_true',help='Preserve true vertical error while bounding distant gates')
     p.add_argument('--search-height-anchor',action='store_true',help='Train neural search to retain its starting height from local odometry')
+    p.add_argument('--vertical-recovery-speed',type=float,default=0.,
+                   help='Initial vertical speed variation during elevation training only (0 to 2 m/s)')
     p.add_argument('--dynamics',default='',help='JSON with measured quad/rates/ctl overrides and source provenance')
     p.add_argument('--motor-anchor',type=float,default=.25,help='Roll/pitch motor-teacher loss weight in turn training')
     p.add_argument('--throttle-anchor',type=float,default=1.,help='Throttle imitation weight in turn/elevation training')

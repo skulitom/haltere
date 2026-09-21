@@ -397,7 +397,8 @@ def run(args):
                              'processed_thr','processed_roll','processed_pitch','processed_yaw','x','y','z',
                              'in_thr','in_yaw','in_pitch','in_roll','raw_thr','raw_roll','raw_pitch','raw_yaw',
                              'vx','vy','vz','qw','qx','qy','qz','gate_p','gate_bx','gate_by','gate_bz','gate_age',
-                             'capture_time','frame_time','det_bx','det_by','det_bz','det_width','neural_search'])
+                             'capture_time','frame_time','det_bx','det_by','det_bz','det_width','neural_search',
+                             'motor_mean','omega_x','omega_y','omega_z','search_height_reference'])
             while time.monotonic()-begin < args.seconds:
                 new = rx.wait(.001)
                 camera_frame = camera.latest
@@ -467,7 +468,9 @@ def run(args):
                                  *frame.input,*raw,*velocity,*q,controller.gate_confidence,*controller.relative_gate,
                                  now-controller.gate_time if controller.gate_time is not None else -1,
                                  capture_time,last_frame,*(detection['point'] if detection else [0.,0.,0.]),
-                                 detection['width'] if detection else 0.,controller.searching])
+                                 detection['width'] if detection else 0.,controller.searching,
+                                 float(controller.motor[0,0]),*controller.pose.omega,
+                                 controller.search_height if controller.search_height is not None else float('nan')])
                 count += 1
                 if shared:
                     rates = (controller.brain.cfg.rate_max*torch.sigmoid(controller.state['v'][:,0])).cpu().numpy()
