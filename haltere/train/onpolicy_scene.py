@@ -230,8 +230,9 @@ def assess(brain,parent,replay,ids,require_blank_parent=True):
     return dict(mse_axes=result,sample_counts=counts,blank_parent_max_delta=blank_max)
 
 
-def train(parent,prepared,out,iterations=400,motor_refit=False):
+def train(parent,prepared,out,iterations=400,motor_refit=False,prefix_lock=False):
     if iterations<=0:raise ValueError('Positive iteration count required')
+    if prefix_lock and not motor_refit:raise ValueError('Prefix lock requires motor refitting')
     torch.set_num_threads(2);torch.manual_seed(1839);rng=np.random.default_rng(1839)
     parent,prepared,out=map(Path,(parent,prepared,out));m=json.loads((prepared/'manifest.json').read_text())
     if sha256(parent)!=m['parent_sha256']:raise ValueError('Parent changed')
@@ -243,10 +244,14 @@ def train(parent,prepared,out,iterations=400,motor_refit=False):
     if motor_refit:
         brain.readout.weight.requires_grad_(True)
         parameters.append(brain.readout.weight)
-        groups.append(dict(params=[brain.readout.weight],lr=.00001))
+        groups.append(dict(params=[brain.readout.weight],lr=.0003 if prefix_lock else .00001))
     opt=torch.optim.Adam(groups)
     original=torch.load(parent,map_location='cpu',weights_only=True)
     tr,val=WarmReplay(prepared,'train'),WarmReplay(prepared,'validation')
+    basis=singular=None
+    if prefix_lock:
+        from .motor_retention import prefix_motor_basis,constrain_readout,outside_basis
+        basis,singular=prefix_motor_basis(frozen,tr)
     def partitions(replay):
         prefix=[];correction=[]
         for i,(k,s) in enumerate(replay.windows):
@@ -258,9 +263,15 @@ def train(parent,prepared,out,iterations=400,motor_refit=False):
     prefix,correction=partitions(tr);vp,vc=partitions(val)
     ids=[*rng.choice(vp,min(16,len(vp)),replace=False),*rng.choice(vc,min(24,len(vc)),replace=False)]
     out.mkdir(parents=True,exist_ok=False);started=time.monotonic()
+    lock=None
+    if basis is not None:
+        np.savez_compressed(out/'prefix-basis.npz',basis=basis.cpu().numpy(),singular_values=singular.cpu().numpy())
+        lock=dict(rank=len(basis),sha256=sha256(out/'prefix-basis.npz'),source='training successful-prefix parent neural states',
+                  relative_singular_threshold=1e-5,max_relative_readout_norm=.5)
     (out/'config.json').write_text(json.dumps(dict(parent=str(parent),prepared=str(prepared),iterations=iterations,
         seed=1839,batch_size=8,window_ticks=128,initial_gain=initial_gain,max_gain=.15,
-        motor_refit=motor_refit,motor_readout_learning_rate=.00001 if motor_refit else None,
+        motor_refit=motor_refit,motor_readout_learning_rate=(.0003 if prefix_lock else .00001) if motor_refit else None,
+        motor_prefix_lock=lock,
         training_code_sha256=sha256(__file__)),indent=2))
     for it in range(1,iterations+1):
         if it%10==1:wait_if_hot(70.)
@@ -276,9 +287,13 @@ def train(parent,prepared,out,iterations=400,motor_refit=False):
             blank,_,_=rollout(brain,b,blank=True,detach_every=8)
             prefix_mask=(b['correct'][:,20:,0]<.01)
             loss+=(((blank-base)[:,20:]/blank.new_tensor([.004,.012,.012,.012]))[prefix_mask]**2).mean()
-        opt.zero_grad(set_to_none=True);loss.backward();norm=torch.nn.utils.clip_grad_norm_(parameters,1.)
+        opt.zero_grad(set_to_none=True);loss.backward()
+        if basis is not None:
+            brain.readout.weight.grad.copy_(outside_basis(brain.readout.weight.grad,basis))
+        norm=torch.nn.utils.clip_grad_norm_(parameters,1.)
         if not torch.isfinite(loss) or not torch.isfinite(norm):raise RuntimeError('Nonfinite update')
         opt.step()
+        if basis is not None:constrain_readout(brain.readout.weight,frozen.readout.weight,basis)
         with torch.no_grad():parameters[1].clamp_(max=math.log(.15))
         row=dict(iteration=it,loss=float(loss.detach()),elapsed_s=time.monotonic()-started)
         with (out/'training.jsonl').open('a') as f:f.write(json.dumps(row)+'\n')
@@ -296,6 +311,7 @@ def train(parent,prepared,out,iterations=400,motor_refit=False):
                 teacher_training_only=True,iterations=iterations,iteration=it,training_code_sha256=sha256(__file__),
                 path_supervision=m['path_supervision'],changed_weights=changed,closed_loop=False,
                 motor_refit=motor_refit,recurrent_weights_unchanged=True,
+                motor_prefix_lock=lock,
                 blank_retina_parent_tolerance=None if motor_refit else 1e-5,validation=result,
                 purpose='on-policy visual correction with successful-prefix retention')
             meta['gate_sensor']['raw_retina_active']=True
@@ -311,8 +327,9 @@ if __name__=='__main__':
     p.add_argument('--validation-flight',action='append',default=[])
     p.add_argument('--track');p.add_argument('--race');p.add_argument('--route');p.add_argument('--after-passages',type=int,default=11)
     p.add_argument('--motor-refit',action='store_true',help='Also fit motor readout weights with successful-prefix retention')
+    p.add_argument('--prefix-lock',action='store_true',help='Project motor updates outside measured successful-prefix activity')
     p.add_argument('--iterations',type=int,default=400);a=p.parse_args()
     if a.command=='prepare':
         prepare(a.parent,[(f,'train') for f in a.train_flight]+[(f,'validation') for f in a.validation_flight],
                 a.track,a.race,a.route,a.out,a.after_passages)
-    else:train(a.parent,a.prepared,a.out,a.iterations,a.motor_refit)
+    else:train(a.parent,a.prepared,a.out,a.iterations,a.motor_refit,a.prefix_lock)

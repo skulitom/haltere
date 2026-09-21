@@ -552,3 +552,11 @@ invariance. Continuous evaluation uses the original parent's readout in its
 reference branch and reports matched, shuffled and blank-image student errors.
 Recurrent weights, graph structure, known transmitter signs and detector remain
 fixed. Weights remain experimental until continuous and live checks pass.
+
+Scene 06 improved held-out imitation but failed continuous prefix retention:
+the largest throttle change was 0.108 at 42.85 seconds. It was not flown.
+`--prefix-lock` additionally projects readout updates outside the motor-activity
+subspace measured on the training flight's successful prefix (SVD relative
+threshold 1e-5), and bounds each update's norm to half the parent row norm.
+Validation states do not construct this constraint. This is a sampled activity
+constraint, so full continuous and live retention checks remain necessary.
