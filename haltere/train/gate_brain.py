@@ -357,7 +357,7 @@ def train(args):
         cfg = calibrated_dynamics(cfg,json.loads(Path(args.dynamics).read_text()))
     parent = torch.load(args.checkpoint,map_location='cpu',weights_only=True)
     meta = copy.deepcopy(parent['visual_brain'])
-    meta.pop('perception_rebind',None)  # this run updates the brain itself
+    parent_stages={k:meta.pop(k) for k in ('perception_rebind','vertical_readout_training') if k in meta}
     args.detector = args.detector or meta.get('gate_sensor',{}).get('checkpoint','artifacts/gatenet_best.pt')
     if args.centre_offset_m is None:
         args.centre_offset_m = meta.get('gate_sensor',{}).get('centre_offset_m',1.5)
@@ -376,6 +376,8 @@ def train(args):
         gate_training=dict(parent_sha256=sha256(args.checkpoint),objective='2 m/s through varied gate apertures',
                            seed=args.seed,teacher_used=False,learning_rate=args.lr,
                            iterations=args.iters,neural_warmup_steps=50),qualified=False)
+    if parent_stages:
+        meta['gate_training']['parent_stages']=parent_stages
     if args.turns:
         meta['gate_training'].update(objective='camera-facing moving turns with approach braking',
                                      turns=True,global_heading_randomized=True,motor_anchor=args.motor_anchor)
