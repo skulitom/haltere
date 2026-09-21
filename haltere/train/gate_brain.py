@@ -15,13 +15,25 @@ from pathlib import Path
 
 import torch
 
-from .bptt import load_checkpoint, make_world
+from .bptt import ExperimentConfig, load_checkpoint, make_world
 from .human_brain import export
 from .thermal import wait_if_hot
 from ..brain.gate_senses import gate_observation, aperture_crossing
 from ..brain.retina import RETINA_DIM
 from ..sim.quad import QuadState, quat_from_euler, quat_to_mat
 from ..vision.datasets import sha256
+
+
+def calibrated_dynamics(cfg, profile):
+    result = cfg.to_dict()
+    overrides = profile['overrides']
+    if not overrides or set(overrides)-{'quad','rates','ctl'}:
+        raise ValueError('Dynamics calibration may only override quad, rates and ctl')
+    for section,values in overrides.items():
+        if set(values)-set(result[section]):
+            raise ValueError(f'Unknown dynamics field in {section}')
+        result[section].update(values)
+    return ExperimentConfig.from_dict(result)
 
 
 def turn_objective(position, velocity, rotation, gate, normal, crossed):
@@ -39,13 +51,14 @@ def turn_objective(position, velocity, rotation, gate, normal, crossed):
 
 
 class GateRollout:
-    def __init__(self, brain, cfg, batch=12, evaluation=False, teacher=None, turns=False):
+    def __init__(self, brain, cfg, batch=12, evaluation=False, teacher=None, turns=False, motor_anchor=.25):
         self.cfg = copy.deepcopy(cfg)
         self.cfg.train.randomize = .1
         self.cfg.train.randomize_ctl = .1
         self.cfg.quad.gyro_noise = 0.
         self.brain, self.B, self.evaluation = brain, batch, evaluation
         self.turns = turns
+        self.motor_anchor = motor_anchor
         self.teacher = teacher
         self.teacher_W = teacher.weight_matrix().detach() if teacher is not None else None
         if evaluation:
@@ -151,7 +164,7 @@ class GateRollout:
                 if self.turns:
                     # Preserve learned motor stabilization while allowing the
                     # physical loss to teach braking and sideways correction.
-                    errors = errors*action.new_tensor([1.,.25,.25,1.])
+                    errors = errors*action.new_tensor([1.,self.motor_anchor,self.motor_anchor,1.])
                 imitation.append(errors.mean())
             self.delay.append(action)
             self.vs = self.vehicle.step(self.vs,self.delay.popleft())
@@ -209,6 +222,8 @@ def train(args):
     out.mkdir(parents=True,exist_ok=False)
     (out/'config.json').write_text(json.dumps(vars(args),indent=2))
     brain,cfg,_ = load_checkpoint(args.checkpoint,args.device)
+    if args.dynamics:
+        cfg = calibrated_dynamics(cfg,json.loads(Path(args.dynamics).read_text()))
     parent = torch.load(args.checkpoint,map_location='cpu',weights_only=True)
     meta = copy.deepcopy(parent['visual_brain'])
     meta.pop('schema',None)
@@ -221,7 +236,10 @@ def train(args):
                            iterations=args.iters,neural_warmup_steps=50),qualified=False)
     if args.turns:
         meta['gate_training'].update(objective='camera-facing moving turns with approach braking',
-                                     turns=True,global_heading_randomized=True)
+                                     turns=True,global_heading_randomized=True,motor_anchor=args.motor_anchor)
+    if args.dynamics:
+        meta['gate_training']['dynamics'] = dict(path=args.dynamics,sha256=sha256(args.dynamics),
+                                                 profile=json.loads(Path(args.dynamics).read_text()))
     teacher = None
     if args.motor_teacher:
         teacher,_,_ = load_checkpoint(args.motor_teacher,args.device)
@@ -235,7 +253,7 @@ def train(args):
     baseline = evaluate(brain,cfg,turns=args.turns)
     (out/'baseline.json').write_text(json.dumps(baseline,indent=2))
     print(json.dumps({'baseline':baseline}),flush=True)
-    rollout = GateRollout(brain,cfg,teacher=teacher,turns=args.turns)
+    rollout = GateRollout(brain,cfg,teacher=teacher,turns=args.turns,motor_anchor=args.motor_anchor)
     started = time.time()
     with (out/'training.jsonl').open('w') as log:
         for it in range(args.iters):
@@ -272,6 +290,8 @@ def main():
     p.add_argument('--lr',type=float,default=1e-4); p.add_argument('--seed',type=int,default=917)
     p.add_argument('--motor-teacher',default='',help='Optional frozen motor brain for training-only stabilization labels')
     p.add_argument('--turns',action='store_true',help='Train moving approaches with varied gate bearing and world heading')
+    p.add_argument('--dynamics',default='',help='JSON with measured quad/rates/ctl overrides and source provenance')
+    p.add_argument('--motor-anchor',type=float,default=.25,help='Roll/pitch motor-teacher loss weight in turn training')
     train(p.parse_args())
 
 

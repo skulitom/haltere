@@ -327,3 +327,35 @@ The turn candidate remains experimental until matched simulator checks and
 recorded live flights establish an improvement. Release qualification still
 requires repeatable full courses and transfer testing with the navigation
 predictor absent.
+
+The 200-update turn candidate (`gate-brain-03a`, SHA256
+`eca5257ab7e5b6fefc7dcca9453bf68523c7bcabe154b9aa2926bbd3a77b1ccf`)
+improved the synthetic turn check from 11/12 to 12/12, with no simulated crashes.
+Its live test regressed: it cleared the launch arches faster, then hit gate 2's
+post. It is rejected for release. `runs/gate-brain-live-02/turns.*` retains the
+failed attempt. Do not use the perfect synthetic score to claim flight readiness.
+
+The simulator still had the earlier drone's rates and much higher horizontal
+drag. `original_drone_gate_dynamics.json` records the original drone's configured
+rates/PID gains and a partial horizontal drag correction from two recorded
+flights, with source hashes. Gravity-corrected body acceleration perpendicular
+to the rotor thrust identifies this drag without assuming a throttle-to-thrust
+curve. Fixed corrected coefficients gave 0.0152 m/s² forward residual RMS on a
+third recording that was not used to choose them. This is a dynamics check,
+not a held-out navigation result. Mass, inertia, vertical drag and the existing
+hover adapter remain uncalibrated by this procedure.
+
+The corrected simulator predicts 2.59 m/s for the rejected turn brain, close to
+its 2.60 m/s live peak, versus 1.81 m/s in the old simulator. The next experiment
+continues that newest brain with corrected dynamics and stronger roll/pitch
+stabilization supervision from the earlier motor teacher:
+
+```powershell
+.venv/Scripts/python.exe -m haltere.train.gate_brain runs/gate-brain-03a/last.pt --out runs/gate-brain-04 --iters 200 --lr 0.00005 --motor-teacher runs/gate-brain-02/last.pt --turns --motor-anchor 1 --dynamics configs/original_drone_gate_dynamics.json
+.venv/Scripts/python.exe -m haltere.liftoff.fit_drag runs/gate-brain-live-01/repeat.csv --end 51 --reference .01 .004 --out drag-validation.json
+```
+
+Live attempts can now use `--pause-on-stop` so a terminal stop pauses the still
+active game before the recorder closes. The flag sends no key in shadow mode
+or when the game is hidden; verify the pause before disconnecting the bridge.
+The bounded duration limit is 1800 seconds to permit eventual full-lap checks.

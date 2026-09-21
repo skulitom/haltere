@@ -103,3 +103,18 @@ def test_camera_pose_uses_capture_time_and_handles_quaternion_sign_flip():
     np.testing.assert_allclose(q,[np.cos(np.pi/8),0.,0.,np.sin(np.pi/8)],atol=1e-7)
     np.testing.assert_allclose(history.at(9.)[0],[0.,0.,0.])
     np.testing.assert_allclose(history.at(12.)[0],[2.,0.,0.])
+
+
+def test_dynamics_calibration_preserves_brain_and_task_and_rejects_other_overrides():
+    import pytest
+    from haltere.train.bptt import ExperimentConfig
+    from haltere.train.gate_brain import calibrated_dynamics
+    cfg=ExperimentConfig.from_dict({})
+    new=calibrated_dynamics(cfg,{'overrides':{'rates':{'expo':[.3,.3,.3]},'quad':{'drag_lin':[.01,.01,.1]}}})
+    assert new.rates.expo==(.3,.3,.3)
+    assert cfg.rates.expo==(.0,.0,.0)
+    assert new.brain==cfg.brain and new.task==cfg.task
+    with pytest.raises(ValueError):
+        calibrated_dynamics(cfg,{'overrides':{'brain':{'dt':.02}}})
+    with pytest.raises(ValueError):
+        calibrated_dynamics(cfg,{'overrides':{'quad':{'misspelled_drag':.01}}})

@@ -231,12 +231,25 @@ def flight_limit_reason(position, velocity, max_height, max_speed, max_distance)
     return None
 
 
+def pause_active_game():
+    """Pause only the still-foreground game, without changing desktop focus."""
+    import ctypes
+    from .commands import find_game_window, game_window_active
+    if not game_window_active(find_game_window('Liftoff')):
+        return False
+    user32 = ctypes.windll.user32
+    user32.keybd_event(0x1b,0x01,0,0)
+    time.sleep(.04)
+    user32.keybd_event(0x1b,0x01,2,0)
+    return True
+
+
 def run(args):
     from .gamepad import UdpSticks
     from .recorder import FlightRecorder, SharedFlightState
     from .manual_recording import live_pose
-    if not 0 < args.seconds <= 120:
-        raise ValueError('Use a bounded run of 0 < seconds <= 120')
+    if not 0 < args.seconds <= 1800:
+        raise ValueError('Use a bounded run of 0 < seconds <= 1800')
     if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
         raise ValueError('Use finite positive flight limits')
     log_path = Path(args.log)
@@ -339,9 +352,17 @@ def run(args):
         reason = str(e)
         raise
     finally:
+        pause_key_sent = False
         if pad:
             pad.neutral()
             pad.close()
+            # A terminal stop used to leave the drone falling while the video
+            # encoder closed. Do not toggle an already-paused/stalled game.
+            if args.pause_on_stop and time.monotonic()-last_progress<.15:
+                try:
+                    pause_key_sent = pause_active_game()
+                except OSError:
+                    pass
         camera_status = camera.diagnostics()
         camera.stop()
         rx.close()
@@ -357,6 +378,7 @@ def run(args):
                       camera_fps=camera.fps,
                       close_gate_memory_s=2.,
                       camera_pose_alignment='interpolated telemetry receipt times',
+                      pause_key_sent=pause_key_sent,
                       camera_diagnostics=camera_status,camera_failure=camera_failure,
                       origin_sim=controller.pose.pos0.tolist() if controller.pose.pos0 is not None else None,
                       images_blanked=args.blank_retina,
@@ -386,6 +408,7 @@ def main():
     p.add_argument('--port',type=int,default=9001)
     p.add_argument('--device',default='cuda')
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
+    p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--max-height',type=float,default=8.)
     p.add_argument('--max-speed',type=float,default=10.)
     p.add_argument('--max-distance',type=float,default=20.)

@@ -1,0 +1,19 @@
+{
+  "schema": "haltere.partial_dynamics.v1",
+  "drone": "[Copy] New Drone",
+  "drone_id": "85e3d358-5b42-4f16-b3d3-398a7d18f650",
+  "overrides": {
+    "rates": {"rc_rate": [1.55, 1.55, 1.0], "expo": [0.3, 0.3, 0.3], "super_rate": [0.73, 0.73, 0.73]},
+    "ctl": {"P": [34, 29, 30], "I": [28, 25, 32], "D": [29, 22, 0]},
+    "quad": {"drag_lin": [0.0062, 0.0062, 0.1], "drag_quad": [0.00248, 0.00248, 0.45]}
+  },
+  "sources": {
+    "drone_configuration_sha256": "7e75ec7b5e36ddcf8be176157cfe686fb1966ee2e2768cb71f458a9b8788bee8",
+    "flight_logs": [
+      {"path": "runs/camera-profile-01/occlusion.csv", "sha256": "1b6a9e7ba2fe533f228d5618a66fe8c06015b87672b3aa91dc38341a8c840558", "end_s": 85},
+      {"path": "runs/gate-brain-live-02/turns.csv", "sha256": "1351422b90330fc714ddd492afc7dad9c785d0e75fcfc08d2819c7e2b2684323", "end_s": 36}
+    ]
+  },
+  "method": "Horizontal body specific acceleration from smoothed velocity derivative and attitude. Fit drag per mass using positive robust linear plus quadratic coefficients. Forward fits: linear 0.0070/0.0144 s^-1, quadratic 0.00447/0.00259 m^-1. Use 0.01/0.004 at the existing simulator mass 0.62 kg, isotropically because lateral excitation is weak.",
+  "limits": "Partial calibration only. Keeps the existing abstract thrust/hover adapter, mass, inertia, vertical drag and motor lag. No claim of full original-drone system identification. These logs are development data, not an untouched test set."
+}
