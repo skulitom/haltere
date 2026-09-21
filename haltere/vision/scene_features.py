@@ -9,6 +9,23 @@ from torch.nn import functional as F
 from ..brain.retina import mask_retina_pixels
 
 
+def scene_feature_fingerprint(net):
+    """Fingerprint every weight/buffer used by scene_map, including normalization."""
+    import hashlib
+    digest = hashlib.sha256()
+    state = {'mean': net.mean, 'std': net.std, **net.features[:6].state_dict()}
+    for name,value in sorted(state.items()):
+        value = value.detach().cpu().contiguous()
+        digest.update(f'{name}:{value.dtype}:{tuple(value.shape)}:'.encode())
+        digest.update(value.numpy().tobytes())
+    return digest.hexdigest()
+
+
+def freeze_scene_backbone(net):
+    """Call after every net.train(): BN statistics are part of frozen features."""
+    net.features[:6].eval().requires_grad_(False)
+
+
 def scene_map(net,pixels):
     x=mask_retina_pixels(pixels,'scene_v2')
     return F.adaptive_avg_pool2d(net.features[:6]((x-net.mean)/net.std),(6,10))

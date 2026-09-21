@@ -53,3 +53,23 @@ def test_checkpoint_loader_preserves_detector_architecture(tmp_path, architectur
 def test_unknown_architecture_is_not_silently_replaced():
     with pytest.raises(ValueError, match='Unknown'):
         make_gatenet('unknown')
+
+
+def test_detector_refit_preserves_brain_scene_features_including_batch_norm():
+    from haltere.vision.scene_features import scene_map, scene_feature_fingerprint, freeze_scene_backbone
+    net = SpatialGateNet(4).eval()
+    pixels = torch.rand(2,3,180,320)
+    target = torch.tensor([[1.,-.6,.4,-.8],[0.,0.,0.,0.]])
+    before = scene_map(net,pixels).detach().clone()
+    fingerprint = scene_feature_fingerprint(net)
+    original_head = net.spatial_head[-1].weight.detach().clone()
+    freeze_scene_backbone(net)
+    optimizer = torch.optim.AdamW([p for p in net.parameters() if p.requires_grad],lr=.001)
+    for _ in range(2):
+        net.train();freeze_scene_backbone(net)
+        _,loss,_ = net.predict_and_loss(pixels,target)
+        optimizer.zero_grad();loss.backward();optimizer.step()
+    net.eval()
+    assert torch.equal(before,scene_map(net,pixels))
+    assert fingerprint == scene_feature_fingerprint(net)
+    assert not torch.equal(original_head,net.spatial_head[-1].weight)

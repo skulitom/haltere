@@ -228,7 +228,7 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
           width: int = 32, device: str = 'cuda', val_frac: float = 0.1, seed: int = 0,
           max_gpu_temp: float = 70.0, batch_sleep: float = 0.15, init: str = '', augment: str = 'strong',
           holdout: list[str] | None = None, hard_mining: bool = False,
-          architecture: str = 'regression') -> Path:
+          architecture: str = 'regression', freeze_scene_features: bool = False) -> Path:
     from .datasets import audit_split
     # Run before loading/training: aliases and copied frames otherwise leak into a
     # nominal whole-flight holdout. Retain exactly which labels and images were used.
@@ -237,6 +237,8 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
         raise ValueError('epochs and batch must be positive, and val_frac must be in (0, 1)')
     if hard_mining and (not init or not holdout):
         raise ValueError('Hard-example sampling requires an initial detector and whole-flight validation')
+    if freeze_scene_features and (not init or architecture != 'spatial_v1'):
+        raise ValueError('Frozen scene features require an initial spatial detector')
     torch.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
@@ -272,6 +274,11 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
         else:
             raise ValueError('Unsupported gate detector architecture migration')
         print(f'initialised from {init} (epoch {ck.get("epoch")})', flush=True)
+    feature_fingerprint = None
+    if freeze_scene_features:
+        from .scene_features import freeze_scene_backbone, scene_feature_fingerprint
+        freeze_scene_backbone(net)
+        feature_fingerprint = scene_feature_fingerprint(net)
     sampler=None
     if hard_mining:
         weights=hard_example_weights(net,train_ds,dev,batch)
@@ -282,12 +289,14 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
             weights=weights.tolist(),replacement=True)
     tl = torch.utils.data.DataLoader(train_ds, batch_size=batch, shuffle=sampler is None,
                                     sampler=sampler,num_workers=0,drop_last=True)
-    opt = torch.optim.AdamW(net.parameters(), lr=lr, weight_decay=1e-4)
+    opt = torch.optim.AdamW([p for p in net.parameters() if p.requires_grad], lr=lr, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=lr, total_steps=max(1, epochs * len(tl)))
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     provenance.update(seed=seed, init=str(init), init_sha256=None, architecture=architecture,
                       augment=augment, epochs=epochs, batch=batch, lr=lr,
+                      frozen_scene_features=freeze_scene_features,
+                      scene_feature_sha256=feature_fingerprint,
                       validation_kind='whole_flights' if holdout else 'random_frames_legacy')
     if init:
         from .datasets import sha256
@@ -300,6 +309,7 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
     n_batches = 0
     for ep in range(epochs):
         net.train()
+        if freeze_scene_features:freeze_scene_backbone(net)
         tot = 0.0
         for x, y in tl:
             x, y = x.to(dev), y.to(dev)
@@ -328,6 +338,8 @@ def train(datasets: list[str], out_dir: str = 'runs/gatenet', epochs: int = 25, 
                     err_px += float(((d[m, 1:3] - y[m, 1:3]).abs() * torch.tensor([IN_W / 2, IN_H / 2], device=dev)).mean(1).sum())
                     n_vis += int(m.sum())
         vloss = vtot / max(n, 1)
+        if freeze_scene_features and scene_feature_fingerprint(net) != feature_fingerprint:
+            raise RuntimeError('Frozen image features changed during detector training')
         print(f'epoch {ep + 1:3d}: train {tot / max(len(tl), 1):.3f} val {vloss:.3f} '
               f'visible-acc {vis_ok / max(n, 1):.2f} centre-err {err_px / max(n_vis, 1):.1f} px ({n_vis} visible) {time.time() - t0:5.0f}s',
               flush=True)
