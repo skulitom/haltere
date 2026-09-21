@@ -66,6 +66,17 @@ def search_objective(velocity, rotation, omega, height_error=None):
     return cost if height_error is None else cost+6.*height_error.square()
 
 
+def teacher_hover_command(sim, vertical):
+    """Training-only feedforward using each world's actual thrust law.
+
+    A fixed nominal hover value conflicts with the randomized physics, and
+    square-root tilt compensation is correct only for a quadratic thrust law.
+    No simulation parameters are exposed to the deployed brain.
+    """
+    exponent=sim.thrust_exp.reshape(-1)
+    return (1./(sim.twr.reshape(-1)*vertical.clamp_min(.6))).pow(1./exponent)
+
+
 class GateRollout:
     def __init__(self, brain, cfg, batch=12, evaluation=False, teacher=None, turns=False, motor_anchor=.25,
                  search=False,elevation=False,height_invariant=False,centre_offset=1.5,gravity_aligned_height=False,
@@ -239,7 +250,7 @@ class GateRollout:
                         if self.search_height_anchor:
                             desired_vz=torch.where(self.searching,
                                 (-.6*(q.pos[:,2]-self.search_height)).clamp(-1.2,1.2),desired_vz)
-                        hover=self.vehicle.sim.hover_command()/R[:,2,2].clamp_min(.6).sqrt()
+                        hover=teacher_hover_command(self.vehicle.sim,R[:,2,2])
                         target[:,0]=(2*hover-1+.1*(desired_vz-q.vel[:,2])).clamp(-.8,.2)
                 scale = action.new_tensor([.23,.19,.084,.184])
                 errors = ((action-target)/scale).square()
@@ -365,6 +376,7 @@ def train(args):
                                     vertical_teacher='measured relative-height velocity target; training only',
                                     height_invariant=True,flow_velocity_reference_m=1.5,
                                     throttle_anchor=args.throttle_anchor,height_gain=args.height_gain)
+        meta['gate_training']['hover_teacher']='per-environment randomized thrust law and tilt; training only'
     if args.gravity_aligned_height:
         meta['gate_sensor']['goal_encoding']='gravity-aligned horizontal distance and height bounded at 3m; expressed in body frame'
     if args.search_height_anchor:

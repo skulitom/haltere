@@ -124,6 +124,24 @@ def test_elevation_training_includes_climbs_and_descents_and_updates_brain():
     assert brain.readout.weight.grad.abs().sum()>0
 
 
+def test_hover_teacher_balances_simulated_gravity_with_randomized_thrust_and_tilt():
+    from haltere.train.gate_brain import teacher_hover_command
+    from haltere.sim.quad import QuadSim,QuadParams,QuadState,quat_from_euler
+    sim=QuadSim(QuadParams(),torch.device('cpu'),substeps=1)
+    sim.randomize(3,.1)
+    sim.thrust_exp=torch.tensor([[.768],[1.5],[2.]])
+    sim.twr=torch.tensor([2.69,3.21,6.])
+    pitch=torch.tensor([0.,.2,-.4])
+    st=QuadState.hover(3,'cpu',3.)
+    st.quat=quat_from_euler(pitch*0,pitch,pitch*0)
+    command=teacher_hover_command(sim,pitch.cos())
+    st.motor=command[:,None].expand(3,4).clone()
+    # Check the resulting simulator acceleration, not the inverse formula.
+    after=sim.step(st,st.motor)
+    torch.testing.assert_close(after.vel[:,2],torch.zeros(3),atol=2e-6,rtol=0)
+    assert torch.count_nonzero(after.vel[1:,:2])>0
+
+
 def test_nearby_gate_can_be_remembered_briefly_but_never_indefinitely():
     import numpy as np
     from haltere.liftoff.visual_brain import gate_memory_valid
