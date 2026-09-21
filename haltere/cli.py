@@ -752,6 +752,7 @@ def main(argv=None):
     q.add_argument('--arm-ramp', type=float, default=1.2, help='seconds over which the brain\'s sticks are ramped in')
     q.add_argument('--reset-button', default='', help='virtual pad button that resets the drone in Liftoff (e.g. A, Y, BACK); pressed after a crash')
     q.add_argument('--reset-key', default='', help='keyboard key that resets the drone in Liftoff (R by default in the game); sent to the game window after a crash')
+    q.add_argument('--pause-on-stop', action='store_true', help='Pause a still-running game when this control attempt ends')
     q.add_argument('--record', default='', help='write an MP4 of the Liftoff window + live brain activity')
     q.add_argument('--dataset', default='', help='vision dataset directory: save captured game frames (640x360 JPEG) '
                                                  'with the pose and target of each frame (index.csv)')

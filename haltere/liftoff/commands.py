@@ -731,6 +731,7 @@ def cmd_fly(a):
     stick_hist = []
     armed_since = None      # Liftoff arms only after the throttle has been low; hold it low briefly, then ramp in
     last_reset_ts = None
+    last_progress_ts, last_progress_wall = None, time.time()
     grounded_since = None
     still_since = None
     crashed = False
@@ -749,8 +750,16 @@ def cmd_fly(a):
             if fr is None:
                 if pad is not None and now - last_frame_time > 0.5:
                     pad.neutral()
+                if world_route is not None and pilot.pos0 is not None and now-last_progress_wall > 1.:
+                    print('World-route experiment stopped: telemetry paused or stale', flush=True)
+                    break
                 continue
             last_frame_time = now
+            if fr.timestamp != last_progress_ts:
+                last_progress_ts, last_progress_wall = fr.timestamp, now
+            elif world_route is not None and now-last_progress_wall > 1.:
+                print('World-route experiment stopped: telemetry no longer advancing', flush=True)
+                break
             if world_route is None and pilot.pos0 is None:
                 rx.forward_port = telemetry_copy_port
             if world_route is not None:
@@ -874,6 +883,14 @@ def cmd_fly(a):
         if flog is not None:
             flog_f.close()
         if pad is not None:
+            pad.neutral()
+            if getattr(a, 'pause_on_stop', False):
+                from .visual_brain import telemetry_still_progressing,pause_active_game
+                if telemetry_still_progressing(rx):
+                    try:
+                        pause_active_game()
+                    except OSError:
+                        pass
             pad.close()
         rx.close()
         if recorder is not None:
