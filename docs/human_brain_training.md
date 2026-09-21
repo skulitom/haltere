@@ -235,3 +235,28 @@ route dataset greatly increases imitation losses relative to physical recovery.
 The exact scale is saved with the checkpoint and reused for continuous replay
 evaluation. This is a new training objective; it needs its own live evaluation
 and does not establish that the navigation predictor improves flight.
+
+The 120-update direct-distillation candidate has SHA256
+`33ec2e20534c13abec3074f9e0a63142fd4b9b099f84ae97883e1cfa955065d0`.
+Recurrent edge gains, neuron parameters and motor weights changed; fixed wiring
+and transmitter constraints remain. Replay error worsened and the strict
+simulator stationary check failed, so this candidate is not release-qualified.
+Bounded Anode tests on the original drone nevertheless demonstrate improved
+takeoff and vertical stability with both teachers absent:
+
+| Live attempt | Result |
+| --- | --- |
+| 15 s, camera enabled | Completed; maximum speed 0.622 m/s; drift 2.448 m |
+| First 60 s attempt | Stopped at 18.6 s for stale imagery; height 2.450 m before stop |
+| Repeat 60 s attempt | Completed; maximum speed 0.627 m/s; drift 13.210 m |
+
+In the completed minute, height during the last 30 seconds stayed between
+2.4718 and 2.4809 m; maximum absolute vertical speed in that interval was
+0.00237 m/s. Slow yaw and horizontal drift remained. All four motor axes came
+from the exported brain with camera input, no route, no external goal and no
+yaw assistant. Evidence and synchronized brain/flight videos are under
+`runs/navigation-motor-brain-01/`. This is a stability milestone, not evidence
+of gate navigation, generalization or a benefit attributable to the predictor.
+The next navigation experiment should train corrections on states visited by
+the visual student and qualify one gate before attempting laps. These weights
+have not been promoted to GitHub/Hugging Face model releases.
