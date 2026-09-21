@@ -50,7 +50,8 @@ class RecoveryRollout:
     cost also trains height and damping through physics and student senses.
     Both neural states persist across windows, and the teacher is training-only.
     """
-    def __init__(self, teacher, cfg, calibration, batch_size=8, takeoff=False, physics_weight=0.):
+    def __init__(self, teacher, cfg, calibration, batch_size=8, takeoff=False, physics_weight=0.,
+                 horizontal_weight=.2, angular_weight=.02, hold_heading=False):
         import copy
         from .bptt import make_world
         self.teacher, self.calibration, self.B = teacher, calibration, batch_size
@@ -65,6 +66,8 @@ class RecoveryRollout:
         self.student_state = None
         self.takeoff = takeoff
         self.physics_weight = physics_weight
+        self.horizontal_weight, self.angular_weight = horizontal_weight, angular_weight
+        self.hold_heading = hold_heading
         self.last_metrics = {}
         if physics_weight and not takeoff:
             raise ValueError('Height-cost training requires the takeoff curriculum')
@@ -118,6 +121,11 @@ class RecoveryRollout:
                     teacher_obs['goal'] = observe_from_sensors(self.vehicle.sim.sensors(q,noise=False),
                         target_pos,q.motor.mean(-1,keepdim=True),self.cfg.task)['goal']
                 target, self.teacher_state, _ = self.teacher(teacher_obs,self.teacher_state,self.W)
+                if self.hold_heading:
+                    # A zero angular-rate target during recovery, not a runtime
+                    # yaw override. The motor teacher has no heading objective.
+                    target = target.clone()
+                    target[:,3] = 0.
             if t and t%8 == 0:
                 state = student.detach_state(state)
             action, state, _ = student(obs,state,W)
@@ -136,8 +144,8 @@ class RecoveryRollout:
                     q = self.vs.quad
                     up = quat_to_mat(q.quat)[:,2,2]
                     cost = ((q.pos[:,2]-2.).square()+q.vel[:,2].square()
-                            +.2*q.vel[:,:2].square().sum(-1)+4.*(1-up)
-                            +.02*q.omega.square().sum(-1)
+                            +self.horizontal_weight*q.vel[:,:2].square().sum(-1)+4.*(1-up)
+                            +self.angular_weight*q.omega.square().sum(-1)
                             +.5*(action-self.previous_action).square().sum(-1))
                     costs.append(cost.mean())
                 self.previous_action = action.detach()
@@ -152,7 +160,7 @@ class RecoveryRollout:
 
 
 @torch.no_grad()
-def motor_check(brain, cfg, steps=600, seed=881, takeoff=False):
+def motor_check(brain, cfg, steps=600, seed=881, takeoff=False, stationary=False):
     """Closed-loop reflex check with blank imagery, independent of replay score.
 
     This checks braking/recovery in the training simulator, not navigation or
@@ -218,6 +226,10 @@ def motor_check(brain, cfg, steps=600, seed=881, takeoff=False):
                       max_speed_mps=float(speed.max()), max_vertical_speed_mps=float(vertical.abs().max()),
                       final_median_abs_vertical_speed_mps=float(vertical[-1].abs().median()),
                       min_up=float(upright.min()), final_median_height_m=float(height[-1].median()))
+        result.update(final_max_horizontal_speed_mps=float(vs.quad.vel[:,:2].norm(dim=-1).max()),
+                      final_max_angular_speed_radps=float(vs.quad.omega.norm(dim=-1).max()),
+                      final_max_horizontal_distance_m=float(vs.quad.pos[:,:2].norm(dim=-1).max()),
+                      stationary=stationary)
         result['takeoff'] = takeoff
         if takeoff:
             result['takeoff_min_final_height_m'] = float(height[-1,:8].min())
@@ -230,6 +242,9 @@ def motor_check(brain, cfg, steps=600, seed=881, takeoff=False):
             result['reflex_pass'] &= (result['takeoff_min_final_height_m']>1.0
                                      and result['final_p95_height_error_m']<1.
                                      and result['final_max_abs_vertical_speed_mps']<.75)
+        if stationary:
+            result['reflex_pass'] &= (result['final_max_horizontal_speed_mps']<.25
+                                     and result['final_max_angular_speed_radps']<.1)
         return result
 
 
@@ -243,6 +258,7 @@ def main():
     p.add_argument('checkpoint')
     p.add_argument('--out', required=True)
     p.add_argument('--takeoff',action='store_true')
+    p.add_argument('--stationary',action='store_true')
     p.add_argument('--seed',type=int,default=881)
     p.add_argument('--seconds',type=float,default=6.)
     args = p.parse_args()
@@ -254,7 +270,7 @@ def main():
     if not 1<=args.seconds<=120:
         raise ValueError('Use a bounded simulation of 1 to 120 seconds')
     result = dict(checkpoint_sha256=sha256(args.checkpoint), **motor_check(brain, cfg,
-        steps=round(args.seconds/cfg.brain.dt),takeoff=args.takeoff,seed=args.seed))
+        steps=round(args.seconds/cfg.brain.dt),takeoff=args.takeoff,seed=args.seed,stationary=args.stationary))
     target.write_text(json.dumps(result, indent=2))
     print(json.dumps(result), flush=True)
 

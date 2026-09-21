@@ -1,7 +1,8 @@
-"""Prepare human flights as image sequences, observed controls and future paths.
+"""Prepare recorded flights as image sequences, observed controls and future paths.
 
 No gate labels are inferred. Coordinates use the current drone's FLU body frame;
 controls retain Liftoff's Input convention, not the virtual Xbox convention.
+Human recordings are the default; route-teacher recordings require explicit opt-in.
 """
 from __future__ import annotations
 
@@ -30,13 +31,20 @@ def read_csv(path):
         return list(csv.DictReader(stream))
 
 
-def load_capture(source):
+def load_capture(source, *, source_type='human'):
     """Validate pose/control correspondence against the original UDP records."""
     import cv2
     source = Path(source).resolve()
     meta = json.loads((source / 'capture.json').read_text(encoding='utf-8'))
-    if meta.get('pilot') != 'human' or meta.get('stop_reason') == 'recording':
-        raise ValueError(f'{source}: requires a stopped human recording')
+    if source_type == 'human':
+        valid_source = meta.get('pilot') == 'human'
+    elif source_type == 'route_teacher_live':
+        valid_source = (meta.get('source') == source_type and meta.get('oracle_route') is True
+                        and bool(meta.get('teacher_route', {}).get('sha256')))
+    else:
+        raise ValueError(f'Unknown demonstration source type: {source_type}')
+    if not valid_source or meta.get('stop_reason') in (None, 'recording'):
+        raise ValueError(f'{source}: requires a stopped {source_type} recording')
     rows, raw = read_csv(source / 'index.csv'), read_csv(source / 'telemetry.csv')
     if len(rows) < 2 or len(raw) < 2 or len(rows) != meta['frames']:
         raise ValueError(f'{source}: empty or incomplete capture index')
@@ -160,8 +168,10 @@ def prepare(plan_path, out, *, root='.'):
             raise ValueError('A whole take cannot be assigned more than once')
         seen_ids.add(ident)
         seen_paths.add(source)
-        c = load_capture(source)
-        if c['meta'].get('profile') != take['profile']:
+        source_type = take.get('source_type', 'human')
+        c = load_capture(source, source_type=source_type)
+        if (c['meta'].get('profile') != take['profile']
+                and not (source_type == 'route_teacher_live' and c['meta'].get('profile') is None)):
             raise ValueError(f'{ident}: selected profile differs from capture')
         examples = make_examples(c, take['segments'], plan['horizons_s'], plan.get('max_gap_s', .12))
         if split != 'review':
@@ -172,7 +182,8 @@ def prepare(plan_path, out, *, root='.'):
                 if fingerprint in hash_splits and hash_splits[fingerprint] != split:
                     raise ValueError('An exact image occurs in both training and validation')
                 hash_splits[fingerprint] = split
-        entry = dict(take, source=os.path.relpath(source, out).replace('\\', '/'),
+        entry = dict(take, source_type=source_type, oracle_route=source_type == 'route_teacher_live',
+                     source=os.path.relpath(source, out).replace('\\', '/'),
                      examples=len(examples['t']), arrays=f'{ident}.npz',
                      source_hashes={name: sha256(source / name) for name in ('capture.json', 'index.csv', 'telemetry.csv', 'camera.yaml')},
                      frame_hashes=dict(zip(c['files'].tolist(), c['hashes'].tolist())),
@@ -186,7 +197,7 @@ def prepare(plan_path, out, *, root='.'):
     if not {'train', 'validation'}.issubset({entry['split'] for entry, _ in prepared}):
         raise ValueError('Both training and validation takes are required')
     manifest = dict(schema=1, plan_sha256=sha256(plan_path), plan=plan,
-                    task='human_future_path_and_observed_controls', split_unit='whole_take',
+                    task='demonstration_future_path_and_observed_controls', split_unit='whole_take',
                     body_frame='FLU: forward, left, up; metres', input_order=list(INPUTS),
                     input_meaning='Observed Liftoff Input; not raw radio or virtual Xbox commands',
                     timing='Original telemetry timestamps; screen/display latency remains uncalibrated',

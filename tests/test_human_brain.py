@@ -193,7 +193,8 @@ def test_differentiable_recovery_cost_survives_ground_contact_and_window_boundar
     student,cfg,_ = small_brain()
     teacher = copy.deepcopy(student).requires_grad_(False)
     calibration = dict(hover_processed=.14,hover_stick_sim=-.5,throttle_scale=.8,stick_sign=[-1,1,1])
-    recovery = RecoveryRollout(teacher,cfg,calibration,batch_size=2,takeoff=True,physics_weight=1.)
+    recovery = RecoveryRollout(teacher,cfg,calibration,batch_size=2,takeoff=True,physics_weight=1.,
+                               horizontal_weight=2.,angular_weight=.5,hold_heading=True)
     optimizer = torch.optim.Adam(student.parameters(),lr=.001)
     for _ in range(2):
         optimizer.zero_grad()
@@ -203,3 +204,37 @@ def test_differentiable_recovery_cost_survives_ground_contact_and_window_boundar
         assert recovery.last_metrics['physics_cost']>0
         assert not recovery.vs.quad.vel.requires_grad
         optimizer.step()
+
+
+def test_new_curriculum_rejects_previous_training_in_holdout(tmp_path):
+    import json
+    import pytest
+    from haltere.train.human_brain import validate_data_continuation
+    from haltere.vision.datasets import sha256
+    old_data, new_data, old_replay, new_replay = [tmp_path/n for n in ('old_data','new_data','old_replay','new_replay')]
+    for folder in (old_data,new_data,old_replay,new_replay):
+        folder.mkdir()
+    old_take = dict(split='train',source_hashes={'telemetry.csv':'old_log'},frame_hashes={'frame':'old_image'})
+    held = dict(split='validation',source_hashes={'telemetry.csv':'held_log'},frame_hashes={'frame':'held_image'})
+    (old_data/'manifest.json').write_text(json.dumps({'takes':[old_take]}))
+    (new_data/'manifest.json').write_text(json.dumps({'takes':[held]}))
+    contract = dict(teacher_sha256='teacher',initial_brain_sha256='brain',graph_sha256='graph',calibration={},dt=.01)
+    old = {**contract,'dataset_sha256':sha256(old_data/'manifest.json')}
+    (old_replay/'manifest.json').write_text(json.dumps(old))
+    warm = dict(prepared_sha256=sha256(old_replay/'manifest.json'))
+    manifest = {**contract,'dataset_path':'../new_data','dataset_sha256':sha256(new_data/'manifest.json')}
+    config = dict(warm_start_prepared=str(old_replay),warm_start_dataset=str(old_data))
+    lineage = validate_data_continuation(warm,manifest,new_replay,config)
+    assert lineage == {'telemetry':['old_log'],'frames':['old_image']}
+    # Renaming a take cannot conceal use of its original telemetry or image.
+    held['source_hashes']['telemetry.csv'] = 'old_log'
+    (new_data/'manifest.json').write_text(json.dumps({'takes':[held]}))
+    manifest['dataset_sha256'] = sha256(new_data/'manifest.json')
+    with pytest.raises(ValueError,match='overlaps'):
+        validate_data_continuation(warm,manifest,new_replay,config)
+    held['source_hashes']['telemetry.csv'] = 'held_log'
+    (new_data/'manifest.json').write_text(json.dumps({'takes':[held]}))
+    manifest['dataset_sha256'] = sha256(new_data/'manifest.json')
+    warm['training_lineage'] = {'frames':['held_image']}
+    with pytest.raises(ValueError,match='overlaps'):
+        validate_data_continuation(warm,manifest,new_replay,config)

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "horizons_s": [0.25, 0.5, 1.0],
+  "max_gap_s": 0.12,
+  "holdout_profiles": ["minus_two_race"],
+  "notes": "Slow Pine Valley route-teacher flight and human fence flight train navigation at compatible speeds. Route data is an explicit oracle source, available only for training. Existing human validation takes stay unchanged. The 3 fps three-lap capture is excluded because it cannot meet the 120 ms image freshness contract.",
+  "takes": [
+    {
+      "id": "pine_route_lap_02",
+      "source": "data/vision/pine_lap_02",
+      "source_type": "route_teacher_live",
+      "profile": "pine_valley_race",
+      "split": "train",
+      "segments": [{"start_s": 5.0, "end_s": 444.0, "label": "slow_route_teacher"}]
+    },
+    {
+      "id": "straw_bale_fence_01",
+      "source": "data/vision/manual_sessions/straw_bale_fence/20260920-194609-171000",
+      "profile": "straw_bale_fence",
+      "split": "train",
+      "segments": [{"start_s": 2.0, "end_s": 64.5, "label": "human_fence_navigation"}]
+    },
+    {
+      "id": "minus_two_race_02",
+      "source": "data/vision/manual_sessions/minus_two_race/20260920-194207-748300",
+      "profile": "minus_two_race",
+      "split": "validation",
+      "segments": [{"start_s": 1.9, "end_s": 94.0, "label": "human_unseen_course_fast_race"}]
+    },
+    {
+      "id": "straw_bale_fence_02",
+      "source": "data/vision/manual_sessions/straw_bale_fence/20260920-200203-640500",
+      "profile": "straw_bale_fence",
+      "split": "validation",
+      "segments": [{"start_s": 1.8, "end_s": 82.2, "label": "human_fence_navigation"}]
+    }
+  ]
+}

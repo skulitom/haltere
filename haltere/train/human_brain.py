@@ -1,6 +1,6 @@
 """Distil training-only path supervision into the actual visual fly brain.
 
-Stage 1 prepares causal 100 Hz replay from immutable human takes. Stage 2 updates
+Stage 1 prepares causal 100 Hz replay from immutable recorded takes. Stage 2 updates
 the connectome with action imitation and a training-only neural path readout.
 The exported checkpoint contains the fly brain and its sensory encoder only.
 This is offline imitation, not evidence of successful closed-loop flight.
@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 import time
 from pathlib import Path
 
@@ -99,6 +100,7 @@ def prepare(dataset, teacher_path, brain_path, mapping_path, out, device='cuda',
                     teacher_sha256=sha256(teacher_path), initial_brain_sha256=sha256(brain_path),
                     graph_sha256=sha256(Path(cfg.train.graph).with_suffix('.npz')),
                     dataset_sha256=sha256(dataset/'manifest.json'), mapping_sha256=sha256(mapping_path),
+                    dataset_path=os.path.relpath(dataset.resolve(),out.resolve()).replace('\\','/'),
                     calibration=calibration, teacher_horizons=teacher.horizons.tolist(),
                     timing='100 Hz sample-and-hold replay of lower-rate UDP; latest fully captured image; no future interpolation',
                     limitation='Physical camera/display delay uncalibrated; offline action imitation only',
@@ -333,6 +335,39 @@ def evaluate_stream(checkpoint, prepared, out, device='cuda'):
     return result
 
 
+def validate_data_continuation(warm_meta, manifest, prepared, config):
+    """Allow an explicit new curriculum without turning old training into validation."""
+    if not config.get('warm_start_prepared') or not config.get('warm_start_dataset'):
+        raise ValueError('New curriculum requires the warm-start replay and source dataset manifests')
+    prior = Path(config['warm_start_prepared'])
+    if sha256(prior/'manifest.json') != warm_meta['prepared_sha256']:
+        raise ValueError('Warm-start replay provenance differs')
+    old = json.loads((prior/'manifest.json').read_text())
+    for key in ('teacher_sha256','initial_brain_sha256','graph_sha256','calibration','dt'):
+        if old[key] != manifest[key]:
+            raise ValueError(f'Warm-start {key} differs')
+    old_dataset = Path(config['warm_start_dataset'])
+    new_dataset = (Path(prepared)/manifest['dataset_path']).resolve()
+    if (sha256(old_dataset/'manifest.json') != old['dataset_sha256']
+            or sha256(new_dataset/'manifest.json') != manifest['dataset_sha256']):
+        raise ValueError('Curriculum dataset provenance differs')
+    old_takes = json.loads((old_dataset/'manifest.json').read_text())['takes']
+    new_takes = json.loads((new_dataset/'manifest.json').read_text())['takes']
+    old_train = [t for t in old_takes if t['split']=='train']
+    new_holdout = [t for t in new_takes if t['split'] in ('validation','test')]
+    used_logs = {t['source_hashes']['telemetry.csv'] for t in old_train}
+    used_images = {v for t in old_train for k,v in t['frame_hashes'].items()
+                   if k not in t.get('excluded_uniform_images',[])}
+    history = warm_meta.get('training_lineage',{})
+    used_logs.update(history.get('telemetry',[]))
+    used_images.update(history.get('frames',[]))
+    for take in new_holdout:
+        images = {v for k,v in take['frame_hashes'].items() if k not in take.get('excluded_uniform_images',[])}
+        if take['source_hashes']['telemetry.csv'] in used_logs or used_images.intersection(images):
+            raise ValueError('Warm-start training data overlaps the new holdout')
+    return dict(telemetry=sorted(used_logs),frames=sorted(used_images))
+
+
 def train(prepared, initial, out, config):
     out, prepared = Path(out), Path(prepared)
     if out.exists():
@@ -346,11 +381,14 @@ def train(prepared, initial, out, config):
         raise ValueError('Initial brain differs from the prepared teacher run')
     brain, cfg, graph = student_from_motor(initial,device,altitude=config.get('altitude_input',False))
     cfg.brain.mask_motor_feedback = bool(config.get('mask_motor_feedback', False))
+    training_lineage = {}
     if config.get('warm_start'):
         warm, warm_cfg, _ = load_checkpoint(config['warm_start'], device)
         warm_meta = torch.load(config['warm_start'], map_location='cpu', weights_only=True)['visual_brain']
-        if (warm_meta['prepared_sha256'] not in (sha256(prepared/'manifest.json'),manifest.get('parent_prepared_sha256'))
-                or warm_cfg.brain.mask_motor_feedback != cfg.brain.mask_motor_feedback):
+        training_lineage = warm_meta.get('training_lineage',{})
+        if warm_meta['prepared_sha256'] not in (sha256(prepared/'manifest.json'),manifest.get('parent_prepared_sha256')):
+            training_lineage = validate_data_continuation(warm_meta, manifest, prepared, config)
+        if warm_cfg.brain.mask_motor_feedback != cfg.brain.mask_motor_feedback:
             raise ValueError('Warm start sensory/data contract differs')
         missing,unexpected = brain.load_state_dict(warm.state_dict(),strict=False)
         if unexpected or any('altitude' not in k for k in missing):
@@ -387,7 +425,10 @@ def train(prepared, initial, out, config):
             motor_teacher.requires_grad_(False)
             recovery_rollout = RecoveryRollout(motor_teacher,motor_cfg,calibration,config['batch_size'],
                                               takeoff=config.get('takeoff_recovery',False),
-                                              physics_weight=config.get('recovery_physics_weight',0.))
+                                              physics_weight=config.get('recovery_physics_weight',0.),
+                                              horizontal_weight=config.get('recovery_horizontal_weight',.2),
+                                              angular_weight=config.get('recovery_angular_weight',.02),
+                                              hold_heading=config.get('recovery_hold_heading',False))
         else:
             recovery = recovery_examples(motor_teacher, motor_cfg, calibration)
             del motor_teacher
@@ -398,10 +439,14 @@ def train(prepared, initial, out, config):
                       mask_motor_feedback=cfg.brain.mask_motor_feedback,
                       recovery_weight=config.get('recovery_weight', 0),
                       warm_start_sha256=sha256(config['warm_start']) if config.get('warm_start') else None,
+                      training_lineage=training_lineage,
                       recovery_rollout=bool(config.get('recovery_rollout', False)),
                       altitude_input=bool(config.get('altitude_input',False)),
                       takeoff_recovery=bool(config.get('takeoff_recovery',False)),
                       recovery_physics_weight=config.get('recovery_physics_weight',0.),
+                      recovery_hold_heading=config.get('recovery_hold_heading',False),
+                      recovery_horizontal_weight=config.get('recovery_horizontal_weight',.2),
+                      recovery_angular_weight=config.get('recovery_angular_weight',.02),
                       assessment='experimental offline imitation; not flight-qualified')
     out.mkdir(parents=True)
     (out/'config.json').write_text(json.dumps(dict(config=config,provenance=provenance),indent=2))
@@ -462,7 +507,8 @@ def train(prepared, initial, out, config):
             row = dict(iteration=it,score=score,takes=result)
             if config.get('qualify_motor', False):
                 from .recovery import motor_check
-                row['motor_check'] = motor_check(brain, cfg,takeoff=config.get('takeoff_recovery',False))
+                row['motor_check'] = motor_check(brain, cfg,takeoff=config.get('takeoff_recovery',False),
+                                                stationary=config.get('qualify_stationary',False))
                 if row['motor_check']['reflex_pass'] and score < best_reflex:
                     best_reflex = score
                     export(out/'motor-qualified.pt',brain,cfg,

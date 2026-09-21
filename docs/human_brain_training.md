@@ -189,3 +189,34 @@ not position holding or navigation. A separate blank-image run also completed
 30 seconds and drifted 8.26 m with a similar slow yaw. Both tests had no teacher,
 external goal or yaw assistant. Local evidence is under
 `runs/human-brain-damping-01/`; no gate completion is claimed.
+
+The stationary recovery curriculum increases horizontal-velocity and angular-rate
+costs and supervises zero yaw only in recovery training. The deployed brain still
+produces every motor axis. `--stationary` additionally requires worst-case final
+horizontal speed below 0.25 m/s and angular speed below 0.1 rad/s. The 80-update
+stationary candidate held height in 24 further 30-second simulations but retained
+0.316 m/s drift in the worst case, so it failed that stricter check.
+
+## Slow navigation curriculum
+
+The older `pine_lap_02` capture has roughly 9 fps imagery and 2 m/s flight speed.
+It can supply control labels closer to this brain's motor training range. The
+3 fps `pine_three_laps_01` capture is excluded by the existing 120 ms image-age
+contract. `slow_navigation_demonstrations.json` explicitly labels the Pine source
+as `route_teacher_live`; raw metadata stays unchanged. A route teacher supplies
+training examples, never a deployed route. Human fence take 1 remains training;
+Minus Two take 2 and fence take 2 remain validation. The fast Minus Two flight is
+a demanding transfer check, not a matched-speed navigation benchmark.
+
+```powershell
+.venv/Scripts/python.exe -m haltere.vision.demonstrations configs/slow_navigation_demonstrations.json --out data/vision/slow_navigation_v1
+.venv/Scripts/python.exe -m haltere.train.human_brain prepare --dataset data/vision/slow_navigation_v1 --teacher artifacts/experimental/navigation_human_v2_residual.pt --brain artifacts/ftPath2_best.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --out data/vision/slow_brain_v1
+.venv/Scripts/python.exe -m haltere.train.human_brain train --prepared data/vision/slow_brain_v1 --initial artifacts/ftPath2_best.pt --config configs/train_slow_visual_brain.json --out runs/slow-visual-brain-01
+```
+
+Changing curricula requires the prior replay and source manifests. Continuation
+verifies hashes, sensory/calibration contracts, and absence of prior training
+telemetry or images in the new holdout. Earlier training fingerprints persist in
+checkpoint provenance across further curricula. Normalized replay errors use
+each curriculum's training-control standard deviation; compare processed RMSE,
+not normalized scores, between curricula. Gate completion still needs live tests.

@@ -150,3 +150,28 @@ def test_final_test_take_is_separate_from_training_and_validation(tmp_path):
     assert [t['id'] for t, _ in DemonstrationSequences(out, 'train').takes] == ['a']
     assert [t['id'] for t, _ in DemonstrationSequences(out, 'validation').takes] == ['b']
     assert [t['id'] for t, _ in DemonstrationSequences(out, 'test').takes] == ['c']
+
+
+def test_route_teacher_requires_explicit_source_type_and_preserves_provenance(tmp_path):
+    a, b = capture(tmp_path, 'a'), capture(tmp_path, 'b', 90)
+    meta_path = a / 'capture.json'
+    meta = json.loads(meta_path.read_text())
+    meta.pop('pilot')
+    meta.pop('profile')
+    meta.update(source='route_teacher_live', oracle_route=True, teacher_route={'sha256': 'abc123'})
+    meta_path.write_text(json.dumps(meta))
+    original = meta_path.read_bytes()
+    with pytest.raises(ValueError, match='stopped human'):
+        load_capture(a)
+    path, plan = plan_for(tmp_path, a, b)
+    plan['takes'][0]['source_type'] = 'route_teacher_live'
+    path.write_text(json.dumps(plan))
+    manifest = prepare(path, tmp_path / 'prepared')
+    assert manifest['takes'][0]['oracle_route'] is True
+    assert manifest['takes'][0]['source_type'] == 'route_teacher_live'
+    assert manifest['takes'][1]['source_type'] == 'human'
+    assert meta_path.read_bytes() == original
+    meta['oracle_route'] = False
+    meta_path.write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match='stopped route_teacher_live'):
+        load_capture(a, source_type='route_teacher_live')
