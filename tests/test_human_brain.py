@@ -238,3 +238,24 @@ def test_new_curriculum_rejects_previous_training_in_holdout(tmp_path):
     warm['training_lineage'] = {'frames':['held_image']}
     with pytest.raises(ValueError,match='overlaps'):
         validate_data_continuation(warm,manifest,new_replay,config)
+
+
+def test_navigation_teacher_paths_supervise_motor_output_without_entering_student_senses():
+    from haltere.train.human_brain import navigation_motor_targets
+    torch.manual_seed(28)
+    student,cfg,_ = small_brain()
+    teacher = copy.deepcopy(student).requires_grad_(False)
+    batch = {k:torch.zeros(2,24,d) for k,d in student.channel_dims.items()}
+    batch['action'] = torch.zeros(2,24,4)
+    batch['teacher'] = torch.zeros(2,24,3,3)
+    batch['teacher'][0,...,0] = 2.
+    batch['teacher'][1,...,1] = 2.
+    targets = navigation_motor_targets(teacher,cfg.task,batch)
+    assert not targets.requires_grad
+    assert (targets[0,:,3]-targets[1,:,3]).abs().min()>.1
+    assert torch.count_nonzero(batch['goal'])==0
+    action,_,_ = rollout(student,batch)
+    assert torch.allclose(action[0],action[1])  # same observations, different training labels
+    (action-targets).square().mean().backward()
+    assert student.log_edge_gain.grad.abs().sum()>0
+    assert student.readout.weight.grad.abs().sum()>0

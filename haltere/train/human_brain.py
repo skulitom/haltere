@@ -249,6 +249,32 @@ def rollout(brain, batch, detach_every=0, blank=False, probe=None):
 
 
 @torch.no_grad()
+def navigation_motor_targets(teacher, task_config, batch):
+    """Training-only path-to-control labels, never student sensory inputs.
+
+    Bound the lookahead to the motor teacher's slow-flight range. Heading labels
+    face along that path because the original motor teacher lacks a yaw task.
+    """
+    B,T = batch['action'].shape[:2]
+    state,W,targets = teacher.init_state(B),teacher.weight_matrix(),[]
+    for t in range(T):
+        obs = {k:batch[k][:,t] for k in teacher.channel_dims}
+        path = batch['teacher'][:,t,-1].detach()
+        distance = path.norm(dim=-1,keepdim=True)
+        path = path*(3./distance.clamp_min(3.))
+        obs['goal'] = torch.cat((torch.tanh(path/task_config.goal_scale),
+                                torch.tanh(path.norm(dim=-1,keepdim=True)/task_config.goal_scale)),dim=-1)
+        obs['compass'] = torch.zeros_like(obs['compass'])
+        obs['compass'][:,0] = 1.
+        action,state,_ = teacher(obs,state,W)
+        action = action.clone()
+        yaw = (-.35*torch.atan2(path[:,1],path[:,0])).clamp(-.3,.3)
+        action[:,3] = torch.where(path[:,:2].norm(dim=-1)>.2,yaw,torch.zeros_like(yaw))
+        targets.append(action)
+    return torch.stack(targets,dim=1)
+
+
+@torch.no_grad()
 def evaluate(brain, replay, calibration, scale, ids, device, blank=False, mean_action=None, burn=20):
     errors, baseline, count = {}, {}, {}
     for lo in range(0,len(ids),8):
@@ -304,9 +330,12 @@ def evaluate_stream(checkpoint, prepared, out, device='cuda'):
     train_data,val = Replay(prepared,'train'),Replay(prepared,'validation')
     all_actions = torch.cat([a['action'] for _,a in train_data.takes]).to(device)
     mean,scale = all_actions.mean(0),all_actions.std(0).clamp_min(.05)
+    metadata = torch.load(checkpoint,map_location='cpu',weights_only=True).get('visual_brain',{})
+    if 'control_scale' in metadata:
+        scale = torch.tensor(metadata['control_scale'],device=device)
     calibration = manifest['calibration']
     result = dict(checkpoint_sha256=sha256(checkpoint),state_reset='only at actual recording gaps',
-                  teacher_loaded=False,closed_loop=False,takes={})
+                  teacher_loaded=False,closed_loop=False,control_scale=scale.cpu().tolist(),takes={})
     W = brain.weight_matrix()
     for entry,arrays in val.takes:
         data = {k:v.to(device) for k,v in arrays.items() if k in brain.channel_dims or k=='action'}
@@ -401,6 +430,10 @@ def train(prepared, initial, out, config):
     train_data, val = Replay(prepared,'train'), Replay(prepared,'validation',stride=64)
     actions = torch.cat([a['action'] for _,a in train_data.takes]).to(device)
     mean_action, scale = actions.mean(0), actions.std(0).clamp_min(.05)
+    if 'control_scale' in config:
+        scale = torch.tensor(config['control_scale'],dtype=actions.dtype,device=device)
+        if scale.shape!=(4,) or not torch.isfinite(scale).all() or not (scale>0).all():
+            raise ValueError('control_scale requires four finite positive processed-control scales')
     # Auxiliary decoder from actual goal-population activity, used only in the loss.
     probe = nn.Linear(len(graph.population('goal')),3*len(manifest['teacher_horizons'])).to(device)
     probe.register_buffer('neuron_idx',torch.tensor(graph.population('goal'),device=device))
@@ -416,11 +449,12 @@ def train(prepared, initial, out, config):
         ids = [i for i,(take,_) in enumerate(val.windows) if take==n]
         val_ids.extend(ids[i] for i in np.linspace(0,len(ids)-1,min(len(ids),config['validation_windows_per_take']),dtype=int))
     calibration = manifest['calibration']
-    recovery = recovery_rollout = None
-    if config.get('recovery_weight', 0) > 0:
+    recovery = recovery_rollout = motor_teacher = None
+    if config.get('recovery_weight', 0) > 0 or config.get('navigation_motor_weight',0)>0:
         from .recovery import recovery_examples
         motor_teacher, motor_cfg, _ = load_checkpoint(initial, device)
-        if config.get('recovery_rollout', False):
+        motor_teacher.requires_grad_(False)
+        if config.get('recovery_weight',0)>0 and config.get('recovery_rollout', False):
             from .recovery import RecoveryRollout
             motor_teacher.requires_grad_(False)
             recovery_rollout = RecoveryRollout(motor_teacher,motor_cfg,calibration,config['batch_size'],
@@ -429,10 +463,10 @@ def train(prepared, initial, out, config):
                                               horizontal_weight=config.get('recovery_horizontal_weight',.2),
                                               angular_weight=config.get('recovery_angular_weight',.02),
                                               hold_heading=config.get('recovery_hold_heading',False))
-        else:
+        elif config.get('recovery_weight',0)>0:
             recovery = recovery_examples(motor_teacher, motor_cfg, calibration)
-            del motor_teacher
     provenance = dict(calibration=calibration, teacher_training_only=True,
+                      control_scale=scale.cpu().tolist(),
                       teacher_sha256=manifest['teacher_sha256'], prepared_sha256=sha256(prepared/'manifest.json'),
                       initial_brain_sha256=manifest['initial_brain_sha256'], graph_sha256=manifest['graph_sha256'],
                       external_goal=False, yaw_assistance=False, runtime_requires_teacher=False,
@@ -447,6 +481,7 @@ def train(prepared, initial, out, config):
                       recovery_hold_heading=config.get('recovery_hold_heading',False),
                       recovery_horizontal_weight=config.get('recovery_horizontal_weight',.2),
                       recovery_angular_weight=config.get('recovery_angular_weight',.02),
+                      navigation_motor_weight=config.get('navigation_motor_weight',0.),
                       assessment='experimental offline imitation; not flight-qualified')
     out.mkdir(parents=True)
     (out/'config.json').write_text(json.dumps(dict(config=config,provenance=provenance),indent=2))
@@ -470,6 +505,12 @@ def train(prepared, initial, out, config):
         teacher = batch['teacher'][:,burn:].flatten(-2).detach()
         path_loss = F.smooth_l1_loss(path[:,burn:]/5,teacher/5)
         loss = config.get('action_weight', 1.)*action_loss + config['teacher_weight']*path_loss + brain.regularization(aux)
+        navigation_motor_loss = torch.zeros((),device=device)
+        if config.get('navigation_motor_weight',0)>0:
+            target_actions = navigation_motor_targets(motor_teacher,motor_cfg.task,batch)
+            navigation_motor_loss = (((brain_to_processed(action,calibration)
+                                    -brain_to_processed(target_actions,calibration))[:,burn:]/scale)**2).mean()
+            loss = loss + config['navigation_motor_weight']*navigation_motor_loss
         recovery_loss = torch.zeros((), device=device)
         if recovery is not None:
             ri = torch.randint(len(recovery['action']), (config['batch_size'],), device=device)
@@ -493,6 +534,7 @@ def train(prepared, initial, out, config):
             raise RuntimeError('Nonfinite training update')
         opt.step()
         row = dict(iteration=it,action_loss=float(action_loss.detach()),teacher_loss=float(path_loss.detach()),
+                   navigation_motor_loss=float(navigation_motor_loss.detach()),
                    recovery_loss=float(recovery_loss.detach()),
                    elapsed_s=time.monotonic()-started)
         if recovery_rollout is not None:

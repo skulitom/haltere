@@ -220,3 +220,18 @@ telemetry or images in the new holdout. Earlier training fingerprints persist in
 checkpoint provenance across further curricula. Normalized replay errors use
 each curriculum's training-control standard deviation; compare processed RMSE,
 not normalized scores, between curricula. Gate completion still needs live tests.
+
+`train_navigation_motor_brain.json` adds direct path-to-control distillation.
+Only during training, the frozen motor teacher receives the navigation
+predictor's one-second path as its goal (limited to 3 m). Training yaw labels
+face along that path, with a bounded rate. The visual student receives neither
+the path nor this goal: its own motor output learns the resulting control
+targets. The original auxiliary path decoder remains a small extra loss.
+Both teachers and the decoder are absent from the exported pilot.
+
+This run fixes processed-control normalization to the earlier human training
+standard deviations. Otherwise, the much smaller control variation in the slow
+route dataset greatly increases imitation losses relative to physical recovery.
+The exact scale is saved with the checkpoint and reused for continuous replay
+evaluation. This is a new training objective; it needs its own live evaluation
+and does not establish that the navigation predictor improves flight.
