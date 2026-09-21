@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 from collections import deque
 import csv
+import gc
 import json
 import threading
 import time
@@ -25,10 +26,12 @@ from .telemetry import TelemetryReceiver, read_config, DEFAULT_STREAM
 
 
 class RetinaCamera:
-    def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss'):
+    def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss',phase_status=None,on_frame=None):
         self.title, self.fps = title, fps
         self.gate_sensor = gate_sensor
         self.backend = backend
+        self.phase_status = phase_status
+        self.on_frame = on_frame
         self.capture = None
         self.detector = None
         if gate_sensor:
@@ -63,6 +66,10 @@ class RetinaCamera:
     def _phase(self, name):
         now = time.monotonic()
         self.phase, self.phase_started = name, now
+        if self.phase_status is not None:
+            from .camera_process import PHASES
+            self.phase_status[0] = PHASES.index(name)
+            self.phase_status[1] = now
         return now
 
     def diagnostics(self):
@@ -122,6 +129,8 @@ class RetinaCamera:
                             retina = torch.zeros(1,720)
                         inferred = self._phase('publish')
                         self.latest = (capture_time,retina,detection)
+                        if self.on_frame is not None:
+                            self.on_frame(self.latest)
                         self.frames += 1
                         published = self._phase('wait')
                         self.timings.append((captured-begin,prepared-captured,inferred-prepared,
@@ -154,7 +163,7 @@ class VisualController:
             raise ValueError('Connectome differs from the trained model')
         self.pose = TelemetryPilot(self.brain,self.cfg.task,self.mapping,self.brain.device)
         self.state = self.brain.init_state(1)
-        self.W = self.brain.weight_matrix().detach()
+        self.W = self.brain.inference_matrix() if self.brain.device.type=='cpu' else self.brain.weight_matrix().detach()
         self.last_ts = None
         self.senses = self.motor = None
         self.gate_point = None
@@ -283,6 +292,7 @@ def run(args):
     from .recorder import FlightRecorder, SharedFlightState
     from .manual_recording import live_pose
     from .flight_guard import ImpactMonitor
+    from .camera_process import ProcessRetinaCamera
     if not 0 < args.seconds <= 1800:
         raise ValueError('Use a bounded run of 0 < seconds <= 1800')
     if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
@@ -292,7 +302,8 @@ def run(args):
         raise FileExistsError('Use new log and video paths')
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device)
-    camera = RetinaCamera(gate_sensor=controller.meta.get('gate_sensor'),backend=args.capture_backend).start()
+    gc.collect()
+    camera = ProcessRetinaCamera(gate_sensor=controller.meta.get('gate_sensor'),backend=args.capture_backend).start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -313,11 +324,17 @@ def run(args):
                 pad.close()
             raise
     log_path.parent.mkdir(parents=True,exist_ok=True)
+    # Collection can pause every Python thread. Reclaim startup objects before
+    # the bounded real-time interval, retaining normal reference-count cleanup.
+    gc_was_enabled = gc.isenabled()
+    gc.disable()
     begin, next_tick, count, reason = time.monotonic(),time.monotonic(),0,'duration'
     frame, last_frame, first_ts, last_progress = None,begin,None,begin
     camera_failure = None
     impacts = ImpactMonitor()
     last_timestamp = None
+    step_times = deque(maxlen=4096)
+    deadline_failure = None
     try:
         with log_path.open('w',newline='') as f:
             writer = csv.writer(f)
@@ -328,21 +345,23 @@ def run(args):
                              'capture_time','frame_time','det_bx','det_by','det_bz','det_width','neural_search'])
             while time.monotonic()-begin < args.seconds:
                 new = rx.wait(.001)
+                camera_frame = camera.latest
                 now = time.monotonic()
                 if new is not None:
                     frame,last_frame = new,now
                     if new.timestamp != last_timestamp:
                         last_progress = now
                         last_timestamp = new.timestamp
-                if frame is None or camera.latest is None:
+                startup_image_stale = count==0 and camera_frame is not None and now-camera_frame[0]>.12
+                if frame is None or camera_frame is None or startup_image_stale:
                     if pad:
                         pad.neutral()
                     if now-begin>5:
-                        raise RuntimeError(f'No live image/telemetry: {camera.error}')
+                        raise RuntimeError(f'No fresh live image/telemetry: {camera.error}')
                     continue
                 if now-last_frame>.12 or now-last_progress>.5 or not live_pose(frame):
                     raise RuntimeError('Telemetry stale, paused or outside live flight')
-                capture_time,retina,detection = camera.latest
+                capture_time,retina,detection = camera_frame
                 if now-capture_time>.12:
                     camera_failure = camera.diagnostics()
                     raise RuntimeError(f'Image stale or game hidden: {camera.error}')
@@ -351,9 +370,12 @@ def run(args):
                 if now<next_tick:
                     continue
                 if now-next_tick>.12 and count:
+                    deadline_failure = dict(stage='loop',late_ms=1000*(now-next_tick))
                     raise RuntimeError('Controller missed its real-time deadline')
                 next_tick = max(next_tick+controller.cfg.brain.dt,now)
+                step_begin = time.monotonic()
                 action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame)
+                step_times.append(time.monotonic()-step_begin)
                 if not np.isfinite(action).all():
                     raise RuntimeError('Nonfinite motor output')
                 first_ts = frame.timestamp if first_ts is None else first_ts
@@ -362,6 +384,9 @@ def run(args):
                 velocity = controller.senses['vel_world'][0].cpu().numpy()
                 q = controller.senses['quat'][0].cpu().numpy()
                 if pad:
+                    if time.monotonic()-now>.12:
+                        deadline_failure = dict(stage='brain',late_ms=1000*(time.monotonic()-now))
+                        raise RuntimeError('Brain step missed its real-time deadline; command discarded')
                     if impacts.update(frame.timestamp,pos,velocity,q):
                         raise RuntimeError('Impact detected from flight motion')
                     limit = flight_limit_reason(pos,velocity,args.max_height,args.max_speed,args.max_distance)
@@ -406,8 +431,12 @@ def run(args):
         rx.close()
         if recorder:
             recorder.stop()
+        if gc_was_enabled:
+            gc.enable()
         result = dict(checkpoint_sha256=sha256(args.checkpoint),runtime_requires_teacher=False,
                       control_mode='visual fly brain' if pad else 'shadow: no control output',
+                      brain_device=str(controller.brain.device),
+                      recurrent_matrix_layout=str(controller.W.layout),
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,
                       external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=False,
                       goal_source='camera detector' if controller.meta.get('gate_sensor') else 'absent',
@@ -421,6 +450,10 @@ def run(args):
                       pause_key_sent=pause_key_sent,
                       impact=impacts.impact,
                       camera_diagnostics=camera_status,camera_failure=camera_failure,
+                      controller_step_ms=dict(p50=float(np.percentile(step_times,50)*1000),
+                                              p95=float(np.percentile(step_times,95)*1000),
+                                              max=float(max(step_times)*1000)) if step_times else None,
+                      controller_deadline_failure=deadline_failure,
                       origin_sim=controller.pose.pos0.tolist() if controller.pose.pos0 is not None else None,
                       images_blanked=args.blank_retina,
                       limits=dict(height_m=args.max_height,speed_mps=args.max_speed,distance_m=args.max_distance),

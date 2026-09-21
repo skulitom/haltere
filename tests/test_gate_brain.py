@@ -68,6 +68,25 @@ def test_search_training_hides_unseen_gate_and_updates_recurrent_weights():
     assert brain.readout.weight.grad.abs().sum()>0
 
 
+def test_frozen_cpu_inference_preserves_neural_dynamics_and_cannot_train():
+    import pytest
+    from tests.test_human_brain import small_brain
+    brain,_,_=small_brain()
+    csr=brain.inference_matrix()
+    assert csr.layout==torch.sparse_csr
+    a,b=brain.init_state(2),brain.init_state(2)
+    values=brain.weight_matrix().detach()
+    with torch.no_grad():
+        for _ in range(40):
+            obs={k:torch.randn(2,d) for k,d in brain.channel_dims.items()}
+            expected,a,_=brain(obs,a,values)
+            actual,b,_=brain(obs,b,csr)
+            torch.testing.assert_close(actual,expected,rtol=1e-5,atol=1e-6)
+            torch.testing.assert_close(b['v'],a['v'],rtol=1e-5,atol=1e-6)
+    with pytest.raises(ValueError,match='cannot train'):
+        brain(obs,b,csr)
+
+
 def test_turn_cost_and_aperture_are_invariant_to_world_heading():
     from haltere.train.gate_brain import turn_objective
     from haltere.sim.quad import quat_from_euler, quat_to_mat

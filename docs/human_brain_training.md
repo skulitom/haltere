@@ -393,3 +393,32 @@ contract may continue on a missing gate; older checkpoints still stop. Every
 live stick remains a recurrent-brain output. An uninterrupted neural search
 times out after 15 seconds. This remains an experimental single-gate curriculum;
 it does not establish track ordering, sustained lap completion or transfer.
+
+Candidate 05 (`c632c9005690608217678f173b68a88f778574cf6e3d3b9c9102522e7f611312`)
+finished 200 updates. In the matched synthetic search check it improved from
+9/12 to 12/12 crossings. The separate approach-retention check and search seed
+813 also reached 12/12 without crashes. All seven cases needing search in seed
+813 recovered, with a longest search of 6.55 seconds and no 15-second timeouts.
+`runs/gate-brain-05/additional-evaluation.json` contains those teacher-free
+checks. In the original `evaluation.json`, `camera_viable_crossings` still means
+uninterrupted visibility; the later evaluator counts bounded successful recovery
+for search-trained brains and reports search timeouts separately.
+
+`runs/gate-brain-live-03/search-shared.*` records five physical arches in Anode,
+including a 2.2-second neural search after the first sharp turn and subsequent
+passage through gate 4. Gate 4's lateral offset was -0.41 m and height 1.25 m.
+At 114.9 seconds the drone hit gate 5's post, and the impact guard paused the game.
+The detector's close-range position drift and switch to the farther arch before
+passage remain failures to fix. These weights are **not release qualified**.
+
+Earlier attempts stopped for isolated runtime stalls. The visual runner now
+places capture/detection in a separate spawned process, transfers measurements
+through a small shared-memory snapshot, and retains original frame timestamps.
+It performs garbage collection outside the timed control interval. `--device cpu`
+uses a frozen CSR matrix of the exact connectome weights; training still uses
+the differentiable sparse path. A numerical check verifies matching neural
+state and action updates, and training with a frozen matrix is rejected.
+In the five-arch run, all brain steps were below 8.3 ms, control-update gaps stayed
+below 21 ms, and there were no stale images or camera errors. The 120 ms guards
+remain in place, including rejection of an over-deadline command before sending.
+This runtime evidence covers that partial flight, not sustained lap reliability.

@@ -46,3 +46,31 @@ def test_dxgi_never_starts_when_game_is_hidden(monkeypatch):
     with pytest.raises(RuntimeError,match='foreground'):
         game_capture.DxGameCapture(camera=camera)
     camera.start.assert_not_called()
+
+
+def test_camera_process_keeps_original_frame_time_and_drops_old_backlog():
+    import multiprocessing as mp
+    from queue import Queue
+    from threading import Event
+    from types import SimpleNamespace
+    from haltere.liftoff.camera_process import ProcessRetinaCamera,put_latest
+    camera=ProcessRetinaCamera.__new__(ProcessRetinaCamera)
+    camera.queue=Queue(maxsize=2)
+    camera.data=mp.get_context('spawn').Array('d',727,lock=True)
+    camera.done=Event()
+    camera.process=SimpleNamespace(exitcode=None)
+    camera._latest=camera._error=None
+    camera._diagnostics={}
+    for stamp in [1.,2.,3.]:
+        put_latest(camera.queue,{'diagnostics':{'frames':stamp}})
+        shared=np.frombuffer(camera.data.get_obj(),dtype=np.float64)
+        shared[0]=stamp
+        shared[7:]=stamp
+    assert camera.queue.qsize()==2
+    stamp,retina,detection=camera.latest
+    assert stamp==3. and (retina==3.).all() and detection is None
+    assert camera._diagnostics['frames']==3.
+    # Reading a cached packet does not give it a new receipt-time timestamp.
+    assert camera.latest[0]==3.
+    camera.process.exitcode=1
+    assert 'exited (1)' in camera.error

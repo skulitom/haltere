@@ -179,6 +179,11 @@ class ConnectomeRNN(nn.Module):
     def dense_sparse_matrix(self) -> torch.Tensor:
         return torch.sparse_coo_tensor(self.edge_index, self.edge_weights(), (self.N, self.N), is_coalesced=True)
 
+    @torch.no_grad()
+    def inference_matrix(self) -> torch.Tensor:
+        """Frozen CSR snapshot of the same edges; rebuild after changing weights."""
+        return self.dense_sparse_matrix().detach().to_sparse_csr()
+
     def tau(self) -> torch.Tensor:
         return torch.exp(self.log_tau).clamp(min=self.cfg.tau_min)
 
@@ -203,7 +208,12 @@ class ConnectomeRNN(nn.Module):
         r = self.cfg.rate_max * torch.sigmoid(v)
         if W is None:
             W = self.weight_matrix()
-        rec = sparse_recurrent(W, r, self.edge_index, self.edge_index_t, self.perm_t, self.N)  # [N,B]
+        if W.layout == torch.sparse_csr:
+            if torch.is_grad_enabled():
+                raise ValueError('A frozen inference matrix cannot train recurrent weights')
+            rec = torch.sparse.mm(W,r)
+        else:
+            rec = sparse_recurrent(W, r, self.edge_index, self.edge_index_t, self.perm_t, self.N)  # [N,B]
         I = torch.zeros_like(v)
         for key, enc in self.encoders.items():
             idx = getattr(self, f'idx_{key}')
