@@ -295,3 +295,35 @@ lap qualification or generalization. The navigation predictor and motor teacher
 were absent in every live attempt, and no yaw override was applied. Raw evidence
 and synchronized brain/flight videos are in `runs/gate-brain-live-01/`; these
 weights remain local and unqualified for a model release.
+
+The next live test exposed a different stop: a close arch filled the camera and
+its detector confidence fell. The pilot now retains a measured gate for at most
+2 seconds while it remains within 8 m and no more than 1 m behind the drone.
+Other missing targets still expire after 0.5 seconds; image freshness remains
+120 ms. With this change, the same brain cleared gate 2 at 67.55 seconds, with
+2.9 cm lateral error and 1.11 m height. It then missed gate 3 by 2.86 m on the
+first substantial turn. Evidence is in `runs/camera-profile-01/occlusion.*`.
+Neither of the two diagnostic flights stopped for stale imagery; camera timing
+is now recorded so an intermittent recurrence can be diagnosed rather than
+masked by a looser deadline.
+
+Camera measurements now use interpolated poses from telemetry receipt times at
+capture, avoiding use of the later processing-time orientation. This does not
+calibrate the game's display latency. `haltere.liftoff.gate_evaluation` checks
+rotated/tilted track planes offline and reports offsets; it deliberately does
+not infer opening dimensions or certify a lap from plane intersections alone.
+
+`--turns` adds moving approaches, randomized world headings, camera-facing yaw
+supervision and a differentiable penalty that slows approach while misaligned.
+These velocity/heading targets remain training-only. The exported controller
+still supplies every motor axis from the recurrent brain. Each training run
+saves an identically seeded parent evaluation before updating weights:
+
+```powershell
+.venv/Scripts/python.exe -m haltere.train.gate_brain runs/gate-brain-02/last.pt --out runs/gate-brain-03a --iters 200 --lr 0.00005 --motor-teacher runs/gate-brain-02/last.pt --turns
+```
+
+The turn candidate remains experimental until matched simulator checks and
+recorded live flights establish an improvement. Release qualification still
+requires repeatable full courses and transfer testing with the navigation
+predictor absent.

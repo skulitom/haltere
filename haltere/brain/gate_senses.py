@@ -22,16 +22,23 @@ def gate_observation(sensors, motor, task, retina, relative_gate):
     return obs
 
 
-def aperture_crossing(previous, current, centre, half_width=1.4, half_height=1.):
-    """Forward intersection with an x-normal gate, including its aperture.
+def aperture_crossing(previous, current, centre, half_width=1.4, half_height=1., normal=None):
+    """Forward intersection with an upright gate, including its aperture.
 
     Offline evaluation only. A point behind/beside a gate is not a crossing.
     Returns a boolean per segment and the interpolated intersection point.
     """
-    dx = current[..., 0] - previous[..., 0]
-    alpha = (centre[..., 0] - previous[..., 0]) / torch.where(dx.abs()>1e-8,dx,torch.ones_like(dx))
+    if normal is None:
+        normal = torch.zeros_like(centre)
+        normal[...,0] = 1.
+    normal = normal / normal.norm(dim=-1,keepdim=True).clamp_min(1e-8)
+    side = torch.stack((-normal[...,1],normal[...,0],torch.zeros_like(normal[...,0])),-1)
+    before = ((previous-centre)*normal).sum(-1)
+    after = ((current-centre)*normal).sum(-1)
+    dx = after-before
+    alpha = -before / torch.where(dx.abs()>1e-8,dx,torch.ones_like(dx))
     point = previous + alpha[..., None] * (current - previous)
-    crossed = ((previous[..., 0] < centre[..., 0]) & (current[..., 0] >= centre[..., 0])
-               & (dx > 0) & ((point[..., 1]-centre[..., 1]).abs() < half_width)
+    crossed = ((before < 0) & (after >= 0)
+               & (dx > 0) & (((point-centre)*side).sum(-1).abs() < half_width)
                & ((point[..., 2]-centre[..., 2]).abs() < half_height))
     return crossed, point
