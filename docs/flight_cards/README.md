@@ -52,6 +52,20 @@ does not establish an assistance improvement or freestyle generalization.
 No new weights were trained or promoted. Gate acquisition, turn recovery and
 obstacle-aware search remain visible problems to fix.
 
+## 2026-09-22 visible race-cue development
+
+Separate experimental mode using the same newest scene brain, with visible
+checkpoint guidance. No new neural weights, predictor or stored route. Raw
+standard brain/gameplay videos and telemetry are in
+`runs/race-completion-20260922/`.
+
+| Straw Bale / Field Day attempt | Result | Evidence |
+|---|---|---|
+| 90-second preflight | No contact; partial lap 1/3 | [Preflight](2026-09-22_strawbale_cue_preflight.md), `straw-cue-01` |
+| First full-race attempt | Flag collision at 164.6 s; no completed lap | [Attempt 2](2026-09-22_strawbale_cue_02.md), `straw-cue-02` |
+| Flag-clearance attempt | Passed previous flag; manually stopped in downhill recovery stall, lap 1/3 | [Attempt 3](2026-09-22_strawbale_cue_03.md), `straw-cue-03` |
+| Downhill-recovery attempt | **Full three-lap finish, 14:05.703; no detected contact or flight intervention** | [Attempt 4](2026-09-22_strawbale_cue_04.md), `straw-cue-04` |
+
 ## Card template
 
 Name: `<date>_<track>_<n>.md`. Template:

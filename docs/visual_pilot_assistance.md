@@ -11,6 +11,15 @@ Assistance does not change checkpoint weights. It currently requires a
 checkpoint with a `gate_sensor` contract; the earliest raw-image-only brains
 have no calibrated gate detector for this pilot.
 
+| `--pilot-assistance` | Guidance inputs | Use |
+|---|---|---|
+| `none` | Learned image features and brain sensory contract | Unassisted diagnostic baseline. |
+| `rabbit` | Calibrated visible arch detections and causal pose history | Existing gate tracker and smoothed goals. |
+| `race-cue` | Visible checkpoint ring, local flag appearance and route arrows | Separate [race-cue experiment](race_cue_assistance.md); limited to races with those cues. |
+
+All modes retain the same chosen brain and its frozen sensory contract.
+Assisted modes retain neural throttle/roll/pitch and declare assisted yaw.
+
 ## Run
 
 Run Liftoff, capture and controller processes **inside Anode**, keeping its

@@ -56,7 +56,7 @@ def test_camera_process_keeps_original_frame_time_and_drops_old_backlog():
     from haltere.liftoff.camera_process import ProcessRetinaCamera,put_latest
     camera=ProcessRetinaCamera.__new__(ProcessRetinaCamera)
     camera.queue=Queue(maxsize=2)
-    camera.data=mp.get_context('spawn').Array('d',727,lock=True)
+    camera.data=mp.get_context('spawn').Array('d',732,lock=True)
     camera.done=Event()
     camera.process=SimpleNamespace(exitcode=None)
     camera._latest=camera._error=None
@@ -65,12 +65,18 @@ def test_camera_process_keeps_original_frame_time_and_drops_old_backlog():
         put_latest(camera.queue,{'diagnostics':{'frames':stamp}})
         shared=np.frombuffer(camera.data.get_obj(),dtype=np.float64)
         shared[0]=stamp
-        shared[7:]=stamp
+        shared[7:727]=stamp
     assert camera.queue.qsize()==2
     stamp,retina,detection=camera.latest
     assert stamp==3. and (retina==3.).all() and detection is None
     assert camera._diagnostics['frames']==3.
     # Reading a cached packet does not give it a new receipt-time timestamp.
     assert camera.latest[0]==3.
+    shared[0]=4.
+    shared[1]=1.
+    shared[727:]=[1.,.25,.75,1.,.4]
+    stamp,retina,detection=camera.latest
+    assert stamp==4. and retina.shape==(1,720)
+    assert detection['race_cue']==dict(u=.25,v=.75,edge=True,aim_u=.4)
     camera.process.exitcode=1
     assert 'exited (1)' in camera.error

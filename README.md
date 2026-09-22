@@ -24,12 +24,19 @@ experimental brain or evidence of arbitrary-course flight.*
 The automated suite and targeted scorer regression checks passed. The CPU
 quickstart executed, and the newest local scene brain passed headless checks in both
 assisted and unassisted modes. Command examples and local links were checked.
-Fresh live recordings now cover Straw Bale, Minus Two and three unchanged
+The Rabbit baseline recordings cover Straw Bale, Minus Two and three unchanged
 attempts on the project-unseen Hangar C03 track. **No attempt completed a lap;
 all five race attempts stopped on impact.** The newest brain and restored pilot
 run together, but race generalization remains unsolved. See the
 [recordings and flight evidence](docs/flight_cards/README.md#2026-09-22-assisted-scene-brain).
 A fresh installation has not been revalidated.
+An explicit [race-cue experiment](docs/race_cue_assistance.md) now reads the
+game's visible checkpoint marker alongside the frozen learned scene features.
+After fixing flag clearance and downhill recovery, it completed all three
+Straw Bale laps in **14:05.703**, with no detected contact or flight intervention.
+[Full-race evidence](docs/flight_cards/2026-09-22_strawbale_cue_04.md).
+That is one seen development race; unseen completion remains unproven.
+These cues do not supply a freestyle planner.
 The [project direction](docs/project_direction.md) records the current goal,
 allowed helpers and evaluation criteria. It supersedes the earlier restriction
 that the navigation predictor must be training-only.
@@ -39,6 +46,7 @@ that the navigation predictor must be training-only.
 | Published controllers | `ftSmooth` for hover/patterns; `ftPath2` for guided flight | Recorded Liftoff flight on specific setups. Route and visual-pilot assistance contribute to the results. |
 | New visual brain | Human, gate and scene training; a separate visual runtime | Experimental progress, including partial course traversal. No qualified general race/freestyle controller. |
 | Restored pilot assistance | Optional Rabbit guidance, speed and yaw around the visual brain | Live integration verified on three maps; zero completed laps in five race attempts. [Usage and limits](docs/visual_pilot_assistance.md). |
+| Visible race cues | Experimental checkpoint-ring guidance with flag clearance and downhill recovery | Full three-lap Straw Bale finish in 14:05.703 after three partial development attempts. [Inputs and limits](docs/race_cue_assistance.md). |
 | Navigation predictor | Causal 0.25–1 s path forecasts; offline evaluation and distillation | Runtime use is allowed, but no current live runner loads it. Prediction error is not flight success. |
 | Generalization | Whole-flight splits, race flight cards and synthetic stress tests | Unseen race and freestyle completion remain open goals. |
 
@@ -46,7 +54,7 @@ The newest completed **local** scene candidate reviewed here is
 `runs/scene-brain-09-navigation/last.pt`. It learns visual currents into the
 brain's goal neurons while preserving the parent's original weights. It is not
 the separate path predictor, is not a published replacement for `ftPath2`, and
-failed the current assisted race evaluation. See [the training record](docs/human_brain_training.md)
+failed the Rabbit baseline and completed one seen race with visible-cue assistance. See [the training record](docs/human_brain_training.md)
 and [assisted-run guide](docs/visual_pilot_assistance.md).
 
 ## Quickstart

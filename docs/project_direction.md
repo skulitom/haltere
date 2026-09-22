@@ -84,6 +84,10 @@ now establish live compatibility on three maps, with zero completed laps in
 five attempts and repeated gate-acquisition/search collisions. That batch has
 no matched unassisted comparison. Use these failures to guide the next fixes;
 Hangar C03 can no longer be treated as untouched if its results inform tuning.
+Its images have now informed cue recognition, so it is development data; choose
+a new untouched course for the next frozen evaluation. The separately declared
+[race-cue experiment](race_cue_assistance.md) is allowed, but its checkpoint
+markers and route arrows cannot establish freestyle capability.
 
 The predictor is eligible for a subsequent runtime experiment, not prohibited.
 Before giving it control authority, establish how a prediction becomes a

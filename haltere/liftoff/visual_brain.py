@@ -28,12 +28,14 @@ from .telemetry import TelemetryReceiver, read_config, DEFAULT_STREAM
 
 
 class RetinaCamera:
-    def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss',phase_status=None,on_frame=None):
+    def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss',phase_status=None,on_frame=None,
+                 race_cues=False):
         self.title, self.fps = title, fps
         self.gate_sensor = gate_sensor
         self.backend = backend
         self.phase_status = phase_status
         self.on_frame = on_frame
+        self.race_cues = race_cues
         self.capture = None
         self.detector = None
         if gate_sensor:
@@ -135,6 +137,12 @@ class RetinaCamera:
                                                       mode=(self.gate_sensor or {}).get('retina_mode','legacy'))
                         else:
                             retina = torch.zeros(1,720)
+                        if self.race_cues:
+                            from ..vision.race_cues import checkpoint_ring
+                            cue = checkpoint_ring(rgb)
+                            if detection is None:
+                                detection = dict(p=0., point=np.zeros(3), width=0.)
+                            detection['race_cue'] = cue
                         inferred = self._phase('publish')
                         self.latest = (capture_time,retina,detection)
                         if self.on_frame is not None:
@@ -154,7 +162,7 @@ class VisualController:
     """Visual brain with an explicit optional guidance/yaw assistant."""
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
                  pilot_assistance='none', assist_speed=2.):
-        if pilot_assistance not in ('none', 'rabbit'):
+        if pilot_assistance not in ('none', 'rabbit', 'race-cue'):
             raise ValueError('Unknown pilot assistance mode')
         # Offline demonstration replay must preserve missing-gate observations
         # even when the demonstrator safely continues beyond the live stop limit.
@@ -209,6 +217,10 @@ class VisualController:
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
+        elif pilot_assistance == 'race-cue':
+            from .race_cue_assistance import RaceCueAssistance
+            self.assistance = RaceCueAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
+        self.assistance_mode = pilot_assistance
         self.last_command = None
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
         # kernels before the timed flight, then discard this synthetic state.
@@ -437,7 +449,8 @@ def run(args):
                           passive_retina=args.blank_retina or not controller.meta.get('gate_sensor',{}).get('raw_retina_active',False)) if replay_out else None
     camera_sensor = replay_camera_sensor(controller.meta.get('gate_sensor'),bool(replay))
     gc.collect()
-    camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=48).start()
+    camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=48,
+                                  race_cues=controller.assistance_mode=='race-cue').start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -487,7 +500,8 @@ def run(args):
                              'capture_time','frame_time','det_bx','det_by','det_bz','det_width','neural_search',
                              'motor_mean','omega_x','omega_y','omega_z','search_height_reference',
                              'command_thr','command_roll','command_pitch','command_yaw',
-                             'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase'])
+                             'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase',
+                             'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u'])
             while time.monotonic()-begin < args.seconds:
                 new = rx.wait(.001)
                 camera_frame = camera.latest
@@ -563,7 +577,10 @@ def run(args):
                                  *controller.last_command,controller.assistance is not None,
                                  controller.assistance.pilot.mode if controller.assistance else -1,
                                  controller.assistance.host.flow_gain if controller.assistance else 1.,
-                                 controller.assistance.pilot.n_passes if controller.assistance else 0,elapsed])
+                                 controller.assistance.pilot.n_passes if controller.assistance else 0,elapsed,
+                                 {'none':0,'rabbit':1,'race-cue':2}[controller.assistance_mode],
+                                 *((detection.get('race_cue') or {}).get(k,-1) if detection else -1
+                                   for k in ('u','v','edge','aim_u'))])
                 if replay is not None:
                     replay.append(controller.last_observation,retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
@@ -611,7 +628,8 @@ def run(args):
                       recurrent_matrix_layout=str(controller.W.layout),
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,
                       external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=assisted,
-                      goal_source='camera Rabbit pilot' if assisted else ('camera detector' if controller.meta.get('gate_sensor') else 'absent'),
+                      goal_source=controller.assistance.metadata()['goal_source'] if assisted else ('camera detector' if controller.meta.get('gate_sensor') else 'absent'),
+                      visible_race_cues=controller.assistance_mode=='race-cue',
                       gate_sensor=controller.meta.get('gate_sensor'),runtime_route_oracle=False,
                       raw_retina_active=not args.blank_retina and (not controller.meta.get('gate_sensor')
                                          or controller.meta['gate_sensor'].get('raw_retina_active',False)),
@@ -638,7 +656,7 @@ def run(args):
         if replay is not None:
             result['neural_replay'] = replay.save()
             result['neural_replay']['sha256'] = sha256(replay.path)
-            result['neural_replay']['pilot_assistance'] = 'rabbit' if assisted else 'none'
+            result['neural_replay']['pilot_assistance'] = controller.assistance_mode
             result['neural_replay']['action_source'] = 'brain before pilot yaw; senses include assistance' if assisted else 'brain'
         log_path.with_suffix('.json').write_text(json.dumps(result,indent=2))
         print(json.dumps(result),flush=True)
@@ -665,9 +683,9 @@ def main():
     p.add_argument('--port',type=int,default=9001)
     p.add_argument('--device',default='cuda')
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
-    p.add_argument('--pilot-assistance',choices=['none','rabbit'],default='none',
-                   help='Rabbit visual gate selection, smooth goals, speed scheduling and yaw assistance')
-    p.add_argument('--assist-speed',type=float,default=2.,help='Rabbit cruise speed in m/s (0 < speed <= 5); set per vehicle, not per course')
+    p.add_argument('--pilot-assistance',choices=['none','rabbit','race-cue'],default='none',
+                   help='Rabbit arch guidance or explicitly game-cue-assisted race guidance; both use neural motor control')
+    p.add_argument('--assist-speed',type=float,default=2.,help='Assisted cruise speed in m/s (0 < speed <= 5); set per vehicle, not per course')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

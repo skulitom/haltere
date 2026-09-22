@@ -181,6 +181,10 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
             assisted = log['pilot_assisted'][idx].astype(bool)
             attribution['pilot_assistance'] = ('rabbit' if assisted.all() else
                                                'none' if not assisted.any() else 'mixed')
+            if 'pilot_kind' in log:
+                kinds = np.unique(log['pilot_kind'][idx])
+                attribution['pilot_assistance'] = ({0:'none',1:'rabbit',2:'race-cue'}.get(kinds[0], 'unknown')
+                                                   if len(kinds)==1 else 'mixed')
     ts = log['ts'][idx] - log['ts'][idx][0]
     dt = float(np.median(np.diff(ts)))
     P = np.c_[log['px'][idx], log['py'][idx], log['pz'][idx]]

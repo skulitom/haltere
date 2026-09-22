@@ -24,7 +24,7 @@ def put_latest(queue, packet):
             pass  # the next camera frame will replace it; never block capture
 
 
-def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend):
+def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, race_cues=False):
     import torch
     from .visual_brain import RetinaCamera
     torch.set_num_threads(2)
@@ -39,14 +39,18 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend):
             shared = np.frombuffer(data.get_obj(),dtype=np.float64)
             shared[:7] = [stamp,detection is not None,detection['p'] if detection else 0.,
                           detection['width'] if detection else 0.,*(detection['point'] if detection else [0.,0.,0.])]
-            shared[7:] = retina.numpy().ravel()
+            shared[7:727] = retina.numpy().ravel()
+            cue = detection.get('race_cue') if detection else None
+            shared[727:] = [cue is not None, cue['u'] if cue else 0.,
+                            cue['v'] if cue else 0., cue['edge'] if cue else 0.,
+                            cue.get('aim_u',cue['u']) if cue else 0.]
         if time.monotonic()-last_diagnostics>.5:
             put_latest(queue,dict(diagnostics=dict(camera.diagnostics(),priority=priority),error=camera.error))
             last_diagnostics = time.monotonic()
     try:
         from .scheduling import flight_process_priority
         priority = flight_process_priority()
-        camera = RetinaCamera(title,fps,gate_sensor,backend,phase_status=phase,on_frame=publish)
+        camera = RetinaCamera(title,fps,gate_sensor,backend,phase_status=phase,on_frame=publish,race_cues=race_cues)
         camera.done = done
         gc.collect()
         gc.disable()
@@ -61,14 +65,14 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend):
 
 
 class ProcessRetinaCamera:
-    def __init__(self,title='Liftoff',fps=24,gate_sensor=None,backend='mss'):
+    def __init__(self,title='Liftoff',fps=24,gate_sensor=None,backend='mss',race_cues=False):
         context = mp.get_context('spawn')
         self.queue = context.Queue(maxsize=2)
-        self.data = context.Array('d',727,lock=True)
+        self.data = context.Array('d',732,lock=True)
         self.done = context.Event()
         self.phase = context.Array('d',[0.,time.monotonic()],lock=False)
         self.process = context.Process(target=camera_worker,
-            args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend),daemon=True)
+            args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend,race_cues),daemon=True)
         self.fps, self.backend = fps,backend
         self._latest = None
         self._error = None
@@ -89,7 +93,11 @@ class ProcessRetinaCamera:
                 if shared[0] and (self._latest is None or shared[0]!=self._latest[0]):
                     snapshot = shared.copy()
                     detection = dict(p=snapshot[2],width=snapshot[3],point=snapshot[4:7]) if snapshot[1] else None
-                    self._latest = snapshot[0],torch.from_numpy(snapshot[7:].astype(np.float32)[None]),detection
+                    if len(snapshot) > 727 and snapshot[727] and detection is not None:
+                        detection['race_cue'] = dict(u=snapshot[728],v=snapshot[729],edge=bool(snapshot[730]))
+                        if len(snapshot) > 731:
+                            detection['race_cue']['aim_u'] = snapshot[731]
+                    self._latest = snapshot[0],torch.from_numpy(snapshot[7:727].astype(np.float32)[None]),detection
             finally:
                 lock.release()
         while True:
