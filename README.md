@@ -58,12 +58,15 @@ that the navigation predictor must be training-only.
 | Navigation predictor | Causal 0.25–1 s path forecasts; offline evaluation and distillation | Runtime use is allowed, but no current live runner loads it. Prediction error is not flight success. |
 | Generalization | Whole-flight splits, race flight cards and synthetic stress tests | Unseen race and freestyle completion remain open goals. |
 
-The newest completed **local** scene candidate reviewed here is
+The newest completed scene candidate reviewed here is
 `runs/scene-brain-09-navigation/last.pt`. It learns visual currents into the
 brain's goal neurons while preserving the parent's original weights. It is not
-the separate path predictor, is not a published replacement for `ftPath2`, and
-failed the Rabbit baseline and completed two seen races with visible-cue assistance. See [the training record](docs/human_brain_training.md)
-and [assisted-run guide](docs/visual_pilot_assistance.md).
+the separate path predictor. Its [experimental inference bundle](docs/scene_brain_09_release.md)
+is available on GitHub and Hugging Face with the exact matching detector and
+mapping. It does not replace `ftPath2`: it failed the Rabbit baseline and
+completed two seen races with visible-cue assistance. See
+[the training record](docs/human_brain_training.md) and
+[assisted-run guide](docs/visual_pilot_assistance.md).
 
 ## Quickstart
 

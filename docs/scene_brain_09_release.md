@@ -1,5 +1,11 @@
 # Scene-09 visual brain: inference bundle
 
+Download the experimental bundle from
+[GitHub Releases](https://github.com/skulitom/haltere/releases/tag/scene-brain-09-experimental)
+or [Hugging Face](https://huggingface.co/Skulitom/haltere/tree/main/scene09).
+Both published archives were checked against the local SHA256. This is an
+experimental download, not a qualified general race/freestyle controller.
+
 This bundle contains the newest completed scene brain reviewed on 2026-09-22,
 its exact frozen detector and the mapping used for the original `[Copy] New Drone`.
 It preserves the original checkpoint bytes and relative paths. Extract it into
@@ -35,9 +41,10 @@ does not establish general obstacle avoidance or freestyle planning.
 ## Running the evaluated stack
 
 Follow [game setup](liftoff_setup.md) and [the assisted-run guide](visual_pilot_assistance.md).
-Use code `1fb1d28` or a later compatible revision. It includes temporary launch
+Use code `de744e8` or a later compatible revision. It includes temporary launch
 clearance, bounded camera-outage braking, high-checkpoint recovery and
-two-thread image processing; all 313 automated checks passed for that revision.
+two-thread image processing. The prior full suite passed 313 checks; the
+subsequent top-edge horizontal-hold change passed 51 focused checks.
 Use hidden Anode, the original drone, a 30-degree camera tilt and the calibrated
 camera geometry embedded in the checkpoint. Verify the real processed controls,
 including throttle-low, before connecting a live runner to a pad bridge.
@@ -73,6 +80,9 @@ Paris exposed camera timing interruptions; both failed attempts and the
 successful bounded regression are retained. Hall 26 subsequently hit an overhead
 duct while following a checkpoint marker rendered through it. This is a concrete
 remaining obstacle-planning failure, not a timing problem or successful race.
+The Green subsequently hit an overhang after traversing a building underpass.
+It informed horizontal holding during top-edge recovery and is now development
+data. That change remains under flight evaluation.
 
 No universal race capability, freestyle completion or improvement from a separate
 navigation predictor is established by these results. The visual helpers are
