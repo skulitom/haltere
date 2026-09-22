@@ -105,7 +105,7 @@ def _capture_game_frame(sct, capture, rect=None):
 
 def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, capture: str | None,
                    rect: tuple | None, fps: int, show: bool, panel_height: int, dataset: str | None = None,
-                   dataset_every: int = 2, dataset_size: tuple[int, int] = (640, 360)):
+                   dataset_every: int = 2, dataset_size: tuple[int, int] = (640, 360), controller_label: str = ''):
     from ..connectome.graph import BrainGraph
     from ..viz.fastpanel import FastBrainPanel
     from ..viz.render import neuron_layout
@@ -158,6 +158,13 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
             var += 0.02 * ((r - mu) ** 2 - var)
         st = dict(zip(STATE_FIELDS, state_view.copy()))
         img_panel = panel.render(r, mu, np.sqrt(var + 1e-4), st)
+        if controller_label:
+            from PIL import Image, ImageDraw
+            labelled = Image.fromarray(img_panel)
+            draw = ImageDraw.Draw(labelled)
+            draw.rectangle((0, 0, panel.W, 28), fill=(125, 35, 0))
+            draw.text((12, 6), controller_label, fill='white', font_size=17)
+            img_panel = np.asarray(labelled)
         frame = img_panel
         if sct is not None:
             shot = _capture_game_frame(sct, capture or 'Liftoff', rect)
@@ -236,10 +243,11 @@ class FlightRecorder:
 
     def __init__(self, shared: SharedFlightState, graph_path: str, out: str | None = None, capture: str | None = 'Liftoff',
                  rect: tuple | None = None, fps: int = 20, show: bool = False, panel_height: int = 720,
-                 dataset: str | None = None, dataset_every: int = 2):
+                 dataset: str | None = None, dataset_every: int = 2, controller_label: str = ''):
         self.shared = shared
         self.proc = mp.Process(target=_recorder_main, args=(shared, graph_path, out, capture, rect, fps, show, panel_height,
-                                                            dataset, dataset_every), daemon=True)
+                                                            dataset, dataset_every),
+                               kwargs=dict(controller_label=controller_label), daemon=True)
 
     def start(self) -> None:
         _scrub_cv2_from_sys_path()          # the child copies sys.path at spawn time

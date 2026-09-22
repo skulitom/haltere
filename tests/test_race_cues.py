@@ -16,6 +16,21 @@ def picture(*centres):
     return rgb
 
 
+def test_speed_scaling_follows_checkpoint_training_reference():
+    history = CameraPoseHistory()
+    history.append(10., np.array([0., 0., 1.5]), np.array([1., 0., 0., 0.]))
+    s = senses(velocity=(2., 0., .3))
+    older = RaceCueAssistance(SENSOR, history, 2.)
+    faster = RaceCueAssistance(SENSOR, history, 2., reference_speed=3.)
+    old_goal, old_senses = older.update(s, [0., 0., 0.], None, 10., 10.)
+    new_goal, new_senses = faster.update(s, [0., 0., 0.], None, 10., 10.)
+    np.testing.assert_allclose(old_goal, new_goal)
+    np.testing.assert_allclose(old_senses['vel_world'], [[2., 0., .3]])
+    np.testing.assert_allclose(new_senses['vel_world'], [[3., 0., .3]])
+    assert faster.metadata()['effective_speed_setting_mps'] == 2.
+    assert faster.metadata()['trained_motor_reference_mps'] == 3.
+
+
 def test_ring_survives_touching_arch_and_does_not_confuse_reticle_or_sticks():
     rgb = picture((640, 634), (586, 666), (693, 666))
     cv2.circle(rgb, (640, 360), 8, (255, 255, 255), 1)

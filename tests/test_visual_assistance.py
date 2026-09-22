@@ -139,3 +139,26 @@ def test_default_runner_remains_unassisted(checkpoint):
     np.testing.assert_array_equal(controller.last_command, action)
     np.testing.assert_allclose(processed, action)
     assert np.isfinite(raw).all()
+
+
+def test_pd_comparison_uses_same_guidance_and_preserves_shadow_brain(checkpoint):
+    from haltere.liftoff.telemetry import TelemetryFrame
+    path, mapping = checkpoint
+    ck = torch.load(path, weights_only=True)
+    ck['visual_brain']['gate_training'] = dict(dynamics=dict(profile=dict(
+        vertical_calibration=dict(mean=dict(hover_processed=0., slope_mps2_per_processed=17.)))))
+    torch.save(ck, path)
+    brain = VisualController(path, mapping, 'cpu', pilot_assistance='race-cue')
+    pd = VisualController(path, mapping, 'cpu', pilot_assistance='race-cue', motor_controller='pd')
+    frame = TelemetryFrame(timestamp=1., motor_rpm=np.ones(4)*1000.)
+    detection = dict(p=.99, point=np.array([8., 0., 1.5]), width=30.,
+                     race_cue=dict(u=.55, v=.5, edge=False))
+    retina = torch.ones(1, 720)*.3
+    brain_action, _, _ = brain.step(frame, retina, detection, 10., 10., 10.)
+    pd_shadow, _, _ = pd.step(frame, retina, detection, 10., 10., 10.)
+    for key in brain.last_observation:
+        torch.testing.assert_close(brain.last_observation[key], pd.last_observation[key])
+    np.testing.assert_array_equal(brain_action, pd_shadow)
+    assert pd.last_command[3] == brain.last_command[3]
+    assert not np.allclose(pd.last_command[:3], pd_shadow[:3])
+    assert pd.motor_metadata['brain_controls_motors'] is False

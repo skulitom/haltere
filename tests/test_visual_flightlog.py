@@ -10,7 +10,8 @@ from haltere.liftoff.flightlog import describe, load_log, score_log
 
 @pytest.mark.parametrize('shadow', [True, False])
 @pytest.mark.parametrize('explicit_phase', [True, False])
-def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, explicit_phase):
+@pytest.mark.parametrize('motor', [None, 'brain', 'pd'])
+def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, explicit_phase, motor):
     path = tmp_path / 'visual.csv'
     cols = ['ts', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz',
             'omega_x', 'omega_y', 'omega_z', 'in_thr', 'in_roll', 'in_pitch', 'in_yaw',
@@ -18,6 +19,8 @@ def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, expli
             'neural_search', 'search_height_reference', 'pilot_mode']
     if explicit_phase:
         cols.append('phase')
+    if motor:
+        cols.append('motor_controller')
     with path.open('w', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=cols)
         writer.writeheader()
@@ -31,6 +34,8 @@ def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, expli
                            in_yaw=.125, raw_yaw=.7, yaw=.1, command_yaw=.5)
                 if explicit_phase:
                     row['phase'] = t
+                if motor:
+                    row['motor_controller'] = motor
                 writer.writerow(row)
         f.write('60,1,2\n')  # capture interrupted mid-row
     log = load_log(str(path))
@@ -43,7 +48,8 @@ def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, expli
         assert r['speed_median'] == pytest.approx(2.)
         assert r['airborne_s'] == pytest.approx(6.99, abs=.02)
         assert r['pilot_assistance'] == 'rabbit'
-        assert r['control_mode'] == ('shadow: no control output' if shadow else 'live control')
+        assert r['control_mode'] == ('shadow: no control output' if shadow else
+                                    'PD motor baseline; brain in shadow' if motor == 'pd' else 'live control')
         assert 'gates_through' not in r  # motion metrics cannot invent race completion
     assert results[0]['control_mode'] in describe('visual', results)
 
@@ -59,6 +65,18 @@ def test_unknown_log_schema_has_actionable_error(tmp_path):
     path.write_text('ts,x,y,z\n1,0,0,2\n')
     with pytest.raises(ValueError, match='missing telemetry columns'):
         score_log(str(path))
+
+
+def test_elapsed_flight_time_uses_timestamps_when_control_ticks_are_missed():
+    from haltere.liftoff.flightlog import score_attempt
+    # Most steps remain 10 ms, but occasional missed ticks add real elapsed time.
+    t = np.cumsum(np.where(np.arange(1000) % 5 == 0, .03, .01))
+    log = {k: np.zeros(len(t)) for k in ('px','py','pz','vx','vy','vz','qw','qx','qy','qz',
+           'wx','wy','wz','in_thr','in_roll','in_pitch','in_yaw')}
+    log.update(ts=t, phase=t+5, pz=np.full(len(t),2.), qw=np.ones(len(t)), vx=np.ones(len(t)))
+    scored = score_attempt(log, np.arange(len(t)))
+    assert scored['airborne_s'] == pytest.approx(t[-1]-t[0])
+    assert scored['airborne_s'] > len(t)*np.median(np.diff(t))+3
 
 
 @pytest.mark.parametrize('sidecar_case', ['matching', 'mismatch', 'after_short_reset'])

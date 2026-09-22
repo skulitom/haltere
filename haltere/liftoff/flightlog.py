@@ -22,7 +22,7 @@ def load_log(path: str) -> dict[str, np.ndarray]:
         return {}
     out = {}
     for k in rows[0].keys():
-        if k == 'status':
+        if k in ('status', 'motor_controller'):
             out[k] = np.array([r[k] for r in rows], dtype=object)
             continue
         out[k] = np.array([{'True': 1., 'False': 0.}.get(r[k], r[k])
@@ -177,6 +177,11 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
         shadow = log['shadow'][idx].astype(bool)
         attribution['control_mode'] = ('shadow: no control output' if shadow.all() else
                                        'live control' if not shadow.any() else 'mixed shadow/live')
+        if 'motor_controller' in log:
+            motors = np.unique(log['motor_controller'][idx])
+            attribution['motor_controller'] = motors[0] if len(motors) == 1 else 'mixed'
+            if not shadow.any() and attribution['motor_controller'] == 'pd':
+                attribution['control_mode'] = 'PD motor baseline; brain in shadow'
         if 'pilot_assisted' in log:
             assisted = log['pilot_assisted'][idx].astype(bool)
             attribution['pilot_assistance'] = ('rabbit' if assisted.all() else
@@ -192,7 +197,7 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
     Q = np.c_[log['qw'][idx], log['qx'][idx], log['qy'][idx], log['qz'][idx]]
     air = (P[:, 2] > 0.5) & (log['phase'][idx] > 3.0)
     if air.sum() < 100:
-        return dict(attribution, airborne_s=float(air.sum() * dt))
+        return dict(attribution, airborne_s=float((np.diff(ts)*air[:-1]).sum()))
     a0 = int(np.argmax(air))
     sl = slice(a0, len(idx))
     roll, pitch = euler_deg(Q)
@@ -203,7 +208,7 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
                           axis=0)).mean(0)
     res = {
         **attribution,
-        'airborne_s': float((len(idx) - a0) * dt),
+        'airborne_s': float(ts[-1]-ts[a0]),
         'speed_median': float(np.median(speed[sl])), 'speed_p90': float(np.percentile(speed[sl], 90)),
         'horizon_shake_deg': float(np.sqrt(np.mean(hp(roll) ** 2 + hp(pitch) ** 2))),
         'rate_shake_dps': float(np.sqrt(np.mean(hp(w[:, 0]) ** 2 + hp(w[:, 1]) ** 2))),

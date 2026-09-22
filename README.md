@@ -46,10 +46,14 @@ matched motor-controller comparison, and camera-based free-space planning.
 An edited Workshop copy and a fully generated course both loaded successfully.
 Full-course playability validation and the geometry layer are still pending.
 Manual map design is not part of this workflow.
+A [matched motor comparison](docs/motor_tracking.md) now covers three development
+courses. The conventional baseline ran faster at the same nominal speed setting,
+but one indoor attempt stopped on a control deadline. Faster brain motor-readout
+training is experimental; simulation gains alone do not qualify new weights.
 Subsequent held-out attempts exposed descent, camera-timing, high-checkpoint
 and obstacle-planning failures. Generic recovery fixes are tracked alongside
 every failed attempt in the [flight index](docs/flight_cards/README.md).
-The full suite passed 323 automated tests; earlier race finishes
+The full suite passed 340 automated tests; earlier race finishes
 do not substitute for full-race checks of later controller revisions.
 These cues do not supply a freestyle planner.
 The [project direction](docs/project_direction.md) records the current goal,

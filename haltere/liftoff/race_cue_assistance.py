@@ -14,13 +14,16 @@ class RaceCueAssistance:
     height changes proportional to the observed elevation. Never extrapolate
     a complete course or count image switches as completed checkpoints.
     """
-    def __init__(self, sensor, pose_history, speed=2.):
+    def __init__(self, sensor, pose_history, speed=2., *, reference_speed=2.):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 5:
             raise ValueError('Assisted speed must be finite and in (0, 5] m/s')
+        if not np.isfinite(reference_speed) or not 0 < reference_speed <= 10:
+            raise ValueError('Invalid trained motor reference speed')
         self.camera = Camera(320, 180, sensor['focal_320'], sensor['tilt_deg'])
         self.pose_history, self.speed = pose_history, speed
+        self.reference_speed = reference_speed
         self.host = SimpleNamespace(flow_gain=1.)
         self.pilot = SimpleNamespace(carrot=np.zeros(3), target=None, mode=4,
                                      n_passes=0, sight_yaw=0.)
@@ -129,7 +132,7 @@ class RaceCueAssistance:
         self.pilot.target = SimpleNamespace(t_last=self.last_seen) if fresh else None
         desired_yaw = -yaw_rate/2.3
         self.pilot.sight_yaw += float(np.clip(desired_yaw-self.pilot.sight_yaw, -2*dt, 2*dt))
-        self.host.flow_gain = max(1., 2./self.speed)
+        self.host.flow_gain = max(1., self.reference_speed/self.speed)
         scaled_velocity = senses['vel_world']*senses['vel_world'].new_tensor(
             [self.host.flow_gain, self.host.flow_gain, 1.])
         modified = {**senses, 'vel_world': scaled_velocity,
@@ -152,6 +155,8 @@ class RaceCueAssistance:
                     launch_clearance='released after first 0.6 m ascent; no persistent start-height floor',
                     capture_outage='brake on live odometry without search yaw after 0.25 s; runner pauses at 0.5 s',
                     yaw_assistance=True, speed_assistance=True, nominal_speed_mps=self.speed,
+                    trained_motor_reference_mps=self.reference_speed,
+                    effective_speed_setting_mps=min(self.speed, self.reference_speed),
                     cue_frames=self.frames, estimated_passages=None,
                     motor_control='brain throttle/roll/pitch; assisted yaw',
                     limitations='Race guidance only; no freestyle objective or completed-lap inference')

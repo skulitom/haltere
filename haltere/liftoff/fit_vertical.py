@@ -51,12 +51,16 @@ def fit_vertical(frame,start_s=7.,end_s=110.):
     return min(fits,key=lambda row:row['robust_error'])
 
 
-def equivalent_power_curve(fit,calibration):
-    """Preserve measured hover and local acceleration slope in simulator units."""
+def equivalent_power_curve(fit,calibration,*,idle=0.):
+    """Preserve hover and local slope after the simulator's motor idle mapping.
+
+    ``idle=0`` retains the legacy, pre-mixer interpretation. Callers calibrating
+    a Vehicle must pass its controller idle explicitly.
+    """
     scale=calibration['throttle_scale']
     action=calibration['hover_stick_sim']+(fit['hover_processed']-calibration['hover_processed'])/scale
-    hover=(action+1)/2
-    if scale<=0 or not 0<hover<1:
+    hover=idle+(1-idle)*(action+1)/2
+    if scale<=0 or not 0<=idle<1 or not idle<hover<1:
         raise ValueError('Invalid calibrated hover/mapping')
-    exponent=2*scale*fit['slope_mps2_per_processed']*hover/G
+    exponent=2*scale*fit['slope_mps2_per_processed']*hover/(G*(1-idle))
     return dict(twr=float(hover**-exponent),thrust_exp=float(exponent))

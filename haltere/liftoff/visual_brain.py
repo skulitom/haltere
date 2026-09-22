@@ -161,9 +161,13 @@ class RetinaCamera:
 class VisualController:
     """Visual brain with an explicit optional guidance/yaw assistant."""
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
-                 pilot_assistance='none', assist_speed=2.):
+                 pilot_assistance='none', assist_speed=2., motor_controller='brain'):
         if pilot_assistance not in ('none', 'rabbit', 'race-cue'):
             raise ValueError('Unknown pilot assistance mode')
+        if motor_controller not in ('brain', 'pd'):
+            raise ValueError('Unknown motor controller')
+        if motor_controller == 'pd' and pilot_assistance != 'race-cue':
+            raise ValueError('PD comparison requires the frozen race-cue guidance')
         # Offline demonstration replay must preserve missing-gate observations
         # even when the demonstrator safely continues beyond the live stop limit.
         # Every live caller retains the default stop condition.
@@ -219,8 +223,24 @@ class VisualController:
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
-            self.assistance = RaceCueAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
+            reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
+            self.assistance = RaceCueAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
+                                                reference_speed=reference)
         self.assistance_mode = pilot_assistance
+        self.motor_controller = motor_controller
+        self.motor_baseline = None
+        self.motor_metadata = dict(kind='brain', brain_controls_motors=True)
+        if motor_controller == 'pd':
+            from dataclasses import replace
+            from ..brain.motor_baseline import MotorPD, MotorPDConfig
+            from .fit_vertical import equivalent_power_curve
+            profile = self.meta['gate_training']['dynamics']['profile']
+            measured = profile['vertical_calibration']['mean']
+            curve = equivalent_power_curve(measured, c, idle=self.cfg.ctl.idle)
+            self.motor_baseline = MotorPD(replace(self.cfg.quad, **curve), self.cfg.rates, self.cfg.ctl.idle,
+                                          MotorPDConfig(position_gain=max(.8, self.assistance.reference_speed/3.)))
+            self.motor_metadata = dict(**self.motor_baseline.metadata(), vertical_fit=measured,
+                                       effective_thrust_curve=curve, mixer_idle=self.cfg.ctl.idle)
         self.last_command = None
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
         # kernels before the timed flight, then discard this synthetic state.
@@ -325,7 +345,15 @@ class VisualController:
         self.last_observation = obs
         action,self.state,_ = self.brain(obs,self.state,self.W)
         brain_action = action[0].cpu().numpy()
-        command = self.assistance.command(brain_action) if self.assistance is not None else brain_action.copy()
+        motor_action = brain_action
+        if self.motor_baseline is not None:
+            # Identical causal target and assisted velocity observations. The
+            # cap matches the brain's trained target; slower settings use the
+            # same sensory scaling in RaceCueAssistance for both motors.
+            motor_action = self.motor_baseline.command(
+                assisted_senses, action.new_tensor(self.relative_gate)[None],
+                speed=self.assistance.reference_speed)[0].cpu().numpy()
+        command = self.assistance.command(motor_action) if self.assistance is not None else motor_action.copy()
         self.last_command = command
         processed = brain_to_processed(action.new_tensor(command)[None],self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(command),-1,1)
@@ -442,7 +470,8 @@ def run(args):
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device,
                                   pilot_assistance=getattr(args,'pilot_assistance','none'),
-                                  assist_speed=getattr(args,'assist_speed',2.))
+                                  assist_speed=getattr(args,'assist_speed',2.),
+                                  motor_controller=getattr(args,'motor_controller','brain'))
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -458,7 +487,9 @@ def run(args):
         pad = UdpSticks(host,int(port))
     rx = TelemetryReceiver(port=args.port,stream=(read_config() or {}).get('StreamFormat',DEFAULT_STREAM))
     shared = SharedFlightState(controller.brain.N) if args.record else None
-    recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18) if shared else None
+    recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
+                              controller_label='PD MOTOR CONTROL | BRAIN IN SHADOW'
+                              if controller.motor_baseline else '') if shared else None
     if recorder:
         recorder.start()
         try:
@@ -503,7 +534,7 @@ def run(args):
                              'motor_mean','omega_x','omega_y','omega_z','search_height_reference',
                              'command_thr','command_roll','command_pitch','command_yaw',
                              'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase',
-                             'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u'])
+                             'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller'])
             while time.monotonic()-begin < args.seconds:
                 new = rx.wait(.001)
                 camera_frame = camera.latest
@@ -583,7 +614,7 @@ def run(args):
                                  controller.assistance.pilot.n_passes if controller.assistance else 0,elapsed,
                                  {'none':0,'rabbit':1,'race-cue':2}[controller.assistance_mode],
                                  *((detection.get('race_cue') or {}).get(k,-1) if detection else -1
-                                   for k in ('u','v','edge','aim_u'))])
+                                   for k in ('u','v','edge','aim_u')),controller.motor_controller])
                 if replay is not None:
                     replay.append(controller.last_observation,retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
@@ -617,9 +648,14 @@ def run(args):
         if gc_was_enabled:
             gc.enable()
         assisted = controller.assistance is not None
+        pilot_meta = controller.assistance.metadata() if assisted else dict(mode='none')
+        if controller.motor_baseline:
+            pilot_meta['motor_control'] = 'PD throttle/roll/pitch; assisted yaw; brain runs in shadow'
         result = dict(checkpoint_sha256=sha256(args.checkpoint),runtime_requires_teacher=False,
-                      control_mode=('pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
-                      pilot_assistance=controller.assistance.metadata() if assisted else dict(mode='none'),
+                      control_mode=('PD motor baseline; brain in shadow' if controller.motor_baseline else
+                                    'pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
+                      motor_controller=controller.motor_metadata,
+                      pilot_assistance=pilot_meta,
                       navigation_predictor_loaded=False,
                       brain_action_columns=['thr','roll','pitch','yaw'],
                       command_columns=['command_thr','command_roll','command_pitch','command_yaw'],
@@ -661,7 +697,8 @@ def run(args):
             result['neural_replay'] = replay.save()
             result['neural_replay']['sha256'] = sha256(replay.path)
             result['neural_replay']['pilot_assistance'] = controller.assistance_mode
-            result['neural_replay']['action_source'] = 'brain before pilot yaw; senses include assistance' if assisted else 'brain'
+            result['neural_replay']['action_source'] = ('shadow brain; not commanded' if controller.motor_baseline else
+                                                      'brain before pilot yaw; senses include assistance' if assisted else 'brain')
         log_path.with_suffix('.json').write_text(json.dumps(result,indent=2))
         print(json.dumps(result),flush=True)
 
@@ -679,6 +716,8 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('checkpoint')
     p.add_argument('--mapping',required=True)
+    p.add_argument('--motor-controller',choices=['brain','pd'],default='brain',
+                   help='PD is a matched diagnostic baseline; its brain panel is explicitly labelled as shadow')
     p.add_argument('--seconds',type=float,default=15)
     p.add_argument('--log',required=True)
     p.add_argument('--record',default='')
@@ -688,8 +727,8 @@ def main():
     p.add_argument('--device',default='cuda')
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
     p.add_argument('--pilot-assistance',choices=['none','rabbit','race-cue'],default='none',
-                   help='Rabbit arch guidance or explicitly game-cue-assisted race guidance; both use neural motor control')
-    p.add_argument('--assist-speed',type=float,default=2.,help='Assisted cruise speed in m/s (0 < speed <= 5); set per vehicle, not per course')
+                   help='Rabbit arch guidance or explicitly game-cue-assisted race guidance around the chosen motor controller')
+    p.add_argument('--assist-speed',type=float,default=2.,help='Requested speed (0 < speed <= 5), capped by the trained motor reference; set per vehicle, not per course')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)
