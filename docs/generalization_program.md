@@ -50,8 +50,10 @@ Seed `20260922` with eight checkpoints and six scenery objects loaded in game
 with a `1/1` race HUD. Evidence is in
 `runs/generated-course-dev-20260922-v2/load-evidence.json` and `loaded.png`.
 These checkpoint assets define passage volumes; this initial generator does not
-yet create a varied set of physical gate frames. Directional crossings and full
-course clearance still need flight checks.
+yet create a varied set of physical gate frames. Candidate04 subsequently
+completed this development loop in **2:20.759**, confirmed by the game results
+screen in `runs/motor10-transfer-20260922/loop-finish.jpg`. That verifies this
+one generated course's full playability, not other seeds or obstacle layouts.
 Placing objects in other environments needs a checked free-space envelope;
 random coordinates can put gates inside existing buildings or below terrain.
 

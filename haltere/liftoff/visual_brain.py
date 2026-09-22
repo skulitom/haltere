@@ -453,14 +453,24 @@ def telemetry_still_progressing(receiver):
     An agent/user pause can race the 120 ms telemetry deadline. Sending Escape
     based on the cached frame would then resume the game during pad shutdown.
     Drain that frame and require fresh progress across a bounded quiet interval.
+    A short export/game stall can outlast the first check; allow recovery for
+    up to 1.4 s without ever resuming control or toggling a paused/results screen.
     """
     from .manual_recording import live_pose
     before = receiver.poll() or receiver.last
     if before is None or not live_pose(before):
         return False
     time.sleep(.2)
-    after = receiver.poll()
-    return bool(after is not None and live_pose(after) and after.timestamp-before.timestamp > .03)
+    for attempt in range(25):
+        after = receiver.poll()
+        if after is not None:
+            if not live_pose(after) or after.timestamp < before.timestamp:
+                return False
+            if after.timestamp-before.timestamp > .03:
+                return True
+        if attempt < 24:
+            time.sleep(.05)
+    return False
 
 
 def run(args):
@@ -532,6 +542,7 @@ def run(args):
     last_timestamp = None
     step_times = deque(maxlen=4096)
     deadline_failure = None
+    telemetry_failure = None
     memory_only_ticks = 0
     max_image_age = 0.
     try:
@@ -563,6 +574,11 @@ def run(args):
                         raise RuntimeError(f'No fresh live image/telemetry: {camera.error}')
                     continue
                 if now-last_frame>.12 or now-last_progress>.5 or not live_pose(frame):
+                    telemetry_failure = dict(receipt_age_ms=1000*(now-last_frame),
+                                             progress_age_ms=1000*(now-last_progress),
+                                             timestamp=float(frame.timestamp),
+                                             live_pose=bool(live_pose(frame)),
+                                             received_frames=rx.frames,invalid_packets=rx.bad)
                     raise RuntimeError('Telemetry stale, paused or outside live flight')
                 capture_time,retina,detection = camera_frame
                 image_age = now-capture_time
@@ -673,6 +689,7 @@ def run(args):
                       raw_output_includes_arming_hold=True,
                       brain_device=str(controller.brain.device),
                       vision_device=getattr(args,'vision_device','cpu'),
+                      telemetry_failure=telemetry_failure,
                       process_priority=priority,
                       image_freshness_s=.12,camera_outage_limit_s=.5 if camera_braking_allowed else .25 if memory_gap_allowed else .12,
                       camera_braking_after_s=.25 if camera_braking_allowed else None,
