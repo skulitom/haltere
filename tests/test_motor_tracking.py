@@ -5,6 +5,20 @@ from haltere.sim.quad import QuadSim, QuadParams, QuadState, quat_from_euler, qu
 from tests.test_visual_assistance import checkpoint
 
 
+def test_retina_windows_are_repeatable_and_do_not_change_physics_rng():
+    from haltere.train.motor_tracking import retina_sequence
+    stream = torch.arange(8*720).reshape(8,720).float()+1
+    before = torch.random.get_rng_state().clone()
+    sequence = retina_sequence(stream, 100, 4, 62, .5)
+    assert torch.equal(before, torch.random.get_rng_state())
+    assert torch.equal(sequence, retina_sequence(stream, 100, 4, 62, .5))
+    missing = sequence.eq(0).all(-1)
+    assert missing.any() and (~missing).any()
+    assert (missing.reshape(10,10,4) == missing.reshape(10,10,4)[:, :1]).all()
+    valid = sequence[~missing]
+    assert (valid[:, 1:]-valid[:, :-1]).eq(1).all()
+
+
 def test_collected_features_reproduce_motor_readout_and_batch_axis(checkpoint):
     from haltere.train.bptt import load_checkpoint
     from haltere.train.motor_tracking import motor_features

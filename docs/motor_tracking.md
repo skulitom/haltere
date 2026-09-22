@@ -108,9 +108,37 @@ on all three development courses. Straw Bale reached a 2.61 m/s median but hit
 a flag after 151.5 seconds of control; Minus Two reached 2.93 m/s but hit a
 pillar after 75.9 seconds. Neither had a control-deadline failure. Those failed
 flights are retained in `runs/motor10-transfer-20260922`, including their terminal
-impact records. Faster motor tracking has not established safer navigation.
+impact records. The generated loop finished its single lap in **2:20.759**,
+confirmed by the game results screen, with a 3.04 m/s median and no detected
+impact. This is the first full playability validation of the generated v2 loop.
+It has checkpoint volumes and scenery outside the route, without physical gate
+frames. It is an open development course, not a held-out obstacle race.
+Faster motor tracking has not established safer navigation.
 The 3 m/s stack is not qualified for promotion. Scene09 remains the published
 reference while further transfer checks are evaluated.
+The subsequent common 2.5 m/s full-race batch was withdrawn after its first
+Straw Bale attempt developed a large motor excursion and hit the ground at
+150.15 seconds. The other two planned launches were not run. Candidate04 was
+not published or promoted. This withdrawal is recorded in
+`runs/motor10-full-25-20260922/outcomes.json`.
+
+A paired CPU diagnostic then added recorded validation-scene currents to the
+same ideal-target simulations. At 2.5 m/s, mean velocity error rose from 0.60
+to 1.30 m/s and the 90th-percentile speed from 2.55 to 5.15 m/s; at 3 m/s the
+error rose from 0.75 to 1.42 m/s. None of these short simulations crashed, so
+the input mismatch is a demonstrated robustness gap, not proof of the complete
+live failure mechanism. The blank-retina results alone were too optimistic.
+
+`--retina-data` now injects recorded training-scene currents and configurable
+100 ms missing-image intervals during motor training. `--validation-retina-data`
+supplies a separate stream used only for evaluation. These images are unrelated
+to the simulated pose; this is motor robustness training, not learned visual
+navigation. `--data-controller mixed` collects PD trajectories with seed 1921
+and corrective labels on brain trajectories with seeds 1922/1923.
+`--training-speeds 1.5 2 2.5 3` covers the intermediate speed explicitly.
+Recorded image sampling uses a separate random generator so paired runs keep
+the same physical randomization. Each new run saves its exact training source.
+
 The broader [generalization program](generalization_program.md) still requires
 free-space perception, full races on frozen held-out batches and separate
 freestyle evaluation.

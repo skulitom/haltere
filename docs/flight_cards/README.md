@@ -77,6 +77,22 @@ standard brain/gameplay videos and telemetry are in
 | The Green / course 01, first exposure | Impact during upward recovery after a building underpass, lap 1/2; now development data | [Attempt 1](2026-09-22_green_cue_01.md), `green-cue-01` |
 | The Green / course 01, development repeat | Horizontal-hold change still hit the overhang at 453.86 s, lap 1/2 | [Attempt 2](2026-09-22_green_cue_02.md), `green-cue-02` |
 
+## 2026-09-22 motor-control development batches
+
+The [motor comparison and training record](../motor_tracking.md) covers six
+matched 180-second development segments on the generated loop, Straw Bale and
+Minus Two. Scene09 and a conventional PD motor controller shared the same visible
+cue guidance. PD videos explicitly label the brain as running in shadow. The
+indoor PD attempt stopped on a control deadline; no complete race was established
+in that initial comparison. All six videos fully decode.
+
+The recovery-trained candidate04 then flew the same courses at a common 3 m/s
+setting. It finished the generated v2 loop in **2:20.759**, but hit a flag on
+Straw Bale and a pillar on Minus Two. All three attempts are retained, with
+brain/gameplay videos, terminal-impact sidecars, source hashes, scores and the
+generated-course finish screenshot in `runs/motor10-transfer-20260922`.
+This is development evidence and does not establish unseen-race capability.
+
 ## Card template
 
 Name: `<date>_<track>_<n>.md`. Template:

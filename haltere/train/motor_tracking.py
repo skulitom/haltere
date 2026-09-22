@@ -9,9 +9,11 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import shutil
 from collections import deque
 from pathlib import Path
 
+import numpy as np
 import torch
 
 from .bptt import load_checkpoint, make_world
@@ -66,9 +68,30 @@ def motor_features(brain, state):
     return rates
 
 
+def retina_sequence(stream, steps, batch, seed, dropout=0.):
+    """Recorded sensory perturbations, independent of the physics random seed.
+
+    Images are not aligned to simulated poses; this tests robustness to scene
+    currents and intermittent missing images, never camera navigation.
+    """
+    if stream.ndim != 2 or stream.shape[1] != RETINA_DIM or not len(stream):
+        raise ValueError('Expected a nonempty [time, retina] stream')
+    if not torch.isfinite(stream).all() or not 0 <= dropout < 1:
+        raise ValueError('Invalid retinal stream or dropout')
+    generator = torch.Generator().manual_seed(seed+20000)
+    starts = torch.randint(len(stream), (batch,), generator=generator)
+    indices = (torch.arange(steps)[:, None]+starts[None]) % len(stream)
+    sequence = stream.cpu()[indices].clone()
+    # Missing-image intervals last 100 ms, resembling sample-and-hold capture.
+    missing = torch.rand((steps+9)//10, batch, generator=generator) < dropout
+    sequence[missing.repeat_interleave(10, dim=0)[:steps]] = 0.
+    return sequence
+
+
 @torch.no_grad()
 def rollout(brain, cfg, meta, *, controller='brain', speed=2., seed=8291,
-            seconds=16., batch=12, collect=False, randomize=.1, observation_reference_speed=None):
+            seconds=16., batch=12, collect=False, randomize=.1, observation_reference_speed=None,
+            retina_stream=None, retina_dropout=0.):
     torch.manual_seed(seed)
     cfg = measured_dynamics(cfg, meta)
     cfg.train.randomize = randomize
@@ -93,7 +116,9 @@ def rollout(brain, cfg, meta, *, controller='brain', speed=2., seed=8291,
     errors, speeds, heights, tilts = [], [], [], []
     crashed = torch.zeros(batch, device=brain.device, dtype=torch.bool)
     first_crash = torch.full((batch,), -1., device=brain.device)
-    for step in range(round(seconds/cfg.brain.dt)):
+    steps = round(seconds/cfg.brain.dt)
+    retinal = retina_sequence(retina_stream, steps, batch, seed, retina_dropout).to(brain.device) if retina_stream is not None else None
+    for step in range(steps):
         if step % 250 == 0 and brain.device.type == 'cuda':
             wait_if_hot(68.)
         phase = min(3, int(step*cfg.brain.dt/4))
@@ -112,7 +137,7 @@ def rollout(brain, cfg, meta, *, controller='brain', speed=2., seed=8291,
         modified = {**senses, 'vel_world': velocity,
                     'vel_body': torch.einsum('bji,bj->bi', R_sense, velocity)}
         obs = gate_observation(modified, vs.quad.motor.mean(-1, keepdim=True), cfg.task,
-                               torch.zeros(batch, RETINA_DIM, device=brain.device), relative,
+                               retinal[step] if retinal is not None else torch.zeros(batch, RETINA_DIM, device=brain.device), relative,
                                height_invariant=True, gravity_aligned_height=True,
                                search_height_error=torch.zeros(batch, 1, device=brain.device), raw_retina_active=True)
         if step == 0:
@@ -143,6 +168,7 @@ def rollout(brain, cfg, meta, *, controller='brain', speed=2., seed=8291,
         tilts.append(torch.rad2deg(R[:, 2, 2].clamp(-1., 1.).acos()).cpu())
     error, speed_values, height, tilt = map(torch.stack, (errors, speeds, heights, tilts))
     result = dict(controller=controller, nominal_speed_mps=speed, seed=seed, batch=batch,
+                  recorded_scene_currents=retinal is not None, retina_dropout=retina_dropout if retinal is not None else 0.,
                   seconds=seconds, crashed=int(crashed.sum()),
                   first_crash_s=first_crash.cpu().tolist(),
                   velocity_error_mean=float(error.mean()), height_error_mean=float(height.mean()),
@@ -166,22 +192,40 @@ def main():
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--ridge', type=float, default=10.)
     parser.add_argument('--evaluation-seed', type=int, default=8291)
-    parser.add_argument('--data-controller', choices=['pd','brain'], default='pd',
-                        help='Brain collects corrective labels on its own visited states, excluding post-crash samples')
+    parser.add_argument('--data-controller', choices=['pd','brain','mixed'], default='pd',
+                        help='Brain collects corrections on its visited states; mixed uses PD for seed 1921, brain for 1922/1923')
     parser.add_argument('--reuse-data', default='', help='Retain teacher features with an identical frozen neural representation')
+    parser.add_argument('--retina-data', default='', help='Training-only recorded [time,720] retina array in an NPZ; no pose alignment')
+    parser.add_argument('--validation-retina-data', default='', help='Separate recorded visual input used only for evaluation')
+    parser.add_argument('--retina-dropout', type=float, default=.25, help='Fraction of 100 ms image-missing intervals with recorded input')
+    parser.add_argument('--training-speeds', nargs='+', type=float, default=None)
     args = parser.parse_args()
     if not 0 < args.speed <= 10 or args.ridge <= 0:
         raise ValueError('Use 0 < speed <= 10 and positive ridge regularization')
+    training_speeds = sorted(set(args.training_speeds or [1.5, 2., args.speed]))
+    if any(not 0 < s <= args.speed for s in training_speeds) or not 0 <= args.retina_dropout < 1:
+        raise ValueError('Training speeds must be positive and at most the reference; dropout must be in [0,1)')
     torch.set_num_threads(2)
     out = Path(args.out); out.mkdir(parents=True, exist_ok=False)
+    shutil.copyfile(__file__, out/'training-source.py')
     brain, cfg, _ = load_checkpoint(args.checkpoint, args.device)
     meta = copy.deepcopy(torch.load(args.checkpoint, map_location='cpu', weights_only=True)['visual_brain'])
     config = dict(**vars(args), parent_sha256=sha256(args.checkpoint), source_sha256=sha256(__file__),
+                  retina_data_sha256=sha256(args.retina_data) if args.retina_data else None,
+                  validation_retina_data_sha256=sha256(args.validation_retina_data) if args.validation_retina_data else None,
                   scope='ideal-target motor simulation, not camera navigation or Liftoff qualification')
     (out/'config.json').write_text(json.dumps(config, indent=2))
+    def load_retina(path):
+        if not path:
+            return None
+        with np.load(path) as data:
+            return torch.from_numpy(data['retina'].copy()).float()
+    training_retina = load_retina(args.retina_data)
+    evaluation_retina = load_retina(args.validation_retina_data)
     results = []
     for motor in ('brain', 'pd'):
-        row, _ = rollout(brain, cfg, meta, controller=motor, speed=args.speed, seed=args.evaluation_seed)
+        row, _ = rollout(brain, cfg, meta, controller=motor, speed=args.speed, seed=args.evaluation_seed,
+                         retina_stream=evaluation_retina, retina_dropout=args.retina_dropout)
         results.append(row); print(json.dumps(row), flush=True)
     (out/'baseline.json').write_text(json.dumps(results, indent=2))
     if not args.train:
@@ -197,10 +241,12 @@ def main():
             if not name.startswith('readout.') and not torch.equal(value, current[name].cpu()):
                 raise ValueError('Reused features came from a different neural representation: '+name)
         rows.append(saved['features']); targets.append(saved['labels'])
-    for speed in sorted({1.5, 2., args.speed}):
+    for speed in training_speeds:
         for seed in (1921, 1922, 1923):
-            row, data = rollout(brain, cfg, meta, controller=args.data_controller, speed=speed, seed=seed, collect=True,
-                                 randomize=.15, observation_reference_speed=args.speed)
+            motor = ('pd' if seed == 1921 else 'brain') if args.data_controller == 'mixed' else args.data_controller
+            row, data = rollout(brain, cfg, meta, controller=motor, speed=speed, seed=seed, collect=True,
+                                 randomize=.15, observation_reference_speed=args.speed,
+                                 retina_stream=training_retina, retina_dropout=args.retina_dropout)
             print(json.dumps(dict(collection=row)), flush=True)
             rows.append(data['features']); targets.append(data['labels'])
     x = torch.cat(rows).to(brain.device)
@@ -225,10 +271,12 @@ def main():
     meta.update(qualified=False, motor_tracking=dict(**config, training_seeds=[1921, 1922, 1923],
                 nominal_speed_mps=args.speed, training_teacher='PD; offline only', changed_parameters=changed,
                 runtime_requires_teacher=False, visual_training=False, mixer_idle_corrected=True,
-                training_speeds_mps=sorted({1.5, 2., args.speed})))
+                recorded_scene_currents=training_retina is not None,
+                training_speeds_mps=training_speeds))
     cfg = measured_dynamics(cfg, meta)
     export(out/'candidate.pt', brain, cfg, meta, 1)
-    evaluation, _ = rollout(brain, cfg, meta, speed=args.speed, seed=args.evaluation_seed)
+    evaluation, _ = rollout(brain, cfg, meta, speed=args.speed, seed=args.evaluation_seed,
+                            retina_stream=evaluation_retina, retina_dropout=args.retina_dropout)
     (out/'evaluation.json').write_text(json.dumps(evaluation, indent=2))
     print(json.dumps(dict(evaluation=evaluation, changed_parameters=changed)), flush=True)
 

@@ -44,7 +44,7 @@ development revisions. The [next development sequence](docs/generalization_progr
 uses code-generated and Workshop course pools, frozen evaluation batches, a
 matched motor-controller comparison, and camera-based free-space planning.
 An edited Workshop copy and a fully generated course both loaded successfully.
-Full-course playability validation and the geometry layer are still pending.
+The generated loop has now completed a full race; the geometry layer is still pending.
 Manual map design is not part of this workflow.
 A [matched motor comparison](docs/motor_tracking.md) now covers three development
 courses. The conventional baseline ran faster at the same nominal speed setting,
