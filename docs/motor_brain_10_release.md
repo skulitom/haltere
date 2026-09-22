@@ -1,6 +1,8 @@
 # Motor10: experimental motor-readout weights
 
 Reviewed on 2026-09-23. Download from [GitHub Releases](https://github.com/skulitom/haltere/releases/tag/motor-brain-10-experimental) or [Hugging Face](https://huggingface.co/Skulitom/haltere/tree/main/motor10).
+The GitHub assets' stored SHA256 digests and a downloaded Hugging Face archive
+were verified against the local files after publication.
 
 Candidate05 improves simulated braking and reduces overshoot with visual inputs.
 It completed one open development course, but **is not promoted over scene09**:

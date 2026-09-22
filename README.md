@@ -123,6 +123,8 @@ Install the gamepad driver before adding `liftoff`; see [game setup](docs/liftof
 
 | Checkpoint | Role |
 |---|---|
+| [Motor10 candidate05 bundle](docs/motor_brain_10_release.md) | New experimental motor-readout weights with recorded-scene robustness training. One development-loop finish; obstacle races failed. Download separately; not promoted over scene09. |
+| [Scene09 bundle](docs/scene_brain_09_release.md) | Published learned-scene reference with its exact detector and original-drone mapping. Download separately; evaluated with explicit visual assistance. |
 | `artifacts/ftSmooth_best.pt` | Published connectome controller for hover and movement patterns. |
 | `artifacts/ftPath2_best.pt` | Published connectome controller for taught paths and the older visual-pilot stack. |
 | `artifacts/ftRobust_best.pt` | Earlier controller trained with broad physics randomization. |
