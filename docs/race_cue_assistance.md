@@ -72,3 +72,7 @@ Unseen race and freestyle completion remain unproven. Earlier partial attempts a
 Hall 26 hit an overhead duct while its checkpoint marker was visible through
 the obstruction. Neither ring guidance nor flag-specific clearance supplies
 general obstacle planning; high-marker recovery does not resolve that failure.
+The Green's repeat also hit an overhang after the horizontal-hold change.
+Further development follows the [geometry-first program](generalization_program.md)
+with automated course preparation and frozen batches, rather than accumulating
+more marker-specific steering rules.

@@ -75,6 +75,7 @@ standard brain/gameplay videos and telemetry are in
 | Hall 26 / course 01, first exposure | Impact into overhead duct at 77.11 s, lap 1/2; checkpoint marker visible through obstruction | [Attempt 1](2026-09-22_hall26_cue_01.md), `hall26-cue-01` |
 | The Pit, expanded-envelope repeat | High-checkpoint stall; manually paused at game time 16:09.841, lap 1/1; now development data | [Attempt 2](2026-09-22_pit_cue_02.md), `pit-cue-02` |
 | The Green / course 01, first exposure | Impact during upward recovery after a building underpass, lap 1/2; now development data | [Attempt 1](2026-09-22_green_cue_01.md), `green-cue-01` |
+| The Green / course 01, development repeat | Horizontal-hold change still hit the overhang at 453.86 s, lap 1/2 | [Attempt 2](2026-09-22_green_cue_02.md), `green-cue-02` |
 
 ## Card template
 

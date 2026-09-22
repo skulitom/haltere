@@ -72,43 +72,35 @@ not proof that the system can complete arbitrary races or freestyle tasks.
 | By-sight tests and label tools | Keep the current runners' declared no-route/no-explicit-marker contract. Generic cue-assisted implementations are allowed when explicitly labelled and evaluated. Offline label extraction remains separate from flight. |
 | Generalization tests | Historical race tests do not cover open-ended freestyle or all unseen gate types. Added task-specific acceptance criteria above; no universal success claim. |
 
-## Next integration decisions
+## Current development sequence
 
-First compare the restored visual pilot around the newest visual brain with
-its unassisted baseline. Keep the same checkpoint, calibrated detector, drone,
-camera and starts; only assistance changes. Do not silently replace the newest
-brain with the older successful motor checkpoint.
+The user's subsequent review replaced the one-course-at-a-time recovery-fix
+sequence with the [generalization program](generalization_program.md). Prepare
+courses in code or reuse Workshop content; do not manually design maps. Freeze
+whole batches before evaluation and retain every attempt. Small variations of
+one source layout stay in one split.
 
-The [2026-09-22 Rabbit baseline recordings](flight_cards/README.md#2026-09-22-assisted-scene-brain)
-establish live compatibility on three maps, with zero completed laps in
-five attempts and repeated gate-acquisition/search collisions. That batch has
-no matched unassisted comparison. Use these failures to guide the next fixes;
-Hangar C03 can no longer be treated as untouched if its results inform tuning.
-Its images have now informed cue recognition, so it is development data; choose
-a new untouched course for the next frozen evaluation. The separately declared
-[race-cue experiment](race_cue_assistance.md) is allowed, but its checkpoint
-markers and route arrows cannot establish freestyle capability. It subsequently
-completed full three-lap races on Straw Bale and Minus Two with unchanged settings.
-Its first unseen Hannover attempt failed to recover a descent from a rooftop
-start. That result informed a launch-clearance fix, so Hannover is also now
-development data. Preserve these failures alongside successful recordings.
-The Pit's later high-checkpoint stall also informed a generic perception and
-climb-recovery fix, making it development data. Paris informed bounded camera
-outage recovery. Hall 26 exposed a remaining obstacle-planning failure: the
-next-checkpoint marker was rendered through an overhead duct. These attempts
-are all indexed with the successful seen-course recordings; none is a full
-unseen-race finish.
+First compare the same race-cue pilot with the newest brain and a calibrated
+PD or trained MLP motor baseline on 3–5 development courses. Then evaluate
+camera-derived free space and task-directed local planning. Broaden simulation
+training and the brain's tracking envelope before claiming high-speed or
+acrobatic capability. The program declares seven freestyle tasks separately.
 
-The predictor is eligible for a subsequent runtime experiment, not prohibited.
-Before giving it control authority, establish how a prediction becomes a
-task-directed target, measure its behavior at launch and on states caused by
-the controller itself, and handle stale images and prediction failure. Its
-motion-dominated forecast can otherwise encourage continuing the current motion
-without selecting the next race gate or a freestyle objective. That is an
-architectural inference from the current inputs and training objective, not a
-measured closed-loop failure of this predictor.
+The current motion predictor is allowed but deprioritized: its inputs lack a
+task and its offline gains do not establish a closed-loop benefit. A future
+task-conditioned planner may use prediction if whole-system evidence supports
+it. This is a prioritization decision, not a renewed training-only restriction.
 
-Start with causal shadow predictions beside the assisted stack, then bounded
-live comparisons if that evidence supports them. Promote runtime prediction
-only when it improves the declared tasks without losing demonstrated stability
-or transfer. No new predictor deployment result is claimed by this audit.
+The [flight index](flight_cards/README.md) retains the Rabbit baseline's five
+failed attempts, the race-cue stack's Straw Bale and Minus Two full finishes,
+and all subsequent failures. Five first-exposure courses produced no full
+finishes across successive revisions; this was not one frozen benchmark.
+Hannover, The Pit, Paris and The Green informed changes and are development
+data. Hall 26's duct failure is observed evidence, not an untouched course for
+future headline claims. The Green repeat failed even with horizontal holding.
+
+On 2026-09-22 Liftoff loaded a programmatically edited Workshop copy with new
+IDs, translated geometry and a changed lap count. That verifies the course-file
+workflow only. A seeded generated course also loaded successfully. The generator,
+motor baseline comparison, geometry layer and broader training do not yet have
+qualifying flight results.

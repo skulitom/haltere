@@ -82,7 +82,9 @@ duct while following a checkpoint marker rendered through it. This is a concrete
 remaining obstacle-planning failure, not a timing problem or successful race.
 The Green subsequently hit an overhang after traversing a building underpass.
 It informed horizontal holding during top-edge recovery and is now development
-data. That change remains under flight evaluation.
+data. The development repeat also hit the overhang on lap 1/2 at 453.86 s;
+horizontal holding did not resolve the obstacle-planning failure. See the
+[revised generalization program](generalization_program.md).
 
 No universal race capability, freestyle completion or improvement from a separate
 navigation predictor is established by these results. The visual helpers are

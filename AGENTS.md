@@ -27,6 +27,11 @@
   Hugging Face when ready, with accurate evaluation limits and model provenance.
 - Prefer fixing visible flight problems and useful visual demonstrations over
   producing reports. Preserve raw recordings and unrelated working changes.
+- Prepare courses in code or from existing Workshop content, not manual map
+  design. Follow docs/generalization_program.md: frozen course batches, matched
+  motor baselines, then geometry and broader training. Keep related layouts in
+  the same split; translated copies are not new unseen courses. Deprioritize
+  the current motion-forecasting navigation predictor until it has a task-directed role.
 
 Flight-operation preferences were confirmed on 2026-09-21. The generalization-first
 goal and permission for runtime pilot/predictor assistance were clarified by the
