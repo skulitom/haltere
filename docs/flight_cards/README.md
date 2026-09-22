@@ -93,6 +93,24 @@ brain/gameplay videos, terminal-impact sidecars, source hashes, scores and the
 generated-course finish screenshot in `runs/motor10-transfer-20260922`.
 This is development evidence and does not establish unseen-race capability.
 
+Candidate04's subsequent 2.5 m/s batch was withdrawn after a large motor
+excursion and impact on its first Straw Bale attempt. Candidate05 added
+recorded scene currents and image gaps to motor training. Its frozen 2.5 m/s
+batch then finished **0/3**: a flag impact on Straw Bale, a pillar impact on
+Minus Two, and a telemetry stop on the generated loop. All three standard
+brain/gameplay videos decode, and exact sensory replays accompany the logs in
+`runs/motor10-visual-full-20260922`. The loop's missed shutdown pause was fixed
+and tested before a separately recorded repeat. Keep that repeat separate
+from the original batch; neither batch is unseen-course evidence.
+
+The separate 2026-09-23 repeat completed the generated loop in **3:01.576**
+at a 2.31 m/s median, without detected contact, reset or flight intervention.
+It used the same candidate05 weights and steering; only shutdown handling and
+diagnostics changed. The finish screenshot, full brain/gameplay video, exact
+sensory replay and source verification are in `runs/motor10-loop-repeat-20260923`.
+Candidate05 therefore has **1/4** finishes including the failed frozen batch.
+The [experimental bundle](../motor_brain_10_release.md) preserves these limits.
+
 ## Card template
 
 Name: `<date>_<track>_<n>.md`. Template:

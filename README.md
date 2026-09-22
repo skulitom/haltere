@@ -50,6 +50,12 @@ A [matched motor comparison](docs/motor_tracking.md) now covers three developmen
 courses. The conventional baseline ran faster at the same nominal speed setting,
 but one indoor attempt stopped on a control deadline. Faster brain motor-readout
 training is experimental; simulation gains alone do not qualify new weights.
+The [motor10 candidate05 bundle](docs/motor_brain_10_release.md), reviewed on
+2026-09-23, improves simulated braking and uses optional GPU vision. Its first
+frozen development batch finished 0/3; a separate generated-loop repeat finished
+in **3:01.576** at a **2.31 m/s** median, without detected contact or intervention.
+It remains experimental: the flag and pillar collisions are unresolved, and
+the open generated loop does not establish unseen-race or freestyle capability.
 Subsequent held-out attempts exposed descent, camera-timing, high-checkpoint
 and obstacle-planning failures. Generic recovery fixes are tracked alongside
 every failed attempt in the [flight index](docs/flight_cards/README.md).

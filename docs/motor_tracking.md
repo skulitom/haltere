@@ -168,6 +168,45 @@ frames and a 30.5 ms median camera cycle. This preflight check includes no
 active brain controller or video recorder and is not a matched flight timing
 comparison. Full-flight timing is saved in each run's JSON sidecar.
 
+The frozen candidate05 batch at a common 2.5 m/s setting finished **0/3**
+development races. Straw Bale hit a flag at 185.03 s of control (median speed
+1.92 m/s); Minus Two hit a pillar at about 90.3 s (2.25 m/s). The generated loop
+stopped on stale telemetry at 159.87 s (2.21 m/s), before any finish screen.
+Its game resumed after the shutdown pause check and the drone dropped after
+throttle-low shutdown; it was manually paused during review. This is not a
+completed race or a clean landing. All three videos fully decode, and their
+exact causal sensory replays and source hashes are retained in
+`runs/motor10-visual-full-20260922`.
+
+Straw Bale's full-flight median camera cycle was 59.7 ms; stale-image ticks
+were 6.7%, compared with 73.3 ms and 37.9% in candidate04's CPU-camera attempt.
+Both the weights and camera device changed, so this is a complete-stack
+development comparison, not an isolated estimate of the weights' benefit.
+Candidate05's median horizon/rate shake on Straw Bale was 0.81 degrees and
+6.98 degrees/s, versus candidate04's 1.30 degrees and 12.48 degrees/s at the
+same requested speed. Different flight lengths and visited states limit that
+comparison; smoother control did not prevent the flag collision.
+
+The telemetry-stop issue prompted a shutdown-only fix: wait up to 1.4 seconds
+for fresh telemetry progress before sending Escape, while keeping throttle low.
+Never toggle a paused/results screen based on a cached frame. Stale-input stops
+now preserve receipt age, simulation-progress age, pose validity and packet
+counts. The live telemetry threshold, weights and steering are unchanged.
+The full suite passed 342 checks before this fix; 34 relevant checks passed
+afterwards, including delayed telemetry recovery and paused/results cases.
+
+On 2026-09-23, a separate generated-loop repeat with the same candidate05
+weights, guidance and 2.5 m/s setting finished in **3:01.576**, confirmed by
+the results screen. Median speed was 2.31 m/s, horizon shake 0.77 degrees and
+rate shake 4.86 degrees/s, with no detected contact, reset or flight intervention.
+The standard brain/gameplay video fully decodes. Logs, exact sensory replay,
+finish screenshot and unchanged-source verification are in
+`runs/motor10-loop-repeat-20260923`. The original frozen batch remains **0/3**;
+across that batch and this repeat, candidate05 has **1/4** full finishes, all
+on development courses. The open generated loop does not establish obstacle
+avoidance, unseen racing or freestyle. Candidate05 is an experimental download,
+not a promoted replacement for scene09. See the [motor10 bundle](motor_brain_10_release.md).
+
 The broader [generalization program](generalization_program.md) still requires
 free-space perception, full races on frozen held-out batches and separate
 freestyle evaluation.
