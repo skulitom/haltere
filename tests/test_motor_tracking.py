@@ -19,6 +19,21 @@ def test_retina_windows_are_repeatable_and_do_not_change_physics_rng():
     assert (valid[:, 1:]-valid[:, :-1]).eq(1).all()
 
 
+def test_recorded_retina_rejects_same_shape_from_different_projection(tmp_path):
+    import json
+    import numpy as np
+    import pytest
+    from haltere.train.motor_tracking import load_recorded_retina
+    sensor = dict(retina_mode='gatenet_scene_v1', sha256='frozen-detector',
+                  scene_projection={'seed': 123}, focal_320=100., tilt_deg=30.)
+    path = tmp_path/'train_continuous.npz'
+    np.savez(path, retina=np.ones((20,720),np.float32))
+    (tmp_path/'manifest.json').write_text(json.dumps({'gate_sensor':sensor}))
+    assert load_recorded_retina(path,sensor).shape == (20,720)
+    with pytest.raises(ValueError,match='scene_projection'):
+        load_recorded_retina(path,{**sensor,'scene_projection':{'seed':456}})
+
+
 def test_collected_features_reproduce_motor_readout_and_batch_axis(checkpoint):
     from haltere.train.bptt import load_checkpoint
     from haltere.train.motor_tracking import motor_features

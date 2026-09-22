@@ -88,6 +88,19 @@ def retina_sequence(stream, steps, batch, seed, dropout=0.):
     return sequence
 
 
+def load_recorded_retina(path, sensor):
+    if not path:
+        return None
+    path = Path(path)
+    manifest = json.loads((path.parent/'manifest.json').read_text())
+    recorded = manifest.get('gate_sensor', {})
+    for key in ('retina_mode', 'sha256', 'scene_projection', 'focal_320', 'tilt_deg'):
+        if key not in sensor or recorded.get(key) != sensor[key]:
+            raise ValueError('Recorded retina differs from the checkpoint sensory contract: '+key)
+    with np.load(path) as data:
+        return torch.from_numpy(data['retina'].copy()).float()
+
+
 @torch.no_grad()
 def rollout(brain, cfg, meta, *, controller='brain', speed=2., seed=8291,
             seconds=16., batch=12, collect=False, randomize=.1, observation_reference_speed=None,
@@ -215,13 +228,8 @@ def main():
                   validation_retina_data_sha256=sha256(args.validation_retina_data) if args.validation_retina_data else None,
                   scope='ideal-target motor simulation, not camera navigation or Liftoff qualification')
     (out/'config.json').write_text(json.dumps(config, indent=2))
-    def load_retina(path):
-        if not path:
-            return None
-        with np.load(path) as data:
-            return torch.from_numpy(data['retina'].copy()).float()
-    training_retina = load_retina(args.retina_data)
-    evaluation_retina = load_retina(args.validation_retina_data)
+    training_retina = load_recorded_retina(args.retina_data, meta['gate_sensor'])
+    evaluation_retina = load_recorded_retina(args.validation_retina_data, meta['gate_sensor'])
     results = []
     for motor in ('brain', 'pd'):
         row, _ = rollout(brain, cfg, meta, controller=motor, speed=args.speed, seed=args.evaluation_seed,

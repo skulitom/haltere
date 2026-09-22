@@ -24,7 +24,7 @@ def put_latest(queue, packet):
             pass  # the next camera frame will replace it; never block capture
 
 
-def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, race_cues=False):
+def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, race_cues=False,detector_device='cpu'):
     import torch
     import cv2
     from .visual_brain import RetinaCamera
@@ -52,7 +52,8 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
     try:
         from .scheduling import flight_process_priority
         priority = flight_process_priority()
-        camera = RetinaCamera(title,fps,gate_sensor,backend,phase_status=phase,on_frame=publish,race_cues=race_cues)
+        camera = RetinaCamera(title,fps,gate_sensor,backend,phase_status=phase,on_frame=publish,
+                              race_cues=race_cues,detector_device=detector_device)
         camera.done = done
         gc.collect()
         gc.disable()
@@ -67,14 +68,14 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
 
 
 class ProcessRetinaCamera:
-    def __init__(self,title='Liftoff',fps=24,gate_sensor=None,backend='mss',race_cues=False):
+    def __init__(self,title='Liftoff',fps=24,gate_sensor=None,backend='mss',race_cues=False,detector_device='cpu'):
         context = mp.get_context('spawn')
         self.queue = context.Queue(maxsize=2)
         self.data = context.Array('d',732,lock=True)
         self.done = context.Event()
         self.phase = context.Array('d',[0.,time.monotonic()],lock=False)
         self.process = context.Process(target=camera_worker,
-            args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend,race_cues),daemon=True)
+            args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend,race_cues,detector_device),daemon=True)
         self.fps, self.backend = fps,backend
         self._latest = None
         self._error = None

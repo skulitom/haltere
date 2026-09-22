@@ -138,6 +138,35 @@ and corrective labels on brain trajectories with seeds 1922/1923.
 `--training-speeds 1.5 2 2.5 3` covers the intermediate speed explicitly.
 Recorded image sampling uses a separate random generator so paired runs keep
 the same physical randomization. Each new run saves its exact training source.
+The loader also checks the recording's detector, scene projection and camera
+calibration against the checkpoint before using its retinal features.
+
+Candidate05 (`runs/motor-brain-10-tracking-05/candidate.pt`, SHA256
+`64444a628c58b2c1615086bc84f8c5d3c0a0a12667df31d888c4587a802288b2`)
+uses these recorded currents and missing-image intervals. It passed all 96 CPU
+development cases: 12 randomized worlds at each of 1.5, 2, 2.5 and 3 m/s,
+with either continuous images or 25% missing 100 ms image blocks. The physical
+seed was 9167 with 15% dynamics/controller randomization; that seed has already
+been used for development, so these are not sealed generalization results.
+In a paired check at 2.5 m/s with image gaps, mean velocity error fell from
+candidate04's 0.82 to 0.78 m/s, 90th-percentile speed from 3.16 to 2.63 m/s,
+and speed at the end of braking from 0.32 to 0.20 m/s. Both had zero simulated
+crashes. The improvement is principally less overshoot and better stopping.
+The preservation audit again finds only the first three motor-readout rows
+changed; yaw, all other saved neural tensors and the connectome are identical
+to scene09. Full-race transfer is evaluated separately.
+
+### Independent vision device
+
+The runner accepts `--vision-device cuda` while retaining `--device cpu` for
+the brain. The detector and scene projection are unchanged; the worker returns
+CPU tensors through the existing camera transport. CPU remains the default.
+A saved-gameplay-frame check of the actual model found maximum absolute
+CPU/CUDA differences of 0.00000382 in detection output and 0.00000036 in
+retinal features. An 18-second camera-only Anode check passed with 510 observed
+frames and a 30.5 ms median camera cycle. This preflight check includes no
+active brain controller or video recorder and is not a matched flight timing
+comparison. Full-flight timing is saved in each run's JSON sidecar.
 
 The broader [generalization program](generalization_program.md) still requires
 free-space perception, full races on frozen held-out batches and separate

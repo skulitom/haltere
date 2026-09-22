@@ -53,7 +53,7 @@ training is experimental; simulation gains alone do not qualify new weights.
 Subsequent held-out attempts exposed descent, camera-timing, high-checkpoint
 and obstacle-planning failures. Generic recovery fixes are tracked alongside
 every failed attempt in the [flight index](docs/flight_cards/README.md).
-The full suite passed 340 automated tests; earlier race finishes
+The full suite passed 342 automated tests; earlier race finishes
 do not substitute for full-race checks of later controller revisions.
 These cues do not supply a freestyle planner.
 The [project direction](docs/project_direction.md) records the current goal,

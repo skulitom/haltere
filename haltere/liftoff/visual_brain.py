@@ -29,7 +29,7 @@ from .telemetry import TelemetryReceiver, read_config, DEFAULT_STREAM
 
 class RetinaCamera:
     def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss',phase_status=None,on_frame=None,
-                 race_cues=False):
+                 race_cues=False,detector_device='cpu'):
         self.title, self.fps = title, fps
         self.gate_sensor = gate_sensor
         self.backend = backend
@@ -38,15 +38,20 @@ class RetinaCamera:
         self.race_cues = race_cues
         self.capture = None
         self.detector = None
+        self.detector_device = torch.device(detector_device)
         if gate_sensor:
             from ..vision.train import load_gatenet
             from ..vision.camera import Camera
             if sha256(gate_sensor['checkpoint']) != gate_sensor['sha256']:
                 raise ValueError('Camera detector differs from the trained sensory contract')
-            self.detector = load_gatenet(gate_sensor['checkpoint'],'cpu')
+            if self.detector_device.type == 'cuda':
+                # Keep the trained float32 sensory contract on either device.
+                torch.backends.cuda.matmul.allow_tf32 = False
+                torch.backends.cudnn.allow_tf32 = False
+            self.detector = load_gatenet(gate_sensor['checkpoint'],self.detector_device)
             self.gate_camera = Camera(320,180,gate_sensor['focal_320'],gate_sensor['tilt_deg'])
             with torch.no_grad():
-                self.detector(torch.zeros(1,3,180,320))
+                self.detector(torch.zeros(1,3,180,320,device=self.detector_device))
         self.latest = None
         self.error = None
         self.phase = 'starting'
@@ -79,7 +84,8 @@ class RetinaCamera:
     def diagnostics(self):
         samples = list(self.timings)
         result = dict(phase=self.phase,phase_age_ms=1000*(time.monotonic()-self.phase_started),
-                      frames=self.frames,timing_samples=len(samples),missing_frames=self.missing_frames,error=self.error)
+                      frames=self.frames,timing_samples=len(samples),missing_frames=self.missing_frames,error=self.error,
+                      detector_device=str(self.detector_device))
         if samples:
             values = np.asarray(samples)*1000
             result['stages_ms'] = {name:dict(p50=float(np.percentile(values[:,i],50)),
@@ -120,7 +126,8 @@ class RetinaCamera:
                             from ..vision.runtime import detection_geometry
                             gate_rgb = cv2.resize(small,(320,180),interpolation=cv2.INTER_AREA)
                             with torch.no_grad():
-                                pixels = torch.tensor(gate_rgb.transpose(2,0,1)[None],dtype=torch.float32)/255
+                                pixels = torch.tensor(gate_rgb.transpose(2,0,1)[None],dtype=torch.float32,
+                                                      device=self.detector_device)/255
                                 pred = decode(self.detector(pixels))[0].cpu().numpy()
                             p,u,v,width = pred
                             direction,distance = detection_geometry(self.gate_camera,(u+1)*160,(v+1)*90,width)
@@ -144,6 +151,9 @@ class RetinaCamera:
                                 detection = dict(p=0., point=np.zeros(3), width=0.)
                             detection['race_cue'] = cue
                         inferred = self._phase('publish')
+                        # The controller and shared-memory camera transport are
+                        # CPU consumers even when image inference uses CUDA.
+                        retina = retina.detach().cpu()
                         self.latest = (capture_time,retina,detection)
                         if self.on_frame is not None:
                             self.on_frame(self.latest)
@@ -480,7 +490,8 @@ def run(args):
     camera_sensor = replay_camera_sensor(controller.meta.get('gate_sensor'),bool(replay))
     gc.collect()
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=48,
-                                  race_cues=controller.assistance_mode=='race-cue').start()
+                                  race_cues=controller.assistance_mode=='race-cue',
+                                  detector_device=getattr(args,'vision_device','cpu')).start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -661,6 +672,7 @@ def run(args):
                       command_columns=['command_thr','command_roll','command_pitch','command_yaw'],
                       raw_output_includes_arming_hold=True,
                       brain_device=str(controller.brain.device),
+                      vision_device=getattr(args,'vision_device','cpu'),
                       process_priority=priority,
                       image_freshness_s=.12,camera_outage_limit_s=.5 if camera_braking_allowed else .25 if memory_gap_allowed else .12,
                       camera_braking_after_s=.25 if camera_braking_allowed else None,
@@ -725,6 +737,8 @@ def main():
     p.add_argument('--udp-out',default='')
     p.add_argument('--port',type=int,default=9001)
     p.add_argument('--device',default='cuda')
+    p.add_argument('--vision-device',choices=['cpu','cuda'],default='cpu',
+                   help='Device for the frozen image model, independent of the brain device')
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
     p.add_argument('--pilot-assistance',choices=['none','rabbit','race-cue'],default='none',
                    help='Rabbit arch guidance or explicitly game-cue-assisted race guidance around the chosen motor controller')
