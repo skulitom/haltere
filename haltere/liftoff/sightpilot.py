@@ -83,6 +83,7 @@ class SightParams:
     """Every tunable of the rabbit pilot (stage A defaults of the merged spec). Speeds m/s, angles degrees."""
     # --- perception
     p_min: float = 0.5
+    centre_offset_m: float = CENTRE_UP_M  # detector point height above the intended passage point
     stale_s: float = 0.35                 # older detections (grab time) are not used
     stall_s: float = 1.0                  # no fresh detector frame (with or without an arch) for this long: stalled
     unseen_live_s: float = 0.2            # an arch in view counts as unseen only while a frame came this recently
@@ -1254,7 +1255,7 @@ class SightPilot:
         T.passed = True
         T.t_passed = now
         T.n_pass = (float(n_vec[0]), float(n_vec[1]))
-        zp = float(T.m[2]) - CENTRE_UP_M
+        zp = float(T.m[2]) - P.centre_offset_m
         if dup:
             self.dup_passes += 1              # the same arch again: pass it, but do not count or re-seed anything
             self.pass_backup = None           # ... and nothing is left to undo, so a third one cannot replace it
@@ -1486,7 +1487,7 @@ class SightPilot:
         z_ref = self._z_ref()
         if T is not None and self.g_s is not None:
             sz = math.sqrt(max(T.P[2, 2], 0.0))
-            z_tgt = float(T.m[2]) - CENTRE_UP_M + P.z_aim + min(P.up_bias, P.up_bias * sz)
+            z_tgt = float(T.m[2]) - P.centre_offset_m + P.z_aim + min(P.up_bias, P.up_bias * sz)
             # the estimate's height runs 1:1 into the reference and from there into the drone, and it has been 1.3 m
             # out: cap it at the grade line, so one high estimate cannot lift the whole approach. The floor stays on
             # the last passage height: a floor that climbed with the grade line would itself lift the approach.

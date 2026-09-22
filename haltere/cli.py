@@ -651,7 +651,7 @@ def main(argv=None):
     q.add_argument('--fit', action='store_true', help='store the fitted radial model in --liftoff-config')
     q.add_argument('--fit-only', action='store_true', help='fit an existing --out recording without flying the test')
     q.add_argument('--liftoff-config', default='configs/liftoff.yaml')
-    q = ls.add_parser('score', help='score flights from their `fly --log` CSVs: gates, speed, path error, wobble')
+    q = ls.add_parser('score', help='score legacy fly or visual-brain CSVs: gates, speed, path error, wobble')
     q.add_argument('logs', nargs='+')
     q.add_argument('--gates', default='', help='gate list of the course that was flown; without it the gates are '
                                                'not scored (there is no safe default: scoring a flight against '

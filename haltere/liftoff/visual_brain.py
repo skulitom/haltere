@@ -1,7 +1,9 @@
-"""Experimental camera-to-connectome flight/shadow runner; no navigation teacher.
+"""Experimental camera-to-connectome flight/shadow runner, with optional pilot assistance.
 
 Default is shadow mode (no controller is opened). --udp-out explicitly connects
 the motor output to an already running, throttle-low virtual-pad bridge.
+--pilot-assistance rabbit adds visual guidance, speed scheduling and yaw control.
+The exported brain's training teachers are not loaded by either mode.
 """
 from __future__ import annotations
 
@@ -149,8 +151,11 @@ class RetinaCamera:
 
 
 class VisualController:
-    """All four axes come from the brain; optional camera gate measurement only."""
-    def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True):
+    """Visual brain with an explicit optional guidance/yaw assistant."""
+    def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
+                 pilot_assistance='none', assist_speed=2.):
+        if pilot_assistance not in ('none', 'rabbit'):
+            raise ValueError('Unknown pilot assistance mode')
         # Offline demonstration replay must preserve missing-gate observations
         # even when the demonstrator safely continues beyond the live stop limit.
         # Every live caller retains the default stop condition.
@@ -200,6 +205,11 @@ class VisualController:
         self.passed_gate_memory = PassedGateMemory() if inhibition else None
         from .camera_pose import CameraPoseHistory
         self.camera_poses = CameraPoseHistory()
+        self.assistance = None
+        if pilot_assistance == 'rabbit':
+            from .visual_assistance import VisualPilotAssistance
+            self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
+        self.last_command = None
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
         # kernels before the timed flight, then discard this synthetic state.
         with torch.no_grad():
@@ -232,7 +242,24 @@ class VisualController:
             self.camera_poses.append(time.monotonic() if frame_time is None else frame_time,
                                      self.senses['pos'][0].cpu().numpy(),self.senses['quat'][0].cpu().numpy())
         obs = visual_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device))
-        if self.meta.get('gate_sensor'):
+        if self.assistance is not None:
+            from ..brain.gate_senses import gate_observation
+            self.relative_gate,assisted_senses = self.assistance.update(
+                self.senses,self.pose.omega,detection,capture_time,observation_time)
+            self.gate_confidence = detection['p'] if detection else 0.
+            self.gate_point = self.assistance.pilot.carrot
+            target = self.assistance.pilot.target
+            self.gate_time = target.t_last if target is not None else None
+            self.searching = False  # Rabbit owns search; neural-search timeouts do not apply.
+            sensor = self.meta['gate_sensor']
+            height_error = torch.zeros(1,1,device=self.brain.device) if sensor.get('search_height_anchor') else None
+            obs = gate_observation(assisted_senses,self.motor,self.cfg.task,retina.to(self.brain.device),
+                                   torch.tensor(self.relative_gate,dtype=torch.float32,device=self.brain.device)[None],
+                                   height_invariant=sensor.get('height_invariant',False),
+                                   gravity_aligned_height=sensor.get('gravity_aligned_height',False),
+                                   search_height_error=height_error,
+                                   raw_retina_active=sensor.get('raw_retina_active',False))
+        elif self.meta.get('gate_sensor'):
             from ..brain.gate_senses import gate_observation
             from ..vision.camera import quat_wxyz_to_mat
             R = quat_wxyz_to_mat(self.senses['quat'][0].cpu().numpy())
@@ -285,9 +312,12 @@ class VisualController:
                                    raw_retina_active=self.meta['gate_sensor'].get('raw_retina_active',False))
         self.last_observation = obs
         action,self.state,_ = self.brain(obs,self.state,self.W)
-        processed = brain_to_processed(action,self.calibration)[0].cpu().numpy()
-        raw = np.clip(self.mapping.to_raw(action[0].cpu().numpy()),-1,1)
-        return action[0].cpu().numpy(),processed,raw
+        brain_action = action[0].cpu().numpy()
+        command = self.assistance.command(brain_action) if self.assistance is not None else brain_action.copy()
+        self.last_command = command
+        processed = brain_to_processed(action.new_tensor(command)[None],self.calibration)[0].cpu().numpy()
+        raw = np.clip(self.mapping.to_raw(command),-1,1)
+        return brain_action,processed,raw
 
 
 def fuse_gate_detection(previous,previous_time,point,stamp,position,rotation):
@@ -397,7 +427,9 @@ def run(args):
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
     torch.set_num_threads(2)
-    controller = VisualController(args.checkpoint,args.mapping,args.device)
+    controller = VisualController(args.checkpoint,args.mapping,args.device,
+                                  pilot_assistance=getattr(args,'pilot_assistance','none'),
+                                  assist_speed=getattr(args,'assist_speed',2.))
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -453,7 +485,9 @@ def run(args):
                              'in_thr','in_yaw','in_pitch','in_roll','raw_thr','raw_roll','raw_pitch','raw_yaw',
                              'vx','vy','vz','qw','qx','qy','qz','gate_p','gate_bx','gate_by','gate_bz','gate_age',
                              'capture_time','frame_time','det_bx','det_by','det_bz','det_width','neural_search',
-                             'motor_mean','omega_x','omega_y','omega_z','search_height_reference'])
+                             'motor_mean','omega_x','omega_y','omega_z','search_height_reference',
+                             'command_thr','command_roll','command_pitch','command_yaw',
+                             'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase'])
             while time.monotonic()-begin < args.seconds:
                 new = rx.wait(.001)
                 camera_frame = camera.latest
@@ -496,7 +530,7 @@ def run(args):
                 action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame,now)
                 memory_only_ticks += int(not fresh)
                 step_times.append(time.monotonic()-step_begin)
-                if not np.isfinite(action).all():
+                if not np.isfinite(np.concatenate((action,processed,raw))).all():
                     raise RuntimeError('Nonfinite motor output')
                 first_ts = frame.timestamp if first_ts is None else first_ts
                 elapsed = frame.timestamp-first_ts
@@ -525,7 +559,11 @@ def run(args):
                                  capture_time,last_frame,*(detection['point'] if detection else [0.,0.,0.]),
                                  detection['width'] if detection else 0.,controller.searching,
                                  float(controller.motor[0,0]),*controller.pose.omega,
-                                 controller.search_height if controller.search_height is not None else float('nan')])
+                                 controller.search_height if controller.search_height is not None else float('nan'),
+                                 *controller.last_command,controller.assistance is not None,
+                                 controller.assistance.pilot.mode if controller.assistance else -1,
+                                 controller.assistance.host.flow_gain if controller.assistance else 1.,
+                                 controller.assistance.pilot.n_passes if controller.assistance else 0,elapsed])
                 if replay is not None:
                     replay.append(controller.last_observation,retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
@@ -558,16 +596,22 @@ def run(args):
             recorder.stop()
         if gc_was_enabled:
             gc.enable()
+        assisted = controller.assistance is not None
         result = dict(checkpoint_sha256=sha256(args.checkpoint),runtime_requires_teacher=False,
-                      control_mode='visual fly brain' if pad else 'shadow: no control output',
+                      control_mode=('pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
+                      pilot_assistance=controller.assistance.metadata() if assisted else dict(mode='none'),
+                      navigation_predictor_loaded=False,
+                      brain_action_columns=['thr','roll','pitch','yaw'],
+                      command_columns=['command_thr','command_roll','command_pitch','command_yaw'],
+                      raw_output_includes_arming_hold=True,
                       brain_device=str(controller.brain.device),
                       process_priority=priority,
                       image_freshness_s=.12,camera_outage_limit_s=.25 if memory_gap_allowed else .12,
                       stale_image_memory_only_ticks=memory_only_ticks,max_image_age_ms=1000*max_image_age,
                       recurrent_matrix_layout=str(controller.W.layout),
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,
-                      external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=False,
-                      goal_source='camera detector' if controller.meta.get('gate_sensor') else 'absent',
+                      external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=assisted,
+                      goal_source='camera Rabbit pilot' if assisted else ('camera detector' if controller.meta.get('gate_sensor') else 'absent'),
                       gate_sensor=controller.meta.get('gate_sensor'),runtime_route_oracle=False,
                       raw_retina_active=not args.blank_retina and (not controller.meta.get('gate_sensor')
                                          or controller.meta['gate_sensor'].get('raw_retina_active',False)),
@@ -577,8 +621,8 @@ def run(args):
                       close_gate_outlier_rejection=dict(radius_m=6.,innovation_m=2.,max_age_s=2.),
                       passed_gate_memory=dict(estimated_passages=controller.passed_gate_memory.passages,
                                               rejected_detections=controller.passed_gate_memory.rejected_detections,
-                                              radius_m=2.,reverse_radius_m=5.,lifetime_s=30.) if controller.passed_gate_memory else None,
-                      neural_search_timeout_s=15.,
+                                              radius_m=2.,reverse_radius_m=5.,lifetime_s=30.) if controller.passed_gate_memory and not assisted else None,
+                      neural_search_timeout_s=None if assisted else 15.,
                       camera_pose_alignment='interpolated telemetry receipt times',
                       pause_key_sent=pause_key_sent,
                       impact=impacts.impact,
@@ -594,6 +638,8 @@ def run(args):
         if replay is not None:
             result['neural_replay'] = replay.save()
             result['neural_replay']['sha256'] = sha256(replay.path)
+            result['neural_replay']['pilot_assistance'] = 'rabbit' if assisted else 'none'
+            result['neural_replay']['action_source'] = 'brain before pilot yaw; senses include assistance' if assisted else 'brain'
         log_path.with_suffix('.json').write_text(json.dumps(result,indent=2))
         print(json.dumps(result),flush=True)
 
@@ -619,6 +665,9 @@ def main():
     p.add_argument('--port',type=int,default=9001)
     p.add_argument('--device',default='cuda')
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
+    p.add_argument('--pilot-assistance',choices=['none','rabbit'],default='none',
+                   help='Rabbit visual gate selection, smooth goals, speed scheduling and yaw assistance')
+    p.add_argument('--assist-speed',type=float,default=2.,help='Rabbit cruise speed in m/s (0 < speed <= 5); set per vehicle, not per course')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

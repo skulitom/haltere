@@ -1,7 +1,9 @@
 # Experimental navigation checkpoints
 
 These are offline future-path predictors trained from the human recordings on
-20 September 2026. They do not emit sticks and are not loaded by the live pilot.
+20 September 2026. They do not emit sticks and are not loaded by the current live runners.
+Runtime use is allowed under the [generalization-first project direction](../../docs/project_direction.md);
+these checkpoints need complete-system flight evaluation before promotion.
 See [training, limitations and measured results](../../docs/navigation_training.md).
 
 `navigation_human_v1_motion_only.pt` is the stronger overall validation result.

@@ -41,10 +41,12 @@ progresses through it: fly the lap manually and the marker steps from gate to ga
 into one cluster per gate, and the clusters come back in course order. That is a property of the
 flight, not of the detector, and no amount of frames fixes it.
 
-It is for bootstrapping ground truth and training labels, NOT a flight cue. The by-sight pilot must
-find arches in the picture; steering to the game's own HUD marker would not be flying by sight, it
-would be reading the answer off the screen, and every number measured that way would be a lie about
-what the detector can do. Nothing in `haltere/brain` or the pilots may import this module.
+This module bootstraps offline ground truth and training labels. Its reconstructed
+course must not enter a flight presented as navigation on an unseen course.
+The current arch-only pilot does not consume markers. A separate, explicitly
+declared runtime mode may use generic visible race cues under the project's
+generalization-first direction; that evaluates the cue-assisted system, not
+arch-detector performance. It also needs separate freestyle evaluation.
 
 WHAT MAKES A PIXEL A MARKER PIXEL
 

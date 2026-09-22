@@ -1,4 +1,4 @@
-"""Score a flight from its ``fly --log`` CSV (every telemetry frame, 100 Hz).
+"""Score a flight from a legacy ``fly`` or visual-brain telemetry CSV.
 
 Two kinds of numbers. Progress: gates flown through (the gate list's crossing test), time and average speed between
 the first and last gate, ground speed, distance to the taught line. Wobble, i.e. what makes the FPV view shake:
@@ -15,16 +15,46 @@ import numpy as np
 
 
 def load_log(path: str) -> dict[str, np.ndarray]:
-    rows = list(csv.DictReader(open(path, newline='', encoding='utf-8')))
+    with open(path, newline='', encoding='utf-8') as source:
+        rows = list(csv.DictReader(source))
+    if not rows:
+        return {}
     out = {}
     for k in rows[0].keys():
         if k == 'status':
             out[k] = np.array([r[k] for r in rows], dtype=object)
             continue
-        out[k] = np.array([float(r[k]) if r[k] not in ('', None) else np.nan for r in rows])
+        out[k] = np.array([{'True': 1., 'False': 0.}.get(r[k], r[k])
+                           if r[k] not in ('', None) else np.nan for r in rows], dtype=float)
+    # The visual runner records the same real pose/rates under these names.
+    if 'shadow' in out:
+        for dst, src in {'px': 'x', 'py': 'y', 'pz': 'z',
+                         'wx': 'omega_x', 'wy': 'omega_y', 'wz': 'omega_z'}.items():
+            if dst not in out and src in out:
+                out[dst] = out[src]
+    required = ('ts', 'px', 'py', 'pz', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz',
+                'wx', 'wy', 'wz', 'in_thr', 'in_roll', 'in_pitch', 'in_yaw')
+    missing = set(required) - out.keys()
+    if missing:
+        raise ValueError(f'Flight log is missing telemetry columns: {", ".join(sorted(missing))}')
     # a log still being written ends in a partial row
-    ok = np.all([np.isfinite(out[k]) for k in ('ts', 'px', 'vz', 'qw', 'wz', 'in_roll', 's_yaw', 'phase')], axis=0)
-    return {k: v[ok] for k, v in out.items()}
+    validity = required + tuple(k for k in ('phase', 'shadow', 'pilot_assisted') if k in out)
+    ok = np.all([np.isfinite(out[k]) for k in validity], axis=0)
+    out = {k: v[ok] for k, v in out.items()}
+    if 'phase' not in out:
+        if 'shadow' not in out:
+            raise ValueError('Legacy flight log is missing phase')
+        # Older visual logs omitted elapsed flight time. Their arming hold/ramp
+        # finishes at 3 s; infer elapsed time separately for each reset.
+        ts = out['ts']
+        phase = np.zeros(len(ts))
+        start = 0
+        for i in range(len(ts)):
+            if i and ts[i] < ts[i - 1] - .5:
+                start = i
+            phase[i] = ts[i] - ts[start]
+        out['phase'] = phase
+    return out
 
 
 def attempts(log: dict[str, np.ndarray]) -> list[np.ndarray]:
@@ -141,6 +171,15 @@ def path_error(P: np.ndarray, W: np.ndarray) -> np.ndarray:
 
 def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict] | None = None,
                   track: np.ndarray | None = None) -> dict:
+    attribution = {}
+    if 'shadow' in log:
+        shadow = log['shadow'][idx].astype(bool)
+        attribution['control_mode'] = ('shadow: no control output' if shadow.all() else
+                                       'live control' if not shadow.any() else 'mixed shadow/live')
+        if 'pilot_assisted' in log:
+            assisted = log['pilot_assisted'][idx].astype(bool)
+            attribution['pilot_assistance'] = ('rabbit' if assisted.all() else
+                                               'none' if not assisted.any() else 'mixed')
     ts = log['ts'][idx] - log['ts'][idx][0]
     dt = float(np.median(np.diff(ts)))
     P = np.c_[log['px'][idx], log['py'][idx], log['pz'][idx]]
@@ -148,7 +187,7 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
     Q = np.c_[log['qw'][idx], log['qx'][idx], log['qy'][idx], log['qz'][idx]]
     air = (P[:, 2] > 0.5) & (log['phase'][idx] > 3.0)
     if air.sum() < 100:
-        return {'airborne_s': float(air.sum() * dt)}
+        return dict(attribution, airborne_s=float(air.sum() * dt))
     a0 = int(np.argmax(air))
     sl = slice(a0, len(idx))
     roll, pitch = euler_deg(Q)
@@ -158,6 +197,7 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
     d_in = np.abs(np.diff(np.c_[log['in_thr'][idx], log['in_roll'][idx], log['in_pitch'][idx], log['in_yaw'][idx]][sl],
                           axis=0)).mean(0)
     res = {
+        **attribution,
         'airborne_s': float((len(idx) - a0) * dt),
         'speed_median': float(np.median(speed[sl])), 'speed_p90': float(np.percentile(speed[sl], 90)),
         'horizon_shake_deg': float(np.sqrt(np.mean(hp(roll) ** 2 + hp(pitch) ** 2))),
@@ -195,6 +235,8 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
 def score_log(path: str, gates_json: str | None = None,
               track_yaml: str | None = None) -> list[dict]:
     log = load_log(path)
+    if not log or not len(log['ts']):
+        return []
     gates = json.load(open(gates_json, encoding='utf-8'))['gates'] if gates_json else None
     track = None
     if track_yaml:
@@ -207,10 +249,12 @@ def score_log(path: str, gates_json: str | None = None,
 def describe(name: str, results: list[dict]) -> str:
     lines = []
     for k, r in enumerate(results):
+        mode = f' [{r["control_mode"]}; pilot={r.get("pilot_assistance", "unspecified")}]' if 'control_mode' in r else ''
+        label = f'{name} attempt {k + 1}{mode}'
         if 'speed_median' not in r:
-            lines.append(f'{name} attempt {k + 1}: airborne {r["airborne_s"]:.0f} s only')
+            lines.append(f'{label}: airborne {r["airborne_s"]:.0f} s only')
             continue
-        s = (f'{name} attempt {k + 1}: {r["airborne_s"]:.0f} s airborne, speed median {r["speed_median"]:.2f} '
+        s = (f'{label}: {r["airborne_s"]:.0f} s airborne, speed median {r["speed_median"]:.2f} '
              f'(p90 {r["speed_p90"]:.2f}) m/s | shake: horizon {r["horizon_shake_deg"]:.2f} deg, rates '
              f'{r["rate_shake_dps"]:.1f} deg/s, yaw {r["yaw_shake_dps"]:.1f} deg/s, vz {r["vz_shake"]:.2f} m/s, '
              f'input chatter thr/roll/pitch/yaw {r["input_chatter"]}')

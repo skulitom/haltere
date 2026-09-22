@@ -1,5 +1,12 @@
 # Human demonstrations train the fly brain
 
+**Scope:** the experiments below document brain learning and mostly unassisted
+flight checks from 2026-09-21. They do not require an assistance-free final product.
+The [current project direction](project_direction.md) prioritizes generalization
+to unfamiliar races and freestyle tasks and allows pilot and predictor assistance.
+The visual runner now supports [explicit Rabbit assistance](visual_pilot_assistance.md).
+Its default unassisted mode preserves the comparisons described below.
+
 The navigation predictor supplies an auxiliary training target. It is absent
 from the exported controller. Images are masked and sampled on a fixed 20 by 12
 RGB grid, then passed through a sensory encoder into the existing LPTC population.
@@ -12,7 +19,9 @@ training-only decoder reads the brain's goal-population activity and learns to
 match the frozen predictor's paths. This decoder and the predictor are discarded
 at export. No predicted path is fed into the student's senses. The external goal
 and global compass channels are zero, and no external yaw controller is used.
-This is a first, coarse visual sensory encoding, not a biological retinal model.
+This was the first, coarse visual sensory encoding, not a biological retinal model.
+Later gate/scene variants below use additional camera-derived goal inputs and
+different frozen feature encodings; consult each checkpoint's sensory metadata.
 
 ## Reproduce
 
@@ -44,7 +53,7 @@ the exported brain without loading the predictor. Checkpoint selection uses
 validation action error. These short, teacher-forced replay windows do not
 establish closed-loop stability, gate completion, or generalization.
 
-## Teacher-free live runner
+## Unassisted live runner used by the original experiments
 
 ```powershell
 .venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/human-brain-01/best.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --seconds 15 --log runs/human-brain-01/shadow-01.csv
@@ -53,8 +62,11 @@ establish closed-loop stability, gate completion, or generalization.
 The default is **shadow mode**, with no controller opened. To fly a reviewed
 candidate, explicitly add `--udp-out 127.0.0.1:9003` for an existing throttle-low
 bridge. The runner requires fresh game images and telemetry, bounds each attempt,
-and stops on a reset or stale input. It does not load GateNet, the navigation
-predictor, a course route or a yaw assistant. Logs identify the exact checkpoint
+and stops on a reset or stale input. The original raw-image checkpoint does not
+load GateNet; later gate/scene checkpoints load the detector recorded in their
+metadata. Neither mode loads the navigation predictor or a course route.
+`--pilot-assistance rabbit` explicitly enables guidance and yaw assistance for
+gate/scene checkpoints. Logs identify the exact checkpoint and assistance mode
 and whether any controls were sent. Videos of shadow runs must be labelled as
 shadow runs. Live qualification remains separate from offline imitation.
 

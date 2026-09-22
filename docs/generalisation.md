@@ -1,4 +1,19 @@
-# Flying a race the drone has never seen
+# Flying races and freestyle tasks the system has never seen
+
+**Current direction, 2026-09-22:** evaluate the whole deployed system, including
+any visual pilot or learned navigation predictor. Assistance is allowed when
+it helps complete unseen races and freestyle tasks. See
+[project direction and acceptance criteria](project_direction.md) for the
+authoritative goal, component roles and separate freestyle protocol.
+
+Generic visible race cues may be used by an explicitly declared mode; route
+lookups and hand-entered geometry do not establish unseen-course navigation.
+Record the cue set and test freestyle without relying on race markers. The
+older by-sight implementation described below does not explicitly read markers.
+
+The results and status table below are the **historical September 2026 race
+baseline**, not a current full-system qualification. The seven-gate score is a
+measured segment; verify complete race finish separately.
 
 The by-sight stack flies clean 7/7 laps on Straw Bale "Field Day". That number says nothing about
 any other course, and the first flight on an unseen map showed why: over the 1392 Pine Valley frames
@@ -45,9 +60,11 @@ run is no longer zero-shot.
 | Z3 | Seen map, unseen gate type (Straw Bale's dark truss cubes, labelled "nothing" in 43k frames) | expected to fail |
 | Z4 | Unseen map *and* unseen gate type — the goal | measured at noise on `pine1` |
 
-The headline claim — "completes an unseen race in an unseen environment" — needs **Z4 on three
-sealed maps, each on the first attempt**, with at least one full finish and ≥80% of checkpoints on
-the others.
+The original development milestone was **Z4 on three sealed maps**, with at
+least one full finish and ≥80% of checkpoints on the others on first attempts.
+Report that as partial transfer evidence. It does not establish completion of
+all three races, arbitrary races, or freestyle. Current acceptance uses full
+task completion, repeated trials and the [cross-task protocol](project_direction.md#what-qualifies-an-improvement).
 
 ## 3. Hold-out rules
 
@@ -61,8 +78,9 @@ today and cannot be bought back later.
 - **R2.** On a sealed track the command line is a template diff — map, log path, dataset path,
   `--seconds`. **No course parameter may appear on it.** If you had to type one, the run is tuned,
   not zero-shot.
-- **R3.** The detector checkpoint, its range table and noise model are frozen and hashed into the
-  flight card before the flight.
+- **R3.** Freeze and identify the full stack before flight: brain, detector,
+  optional predictor, pilot mode/parameters, calibration and declared runtime
+  cues. Hash checkpoints and record the code revision in the flight card.
 - **R4.** Three attempts per sealed track per session; all three reported. Attempt 1 is the
   zero-shot number. **No parameter change between attempts.**
 - **R5.** Any change made *because of* what a sealed track showed converts that track to dev. The

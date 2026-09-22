@@ -3,6 +3,11 @@
 Started 2026-09-20. The next milestone is repeatable Pine Valley flight while retaining
 the shipped Straw Bale result. Pine Valley is a development map, not a sealed test.
 
+This is a historical collection plan. The [current project direction](project_direction.md)
+prioritizes the complete system on unfamiliar races and freestyle tasks, with
+pilot and learned navigation assistance allowed. Frozen-component instructions
+below apply to this detector experiment, not to all future development.
+
 **Update from the bot investigation:** Pine's installed race uses 28 checkpoint-box
 objects and only two distinct arches. A detector-only improvement cannot be assumed
 to solve its navigation. We have now extracted a three-lap bot-pool recording; see

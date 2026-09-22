@@ -1,6 +1,7 @@
 """The by-sight pilot must decide where to fly from what it can see, and nothing else.
 
-That claim is the whole point of the project, and it is the easy one to lose by accident: a gate list
+That is the declared input contract of these particular modules, not a ban on
+other explicitly labelled helpers or generic visible race cues. A gate list
 loaded "just for the altitude", a track file read "only to seed the search", the game's own
 next-checkpoint marker wired in "temporarily". Each would make every by-sight number a lie, and none
 would fail a test that only checks gates flown through. So the claim is a test.
@@ -17,7 +18,8 @@ ROOT = Path(__file__).resolve().parents[1] / 'haltere'
 
 # Modules that run inside the by-sight flight loop. pilot.py is deliberately absent: it also hosts the
 # taught-line --follow pilot, which is allowed to read a track file because it is not flying by sight.
-BY_SIGHT_MODULES = [ROOT / 'liftoff' / 'sightpilot.py', ROOT / 'vision' / 'runtime.py']
+BY_SIGHT_MODULES = [ROOT / 'liftoff' / 'sightpilot.py', ROOT / 'vision' / 'runtime.py',
+                   ROOT / 'liftoff' / 'visual_assistance.py']
 
 COURSE_FILES = ['gates_strawbale', 'track_strawbale', 'obstacles_strawbale', 'gates_pinevalley',
                 'load_gate_file', 'gate_passes']
@@ -34,10 +36,10 @@ def test_the_by_sight_loop_never_reads_the_course(path):
 
 @pytest.mark.parametrize('path', BY_SIGHT_MODULES, ids=lambda p: p.name)
 def test_the_by_sight_loop_never_reads_the_games_marker(path):
-    """Liftoff draws a beacon on the next checkpoint. Steering to it is reading the answer off the screen."""
+    """These runners do not explicitly consume markers; keep that stated contract accurate."""
     src = path.read_text(encoding='utf-8')
     assert 'beacon' not in src.lower(), (
-        f'{path.name} mentions the beacon. It is ground truth for building training labels, never a flight cue.')
+        f'{path.name} mentions the beacon. Declare a new cue-assisted mode before changing this input contract.')
 
 
 def test_the_pilot_does_not_open_files_while_flying():
