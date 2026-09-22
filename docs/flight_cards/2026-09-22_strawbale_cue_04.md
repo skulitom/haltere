@@ -23,7 +23,7 @@ finished and race time **14:05.703**. Displayed lap times: **04:39.529**,
 detected impact or estimated collision, no camera outage or control deadline
 failure. Median horizontal speed 1.82 m/s; p90 2.25 m/s.
 
-The recorder preserved the finish screen. The runner then stopped on telemetry
+The recorder preserved the player's finished indicator. The runner then stopped on telemetry
 leaving live flight; Escape was sent only after finish had been observed.
 This terminal stop is not a racing failure. Finish evidence is recorded in
 `straw-cue-04-finish.json` beside the raw recording.

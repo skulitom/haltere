@@ -24,6 +24,10 @@ search rather than a forward search circle. The pilot estimates no checkpoint
 count: full ordered laps and finish must be verified from the game. A bottom-edge
 cue near the horizontal centre requests bounded descent with a shorter forward
 goal; treating it only as a turn hint caused a downhill recovery stall.
+Initial launch clearance is released after the first 0.6 m ascent. Launch
+elevation is not terrain height: a persistent floor prevented descent from a
+rooftop in the first Hannover test. That failed unseen attempt is now development
+evidence for this generic fix.
 
 The first longer attempt hit a racing flag after 164.6 seconds. A checkpoint
 marker can lie on a solid object or behind an intervening object: centring it
@@ -47,6 +51,7 @@ pad bridge, using the same setup as [visual assistance](visual_pilot_assistance.
 Use fresh paths for every attempt and preserve all failures. The fourth
 Straw Bale development attempt [completed all three laps](flight_cards/2026-09-22_strawbale_cue_04.md)
 in 14:05.703 without detected contact or intervention before finish. This
-establishes one seen-course finish; unseen race and freestyle completion remain
-unproven. Earlier partial attempts and their failures are retained in the
+establishes a seen-course finish. The unchanged controller also
+[completed Minus Two](flight_cards/2026-09-22_minustwo_cue_01.md) in 09:27.415.
+Unseen race and freestyle completion remain unproven. Earlier partial attempts and their failures are retained in the
 [flight index](flight_cards/README.md#2026-09-22-visible-race-cue-development).

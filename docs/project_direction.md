@@ -79,15 +79,19 @@ its unassisted baseline. Keep the same checkpoint, calibrated detector, drone,
 camera and starts; only assistance changes. Do not silently replace the newest
 brain with the older successful motor checkpoint.
 
-The [2026-09-22 assisted recordings](flight_cards/README.md#2026-09-22-assisted-scene-brain)
-now establish live compatibility on three maps, with zero completed laps in
+The [2026-09-22 Rabbit baseline recordings](flight_cards/README.md#2026-09-22-assisted-scene-brain)
+establish live compatibility on three maps, with zero completed laps in
 five attempts and repeated gate-acquisition/search collisions. That batch has
 no matched unassisted comparison. Use these failures to guide the next fixes;
 Hangar C03 can no longer be treated as untouched if its results inform tuning.
 Its images have now informed cue recognition, so it is development data; choose
 a new untouched course for the next frozen evaluation. The separately declared
 [race-cue experiment](race_cue_assistance.md) is allowed, but its checkpoint
-markers and route arrows cannot establish freestyle capability.
+markers and route arrows cannot establish freestyle capability. It subsequently
+completed full three-lap races on Straw Bale and Minus Two with unchanged settings.
+Its first unseen Hannover attempt failed to recover a descent from a rooftop
+start. That result informed a launch-clearance fix, so Hannover is also now
+development data. Preserve these failures alongside successful recordings.
 
 The predictor is eligible for a subsequent runtime experiment, not prohibited.
 Before giving it control authority, establish how a prediction becomes a

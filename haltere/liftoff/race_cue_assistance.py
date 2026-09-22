@@ -28,6 +28,7 @@ class RaceCueAssistance:
         self.direction = None
         self.edge = False
         self.below = False
+        self.launching = True
         self.hold = None
         self.side = 1.
         self.cue = None
@@ -35,6 +36,8 @@ class RaceCueAssistance:
 
     def update(self, senses, omega, detection, capture_time, now):
         position = senses['pos'][0].cpu().numpy().astype(float)
+        if position[2] >= .6:
+            self.launching = False
         velocity = senses['vel_world'][0].cpu().numpy().astype(float)
         rotation = quat_wxyz_to_mat(senses['quat'][0].cpu().numpy())
         dt = .01 if self.last_time is None else float(np.clip(now-self.last_time, 0., .1))
@@ -82,7 +85,9 @@ class RaceCueAssistance:
                 relative[2] = np.clip(relative[2], -1.2, 1.2)
                 if self.below:
                     relative[2] = -1.2
-                if position[2] < .6:
+                # Launch clearance is temporary. The start elevation is not
+                # terrain height: later checkpoints may be below a rooftop.
+                if self.launching and position[2] < .6:
                     relative[2] = max(relative[2], 1.2-position[2])
                 self.hold = position.copy()
                 self.pilot.mode = 2
@@ -121,6 +126,7 @@ class RaceCueAssistance:
                     visible_race_cues=True, runtime_route_oracle=False,
                     local_flag_clearance=True, visible_route_arrows_for_clearance_side=True,
                     bottom_edge_recovery='bounded descent with reduced forward goal',
+                    launch_clearance='released after first 0.6 m ascent; no persistent start-height floor',
                     yaw_assistance=True, speed_assistance=True, nominal_speed_mps=self.speed,
                     cue_frames=self.frames, estimated_passages=None,
                     motor_control='brain throttle/roll/pitch; assisted yaw',

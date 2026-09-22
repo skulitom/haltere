@@ -120,6 +120,22 @@ def test_bottom_edge_cue_descends_without_a_forced_search_turn():
     assert assist.pilot.sight_yaw == pytest.approx(0.)
 
 
+def test_takeoff_clearance_does_not_block_flight_below_start_elevation():
+    assist, cue = helper()
+    cue.update(v=.975, edge=True)
+    s = senses(velocity=(0.,0.,0.))
+    s['pos'][0,2] = 0.
+    relative, _ = assist.update(s, [0.,0.,0.], dict(race_cue=cue), 10., 10.01)
+    assert relative[2] > 0.  # clear the launch surface first
+    s['pos'][0,2] = .7
+    assist.update(s, [0.,0.,0.], dict(race_cue=cue), 10., 10.02)
+    for altitude in (.4, -10.):
+        s['pos'][0,2] = altitude
+        relative, _ = assist.update(s, [0.,0.,0.], dict(race_cue=cue), 10., 10.03)
+        assert relative[2] == pytest.approx(-1.2)
+        assert not assist.launching
+
+
 def test_runner_keeps_learned_retina_and_neural_motor_outputs_in_cue_mode(checkpoint):
     import torch
     from haltere.liftoff.visual_brain import VisualController

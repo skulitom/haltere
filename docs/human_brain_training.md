@@ -572,3 +572,28 @@ subspace measured on the training flight's successful prefix (SVD relative
 threshold 1e-5), and bounds each update's norm to half the parent row norm.
 Validation states do not construct this constraint. This is a sampled activity
 constraint, so full continuous and live retention checks remain necessary.
+
+## Current scene-09 candidate and live assistance
+
+The newest completed local candidate reviewed on 2026-09-22 is
+`runs/scene-brain-09-navigation/last.pt`, SHA256
+`3789e33b8bd5bbc0fa504fd9c3365ab5a5e897451d14bc5ce3c042c091543a6e`.
+Its parent is `runs/gate-brain-readout-02-spatial-08-replay/candidate.pt`.
+Training used `data/vision/observed_scene_v1`, 400 updates, seed 1839,
+128-tick windows and no motor refit. The changed brain parameters are
+`encoders.retina__goal.U` and `encoders.retina__goal.log_gain`: image-derived
+sensory currents into the existing goal population. Every original parent
+weight, recurrent connection and known transmitter sign is retained.
+
+This is **not** the separate NavigationNet path predictor. Its runtime keeps
+the exact `gatenet_scene_v1` projection and frozen spatial-08 detector contract;
+the separate spatial-09 detector candidate is not silently substituted.
+
+The [Rabbit baseline](flight_cards/README.md#2026-09-22-assisted-scene-brain)
+verified live compatibility but completed no laps. A separately declared
+[race-cue pilot](race_cue_assistance.md), with this same unchanged brain,
+then completed all three Straw Bale laps in 14:05.703. Goals and yaw come from
+causal visible race cues; throttle, roll and pitch remain neural. That result
+is a complete-system improvement, not additional brain training or evidence
+of unaided visual navigation. The flight cards retain failed attempts and
+distinguish seen-course success from unseen and freestyle qualification.

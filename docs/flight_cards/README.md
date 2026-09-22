@@ -59,12 +59,14 @@ checkpoint guidance. No new neural weights, predictor or stored route. Raw
 standard brain/gameplay videos and telemetry are in
 `runs/race-completion-20260922/`.
 
-| Straw Bale / Field Day attempt | Result | Evidence |
+| Race-cue attempt | Result | Evidence |
 |---|---|---|
 | 90-second preflight | No contact; partial lap 1/3 | [Preflight](2026-09-22_strawbale_cue_preflight.md), `straw-cue-01` |
 | First full-race attempt | Flag collision at 164.6 s; no completed lap | [Attempt 2](2026-09-22_strawbale_cue_02.md), `straw-cue-02` |
 | Flag-clearance attempt | Passed previous flag; manually stopped in downhill recovery stall, lap 1/3 | [Attempt 3](2026-09-22_strawbale_cue_03.md), `straw-cue-03` |
 | Downhill-recovery attempt | **Full three-lap finish, 14:05.703; no detected contact or flight intervention** | [Attempt 4](2026-09-22_strawbale_cue_04.md), `straw-cue-04` |
+| Minus Two / Turn Signals, unchanged controller | **Full three-lap finish, 09:27.415; no detected contact or intervention** | [Attempt 1](2026-09-22_minustwo_cue_01.md), `minus-cue-01` |
+| Hannover / The Biggest Yet, first unseen attempt | No completed lap; manually stopped after launch-height floor prevented downhill recovery; now development data | [Attempt 1](2026-09-22_hannover_cue_01.md), `hannover-cue-01` |
 
 ## Card template
 
