@@ -84,6 +84,11 @@ since the first telemetry frame; older visual logs infer it per reset. The first
 three seconds cover the live arming hold/ramp. Motion scores and estimated gate
 passes do not prove completion of an ordered race.
 
+The scorer also reads a matching visual JSON sidecar for the terminal stop and
+impact event. The guard checks impact before writing the next CSV row, so that
+event can be absent from the CSV. Terminal impacts and CSV contact estimates
+are reported separately; they must not be added as if independent contacts.
+
 The JSON sidecar records `pilot_assistance`, `yaw_assistance`, the complete
 pilot parameters, checkpoint hash and whether this was shadow or live control.
 An optional neural replay preserves brain outputs before yaw assistance and
@@ -91,7 +96,18 @@ the assisted sensory inputs; its sidecar identifies that distinction.
 
 Tests exercise delayed-frame alignment, one-use detection intake, detector
 offsets, unmodified real telemetry, motor-axis ownership, retinal preservation,
-default unassisted behavior and the existing pilot/guard tests. Live flight is
-still unverified: Anode reported a Windows sign-in failure (reason 2055) during
-this update. No assisted lap, transfer improvement or new qualified weights
-are claimed. Resume with a bounded comparison once the Anode seat is available.
+default unassisted behavior and the existing pilot/guard tests.
+
+On 2026-09-22, Anode sign-in was restored and the exact scene candidate above
+flew with Rabbit on Straw Bale, Minus Two and project-unseen Hangar C03.
+Ground control checks and a bounded takeoff passed. All five full race attempts
+ended on impact, with no completed lap: Straw Bale at 96.2 s, Minus Two at
+17.4 s, and three unchanged Hangar trials at about 30.5 s of controller time.
+Standard brain/gameplay recordings, predictions, hashes and results are indexed
+in the [flight cards](flight_cards/README.md#2026-09-22-assisted-scene-brain).
+
+These flights establish live tool compatibility and expose failures in gate
+acquisition, turn recovery and obstacle avoidance. There was no matched live
+unassisted comparison or freestyle test in this batch, so it does not establish
+an assistance benefit or freestyle transfer. No improved flight capability or
+new qualified weights are claimed.

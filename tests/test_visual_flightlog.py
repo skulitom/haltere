@@ -1,5 +1,6 @@
 """The standard flight scorer must accept actual visual-runner telemetry."""
 import csv
+import json
 
 import numpy as np
 import pytest
@@ -58,3 +59,36 @@ def test_unknown_log_schema_has_actionable_error(tmp_path):
     path.write_text('ts,x,y,z\n1,0,0,2\n')
     with pytest.raises(ValueError, match='missing telemetry columns'):
         score_log(str(path))
+
+
+@pytest.mark.parametrize('sidecar_case', ['matching', 'mismatch', 'after_short_reset'])
+def test_terminal_impact_is_not_lost_when_guard_stops_before_logging(tmp_path, sidecar_case):
+    path = tmp_path / 'stopped.csv'
+    cols = ['ts', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz',
+            'omega_x', 'omega_y', 'omega_z', 'in_thr', 'in_roll', 'in_pitch', 'in_yaw',
+            'shadow', 'pilot_assisted', 'phase']
+    with path.open('w', newline='') as source:
+        writer = csv.DictWriter(source, fieldnames=cols)
+        writer.writeheader()
+        for i in range(250):
+            # A short final reset is omitted from scored attempts. Its impact
+            # must not be attributed to the preceding, longer attempt.
+            j = i - 240 if sidecar_case == 'after_short_reset' and i >= 240 else i
+            row = dict.fromkeys(cols, 0.)
+            row.update(ts=j*.01, x=j*.02, z=2., vx=2., qw=1., shadow=False,
+                       pilot_assisted=True, phase=5+j*.01)
+            writer.writerow(row)
+    impact = dict(timestamp=.1 if sidecar_case == 'after_short_reset' else 2.5,
+                  acceleration_mps2=50., unexplained_mps2=40.)
+    path.with_suffix('.json').write_text(json.dumps(dict(
+        ticks=900 if sidecar_case == 'mismatch' else 250, impact=impact,
+        stop_reason='Impact detected from flight motion')))
+    (result,) = score_log(str(path))
+    assert result['collisions'] == []  # the CSV ends just before the terminal sample
+    if sidecar_case == 'matching':
+        assert result['terminal_impact'] == impact
+        assert 'terminal impact recorded' in describe('stopped', [result])
+        assert 'stop: Impact detected' in describe('stopped', [result])
+    else:
+        assert 'terminal_impact' not in result
+        assert 'stop_reason' not in result

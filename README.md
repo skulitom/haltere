@@ -21,10 +21,15 @@ experimental brain or evidence of arbitrary-course flight.*
 ## Current status
 
 **Reviewed against the code and tracked evidence on 2026-09-22.**
-The full automated suite passed (296 tests), the CPU quickstart executed, and
-the newest local scene brain passed headless compatibility checks in both
+The automated suite and targeted scorer regression checks passed. The CPU
+quickstart executed, and the newest local scene brain passed headless checks in both
 assisted and unassisted modes. Command examples and local links were checked.
-This update has not yet revalidated flight performance or a fresh installation.
+Fresh live recordings now cover Straw Bale, Minus Two and three unchanged
+attempts on the project-unseen Hangar C03 track. **No attempt completed a lap;
+all five race attempts stopped on impact.** The newest brain and restored pilot
+run together, but race generalization remains unsolved. See the
+[recordings and flight evidence](docs/flight_cards/README.md#2026-09-22-assisted-scene-brain).
+A fresh installation has not been revalidated.
 The [project direction](docs/project_direction.md) records the current goal,
 allowed helpers and evaluation criteria. It supersedes the earlier restriction
 that the navigation predictor must be training-only.
@@ -33,7 +38,7 @@ that the navigation predictor must be training-only.
 |---|---|---|
 | Published controllers | `ftSmooth` for hover/patterns; `ftPath2` for guided flight | Recorded Liftoff flight on specific setups. Route and visual-pilot assistance contribute to the results. |
 | New visual brain | Human, gate and scene training; a separate visual runtime | Experimental progress, including partial course traversal. No qualified general race/freestyle controller. |
-| Restored pilot assistance | Optional Rabbit guidance, speed and yaw around the visual brain | Tested integration; live qualification still required. [Usage and limits](docs/visual_pilot_assistance.md). |
+| Restored pilot assistance | Optional Rabbit guidance, speed and yaw around the visual brain | Live integration verified on three maps; zero completed laps in five race attempts. [Usage and limits](docs/visual_pilot_assistance.md). |
 | Navigation predictor | Causal 0.25–1 s path forecasts; offline evaluation and distillation | Runtime use is allowed, but no current live runner loads it. Prediction error is not flight success. |
 | Generalization | Whole-flight splits, race flight cards and synthetic stress tests | Unseen race and freestyle completion remain open goals. |
 
@@ -41,7 +46,7 @@ The newest completed **local** scene candidate reviewed here is
 `runs/scene-brain-09-navigation/last.pt`. It learns visual currents into the
 brain's goal neurons while preserving the parent's original weights. It is not
 the separate path predictor, is not a published replacement for `ftPath2`, and
-still needs live evaluation. See [the training record](docs/human_brain_training.md)
+failed the current assisted race evaluation. See [the training record](docs/human_brain_training.md)
 and [assisted-run guide](docs/visual_pilot_assistance.md).
 
 ## Quickstart

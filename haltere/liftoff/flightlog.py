@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import json
+from pathlib import Path
 
 import numpy as np
 
@@ -243,7 +244,25 @@ def score_log(path: str, gates_json: str | None = None,
         import yaml
         d = yaml.safe_load(open(track_yaml, encoding='utf-8'))
         track = np.array(d['waypoints'] if isinstance(d, dict) else d, dtype=float)[:, :3]
-    return [score_attempt(log, idx, gates, track) for idx in attempts(log)]
+    results = [score_attempt(log, idx, gates, track) for idx in attempts(log)]
+    sidecar = Path(path).with_suffix('.json')
+    has_reset = np.any(np.diff(log['ts']) < -.5)
+    if 'shadow' in log and len(results) == 1 and not has_reset and sidecar.is_file():
+        try:
+            metadata = json.loads(sidecar.read_text(encoding='utf-8'))
+        except json.JSONDecodeError:  # the runner may still be writing it
+            metadata = {}
+        # A visual runner stops on reset. Do not attach one terminal event to
+        # combined attempts or a sidecar from a differently sized recording.
+        if isinstance(metadata, dict) and metadata.get('ticks') == len(log['ts']):
+            if isinstance(metadata.get('stop_reason'), str):
+                results[0]['stop_reason'] = metadata['stop_reason']
+            if isinstance(metadata.get('impact'), dict):
+                # The guard stops before the impact sample is written to CSV.
+                # Preserve its evidence separately from CSV contact estimates;
+                # adding the counts would risk counting the same event twice.
+                results[0]['terminal_impact'] = metadata['impact']
+    return results
 
 
 def describe(name: str, results: list[dict]) -> str:
@@ -251,14 +270,18 @@ def describe(name: str, results: list[dict]) -> str:
     for k, r in enumerate(results):
         mode = f' [{r["control_mode"]}; pilot={r.get("pilot_assistance", "unspecified")}]' if 'control_mode' in r else ''
         label = f'{name} attempt {k + 1}{mode}'
+        stop = f' | stop: {r["stop_reason"]}' if 'stop_reason' in r else ''
         if 'speed_median' not in r:
-            lines.append(f'{label}: airborne {r["airborne_s"]:.0f} s only')
+            terminal = ' | terminal impact recorded' if 'terminal_impact' in r else ''
+            lines.append(f'{label}: airborne {r["airborne_s"]:.0f} s only{terminal}{stop}')
             continue
         s = (f'{label}: {r["airborne_s"]:.0f} s airborne, speed median {r["speed_median"]:.2f} '
              f'(p90 {r["speed_p90"]:.2f}) m/s | shake: horizon {r["horizon_shake_deg"]:.2f} deg, rates '
              f'{r["rate_shake_dps"]:.1f} deg/s, yaw {r["yaw_shake_dps"]:.1f} deg/s, vz {r["vz_shake"]:.2f} m/s, '
              f'input chatter thr/roll/pitch/yaw {r["input_chatter"]}')
-        s += f' | collisions {len(r.get("collisions", []))}' + ''.join(
+        n_contacts = len(r.get('collisions', []))
+        s += (f' | terminal impact recorded; CSV contact estimates {n_contacts}' if 'terminal_impact' in r
+              else f' | estimated contacts {n_contacts}') + ''.join(
             f' @{h["t"]:.0f}s({h["pos"][0]:.0f},{h["pos"][1]:.0f},{h["pos"][2]:.0f}) {h["speed_before"]:.1f}->'
             f'{h["speed_after"]:.1f}m/s [{h["unexplained"]:.0f} off-axis]'
             for h in r.get('collisions', [])[:6])
@@ -271,5 +294,5 @@ def describe(name: str, results: list[dict]) -> str:
                 s += f', gate {g0} -> {g1} in {r["gate_span_s"]:.0f} s at {r["gate_span_speed"]:.2f} m/s'
             s += '; ' + ', '.join(f'g{c["gate"]}@{c["t"]:.0f}s {c["lateral_m"]:+.1f}m{"" if c["through"] else (" hit" if c.get("hit") else " miss")}'
                                   for c in r['crossings'])
-        lines.append(s)
+        lines.append(s + stop)
     return '\n'.join(lines)

@@ -79,6 +79,12 @@ its unassisted baseline. Keep the same checkpoint, calibrated detector, drone,
 camera and starts; only assistance changes. Do not silently replace the newest
 brain with the older successful motor checkpoint.
 
+The [2026-09-22 assisted recordings](flight_cards/README.md#2026-09-22-assisted-scene-brain)
+now establish live compatibility on three maps, with zero completed laps in
+five attempts and repeated gate-acquisition/search collisions. That batch has
+no matched unassisted comparison. Use these failures to guide the next fixes;
+Hangar C03 can no longer be treated as untouched if its results inform tuning.
+
 The predictor is eligible for a subsequent runtime experiment, not prohibited.
 Before giving it control authority, establish how a prediction becomes a
 task-directed target, measure its behavior at launch and on states caused by
