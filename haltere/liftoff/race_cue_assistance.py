@@ -29,6 +29,7 @@ class RaceCueAssistance:
         self.edge = False
         self.below = False
         self.above = False
+        self.above_hold = None
         self.launching = True
         self.hold = None
         self.side = 1.
@@ -63,6 +64,10 @@ class RaceCueAssistance:
                 self.last_seen, self.edge = capture_time, cue['edge']
                 self.below = cue['edge'] and cue['v'] > .96 and .1 < cue['u'] < .9
                 self.above = cue['edge'] and cue['v'] < .04 and .1 < cue['u'] < .9
+                if self.above and self.above_hold is None:
+                    self.above_hold = position.copy()
+                elif not self.above:
+                    self.above_hold = None
                 self.frames += 1
         fresh = self.last_seen is not None and now-self.last_seen < .25
         yaw = np.arctan2(rotation[1, 0], rotation[0, 0])
@@ -93,6 +98,10 @@ class RaceCueAssistance:
                 if self.below:
                     relative[2] = -1.2
                 elif self.above:
+                    # The clipped marker supplies no upper elevation or forward
+                    # distance. Recover its bearing while holding horizontal
+                    # position instead of advancing toward unseen geometry.
+                    relative[:2] = self.above_hold[:2]-position[:2]-1.2*velocity[:2]
                     relative[2] = 1.2
                 # Launch clearance is temporary. The start elevation is not
                 # terrain height: later checkpoints may be below a rooftop.
@@ -138,7 +147,7 @@ class RaceCueAssistance:
                     visible_race_cues=True, runtime_route_oracle=False,
                     local_flag_clearance=True, visible_route_arrows_for_clearance_side=True,
                     bottom_edge_recovery='bounded descent with reduced forward goal',
-                    top_edge_recovery='bounded climb with reduced forward goal',
+                    top_edge_recovery='bounded climb with horizontal position hold and braking',
                     steep_bearing='reduce horizontal lead to preserve observed vertical slope',
                     launch_clearance='released after first 0.6 m ascent; no persistent start-height floor',
                     capture_outage='brake on live odometry without search yaw after 0.25 s; runner pauses at 0.5 s',

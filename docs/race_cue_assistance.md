@@ -24,7 +24,9 @@ search rather than a forward search circle. The pilot estimates no checkpoint
 count: full ordered laps and finish must be verified from the game. A bottom-edge
 cue near the horizontal centre requests bounded descent with a shorter forward
 goal; treating it only as a turn hint caused a downhill recovery stall.
-Top-edge cues similarly request a bounded climb. High markers are distinguished
+Top-edge cues request a bounded climb while holding horizontal position and
+braking drift. Their clipped elevation cannot justify forward movement; the
+first Green attempt exposed this error beneath an overhang. High markers are distinguished
 from narrow HUD digits by contour shape, rather than masking the whole upper
 screen. For steep bearings, the horizontal goal is shortened to preserve the
 observed climb/descent angle when bounding its height. The Pit's high-checkpoint

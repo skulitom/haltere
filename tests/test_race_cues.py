@@ -148,8 +148,23 @@ def test_high_bearing_keeps_climb_slope_and_top_edge_does_not_search_sideways():
     relative, _ = assist.update(senses(velocity=(0.,0.,0.)), [0.,0.,0.],
                                 dict(race_cue=cue), 10., 10.08)
     assert assist.pilot.mode == 2 and relative[2] == pytest.approx(1.2)
-    assert np.linalg.norm(relative[:2]) == pytest.approx(1.)
+    assert np.linalg.norm(relative[:2]) == pytest.approx(0.)
     assert assist.pilot.sight_yaw == pytest.approx(0.)
+
+
+def test_top_edge_recovery_brakes_drift_and_keeps_a_horizontal_anchor():
+    assist, cue = helper()
+    cue.update(v=.025, edge=True)
+    s = senses(velocity=(1., 0., 0.))
+    relative, _ = assist.update(s, [0.,0.,0.], dict(race_cue=cue), 10., 10.01)
+    assert relative[0] == pytest.approx(-1.2)
+    assert relative[2] == pytest.approx(1.2)
+    s['pos'][0,0] += .4
+    relative, _ = assist.update(s, [0.,0.,0.], dict(race_cue=cue), 10.01, 10.02)
+    assert relative[0] == pytest.approx(-1.6)
+    cue.update(v=.5, edge=False)
+    assist.update(s, [0.,0.,0.], dict(race_cue=cue), 10.02, 10.03)
+    assert assist.above_hold is None
 
 
 def test_takeoff_clearance_does_not_block_flight_below_start_elevation():
