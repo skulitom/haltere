@@ -28,6 +28,7 @@ class RaceCueAssistance:
         self.direction = None
         self.edge = False
         self.below = False
+        self.above = False
         self.launching = True
         self.hold = None
         self.side = 1.
@@ -61,6 +62,7 @@ class RaceCueAssistance:
                 self.direction = quat_wxyz_to_mat(q) @ ray
                 self.last_seen, self.edge = capture_time, cue['edge']
                 self.below = cue['edge'] and cue['v'] > .96 and .1 < cue['u'] < .9
+                self.above = cue['edge'] and cue['v'] < .04 and .1 < cue['u'] < .9
                 self.frames += 1
         fresh = self.last_seen is not None and now-self.last_seen < .25
         yaw = np.arctan2(rotation[1, 0], rotation[0, 0])
@@ -70,21 +72,28 @@ class RaceCueAssistance:
             angle = (np.arctan2(d[1], d[0])-yaw+np.pi) % (2*np.pi)-np.pi
             if abs(angle) > .08:
                 self.side = np.sign(angle)
-            moving = (not self.edge or self.below) and abs(angle) < np.deg2rad(55)
+            vertical_edge = self.below or self.above
+            moving = (not self.edge or vertical_edge) and abs(angle) < np.deg2rad(55)
             yaw_rate = float(np.clip(1.6*angle-.22*world_rate, -.8, .8))
-            if self.edge and not self.below and abs(yaw_rate) < .35:
+            if self.edge and not vertical_edge and abs(yaw_rate) < .35:
                 yaw_rate = .35*self.side
             if moving:
                 direction = d/max(np.linalg.norm(d[:2]), .1)
                 # Slow through sharp direction changes and suppress lateral drift.
                 lead = 3.*max(.25, np.cos(angle)**2)
-                if self.below:
-                    lead = 1.  # slow the approach while recovering a downhill cue
+                if vertical_edge:
+                    lead = 1.  # slow while recovering a vertical off-screen cue
+                elif abs(direction[2])*lead > 1.2:
+                    # Preserve the observed slope when bounding the goal. Only
+                    # clipping height drives too far forward on a steep climb.
+                    lead = 1.2/abs(direction[2])
                 relative = direction*lead
                 relative[:2] -= .8*(velocity[:2]-direction[:2]*(velocity[:2]@direction[:2]))
                 relative[2] = np.clip(relative[2], -1.2, 1.2)
                 if self.below:
                     relative[2] = -1.2
+                elif self.above:
+                    relative[2] = 1.2
                 # Launch clearance is temporary. The start elevation is not
                 # terrain height: later checkpoints may be below a rooftop.
                 if self.launching and position[2] < .6:
@@ -129,6 +138,8 @@ class RaceCueAssistance:
                     visible_race_cues=True, runtime_route_oracle=False,
                     local_flag_clearance=True, visible_route_arrows_for_clearance_side=True,
                     bottom_edge_recovery='bounded descent with reduced forward goal',
+                    top_edge_recovery='bounded climb with reduced forward goal',
+                    steep_bearing='reduce horizontal lead to preserve observed vertical slope',
                     launch_clearance='released after first 0.6 m ascent; no persistent start-height floor',
                     capture_outage='brake on live odometry without search yaw after 0.25 s; runner pauses at 0.5 s',
                     yaw_assistance=True, speed_assistance=True, nominal_speed_mps=self.speed,

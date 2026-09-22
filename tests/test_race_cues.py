@@ -30,7 +30,22 @@ def test_missing_ambiguous_and_edge_cues_are_explicit():
     assert checkpoint_ring(picture()) is None
     assert checkpoint_ring(picture((400, 400), (900, 450))) is None
     assert checkpoint_ring(picture((19, 200)))['edge']
-    assert checkpoint_ring(picture((640, 40))) is None  # timer
+    timer = picture()
+    cv2.ellipse(timer,(640,40),(5,7),0,0,360,(255,255,255),-1)
+    cv2.ellipse(timer,(640,40),(3,5),0,0,360,(0,0,0),-1)
+    assert checkpoint_ring(timer) is None
+
+
+def test_high_checkpoints_survive_between_and_beside_hud_text():
+    for centre in [(624,83),(607,52),(708,44),(640,40),(400,100),(900,120),(640,19)]:
+        cue = checkpoint_ring(picture(centre))
+        assert cue is not None
+        assert cue['v'] == pytest.approx(centre[1]/720)
+    for centre in [(640,40),(640,130),(60,60),(1150,67)]:
+        text = picture()
+        cv2.ellipse(text,centre,(5,7),0,0,360,(255,255,255),-1)
+        cv2.ellipse(text,centre,(3,5),0,0,360,(0,0,0),-1)
+        assert checkpoint_ring(text) is None
 
 
 @pytest.mark.parametrize('side', [-1, 1])
@@ -116,6 +131,23 @@ def test_bottom_edge_cue_descends_without_a_forced_search_turn():
                                 dict(race_cue=cue), 10., 10.08)
     assert assist.pilot.mode == 2
     assert relative[2] == pytest.approx(-1.2)
+    assert np.linalg.norm(relative[:2]) == pytest.approx(1.)
+    assert assist.pilot.sight_yaw == pytest.approx(0.)
+
+
+def test_high_bearing_keeps_climb_slope_and_top_edge_does_not_search_sideways():
+    assist, cue = helper()
+    cue.update(v=.12,edge=False)
+    relative, _ = assist.update(senses(velocity=(0.,0.,0.)), [0.,0.,0.],
+                                dict(race_cue=cue), 10., 10.08)
+    ray = assist.camera.unproject_body(np.array([[cue['u']*320,cue['v']*180]]))[0]
+    assert relative[2] == pytest.approx(1.2)
+    assert relative[2]/np.linalg.norm(relative[:2]) == pytest.approx(ray[2]/np.linalg.norm(ray[:2]))
+    assist, cue = helper()
+    cue.update(v=.025,edge=True)
+    relative, _ = assist.update(senses(velocity=(0.,0.,0.)), [0.,0.,0.],
+                                dict(race_cue=cue), 10., 10.08)
+    assert assist.pilot.mode == 2 and relative[2] == pytest.approx(1.2)
     assert np.linalg.norm(relative[:2]) == pytest.approx(1.)
     assert assist.pilot.sight_yaw == pytest.approx(0.)
 

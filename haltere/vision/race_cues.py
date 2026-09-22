@@ -34,12 +34,18 @@ def checkpoint_ring(rgb):
             continue
         u, v = x+(w-1)/2, y+(h-1)/2
         edge = u < 30 or u > 1257 or v < 27 or v > 693
-        if ((not edge and v < 165) or (1060 < u < 1257 and 230 < v < 565)
+        if ((1060 < u < 1257 and 230 < v < 565)
                 or ((545 < u < 615 or 660 < u < 730) and 620 < v < 693)):
             continue
         hole, area = cv2.contourArea(contour), cv2.contourArea(contours[parent])
         if not (45 <= hole <= 85 and hole > .47*w*h and area > 2.1*hole):
             continue
+        if not edge and v < 165:
+            # Above the view, distinguish the circular cue from narrow digit
+            # counters instead of discarding every high checkpoint as HUD.
+            _, _, pw, ph = cv2.boundingRect(contours[parent])
+            if not (14 <= pw <= 20 and 14 <= ph <= 20 and .85 < pw/ph < 1/.85):
+                continue
         angles = np.arange(16)*2*np.pi/16
         xx = np.clip(np.rint(u+10*np.cos(angles)).astype(int), 0, 1279)
         yy = np.clip(np.rint(v+10*np.sin(angles)).astype(int), 0, 719)

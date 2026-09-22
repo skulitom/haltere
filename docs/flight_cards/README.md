@@ -72,6 +72,8 @@ standard brain/gameplay videos and telemetry are in
 | Paris Drone Festival / City Trip, first exposure | Camera freshness guard stopped the run during lap 1/3; no detected contact; incomplete | [Attempt 1](2026-09-22_paris_cue_01.md), `paris-cue-01` |
 | Paris, unchanged repeat | Camera freshness stop before the race timer started; no detected contact | [Repeat](2026-09-22_paris_cue_01.md), `paris-cue-02` |
 | Paris, camera recovery regression | Planned 200 s completed without detected contact or camera outage; not a full race | [Regression](2026-09-22_paris_cue_01.md), `paris-cue-03` |
+| Hall 26 / course 01, first exposure | Impact into overhead duct at 77.11 s, lap 1/2; checkpoint marker visible through obstruction | [Attempt 1](2026-09-22_hall26_cue_01.md), `hall26-cue-01` |
+| The Pit, expanded-envelope repeat | High-checkpoint stall; manually paused at game time 16:09.841, lap 1/1; now development data | [Attempt 2](2026-09-22_pit_cue_02.md), `pit-cue-02` |
 
 ## Card template
 
