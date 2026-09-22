@@ -26,8 +26,10 @@ def put_latest(queue, packet):
 
 def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, race_cues=False):
     import torch
+    import cv2
     from .visual_brain import RetinaCamera
     torch.set_num_threads(2)
+    cv2.setNumThreads(2)
     queue.cancel_join_thread()
     camera = None
     priority = None

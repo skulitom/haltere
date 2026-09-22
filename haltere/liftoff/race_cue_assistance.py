@@ -98,7 +98,10 @@ class RaceCueAssistance:
         else:
             relative = self.hold-position
             relative[:2] -= 1.2*velocity[:2]
-            yaw_rate = .45*self.side
+            # A missing cue in a current image permits search. A capture outage
+            # permits only braking on live odometry, never a blind search turn.
+            image_current = capture_time is not None and 0 <= now-capture_time <= .25
+            yaw_rate = .45*self.side if image_current else 0.
             self.pilot.mode = 4
         horizontal = np.linalg.norm(relative[:2])
         if horizontal > 3:
@@ -127,6 +130,7 @@ class RaceCueAssistance:
                     local_flag_clearance=True, visible_route_arrows_for_clearance_side=True,
                     bottom_edge_recovery='bounded descent with reduced forward goal',
                     launch_clearance='released after first 0.6 m ascent; no persistent start-height floor',
+                    capture_outage='brake on live odometry without search yaw after 0.25 s; runner pauses at 0.5 s',
                     yaw_assistance=True, speed_assistance=True, nominal_speed_mps=self.speed,
                     cue_frames=self.frames, estimated_passages=None,
                     motor_control='brain throttle/roll/pitch; assisted yaw',

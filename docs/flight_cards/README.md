@@ -67,6 +67,11 @@ standard brain/gameplay videos and telemetry are in
 | Downhill-recovery attempt | **Full three-lap finish, 14:05.703; no detected contact or flight intervention** | [Attempt 4](2026-09-22_strawbale_cue_04.md), `straw-cue-04` |
 | Minus Two / Turn Signals, unchanged controller | **Full three-lap finish, 09:27.415; no detected contact or intervention** | [Attempt 1](2026-09-22_minustwo_cue_01.md), `minus-cue-01` |
 | Hannover / The Biggest Yet, first unseen attempt | No completed lap; manually stopped after launch-height floor prevented downhill recovery; now development data | [Attempt 1](2026-09-22_hannover_cue_01.md), `hannover-cue-01` |
+| Hannover, temporary launch clearance regression | Planned 120 s completed without detected contact; descended 45.7 m below launch; not a full race | [Regression](2026-09-22_hannover_cue_01.md), `hannover-cue-02` |
+| The Pit / course 01, first exposure | Distance bound stopped the run at 242.46 s, no detected contact; incomplete | [Attempt 1](2026-09-22_pit_cue_01.md), `pit-cue-01` |
+| Paris Drone Festival / City Trip, first exposure | Camera freshness guard stopped the run during lap 1/3; no detected contact; incomplete | [Attempt 1](2026-09-22_paris_cue_01.md), `paris-cue-01` |
+| Paris, unchanged repeat | Camera freshness stop before the race timer started; no detected contact | [Repeat](2026-09-22_paris_cue_01.md), `paris-cue-02` |
+| Paris, camera recovery regression | Planned 200 s completed without detected contact or camera outage; not a full race | [Regression](2026-09-22_paris_cue_01.md), `paris-cue-03` |
 
 ## Card template
 

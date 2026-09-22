@@ -40,6 +40,13 @@ opposite views. The subsequent development flight passed the previous flag
 without impact, but was manually stopped during the downhill recovery stall.
 
 Runtime metadata declares `visible_race_cues` and `pilot_assistance.mode`.
+Current frames are accepted only through 120 ms. The previous cue can guide
+briefly through 250 ms; after that, a camera outage requests braking using live
+motion telemetry with no search yaw. The runner still pauses at 500 ms without
+a new frame. This recovery interval is specific to race-cue assistance; other
+modes retain their existing limits. Image processing uses two OpenCV threads
+alongside two PyTorch threads to limit CPU contention. Paris camera interruptions
+motivated this change; those unsuccessful attempts remain in the flight index.
 CSV `pilot_kind` is 0 for none, 1 for Rabbit and 2 for race-cue; `cue_u`, `cue_v`
 are normalized image coordinates and `cue_edge` marks an off-screen cue.
 `cue_aim_u` records the horizontal bearing after local clearance; `cue_u`

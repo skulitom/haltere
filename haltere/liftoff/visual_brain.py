@@ -352,7 +352,7 @@ def fuse_gate_detection(previous,previous_time,point,stamp,position,rotation):
     return .8*previous+.2*point,stamp
 
 
-def camera_measurement_fresh(age,allow_memory,foreground=True):
+def camera_measurement_fresh(age,allow_memory,foreground=True,allow_braking=False):
     """A short image gap can use odometry-backed memory, never stale pixels.
 
     This is restricted to gate/search-trained brains. Raw-retina controllers
@@ -360,7 +360,8 @@ def camera_measurement_fresh(age,allow_memory,foreground=True):
     """
     if not foreground:
         raise RuntimeError('Game hidden during visual control')
-    if not np.isfinite(age) or age<0 or age>(.25 if allow_memory else .12):
+    limit = .5 if allow_memory and allow_braking else .25 if allow_memory else .12
+    if not np.isfinite(age) or age<0 or age>limit:
         raise RuntimeError('Fresh camera measurements unavailable')
     return age<=.12
 
@@ -479,6 +480,7 @@ def run(args):
     priority = flight_process_priority()
     game_hwnd = find_game_window('Liftoff')
     memory_gap_allowed = controller.meta.get('gate_sensor',{}).get('missing_gate')=='zero_goal_neural_search'
+    camera_braking_allowed = memory_gap_allowed and controller.assistance_mode=='race-cue'
     gc_was_enabled = gc.isenabled()
     gc.disable()
     begin, next_tick, count, reason = time.monotonic(),time.monotonic(),0,'duration'
@@ -524,7 +526,8 @@ def run(args):
                 image_age = now-capture_time
                 max_image_age = max(max_image_age,image_age)
                 try:
-                    fresh = camera_measurement_fresh(image_age,memory_gap_allowed,game_window_active(game_hwnd))
+                    fresh = camera_measurement_fresh(image_age,memory_gap_allowed,game_window_active(game_hwnd),
+                                                     allow_braking=camera_braking_allowed)
                     if camera.error:
                         raise RuntimeError(f'Camera failed: {camera.error}')
                 except RuntimeError:
@@ -623,7 +626,8 @@ def run(args):
                       raw_output_includes_arming_hold=True,
                       brain_device=str(controller.brain.device),
                       process_priority=priority,
-                      image_freshness_s=.12,camera_outage_limit_s=.25 if memory_gap_allowed else .12,
+                      image_freshness_s=.12,camera_outage_limit_s=.5 if camera_braking_allowed else .25 if memory_gap_allowed else .12,
+                      camera_braking_after_s=.25 if camera_braking_allowed else None,
                       stale_image_memory_only_ticks=memory_only_ticks,max_image_age_ms=1000*max_image_age,
                       recurrent_matrix_layout=str(controller.W.layout),
                       ticks=count,wall_s=time.monotonic()-begin,stop_reason=reason,

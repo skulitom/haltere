@@ -136,6 +136,24 @@ def test_takeoff_clearance_does_not_block_flight_below_start_elevation():
         assert not assist.launching
 
 
+def test_capture_outage_brakes_without_blind_yaw_or_stale_visual_updates():
+    from haltere.liftoff.visual_brain import camera_measurement_fresh
+    assist, cue = helper()
+    s = senses(velocity=(2., 0., 0.))
+    assist.update(s, [0.,0.,0.], dict(race_cue=cue), 10., 10.01)
+    relative, _ = assist.update(s, [0.,0.,0.], None, 10., 10.3)
+    assert assist.pilot.mode == 4 and relative[0] < 0
+    assert assist.pilot.sight_yaw == pytest.approx(0.)
+    assert assist.frames == 1
+    assert not camera_measurement_fresh(.3, True, allow_braking=True)
+    assert not camera_measurement_fresh(.5, True, allow_braking=True)
+    for age, memory, braking in [(.501,True,True),(.251,True,False),(.121,False,True)]:
+        with pytest.raises(RuntimeError, match='Fresh camera'):
+            camera_measurement_fresh(age, memory, allow_braking=braking)
+    with pytest.raises(RuntimeError, match='hidden'):
+        camera_measurement_fresh(.3, True, foreground=False, allow_braking=True)
+
+
 def test_runner_keeps_learned_retina_and_neural_motor_outputs_in_cue_mode(checkpoint):
     import torch
     from haltere.liftoff.visual_brain import VisualController
