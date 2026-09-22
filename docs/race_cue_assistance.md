@@ -24,6 +24,11 @@ search rather than a forward search circle. The pilot estimates no checkpoint
 count: full ordered laps and finish must be verified from the game. A bottom-edge
 cue near the horizontal centre requests bounded descent with a shorter forward
 goal; treating it only as a turn hint caused a downhill recovery stall.
+Top-edge cues similarly request a bounded climb. High markers are distinguished
+from narrow HUD digits by contour shape, rather than masking the whole upper
+screen. For steep bearings, the horizontal goal is shortened to preserve the
+observed climb/descent angle when bounding its height. The Pit's high-checkpoint
+stall informed these changes, so that course is now development data.
 Initial launch clearance is released after the first 0.6 m ascent. Launch
 elevation is not terrain height: a persistent floor prevented descent from a
 rooftop in the first Hannover test. That failed unseen attempt is now development
@@ -62,3 +67,6 @@ establishes a seen-course finish. The unchanged controller also
 [completed Minus Two](flight_cards/2026-09-22_minustwo_cue_01.md) in 09:27.415.
 Unseen race and freestyle completion remain unproven. Earlier partial attempts and their failures are retained in the
 [flight index](flight_cards/README.md#2026-09-22-visible-race-cue-development).
+Hall 26 hit an overhead duct while its checkpoint marker was visible through
+the obstruction. Neither ring guidance nor flag-specific clearance supplies
+general obstacle planning; high-marker recovery does not resolve that failure.

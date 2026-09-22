@@ -39,6 +39,11 @@ The unchanged controller then finished all three Minus Two laps in **09:27.415**
 also without detected contact or intervention.
 [Minus Two evidence](docs/flight_cards/2026-09-22_minustwo_cue_01.md).
 Both are seen courses; unseen completion remains unproven.
+Subsequent held-out attempts exposed descent, camera-timing, high-checkpoint
+and obstacle-planning failures. Generic recovery fixes are tracked alongside
+every failed attempt in the [flight index](docs/flight_cards/README.md).
+The current code passes 313 automated tests; earlier race finishes do not
+substitute for full-race checks of later controller revisions.
 These cues do not supply a freestyle planner.
 The [project direction](docs/project_direction.md) records the current goal,
 allowed helpers and evaluation criteria. It supersedes the earlier restriction

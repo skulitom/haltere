@@ -92,6 +92,12 @@ completed full three-lap races on Straw Bale and Minus Two with unchanged settin
 Its first unseen Hannover attempt failed to recover a descent from a rooftop
 start. That result informed a launch-clearance fix, so Hannover is also now
 development data. Preserve these failures alongside successful recordings.
+The Pit's later high-checkpoint stall also informed a generic perception and
+climb-recovery fix, making it development data. Paris informed bounded camera
+outage recovery. Hall 26 exposed a remaining obstacle-planning failure: the
+next-checkpoint marker was rendered through an overhead duct. These attempts
+are all indexed with the successful seen-course recordings; none is a full
+unseen-race finish.
 
 The predictor is eligible for a subsequent runtime experiment, not prohibited.
 Before giving it control authority, establish how a prediction becomes a
