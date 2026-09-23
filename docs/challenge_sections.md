@@ -197,3 +197,9 @@ detour proposals. Total update time was 46.3 ms median, 69.6 ms p95 and 284.5 ms
 maximum; sparse coverage and occasional slow proposals remain visible. The
 telemetry guard stopped on `live_pose=false` at the finish transition. This
 checks runtime alongside one slow oracle flight, not autonomous obstacle avoidance.
+
+Subsequent batched rollout evaluation preserved every proposed velocity and
+status across the failed trajectory's 598 frames while reducing replay planner
+time from 133.6 to 41.3 ms p95 (211.0 to 114.5 ms maximum). A second 1,122-frame
+replay also retained its decision counts. These are replay measurements; the
+optimized worker still needs its own live timing check before control integration.

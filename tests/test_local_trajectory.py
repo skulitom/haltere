@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from haltere.vision.local_trajectory import LocalTrajectoryPlanner, TrajectoryConfig, rollout
+from haltere.vision.local_trajectory import LocalTrajectoryPlanner, TrajectoryConfig, rollout, rollout_batch
 from haltere.vision.surface_memory import surface_patches
 from haltere.vision.camera import Camera
 
@@ -26,6 +26,18 @@ def test_rollout_preserves_initial_motion_and_checks_a_braking_tail():
     assert np.linalg.norm(acceleration,axis=1).max() <= config.acceleration_mps2+1e-9
     assert np.linalg.norm(path['velocities'][-1]) < .01
     assert path['times'][-1] > config.reaction_s+config.horizon_s
+
+
+def test_batched_alternatives_preserve_scalar_paths_and_stopping_endpoints():
+    velocities=np.random.default_rng(4).uniform(-3,3,(12,3))
+    batch=rollout_batch([3,-2,7],[2,.4,-.2],velocities)
+    for i,target in enumerate(velocities):
+        single=rollout([3,-2,7],[2,.4,-.2],target)
+        n=len(single['times'])
+        for name in ('positions','velocities','times'):
+            np.testing.assert_allclose(batch[name][i,:n],single[name],atol=1e-12)
+        np.testing.assert_allclose(batch['positions'][i,n:],
+            np.broadcast_to(single['positions'][-1],batch['positions'][i,n:].shape),atol=1e-12)
 
 
 def test_wall_requires_change_but_an_open_gate_does_not():

@@ -73,6 +73,39 @@ def rollout(position, velocity, desired_velocity, config=TrajectoryConfig()):
     return dict(positions=np.asarray(points), velocities=np.asarray(speeds), times=np.asarray(times))
 
 
+def rollout_batch(position, velocity, desired_velocities, config=TrajectoryConfig()):
+    """Evaluate alternatives together with the same integration as ``rollout``.
+
+    Shorter braking tails retain their final sample while other candidates
+    finish. Repeated endpoints do not add motion or change collision margins.
+    """
+    desired = np.asarray([bounded_velocity(v,config) for v in desired_velocities])
+    position,velocity = np.asarray(position,float),np.asarray(velocity,float)
+    if (not len(desired) or position.shape!=(3,) or velocity.shape!=(3,)
+            or not np.isfinite(position).all() or not np.isfinite(velocity).all()):
+        raise ValueError('Use nonempty velocities and finite three-dimensional motion')
+    positions = np.broadcast_to(position,(len(desired),3)).copy()
+    velocities = np.broadcast_to(velocity,positions.shape).copy()
+    times = np.zeros(len(desired))
+    points,speeds,stamps = [positions.copy()],[velocities.copy()],[times.copy()]
+    duration = np.maximum(np.linalg.norm(velocity),np.linalg.norm(desired,axis=1))/config.acceleration_mps2+8*config.response_s
+    for duration,target in [(np.full(len(desired),config.reaction_s),None),
+                             (np.full(len(desired),config.horizon_s),desired),
+                             (duration,np.zeros_like(desired))]:
+        elapsed = np.zeros(len(desired))
+        while np.any(elapsed < duration-1e-9):
+            dt = np.minimum(config.dt,np.maximum(0.,duration-elapsed))
+            acceleration = np.zeros_like(desired) if target is None else (target-velocities)/config.response_s
+            acceleration *= np.minimum(1.,config.acceleration_mps2 /
+                                         np.maximum(1e-9,np.linalg.norm(acceleration,axis=1)))[:,None]
+            positions += velocities*dt[:,None]+.5*acceleration*dt[:,None]**2
+            velocities += acceleration*dt[:,None]
+            elapsed += dt
+            times += dt
+            points.append(positions.copy());speeds.append(velocities.copy());stamps.append(times.copy())
+    return dict(positions=np.stack(points,axis=1),velocities=np.stack(speeds,axis=1),times=np.stack(stamps,axis=1))
+
+
 class LocalTrajectoryPlanner:
     def __init__(self, config=TrajectoryConfig()):
         self.config = config
@@ -107,12 +140,13 @@ class LocalTrajectoryPlanner:
                 for vertical in (requested[2], -config.vertical_speed_mps, config.vertical_speed_mps):
                     candidate = np.array([fraction*horizontal*np.cos(heading+angle),
                                           fraction*horizontal*np.sin(heading+angle), vertical])
-                    if not any(np.allclose(candidate, old) for old in candidates):
+                    if not np.any(np.all(np.isclose(candidate,np.asarray(candidates)),axis=1)):
                         candidates.append(candidate)
         best = None
         brake = None
-        for candidate in candidates:
-            path = rollout(position, velocity, candidate, config)
+        batch = rollout_batch(position,velocity,candidates,config)
+        for index,candidate in enumerate(candidates):
+            path = {name:values[index] for name,values in batch.items()}
             clearance = observed_path_margin(path['positions'], surfaces,
                                              vehicle_radius=config.vehicle_radius_m)['margin_m']
             if brake is None:
