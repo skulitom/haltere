@@ -235,6 +235,10 @@ This batch does not establish reliable obstacle avoidance or faster racing.
 The local runtime received only causal images, telemetry and visible race cues;
 no course geometry or learned depth model was loaded. No neural weights changed.
 
+[All three full videos and raw evidence](https://github.com/skulitom/haltere/releases/tag/visual-geometry-consistent-depth-20260923)
+are published, including the impact. All five remote asset sizes and SHA256
+digests match; the evidence archive's 3,360 entries passed CRC checks.
+
 The next integration exposes the same local target/velocity boundary to a
 motor-tracking brain. Its training reference speed and the visual assistant's
 velocity scaling determine target conversion; the connectome still supplies

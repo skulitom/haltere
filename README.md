@@ -72,7 +72,8 @@ warnings, with 6.7% mean relative depth error on matched primitive surfaces, but
 coverage remains sparse. The latest frozen geometry batch finished **2/3** on
 this known development course, in **2:31.958** and **6:51.857**. The third attempt
 hit the final wall after descending through a gap in the observed geometry.
-All three complete standard brain/gameplay videos decode. PD controlled the
+All three [complete standard brain/gameplay videos](https://github.com/skulitom/haltere/releases/tag/visual-geometry-consistent-depth-20260923)
+decode. PD controlled the
 motors and the brain ran in shadow; no neural weights changed. Earlier batches
 and failures remain in the linked flight record. Reliable obstacle avoidance,
 brain-controlled transfer and the five-track speed target remain unmet.
