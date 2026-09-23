@@ -74,7 +74,7 @@ coverage remains sparse and it has no live authority.
 Course geometry is excluded from autonomous runtime; oracle collection is
 explicitly labelled and scored separately.
 
-Validation: **387 automated tests passed** (three existing warnings). The CPU
+Validation: **394 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

@@ -66,6 +66,8 @@ live timing before a frozen geometry on/off comparison.
 
 ## Subsequent oracle qualification and second-trajectory check
 
+[All three standard brain/gameplay videos and complete qualification evidence](https://github.com/skulitom/haltere/releases/tag/box-course-qualification-20260923).
+
 The box course is now game-qualified: **one full lap in 3:35.704** with the same
 original `[Copy] New Drone`, PD motors and motor10 candidate05 **in shadow**.
 The route was generated in code from the frozen box colliders and checkpoints,
@@ -123,3 +125,12 @@ finish transition was excluded using a declared timestamp cutoff. This is a
 second trajectory on the same known course family. Sparse coverage, uncertain
 patch interpolation and earlier false warnings still prevent claims of safe
 free space or autonomous obstacle avoidance.
+
+A subsequent dense-depth probe fitted the third-party model's scale from current
+causal triangulation points, without collider labels entering the fit. Only 51
+of 599 failed-flight frames had sufficient anchors/spread; 50 passed the anchor
+residual check. On 2,720 labelled interior pixels in those accepted frames, mean
+absolute relative error was **49.1%**, and **15.1%** overestimated by more than
+25%. This rejects simple per-image scaling as a clearance solution; the existing
+pretrained model remains outside control. Results are preserved under
+`runs/depth-calibration-20260923/sparse-scaled-dense-v1`.

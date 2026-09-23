@@ -51,7 +51,7 @@ attempt crossed five of six sections geometrically before hitting the last
 wall. Separate privileged PD collection subsequently qualified that box course
 with a game-confirmed **3:35.704** finish. The flag variant and live depth
 integration remain pending; this oracle finish is not an autonomous score.
-the [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
+The [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
 the failure and causal replay limits.
 
 The race-cue stack has two seen-course full finishes and **zero full finishes on

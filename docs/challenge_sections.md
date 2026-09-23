@@ -91,7 +91,8 @@ it also sacrifices some bright/green scene features. `surface_memory.py` forms
 short-lived finite surface hypotheses. Neither missing points nor positive
 clearance certify free space; triangulation noise, pose timing, thin obstacles
 and holes between samples remain limitations. **These modules have no live
-steering authority and are not imported by the flight controller.**
+steering authority.** The optional `--geometry-shadow` runner mode below can
+measure their live timing in a separate passive process.
 
 Reproduce the causal replay, optionally scoring predictions against the separate
 offline collider file after each frame's prediction. Use a new output directory:
@@ -155,3 +156,32 @@ points and no warnings. On 1,292 primitive-collider matches, median range ratio
 was 1.000 and mean absolute relative error was 6.7%; 0.93% overestimated by more
 than 25%. This tests a second trajectory in the same development course, not
 an unseen family or live obstacle avoidance. Sparse observations remain a limit.
+
+## Passive local-planner development
+
+`local_trajectory.py` proposes velocities using a bounded-acceleration point-mass
+rollout, a reaction interval, and a braking tail. Alternatives are checked against
+observed surfaces and the camera's current view; missing geometry never certifies
+free space. Its response assumptions are not yet validated motor dynamics.
+
+`trajectory_replay.py` reads a matching causal geometry cache and past controller
+goals. It never changes the recorded states or claims a counterfactual finish:
+
+```powershell
+.venv/Scripts/python.exe -m haltere.vision.trajectory_replay --dataset data/vision/challenge_boxes_pd_20260923 --geometry-replay runs/depth-calibration-20260923/reproducible-v5 --log runs/challenge-box-pd-20260923/flight.csv --out runs/trajectory-check
+```
+
+On the failed obstacle trajectory, the first prototype proposed changes in 62
+frames. Offline collider checking found 12 proposals with positive observed
+clearance that still intersected an unobserved surface. Restricting new detours
+to the camera view reduced that count to one. The remaining error, sparse
+coverage, and surrogate motion model keep it outside steering. These proposals
+are correlated development diagnostics, not successful flight attempts.
+
+The visual runner's explicit `--geometry-shadow` option is currently restricted
+to PD diagnostics. A separate process captures at 5 fps, reads a bounded live
+pose/goal history, and writes `.geometry.jsonl` and `.geometry.json` beside the
+flight log. Sharing never waits on a lock, and **no proposed action returns to
+the motor controller**. This permits timing and perception checks during a
+flight without interpreting them as geometry-enabled navigation. Oracle source
+goals remain explicitly labelled privileged. Live timings still require testing.

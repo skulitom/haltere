@@ -522,6 +522,13 @@ def run(args):
                           int(args.seconds/controller.cfg.brain.dt)+100,
                           passive_retina=args.blank_retina or not controller.meta.get('gate_sensor',{}).get('raw_retina_active',False)) if replay_out else None
     camera_sensor = replay_camera_sensor(controller.meta.get('gate_sensor'),bool(replay))
+    geometry = None
+    if getattr(args, 'geometry_shadow', False):
+        if controller.motor_baseline is None:
+            raise ValueError('Geometry shadow currently audits the PD desired-velocity contract only')
+        from .geometry_shadow import ProcessGeometryShadow
+        geometry = ProcessGeometryShadow(log_path.with_suffix('.geometry.jsonl'),camera_sensor,
+                         source_route_oracle=controller.assistance_mode == 'oracle-route')
     gc.collect()
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
                                   race_cues=controller.assistance_mode=='race-cue',
@@ -535,7 +542,8 @@ def run(args):
     shared = SharedFlightState(controller.brain.N) if args.record else None
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
                               encoder=getattr(args,'video_encoder','libx264'),
-                              controller_label='ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW'
+                              controller_label='SHADOW ONLY | NO CONTROL OUTPUT' if not pad else
+                              'ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW'
                               if controller.assistance_mode == 'oracle-route' else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
                               if controller.motor_baseline else '') if shared else None
     if recorder:
@@ -547,6 +555,18 @@ def run(args):
                 recorder.stop()
             camera.stop()
             rx.close()
+            if pad:
+                pad.neutral()
+                pad.close()
+            raise
+    if geometry:
+        try:
+            geometry.start()
+        except Exception:
+            camera.stop()
+            rx.close()
+            if recorder:
+                recorder.stop()
             if pad:
                 pad.neutral()
                 pad.close()
@@ -687,6 +707,18 @@ def run(args):
                     replay.append(controller.last_observation,retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
                 loop_phases['replay_ms'] = 1000*(time.monotonic()-loop_mark)
+                if geometry:
+                    # Passive only: publish the current PD goal/motion without
+                    # reading proposals back into the controller or waiting.
+                    loop_mark = time.monotonic()
+                    from ..vision.camera import quat_wxyz_to_mat
+                    pd_config = controller.motor_baseline.config
+                    desired = (quat_wxyz_to_mat(q) @ controller.relative_gate)*np.array(
+                        [pd_config.position_gain,pd_config.position_gain,pd_config.vertical_position_gain])
+                    desired[:2] *= min(1.,controller.motor_speed/max(1e-9,np.linalg.norm(desired[:2])))
+                    desired[2] = np.clip(desired[2],-pd_config.max_vertical_speed,pd_config.max_vertical_speed)
+                    geometry.buffer.publish(now,last_frame,frame.timestamp,pos,q,velocity,desired)
+                    loop_phases['geometry_publish_ms'] = 1000*(time.monotonic()-loop_mark)
                 count += 1
                 if controller.assistance_mode == 'oracle-route' and controller.assistance.complete:
                     reason = 'Oracle collection route endpoint reached; game finish requires separate confirmation'
@@ -717,6 +749,7 @@ def run(args):
                     pass
         camera_status = camera.diagnostics()
         camera.stop()
+        geometry_status = geometry.stop() if geometry else None
         rx.close()
         if recorder:
             recorder.stop()
@@ -741,6 +774,7 @@ def run(args):
                       postflight=postflight,
                       pilot_assistance=pilot_meta,
                       navigation_predictor_loaded=False,
+                      geometry_shadow=geometry_status,
                       brain_action_columns=['thr','roll','pitch','yaw'],
                       command_columns=['command_thr','command_roll','command_pitch','command_yaw'],
                       raw_output_includes_arming_hold=True,
@@ -815,6 +849,8 @@ def main():
                    help='PD is a matched diagnostic baseline; its brain panel is explicitly labelled as shadow')
     p.add_argument('--collection-route', default=None,
                    help='PRIVILEGED route for course qualification/data collection only; requires PD and no visual pilot; never an autonomous evaluation')
+    p.add_argument('--geometry-shadow', action='store_true',
+                   help='Passive isolated image-geometry/trajectory audit alongside PD; never changes controls')
     p.add_argument('--seconds',type=float,default=15)
     p.add_argument('--log',required=True)
     p.add_argument('--record',default='')

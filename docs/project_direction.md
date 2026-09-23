@@ -106,6 +106,7 @@ a frozen main-track comparison finished brain 0/2 and corrected PD 1/2, identify
 both obstacle and motor-tracking failures. A generated box-obstacle course has
 since been qualified by a separate oracle-guided PD finish in 3:35.704; its
 autonomous visual baseline hit the last wall. The causal geometry prototype is
-still replay-only and broader brain training has not yet addressed these failures.
+still confined to replay/passive diagnostics and broader brain training has not
+yet addressed these failures.
 See the [current program](generalization_program.md) and
 [obstacle evidence](flight_cards/2026-09-23_obstacle_geometry.md).
