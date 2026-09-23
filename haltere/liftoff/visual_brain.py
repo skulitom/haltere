@@ -174,7 +174,16 @@ class VisualController:
     """Visual brain with an explicit optional guidance/yaw assistant."""
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
-                 dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False):
+                 dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
+                 pilot_profile='standard', pd_profile='teacher', dynamics_profile=None):
+        if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
+            raise ValueError('Unknown pilot or PD profile')
+        if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
+            raise ValueError('The fast pilot profile is a race-cue guidance profile')
+        if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
+            raise ValueError('Fast PD requires PD motors, the fast race-cue profile and a measured dynamics profile')
+        if dynamics_profile and pilot_profile != 'fast':
+            raise ValueError('A dynamics profile is only used by the fast pilot and fast PD profiles')
         if pilot_assistance not in ('none', 'rabbit', 'race-cue'):
             raise ValueError('Unknown pilot assistance mode')
         if motor_controller not in ('brain', 'pd'):
@@ -243,12 +252,30 @@ class VisualController:
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
+        elif pilot_assistance == 'race-cue' and pilot_profile == 'fast':
+            from .fast_race_cue import FastRaceCue, DEFAULT_YAW_CURVE
+            reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
+            yaw_curve = DEFAULT_YAW_CURVE
+            if dynamics_profile:
+                import json
+                axis = json.loads(Path(dynamics_profile).read_text())['axes']['yaw']
+                if not axis.get('super_after_expo'):
+                    raise ValueError('The fast pilot requires a measured post-expo yaw curve')
+                yaw_curve = (axis['coefficient_deg_s'], axis['super_rate'], axis['expo'])
+            # A fast PD tracks the requested speed itself; other motor
+            # controllers retain their trained reference as the ceiling.
+            self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
+                                          reference_speed=assist_speed if pd_profile == 'fast' else reference,
+                                          yaw_curve=yaw_curve,calibration=self.calibration)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
             reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
             self.assistance = RaceCueAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
                                                 reference_speed=reference)
         self.assistance_mode = pilot_assistance
+        self.pilot_profile = pilot_profile
+        self.fast_motor = None
+        self.last_motor_time = None
         if dynamics_calibration:
             from .dynamics_calibration import DynamicsCalibration
             self.assistance = DynamicsCalibration(dynamics_calibration,c,self.cfg.rates,calibration_amplitudes)
@@ -284,6 +311,18 @@ class VisualController:
                                        effective_thrust_curve=curve, mixer_idle=self.cfg.ctl.idle,
                                        speed_mps=self.motor_speed, velocity_input='unscaled measured motion',
                                        contract='motor_tracking_teacher_v1')
+            if pd_profile == 'fast':
+                from ..brain.motor_baseline import FastMotorPD
+                profile_data = json.loads(Path(dynamics_profile).read_text())
+                self.fast_motor = FastMotorPD(profile_data, c)
+                self.motor_speed = self.assistance.speed
+                self.guidance_velocity = GuidanceVelocityContract(1., 1., self.motor_speed,
+                                                                  self.assistance.config.vertical_up)
+                self.motor_metadata = dict(**self.fast_motor.metadata(), speed_mps=self.motor_speed,
+                                           dynamics_profile=str(dynamics_profile),
+                                           dynamics_profile_sha256=sha256(dynamics_profile),
+                                           velocity_input='unscaled measured motion',
+                                           contract='fast_velocity_pd_v1')
         self.last_command = None
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
         # kernels before the timed flight, then discard this synthetic state.
@@ -323,6 +362,11 @@ class VisualController:
             from ..brain.gate_senses import gate_observation
             self.relative_gate,assisted_senses = self.assistance.update(
                 self.senses,self.pose.omega,detection,capture_time,observation_time)
+            if self.pilot_profile == 'fast':
+                from ..vision.camera import quat_wxyz_to_mat
+                # Express the velocity request in each motor contract's own goal units.
+                rotation=quat_wxyz_to_mat(self.senses['quat'][0].cpu().numpy())
+                self.relative_gate=self.guidance_velocity.body_target(self.assistance.velocity_command,rotation)
             self.nominal_relative_gate = np.array(self.relative_gate,copy=True)
             if self.geometry_gate is not None:
                 from ..vision.camera import quat_wxyz_to_mat
@@ -402,7 +446,13 @@ class VisualController:
         action,self.state,_ = self.brain(obs,self.state,self.W)
         brain_action = action[0].cpu().numpy()
         motor_action = brain_action
-        if self.motor_baseline is not None:
+        if self.fast_motor is not None:
+            interval = float(np.clip(observation_time-self.last_motor_time,.005,.05)) if self.last_motor_time is not None else .01
+            self.last_motor_time = observation_time
+            motor_action = self.fast_motor.command(
+                self.senses, action.new_tensor(self.assistance.velocity_command)[None],
+                action.new_tensor(self.assistance.feedforward)[None], dt=interval)[0].cpu().numpy()
+        elif self.motor_baseline is not None:
             # Match the training teacher: measured velocity and requested speed.
             # Sensory scaling belongs to the brain's fixed-speed readout only;
             # applying it to PD strengthens its velocity feedback incorrectly.
@@ -546,6 +596,8 @@ def run(args):
                              or getattr(args,'collection_route',None)
                              or getattr(args,'pilot_assistance','none')!='race-cue'):
         raise ValueError('Experimental geometry control requires race-cue guidance, no oracle route and no shadow flag')
+    if getattr(args,'pilot_profile','standard')=='fast' and (geometry_control or getattr(args,'geometry_shadow',False)):
+        raise ValueError('The fast pilot profile is not qualified with geometry guidance')
     if not np.isfinite(camera_fps) or not 12 <= camera_fps <= 60:
         raise ValueError('Camera rate must be between 12 and 60 fps for the freshness contract')
     copy_port = getattr(args, 'telemetry_copy_port', 0)
@@ -564,7 +616,10 @@ def run(args):
                                   collection_route=getattr(args,'collection_route',None),
                                   dynamics_calibration=calibration_mode,
                                   calibration_amplitudes=getattr(args,'calibration_amplitudes',None),
-                                  oracle_motor_diagnostic=getattr(args,'oracle_motor_diagnostic',False))
+                                  oracle_motor_diagnostic=getattr(args,'oracle_motor_diagnostic',False),
+                                  pilot_profile=getattr(args,'pilot_profile','standard'),
+                                  pd_profile=getattr(args,'pd_profile','teacher'),
+                                  dynamics_profile=getattr(args,'dynamics_profile',None))
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -608,7 +663,8 @@ def run(args):
                               'DYNAMICS CALIBRATION | PD + PULSES | BRAIN IN SHADOW' if calibration_mode else
                               ('ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW' if controller.motor_baseline else
                                'ORACLE MOTOR DIAGNOSTIC | BRAIN MOTORS | ASSISTED YAW')
-                              if controller.assistance_mode == 'oracle-route' else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
+                              if controller.assistance_mode == 'oracle-route' else 'FAST PD MOTORS | FAST CUE PILOT | BRAIN IN SHADOW'
+                              if controller.fast_motor is not None else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
                               if controller.motor_baseline else '') if shared else None
     if recorder:
         try:
@@ -671,7 +727,8 @@ def run(args):
                              'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase',
                                  'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller',
                                  'nominal_gate_bx','nominal_gate_by','nominal_gate_bz','geometry_control_status',
-                                 'rpm_lf','rpm_rf','rpm_lb','rpm_rb'])
+                                 'rpm_lf','rpm_rf','rpm_lb','rpm_rb',
+                                 'cmd_vx','cmd_vy','cmd_vz','pilot_state'])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -769,7 +826,10 @@ def run(args):
                                    for k in ('u','v','edge','aim_u')),controller.motor_controller,
                                  *controller.nominal_relative_gate,
                                  controller.geometry_gate.status if controller.geometry_gate else 'disabled',
-                                 *(list(frame.motor_rpm[:4])+[float('nan')]*max(0,4-len(frame.motor_rpm)))])
+                                 *(list(frame.motor_rpm[:4])+[float('nan')]*max(0,4-len(frame.motor_rpm))),
+                                 *(controller.assistance.velocity_command if getattr(controller.assistance,'velocity_command',None) is not None
+                                   else [float('nan')]*3),
+                                 getattr(controller.assistance,'state','') if controller.assistance else ''])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -840,6 +900,7 @@ def run(args):
                                     'Dynamics calibration; PD and input pulses; brain in shadow' if calibration_mode else
                                     ('PRIVILEGED oracle collection; PD motors; brain in shadow' if controller.motor_baseline else
                                      'PRIVILEGED oracle motor diagnostic; brain motors; assisted yaw') if controller.assistance_mode == 'oracle-route' else
+                                    'fast PD motor baseline with fast race-cue pilot; brain in shadow' if controller.fast_motor is not None else
                                     'PD motor baseline; brain in shadow' if controller.motor_baseline else
                                     'pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
                       motor_controller=controller.motor_metadata,
@@ -962,7 +1023,12 @@ def main():
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
     p.add_argument('--pilot-assistance',choices=['none','rabbit','race-cue'],default='none',
                    help='Rabbit arch guidance or explicitly game-cue-assisted race guidance around the chosen motor controller')
-    p.add_argument('--assist-speed',type=float,default=2.,help='Requested speed (0 < speed <= 5), capped by the trained motor reference; set per vehicle, not per course')
+    p.add_argument('--assist-speed',type=float,default=2.,help='Requested speed (standard profile 0 < speed <= 5, fast profile <= 20), capped by the trained motor reference unless --pd-profile fast; set per vehicle, not per course')
+    p.add_argument('--pilot-profile',choices=['standard','fast'],default='standard',
+                   help='fast: velocity-level race-cue guidance (declared experimental profile); standard is unchanged')
+    p.add_argument('--pd-profile',choices=['teacher','fast'],default='teacher',
+                   help='fast: velocity-command PD on the measured full-envelope dynamics; requires --dynamics-profile')
+    p.add_argument('--dynamics-profile',default=None,help='Measured original-drone dynamics profile JSON for --pd-profile fast')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)
