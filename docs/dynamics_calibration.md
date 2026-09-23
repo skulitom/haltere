@@ -1,8 +1,9 @@
 # Original-drone dynamics measurements
 
-The current throttle curve was fitted near hover. Its extrapolated full-throttle
-response and the high-rate turning response have not yet been measured. These
-measurements precede wider flight-cost training and faster live operation.
+The deployed throttle curve was fitted near hover. Full-throttle and high-rate
+pulses have now been measured on the original drone; the broader response fits
+remain experimental. Independent validation precedes changes to training or
+faster live operation.
 
 `haltere.liftoff.visual_brain --dynamics-calibration` reuses the visual runner's
 workload check, telemetry/camera freshness checks, impact detection, recording,
@@ -48,9 +49,35 @@ completed the 18 lower-amplitude pulses, then exceeded the tilt limit during the
 first full-input pulse. It paused without a detected impact; pitch and yaw were
 not attempted on that revision. Command-to-game input lag was about 30 ms. This
 failure motivated the advance rotation/time bounds above. Preserve it alongside
-subsequent attempts; the complete high-rate sequence is not yet qualified.
+subsequent attempts.
 
-Local raw evidence: `runs/dynamics-calibration-20260923`. An initial pad-binding
-failure and a preflight refusal for newly restarted, idle user-authorized
-LitHarness processes occurred before flight and are retained. Neither is a
-flown attempt. No new brain weights were trained.
+The revised batch at `22c3014` completed **24/24 roll, 24/24 pitch and 24/24 yaw
+pulses**, with stable recovery after every pulse and no detected impact, camera
+failure or controller deadline failure. All three complete standard videos
+decoded successfully. Roll/pitch reached actual processed input 0.99996; yaw
+reached 0.99291 because it shares radial travel with throttle. The measured peak
+tilts were 20.1 degrees in roll and 29.4 degrees in pitch. These are bounded
+identification pulses, not completed freestyle tasks or race results.
+
+The initial response analysis underestimated short full-input pulses. Native
+telemetry intervals must be retained: hold the actual game input forward and
+compare predicted **interval-average** rate to quaternion differences. Linear
+interpolation before a nonlinear stick curve attenuates narrow pulses. The
+new `haltere.liftoff.fit_rates` module implements this observation contract.
+An empirical curve with saturation applied after expo fits this drone better
+than the simulator's existing rate curve. Its model form was selected after
+examining these recordings; independent amplitudes are still needed. Response
+times below the roughly 10 ms telemetry interval are unresolved, not precise
+measurements of the physical motor/controller lag.
+
+Use `--calibration-amplitudes 0.15 0.35 0.65 0.85` to declare that independent
+batch. The same repetition, recovery and motion limits remain in force. Freeze
+the fitted coefficients and source hashes before flying; score new amplitudes
+without refitting. Existing checkpoints and deployed controls remain unchanged.
+
+Local raw evidence: `runs/dynamics-calibration-20260923` and
+`runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and
+workload refusals are retained separately from flown attempts. Fresh project
+family resolution now handles the user-authorized rotating LitHarness jobs;
+busy or unknown-load jobs still fail the preflight. No new brain weights were
+trained.

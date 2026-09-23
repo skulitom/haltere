@@ -20,16 +20,21 @@ class Pulse:
     duration_s: float
 
 
-def pulse_plan(mode, rates=None):
+def pulse_plan(mode, rates=None, amplitudes=None):
     if mode not in ('hover', 'throttle', 'roll', 'pitch', 'yaw'):
         raise ValueError('Unknown dynamics calibration mode')
     if mode == 'hover':
         return []
     if mode != 'throttle' and rates is None:
         raise ValueError('Angular pulses require the calibrated vehicle rate profile')
+    amplitudes = tuple(amplitudes) if amplitudes is not None else (.25, .5, .75, 1.)
+    if (not amplitudes or not np.isfinite(amplitudes).all()
+            or any(not 0 < a <= 1 for a in amplitudes)
+            or any(a >= b for a, b in zip(amplitudes, amplitudes[1:]))):
+        raise ValueError('Use strictly ascending finite pulse amplitudes in (0, 1]')
     result = []
     # Ascending amplitude, independent repetitions, stable recovery between all.
-    for amplitude in (.25, .5, .75, 1.):
+    for amplitude in amplitudes:
         for _ in range(3):
             for sign in ((1.,) if mode == 'throttle' else (1., -1.)):
                 if mode == 'throttle':
@@ -57,9 +62,9 @@ class DynamicsCalibration:
     pulse_angle_limit_deg = 35.
     stop_latency_s = .04
 
-    def __init__(self, mode, calibration, rates=None):
+    def __init__(self, mode, calibration, rates=None, amplitudes=None):
         self.mode, self.calibration = mode, calibration
-        self.plan = pulse_plan(mode,rates)
+        self.plan = pulse_plan(mode,rates,amplitudes)
         self.speed = self.reference_speed = 2.
         self.host = SimpleNamespace(flow_gain=1.)
         self.pilot = SimpleNamespace(carrot=np.array([0., 0., self.height]), target=None,

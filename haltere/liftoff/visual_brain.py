@@ -174,7 +174,7 @@ class VisualController:
     """Visual brain with an explicit optional guidance/yaw assistant."""
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
-                 dynamics_calibration=None):
+                 dynamics_calibration=None, calibration_amplitudes=None):
         if pilot_assistance not in ('none', 'rabbit', 'race-cue'):
             raise ValueError('Unknown pilot assistance mode')
         if motor_controller not in ('brain', 'pd'):
@@ -249,7 +249,7 @@ class VisualController:
         self.assistance_mode = pilot_assistance
         if dynamics_calibration:
             from .dynamics_calibration import DynamicsCalibration
-            self.assistance = DynamicsCalibration(dynamics_calibration,c,self.cfg.rates)
+            self.assistance = DynamicsCalibration(dynamics_calibration,c,self.cfg.rates,calibration_amplitudes)
             self.assistance_mode = 'dynamics-calibration'
         if collection_route:
             from .oracle_assistance import OracleCollectionAssistance
@@ -528,6 +528,8 @@ def run(args):
     camera_fps = getattr(args, 'camera_fps', 48.)
     geometry_control = getattr(args,'geometry_control',False)
     calibration_mode = getattr(args,'dynamics_calibration',None)
+    if getattr(args,'calibration_amplitudes',None) is not None and calibration_mode in (None,'hover'):
+        raise ValueError('Custom amplitudes require an explicit pulse calibration mode')
     if calibration_mode and (geometry_control or getattr(args,'geometry_shadow',False)
                              or not args.pause_on_stop or not args.udp_out):
         raise ValueError('Dynamics calibration requires explicit UDP control, pause-on-stop and no geometry mode')
@@ -552,7 +554,8 @@ def run(args):
                                   assist_speed=getattr(args,'assist_speed',2.),
                                   motor_controller=getattr(args,'motor_controller','brain'),
                                   collection_route=getattr(args,'collection_route',None),
-                                  dynamics_calibration=calibration_mode)
+                                  dynamics_calibration=calibration_mode,
+                                  calibration_amplitudes=getattr(args,'calibration_amplitudes',None))
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -916,6 +919,8 @@ def main():
                    help='EXPERIMENTAL causal image-geometry guidance; requires race-cue PD, forbids oracle route, archives worker images')
     p.add_argument('--geometry-record-images', action='store_true',
                    help='Archive exact worker inputs in passive geometry mode too, for matched on/off runs')
+    p.add_argument('--calibration-amplitudes',type=float,nargs='+',default=None,
+                   help='Ascending processed-input magnitudes for a separately declared calibration validation batch')
     p.add_argument('--seconds',type=float,default=15)
     p.add_argument('--log',required=True)
     p.add_argument('--record',default='')

@@ -102,3 +102,16 @@ def test_fast_pulses_bound_requested_rotation_and_brake_before_lagged_angle_limi
     update(c,2.02,q=q,omega=(np.deg2rad(600),0,0))
     assert c.phase=='recover' and c.events[-1]['termination']=='predicted_angle_limit'
     assert c.events[-1]['predicted_stop_angle_deg']==pytest.approx(42.)
+
+
+def test_unseen_amplitudes_keep_repetitions_bounds_and_recovery_contract():
+    plan=pulse_plan('roll',RATES,(.15,.35,.65,.85))
+    assert len(plan)==24
+    assert sorted(set(abs(p.processed) for p in plan))==[.15,.35,.65,.85]
+    assert all(0<p.duration_s<=.25 for p in plan)
+    c=DynamicsCalibration('roll',CAL,RATES,(.15,.35,.65,.85))
+    update(c,0);update(c,2)
+    assert c.active.processed==.15 and c.metadata()['stable_hover_before_each_pulse_s']==2
+    for values in [(),(0,),(.5,.25),(.5,.5),(1.1,),(float('nan'),)]:
+        with pytest.raises(ValueError,match='ascending'):
+            pulse_plan('roll',RATES,values)

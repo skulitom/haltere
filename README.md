@@ -92,6 +92,9 @@ explicitly labelled and scored separately.
 The [dynamics measurement mode](docs/dynamics_calibration.md) adds bounded input
 pulses and measured recovery for calibrating the original drone before faster
 flight training. It is a separate PD calibration tool, not a brain flight result.
+The original drone has completed all 12 throttle pulses and, after correcting
+an initial roll overshoot, all 72 revised angular pulses with stable recovery.
+Independent validation of the resulting dynamics fit remains pending.
 
 Validation: **426 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
