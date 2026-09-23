@@ -75,6 +75,33 @@ batch. The same repetition, recovery and motion limits remain in force. Freeze
 the fitted coefficients and source hashes before flying; score new amplitudes
 without refitting. Existing checkpoints and deployed controls remain unchanged.
 
+That independent batch at `4fb5fda` completed **all 72 pulses** without detected
+impact, camera/deadline failure or flight intervention. It passed the frozen
+prediction criteria (overall RMSE at most 10 degrees/s and each amplitude at
+most 20 degrees/s), without refitting:
+
+| Axis | All new amplitudes, RMSE | Worst amplitude, RMSE |
+| --- | ---: | ---: |
+| Roll | 6.20 degrees/s | 11.34 degrees/s |
+| Pitch | 7.68 degrees/s | 15.81 degrees/s |
+| Yaw | 5.69 degrees/s | 8.55 degrees/s |
+
+Evidence is in `runs/dynamics-independent-20260923`; all three videos decoded.
+This validates short angular-pulse predictions on this drone. It does not
+validate high-speed translation, obstacle clearance or acrobatics.
+
+`haltere.sim.identified` is an explicit experimental training surrogate using
+these angular fits and the broader throttle measurements. It reproduces the
+deployed brain-to-game mapping, radial stick saturation and filtered gyro input.
+Horizontal drag remains an uncertain assumption, and approximate rotor RPMs
+cannot be used as brain input. `haltere.train.flight_cost` therefore requires
+masked motor feedback and trains with varied dynamics, command delay, initial
+motion and separate recorded retinal streams. Its synthetic local targets are
+a motor-training curriculum, not an autonomous navigation evaluation. Flight
+cost gradients may change recurrent edge magnitudes, neuron parameters and the
+motor readout; graph wiring, signs, encoders and normalization remain frozen.
+The export audits every changed tensor and remains unqualified until live tests.
+
 Local raw evidence: `runs/dynamics-calibration-20260923` and
 `runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and
 workload refusals are retained separately from flown attempts. Fresh project

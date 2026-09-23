@@ -94,7 +94,9 @@ pulses and measured recovery for calibrating the original drone before faster
 flight training. It is a separate PD calibration tool, not a brain flight result.
 The original drone has completed all 12 throttle pulses and, after correcting
 an initial roll overshoot, all 72 revised angular pulses with stable recovery.
-Independent validation of the resulting dynamics fit remains pending.
+The frozen angular fit also passed an independent 72-pulse batch at different
+amplitudes. The experimental simulator and flight-cost trainer retain explicit
+limits on unvalidated high-speed translation; no new racing result is implied.
 
 Validation: **426 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded

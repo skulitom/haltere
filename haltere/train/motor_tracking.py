@@ -49,7 +49,7 @@ def local_guidance(sensors, heading, altitude, hold, braking):
     relative_xy = direction*lead[:, None]-.8*(velocity[:, :2]-direction*(velocity[:, :2]*direction).sum(-1, keepdim=True))
     stopped = hold[:, :2]-position[:, :2]-1.2*velocity[:, :2]
     relative_xy = torch.where(moving[:, None], relative_xy, stopped)
-    relative_xy *= (3./relative_xy.norm(dim=-1, keepdim=True).clamp_min(3.))
+    relative_xy = relative_xy * (3./relative_xy.norm(dim=-1, keepdim=True).clamp_min(3.))
     relative_z = (altitude-position[:, 2]).clamp(-1.2, 1.2)
     relative_world = torch.cat((relative_xy, relative_z[:, None]), -1)
     relative_body = torch.einsum('bji,bj->bi', R, relative_world)
