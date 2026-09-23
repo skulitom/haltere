@@ -106,10 +106,13 @@ def main():
     rows = np.genfromtxt(log, delimiter=',', names=True)
     positions = np.column_stack([rows[k] for k in ['x', 'y', 'z']])+np.asarray(meta['origin_sim'])
     reason = meta['stop_reason']
-    runtime_stop = any(word in reason.lower() for word in ['telemetry', 'camera', 'deadline', 'recorder', 'hidden'])
+    runtime_stop = any(word in reason.lower() for word in ['telemetry', 'camera', 'geometry', 'deadline', 'recorder', 'hidden'])
+    image_control = bool((meta.get('geometry_control') or {}).get('live_authority'))
     report = score_sections(json.loads(geometry_path.read_text()), rows['ts'], sim_vec_to_unity(positions),
                             impact_time=(meta.get('impact') or {}).get('timestamp'), runtime_stop=runtime_stop,
-                            runtime_geometry_used=meta.get('runtime_route_oracle'))
+                            runtime_geometry_used=True if image_control else meta.get('runtime_route_oracle'))
+    report['runtime_course_geometry_used'] = meta.get('runtime_route_oracle')
+    report['runtime_image_geometry_control'] = image_control
     report['runtime_route_oracle'] = meta.get('runtime_route_oracle')
     report['autonomous_evaluation_eligible'] = (False if meta.get('runtime_route_oracle') is True
                                                else meta.get('autonomous_evaluation_eligible'))

@@ -22,7 +22,7 @@ def load_log(path: str) -> dict[str, np.ndarray]:
         return {}
     out = {}
     for k in rows[0].keys():
-        if k in ('status', 'motor_controller'):
+        if k in ('status', 'motor_controller', 'geometry_control_status'):
             out[k] = np.array([r[k] for r in rows], dtype=object)
             continue
         out[k] = np.array([{'True': 1., 'False': 0.}.get(r[k], r[k])
@@ -195,6 +195,11 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
                     attribution['autonomous_evaluation_eligible'] = False
                     if not shadow.any():
                         attribution['control_mode'] = 'PRIVILEGED oracle collection; '+attribution['control_mode']
+        if 'geometry_control_status' in log:
+            enabled=log['geometry_control_status'][idx]!='disabled'
+            attribution['image_geometry_control']=bool(enabled.any())
+            if enabled.any() and not shadow.any():
+                attribution['control_mode']='experimental visual geometry guidance; '+attribution['control_mode']
     ts = log['ts'][idx] - log['ts'][idx][0]
     dt = float(np.median(np.diff(ts)))
     P = np.c_[log['px'][idx], log['py'][idx], log['pz'][idx]]

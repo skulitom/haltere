@@ -1,10 +1,11 @@
 """Local velocity proposals from causal surface hypotheses and a task bearing.
 
-This is an offline/shadow planner prototype. The acceleration-limited point-mass
+This is an experimental planner prototype. The acceleration-limited point-mass
 rollout is a surrogate, not a proven model of either deployed motor controller.
 Every proposal includes a reaction interval and a braking tail. Positive margins
 mean only that sampled observed surfaces were avoided, never certified free space.
 No map, route, gate order, future frame or learned motion predictor is consumed.
+Runtime authority must be explicitly granted by the caller's control boundary.
 """
 from __future__ import annotations
 

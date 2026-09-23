@@ -90,9 +90,9 @@ behind-camera points and tracks that fail a third-view reprojection check.
 it also sacrifices some bright/green scene features. `surface_memory.py` forms
 short-lived finite surface hypotheses. Neither missing points nor positive
 clearance certify free space; triangulation noise, pose timing, thin obstacles
-and holes between samples remain limitations. **These modules have no live
-steering authority.** The optional `--geometry-shadow` runner mode below can
-measure their live timing in a separate passive process.
+and holes between samples remain limitations. **Published geometry flights are
+passive.** The optional `--geometry-shadow` runner mode below measures live
+timing in a separate process; experimental control is a separate explicit mode.
 
 Reproduce the causal replay, optionally scoring predictions against the separate
 offline collider file after each frame's prediction. Use a new output directory:
@@ -203,3 +203,27 @@ status across the failed trajectory's 598 frames while reducing replay planner
 time from 133.6 to 41.3 ms p95 (211.0 to 114.5 ms maximum). A second 1,122-frame
 replay also retained its decision counts. These are replay measurements; the
 optimized worker still needs its own live timing check before control integration.
+
+## Experimental control boundary (not promoted)
+
+`--geometry-control` explicitly enables causal image-geometry guidance around
+the PD diagnostic motor controller. It requires `--pilot-assistance race-cue`,
+refuses an oracle collection route, and cannot be combined with shadow mode.
+This is an experiment, not established obstacle avoidance. The newest brain
+runs in shadow and the video labels both PD control and visual geometry.
+
+The control boundary accepts only finite proposals with current image/task
+timestamps, matching position and a compatible current task velocity. Rejected
+or unavailable proposals request braking; prolonged unavailability pauses the
+attempt. Existing image, telemetry, impact and flight-limit guards remain.
+The unmodified task goal is recorded and supplied to perception even while a
+detour is commanded, preventing a detour from becoming its own objective.
+The worker archives its exact resized input images losslessly, capture poses,
+accepted depth points and proposed velocities for diagnosis. No route, course
+geometry or future pose enters perception or planning.
+Use `--geometry-shadow --geometry-record-images` for a passive comparison with
+the same input archival workload as the control experiment.
+
+A frozen matched on/off flight comparison is still required. Passing the
+control-boundary tests does not validate sparse free space, motor-model accuracy,
+reliable race completion or improved speed.

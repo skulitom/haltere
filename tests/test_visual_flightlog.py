@@ -16,7 +16,7 @@ def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, expli
     cols = ['ts', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'qw', 'qx', 'qy', 'qz',
             'omega_x', 'omega_y', 'omega_z', 'in_thr', 'in_roll', 'in_pitch', 'in_yaw',
             'raw_thr', 'raw_yaw', 'yaw', 'command_yaw', 'shadow', 'pilot_assisted',
-            'neural_search', 'search_height_reference', 'pilot_mode']
+            'neural_search', 'search_height_reference', 'pilot_mode', 'geometry_control_status']
     if explicit_phase:
         cols.append('phase')
     if motor:
@@ -32,6 +32,7 @@ def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, expli
                            pilot_assisted=True, neural_search=False,
                            search_height_reference=float('nan'), pilot_mode=2,
                            in_yaw=.125, raw_yaw=.7, yaw=.1, command_yaw=.5)
+                row['geometry_control_status']='disabled'
                 if explicit_phase:
                     row['phase'] = t
                 if motor:
@@ -51,6 +52,7 @@ def test_visual_logs_keep_observed_inputs_and_assistance(tmp_path, shadow, expli
         assert r['control_mode'] == ('shadow: no control output' if shadow else
                                     'PD motor baseline; brain in shadow' if motor == 'pd' else 'live control')
         assert 'gates_through' not in r  # motion metrics cannot invent race completion
+        assert not r['image_geometry_control']
     assert results[0]['control_mode'] in describe('visual', results)
 
 

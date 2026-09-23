@@ -175,3 +175,34 @@ def test_pd_comparison_uses_same_guidance_and_preserves_shadow_brain(checkpoint,
     np.testing.assert_allclose(pd.last_command[:3], expected[:3])
     assert pd.motor_metadata['speed_mps'] == effective_speed
     assert pd.motor_baseline.config == teacher.config
+
+
+def test_geometry_brake_changes_pd_goal_but_preserves_unmodified_task_input(checkpoint):
+    import time
+    from types import SimpleNamespace
+    from haltere.liftoff.geometry_control import GeometryControlGate
+    from haltere.liftoff.telemetry import TelemetryFrame
+    path,mapping=checkpoint
+    saved=torch.load(path,weights_only=True)
+    saved['visual_brain']['gate_training']=dict(dynamics=dict(profile=dict(
+        vertical_calibration=dict(mean=dict(hover_processed=0.,slope_mps2_per_processed=17.)))))
+    saved['visual_brain']['motor_tracking']=dict(nominal_speed_mps=3.)
+    torch.save(saved,path)
+    pd=VisualController(path,mapping,'cpu',pilot_assistance='race-cue',assist_speed=2.5,motor_controller='pd')
+    frame=TelemetryFrame(timestamp=1.,motor_rpm=np.ones(4)*1000.)
+    detection=dict(p=.99,point=np.array([8.,0.,1.5]),width=30.,race_cue=dict(u=.5,v=.5,edge=False))
+    stamp=time.monotonic()
+    pd.step(frame,torch.zeros(1,720),detection,stamp,stamp,stamp)
+    original=pd.relative_gate.copy()
+    desired=original*np.array([pd.motor_baseline.config.position_gain]*2+[.8])
+    stamp=time.monotonic()
+    pd.geometry_gate=GeometryControlGate()
+    pd.geometry_provider=SimpleNamespace(latest=lambda:dict(available_at=stamp,capture_time=stamp,
+        requested_goal_time=stamp,status='observed_obstacle_brake',position=[0,0,0],
+        requested_velocity=desired,proposal_velocity=[0,0,0],changed=True))
+    pd.step(frame,torch.zeros(1,720),detection,stamp,stamp,stamp)
+    np.testing.assert_allclose(pd.nominal_relative_gate,original)
+    np.testing.assert_array_equal(pd.relative_gate,[0,0,0])
+    expected=pd.motor_baseline.command(pd.senses,torch.zeros(1,3),speed=pd.motor_speed)[0].numpy()
+    np.testing.assert_allclose(pd.last_command[:3],expected[:3])
+    assert pd.geometry_gate.status=='obstacle_brake'

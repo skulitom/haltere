@@ -63,7 +63,8 @@ def replay(dataset, geometry_replay, log, out):
         position = origin+np.array([float(frame[k]) for k in ('px','py','pz')])
         velocity = np.array([float(control[k]) for k in ('vx','vy','vz')])
         rotation = quat_wxyz_to_mat([float(control[k]) for k in ('qw','qx','qy','qz')])
-        relative = rotation @ np.array([float(control[k]) for k in ('gate_bx','gate_by','gate_bz')])
+        goal_keys = ('nominal_gate_bx','nominal_gate_by','nominal_gate_bz') if 'nominal_gate_bx' in control else ('gate_bx','gate_by','gate_bz')
+        relative = rotation @ np.array([float(control[k]) for k in goal_keys])
         params = motor['parameters']
         requested = relative*np.array([params['position_gain'], params['position_gain'],
                                         params['vertical_position_gain']])

@@ -1,8 +1,8 @@
 """Short-lived surface hypotheses from causal, uncertain image-depth points.
 
 Planar patches interpolate only nearby observed points. Large gaps remain holes;
-no observations never means free space. This module is an offline/shadow geometry
-prototype, not an enabled flight planner or a guarantee of collision avoidance.
+no observations never means free space. This module supplies experimental geometry
+hypotheses, not a flight planner or a guarantee of collision avoidance.
 """
 from __future__ import annotations
 

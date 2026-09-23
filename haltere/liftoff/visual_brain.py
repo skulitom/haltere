@@ -220,6 +220,9 @@ class VisualController:
         self.gate_time = None
         self.last_detection_time = None
         self.relative_gate = np.zeros(3)
+        self.nominal_relative_gate = np.zeros(3)
+        self.geometry_gate = None
+        self.geometry_provider = None
         self.gate_confidence = 0.
         self.searching = False
         self.search_since = None
@@ -302,8 +305,24 @@ class VisualController:
             from ..brain.gate_senses import gate_observation
             self.relative_gate,assisted_senses = self.assistance.update(
                 self.senses,self.pose.omega,detection,capture_time,observation_time)
+            self.nominal_relative_gate = np.array(self.relative_gate,copy=True)
+            if self.geometry_gate is not None:
+                from ..vision.camera import quat_wxyz_to_mat
+                rotation=quat_wxyz_to_mat(self.senses['quat'][0].cpu().numpy())
+                gains=np.array([self.motor_baseline.config.position_gain]*2+
+                               [self.motor_baseline.config.vertical_position_gain])
+                desired=(rotation@self.nominal_relative_gate)*gains
+                desired[:2] *= min(1.,self.motor_speed/max(1e-9,np.linalg.norm(desired[:2])))
+                desired[2]=np.clip(desired[2],-self.motor_baseline.config.max_vertical_speed,
+                                    self.motor_baseline.config.max_vertical_speed)
+                proposal=self.geometry_provider.latest()
+                selected=self.geometry_gate.resolve(desired,self.senses['pos'][0].cpu().numpy(),
+                                                      time.monotonic(),proposal)
+                self.relative_gate=rotation.T@(selected/gains)
             self.gate_confidence = detection['p'] if detection else 0.
             self.gate_point = self.assistance.pilot.carrot
+            if self.geometry_gate is not None:
+                self.gate_point=self.senses['pos'][0].cpu().numpy()+rotation@self.relative_gate
             target = self.assistance.pilot.target
             self.gate_time = target.t_last if target is not None else None
             self.searching = False  # Rabbit owns search; neural-search timeouts do not apply.
@@ -500,6 +519,12 @@ def run(args):
     if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
         raise ValueError('Use finite positive flight limits')
     camera_fps = getattr(args, 'camera_fps', 48.)
+    geometry_control = getattr(args,'geometry_control',False)
+    if geometry_control and (getattr(args,'geometry_shadow',False)
+                             or getattr(args,'collection_route',None)
+                             or getattr(args,'motor_controller','brain')!='pd'
+                             or getattr(args,'pilot_assistance','none')!='race-cue'):
+        raise ValueError('Experimental geometry control requires race-cue PD, no oracle route and no shadow flag')
     if not np.isfinite(camera_fps) or not 12 <= camera_fps <= 60:
         raise ValueError('Camera rate must be between 12 and 60 fps for the freshness contract')
     copy_port = getattr(args, 'telemetry_copy_port', 0)
@@ -523,12 +548,19 @@ def run(args):
                           passive_retina=args.blank_retina or not controller.meta.get('gate_sensor',{}).get('raw_retina_active',False)) if replay_out else None
     camera_sensor = replay_camera_sensor(controller.meta.get('gate_sensor'),bool(replay))
     geometry = None
-    if getattr(args, 'geometry_shadow', False):
+    if getattr(args, 'geometry_shadow', False) or geometry_control:
         if controller.motor_baseline is None:
             raise ValueError('Geometry shadow currently audits the PD desired-velocity contract only')
-        from .geometry_shadow import ProcessGeometryShadow
-        geometry = ProcessGeometryShadow(log_path.with_suffix('.geometry.jsonl'),camera_sensor,
-                         source_route_oracle=controller.assistance_mode == 'oracle-route')
+        from .geometry_shadow import ProcessGeometryShadow,ProcessGeometryControl
+        if geometry_control:
+            from .geometry_control import GeometryControlGate
+            geometry=ProcessGeometryControl(log_path.with_suffix('.geometry.jsonl'),camera_sensor)
+            controller.geometry_gate=GeometryControlGate(speed=controller.motor_speed)
+            controller.geometry_provider=geometry
+        else:
+            geometry = ProcessGeometryShadow(log_path.with_suffix('.geometry.jsonl'),camera_sensor,
+                             source_route_oracle=controller.assistance_mode == 'oracle-route',
+                             archive_images=getattr(args,'geometry_record_images',False))
     gc.collect()
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
                                   race_cues=controller.assistance_mode=='race-cue',
@@ -543,6 +575,7 @@ def run(args):
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
                               encoder=getattr(args,'video_encoder','libx264'),
                               controller_label='SHADOW ONLY | NO CONTROL OUTPUT' if not pad else
+                              'VISUAL GEOMETRY | PD MOTORS | BRAIN IN SHADOW' if geometry_control else
                               'ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW'
                               if controller.assistance_mode == 'oracle-route' else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
                               if controller.motor_baseline else '') if shared else None
@@ -605,7 +638,8 @@ def run(args):
                              'motor_mean','omega_x','omega_y','omega_z','search_height_reference',
                              'command_thr','command_roll','command_pitch','command_yaw',
                              'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase',
-                             'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller'])
+                                 'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller',
+                                 'nominal_gate_bx','nominal_gate_by','nominal_gate_bz','geometry_control_status'])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -700,7 +734,9 @@ def run(args):
                                  controller.assistance.pilot.n_passes if controller.assistance else 0,elapsed,
                                  {'none':0,'rabbit':1,'race-cue':2,'oracle-route':3}[controller.assistance_mode],
                                  *((detection.get('race_cue') or {}).get(k,-1) if detection else -1
-                                   for k in ('u','v','edge','aim_u')),controller.motor_controller])
+                                   for k in ('u','v','edge','aim_u')),controller.motor_controller,
+                                 *controller.nominal_relative_gate,
+                                 controller.geometry_gate.status if controller.geometry_gate else 'disabled'])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -708,12 +744,12 @@ def run(args):
                                   frame.timestamp,now,capture_time,fresh)
                 loop_phases['replay_ms'] = 1000*(time.monotonic()-loop_mark)
                 if geometry:
-                    # Passive only: publish the current PD goal/motion without
-                    # reading proposals back into the controller or waiting.
+                    # Always publish the unmodified task goal, so a detour does
+                    # not feed itself back as the next navigation objective.
                     loop_mark = time.monotonic()
                     from ..vision.camera import quat_wxyz_to_mat
                     pd_config = controller.motor_baseline.config
-                    desired = (quat_wxyz_to_mat(q) @ controller.relative_gate)*np.array(
+                    desired = (quat_wxyz_to_mat(q) @ controller.nominal_relative_gate)*np.array(
                         [pd_config.position_gain,pd_config.position_gain,pd_config.vertical_position_gain])
                     desired[:2] *= min(1.,controller.motor_speed/max(1e-9,np.linalg.norm(desired[:2])))
                     desired[2] = np.clip(desired[2],-pd_config.max_vertical_speed,pd_config.max_vertical_speed)
@@ -766,7 +802,8 @@ def run(args):
             pilot_meta['motor_control'] = 'PD throttle/roll/pitch; assisted yaw; brain runs in shadow'
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
-                      control_mode=('PRIVILEGED oracle collection; PD motors; brain in shadow' if controller.assistance_mode == 'oracle-route' else
+                      control_mode=('experimental visual geometry guidance; PD motors; brain in shadow' if geometry_control else
+                                    'PRIVILEGED oracle collection; PD motors; brain in shadow' if controller.assistance_mode == 'oracle-route' else
                                     'PD motor baseline; brain in shadow' if controller.motor_baseline else
                                     'pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
                       motor_controller=controller.motor_metadata,
@@ -774,7 +811,9 @@ def run(args):
                       postflight=postflight,
                       pilot_assistance=pilot_meta,
                       navigation_predictor_loaded=False,
-                      geometry_shadow=geometry_status,
+                      geometry_shadow=geometry_status if not geometry_control else None,
+                      geometry_perception=geometry_status if geometry_control else None,
+                      geometry_control=controller.geometry_gate.metadata() if controller.geometry_gate else None,
                       brain_action_columns=['thr','roll','pitch','yaw'],
                       command_columns=['command_thr','command_roll','command_pitch','command_yaw'],
                       raw_output_includes_arming_hold=True,
@@ -849,8 +888,13 @@ def main():
                    help='PD is a matched diagnostic baseline; its brain panel is explicitly labelled as shadow')
     p.add_argument('--collection-route', default=None,
                    help='PRIVILEGED route for course qualification/data collection only; requires PD and no visual pilot; never an autonomous evaluation')
-    p.add_argument('--geometry-shadow', action='store_true',
+    geometry_options=p.add_mutually_exclusive_group()
+    geometry_options.add_argument('--geometry-shadow', action='store_true',
                    help='Passive isolated image-geometry/trajectory audit alongside PD; never changes controls')
+    geometry_options.add_argument('--geometry-control', action='store_true',
+                   help='EXPERIMENTAL causal image-geometry guidance; requires race-cue PD, forbids oracle route, archives worker images')
+    p.add_argument('--geometry-record-images', action='store_true',
+                   help='Archive exact worker inputs in passive geometry mode too, for matched on/off runs')
     p.add_argument('--seconds',type=float,default=15)
     p.add_argument('--log',required=True)
     p.add_argument('--record',default='')
