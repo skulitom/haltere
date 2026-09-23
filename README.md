@@ -81,7 +81,7 @@ or progress against the five-track speed threshold.
 Course geometry is excluded from autonomous runtime; oracle collection is
 explicitly labelled and scored separately.
 
-Validation: **408 automated tests passed** (three existing warnings). The CPU
+Validation: **411 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

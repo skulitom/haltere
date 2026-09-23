@@ -1,5 +1,7 @@
 # Visual geometry control: first matched flight comparison
 
+[All four complete brain/gameplay videos and raw evidence](https://github.com/skulitom/haltere/releases/tag/visual-geometry-control-20260923).
+
 Source `732e140`, original `[Copy] New Drone`, motor10 candidate05 in shadow,
 PD motors, causal visible race cues at 2.5 m/s. This is the already observed
 generated box course, one lap, with a 500-second limit. It is development

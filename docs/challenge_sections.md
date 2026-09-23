@@ -231,3 +231,14 @@ Two unchanged assisted repeats left 2/3 finishes overall; obstacle memory expire
 before the failed repeat had passed the wall. The failure remains in the record.
 Passing the control-boundary tests and one course does not validate sparse free
 space, motor-model accuracy, reliable transfer or main-track speed.
+
+The next experimental revision retains observed static surfaces while they are
+within 12 m, instead of deleting them after a three-second depth gap. Braking
+can remove the parallax needed for new depth, so elapsed time alone is not
+evidence that a nearby obstacle disappeared. Original observation ages remain
+logged. The map is bounded to 512 voxels, evicts farthest points first when full,
+and reports capacity evictions. Identical surface patches are reused until the
+points or uncertainties change. This assumes stationary Liftoff scenery in the
+telemetry frame; false points can persist, and no free-space certificate or new
+flight success follows from the memory change alone. The older time-limited
+memory remains the default for historical offline replays.

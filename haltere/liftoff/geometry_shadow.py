@@ -64,7 +64,10 @@ class ShadowGeometry:
     def __init__(self, camera):
         self.camera = camera
         self.tracker = TemporalDepth(camera)
-        self.memory = SurfaceMemory()
+        # Liftoff scenery is stationary in the observed telemetry frame. Braking
+        # removes the translation needed for fresh depth; it must not make a
+        # nearby observed obstacle disappear merely because three seconds pass.
+        self.memory = SurfaceMemory(lifetime=None,max_points=512)
         self.planner = LocalTrajectoryPlanner()
         self.last_game_time = None
 
@@ -96,8 +99,8 @@ class ShadowGeometry:
             points,sigma = result['position_world'][good],result['range_sigma_m'][good]
         tracked = time.monotonic()
         surfaces = self.memory.update(latest[3:6],captured_at,points,sigma)
-        # Compute against the current observed state. Captured surfaces retain
-        # their original age; repeated reads never refresh a depth hypothesis.
+        # Compute against current motion and retain original depth receipt times.
+        # The map query timestamp is current; it does not imply fresh depth.
         proposal = self.planner.propose(latest[3:6],latest[10:13],latest[13:16],surfaces,
                                         time.monotonic(),view=(self.camera,position,quaternion))
         finished = time.monotonic()
@@ -110,6 +113,8 @@ class ShadowGeometry:
                     input_age_s=now-latest[1],proposal_age_s=finished-captured_at,
                     tracking_ms=1000*(tracked-start),planning_and_surfaces_ms=1000*(finished-tracked),
                     valid_points=len(points),memory_points=len(surfaces['points']),triangles=len(surfaces['triangles']),
+                    oldest_observation_age_s=surfaces['oldest_observation_age_s'],
+                    memory_capacity_evictions=surfaces['capacity_evictions'],
                     requested_velocity=latest[13:16].tolist(),proposal_velocity=proposal['velocity'].tolist(),
                     nominal_margin_m=finite(proposal['nominal_margin_m']),
                     selected_margin_m=finite(proposal['selected_margin_m']),
@@ -162,6 +167,7 @@ def shadow_worker(buffer, done, path, camera_config, source_route_oracle, fps, p
                       live_authority=proposals is not None,
                       runtime_course_geometry=False,source_flight_runtime_route_oracle=source_route_oracle,
                       camera=camera_config,planner_config=asdict(diagnostic.planner.config),
+                      surface_memory=diagnostic.memory.metadata(),
                       fps=fps,frames=sum(counts.values()),status_counts=dict(counts),error=error,
                       images_preserved=archive_images,
                       total_ms=dict(p50=float(np.median(timings)),p95=float(np.percentile(timings,95)),

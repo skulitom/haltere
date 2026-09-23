@@ -1,4 +1,4 @@
-"""Short-lived surface hypotheses from causal, uncertain image-depth points.
+"""Local surface hypotheses from causal, uncertain image-depth points.
 
 Planar patches interpolate only nearby observed points. Large gaps remain holes;
 no observations never means free space. This module supplies experimental geometry
@@ -78,11 +78,25 @@ def surface_patches(points,sigma,*,max_edge=3.5,plane_tolerance=.2,max_planes=4)
 
 
 class SurfaceMemory:
-    def __init__(self,*,lifetime=3.,range_m=12.,voxel=.25,max_sigma=1.5):
-        if not np.isfinite([lifetime,range_m,voxel,max_sigma]).all() or min(lifetime,range_m,voxel,max_sigma)<=0:
+    def __init__(self,*,lifetime=3.,range_m=12.,voxel=.25,max_sigma=1.5,max_points=None):
+        if (not np.isfinite([range_m,voxel,max_sigma]).all() or min(range_m,voxel,max_sigma)<=0
+                or lifetime is not None and (not np.isfinite(lifetime) or lifetime<=0)
+                or max_points is not None and (not isinstance(max_points,int) or max_points<1)
+                or lifetime is None and max_points is None):
             raise ValueError('Use finite positive memory limits')
         self.lifetime,self.range,self.voxel,self.max_sigma=lifetime,range_m,voxel,max_sigma
+        self.max_points=max_points
+        self.capacity_evictions=0
+        self._cached_cloud=self._cached_errors=self._cached_patches=self._cached_patch_sigma=None
         self.cells={};self.last_time=None
+
+    def metadata(self):
+        return dict(lifetime_s=self.lifetime,range_m=self.range,voxel_m=self.voxel,
+                    max_sigma_m=self.max_sigma,max_points=self.max_points,
+                    capacity_evictions=self.capacity_evictions,
+                    policy='retain nearby static obstacles until outside radius or farthest-first capacity eviction'
+                           if self.lifetime is None else 'time-limited observations',
+                    limits='Assumes stationary surfaces in the telemetry frame; does not clear false points or certify free space')
 
     def update(self,position,timestamp,points=(),sigma=()):
         position=np.asarray(position,float);points=np.asarray(points,float).reshape(-1,3);sigma=np.asarray(sigma,float)
@@ -101,13 +115,30 @@ class SurfaceMemory:
             value=(point,uncertainty) if old is None or uncertainty<old[2] else (old[1],old[2])
             self.cells[key]=(timestamp,*value)
         self.cells={key:value for key,value in self.cells.items()
-                    if timestamp-value[0]<=self.lifetime and np.linalg.norm(value[1]-position)<=self.range}
+                    if (self.lifetime is None or timestamp-value[0]<=self.lifetime)
+                    and np.linalg.norm(value[1]-position)<=self.range}
+        # A lack of parallax while braking is not evidence that an observed wall
+        # disappeared. Static-scene mode keeps nearby observations, with their
+        # original receipt times, and a fixed spatial/capacity bound. Far points
+        # leave first when full; eviction is logged, never called free space.
+        if self.max_points is not None and len(self.cells)>self.max_points:
+            self.capacity_evictions+=len(self.cells)-self.max_points
+            self.cells=dict(sorted(self.cells.items(),key=lambda item:
+                np.linalg.norm(item[1][1]-position))[:self.max_points])
         values=list(self.cells.values())
         cloud=np.array([v[1] for v in values]).reshape(-1,3)
         errors=np.array([v[2] for v in values])
-        patches,patch_sigma=surface_patches(cloud,errors)
+        if (self._cached_cloud is None or not np.array_equal(cloud,self._cached_cloud)
+                or not np.array_equal(errors,self._cached_errors)):
+            self._cached_patches,self._cached_patch_sigma=surface_patches(cloud,errors)
+            self._cached_cloud,self._cached_errors=cloud.copy(),errors.copy()
+        # Keep cached geometry independent of arrays returned to callers. Receipt
+        # ages and the current query timestamp still update on every observation.
+        patches,patch_sigma=self._cached_patches.copy(),self._cached_patch_sigma.copy()
         return dict(points=cloud,sigma=errors,triangles=patches,triangle_sigma=patch_sigma,
-                    timestamp=timestamp,coverage_certified=False)
+                    timestamp=timestamp,coverage_certified=False,
+                    oldest_observation_age_s=max(timestamp-v[0] for v in values) if values else None,
+                    capacity_evictions=self.capacity_evictions)
 
 
 def observed_path_margin(path,surfaces,*,vehicle_radius=.35):
