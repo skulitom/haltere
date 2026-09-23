@@ -73,3 +73,29 @@ def test_reused_patches_match_reconstruction_and_do_not_alias_returned_geometry(
     assert repeated['oldest_observation_age_s']==4.
     changed=memory.update([0,0,0],6.,cloud,sigma*.5)
     np.testing.assert_array_equal(changed['triangle_sigma'],surface_patches(cloud,sigma*.5)[1])
+
+
+def test_broad_phase_preserves_exhaustive_uncertain_surface_margin():
+    rng=np.random.default_rng(812)
+    for _ in range(12):
+        path=rng.normal(size=(35,3)).cumsum(axis=0)*.2
+        triangles=rng.normal(size=(80,3,3))*3+rng.uniform(-15,15,(80,1,3))
+        cloud=rng.uniform(-6,6,(40,3));errors=rng.uniform(0,1.5,40)
+        triangle_errors=rng.uniform(0,1.5,80)
+        surfaces=dict(points=cloud,sigma=errors,triangles=triangles,triangle_sigma=triangle_errors)
+        expected=min(np.min(triangle_distance(path,triangles)-triangle_errors[None,:]-.35),
+                     np.min(np.linalg.norm(path[:,None,:]-cloud,axis=2)-errors[None,:]-.35))
+        assert observed_path_margin(path,surfaces)['margin_m']==pytest.approx(expected,abs=1e-12)
+
+
+def test_inferred_patch_expires_without_deleting_its_measured_obstacle_points():
+    memory=SurfaceMemory(lifetime=None,max_points=64,patch_lifetime=3.)
+    cloud=np.array([[3,y,z] for y in [-1.25,0,1.25] for z in [-1.25,0,1.25]
+                    if abs(y)==1.25 or abs(z)==1.25])
+    early=memory.update([0,0,0],1.,cloud,np.full(len(cloud),.1))
+    assert observed_path_margin([[3,0,0]],early)['observed_collision']
+    late=memory.update([0,0,0],5.)
+    assert len(late['points'])==len(cloud) and len(late['triangles'])==0
+    assert not observed_path_margin([[3,0,0]],late)['observed_collision']
+    assert observed_path_margin([[3,1.25,0]],late)['observed_collision']
+    assert late['oldest_observation_age_s']==4. and not late['coverage_certified']

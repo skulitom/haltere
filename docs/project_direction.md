@@ -112,6 +112,10 @@ development layout. Broader brain training has not yet addressed the motor gap,
 and this initial geometry result does not establish transfer or main-track speed.
 Two unchanged assisted repeats subsequently finished once and hit the wall once,
 leaving 2/3 assisted finishes overall; nearby obstacle memory expired in the failure.
+The subsequent persistent-memory revision finished 0/3: one geometry timing stop
+and two operator-stopped stalls. The current revision separates measured obstacle
+points from short-lived interpolated surfaces and reduces planning cost; its
+replay results are not flight acceptance.
 See the [live geometry comparison](flight_cards/2026-09-23_geometry_control.md).
 See the [current program](generalization_program.md) and
 [obstacle evidence](flight_cards/2026-09-23_obstacle_geometry.md).

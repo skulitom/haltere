@@ -78,21 +78,23 @@ def surface_patches(points,sigma,*,max_edge=3.5,plane_tolerance=.2,max_planes=4)
 
 
 class SurfaceMemory:
-    def __init__(self,*,lifetime=3.,range_m=12.,voxel=.25,max_sigma=1.5,max_points=None):
+    def __init__(self,*,lifetime=3.,range_m=12.,voxel=.25,max_sigma=1.5,max_points=None,patch_lifetime=None):
         if (not np.isfinite([range_m,voxel,max_sigma]).all() or min(range_m,voxel,max_sigma)<=0
                 or lifetime is not None and (not np.isfinite(lifetime) or lifetime<=0)
+                or patch_lifetime is not None and (not np.isfinite(patch_lifetime) or patch_lifetime<=0)
                 or max_points is not None and (not isinstance(max_points,int) or max_points<1)
                 or lifetime is None and max_points is None):
             raise ValueError('Use finite positive memory limits')
         self.lifetime,self.range,self.voxel,self.max_sigma=lifetime,range_m,voxel,max_sigma
         self.max_points=max_points
+        self.patch_lifetime=patch_lifetime
         self.capacity_evictions=0
         self._cached_cloud=self._cached_errors=self._cached_patches=self._cached_patch_sigma=None
         self.cells={};self.last_time=None
 
     def metadata(self):
         return dict(lifetime_s=self.lifetime,range_m=self.range,voxel_m=self.voxel,
-                    max_sigma_m=self.max_sigma,max_points=self.max_points,
+                    max_sigma_m=self.max_sigma,max_points=self.max_points,patch_lifetime_s=self.patch_lifetime,
                     capacity_evictions=self.capacity_evictions,
                     policy='retain nearby static obstacles until outside radius or farthest-first capacity eviction'
                            if self.lifetime is None else 'time-limited observations',
@@ -128,17 +130,23 @@ class SurfaceMemory:
         values=list(self.cells.values())
         cloud=np.array([v[1] for v in values]).reshape(-1,3)
         errors=np.array([v[2] for v in values])
-        if (self._cached_cloud is None or not np.array_equal(cloud,self._cached_cloud)
-                or not np.array_equal(errors,self._cached_errors)):
-            self._cached_patches,self._cached_patch_sigma=surface_patches(cloud,errors)
-            self._cached_cloud,self._cached_errors=cloud.copy(),errors.copy()
+        # Interpolated interiors are weaker evidence than measured points: their
+        # apparent plane can bridge a real opening. Require recent support for
+        # these patches without erasing the underlying obstacle measurements.
+        fresh=np.array([self.patch_lifetime is None or timestamp-v[0]<=self.patch_lifetime
+                        for v in values],dtype=bool)
+        patch_cloud,patch_errors=cloud[fresh],errors[fresh]
+        if (self._cached_cloud is None or not np.array_equal(patch_cloud,self._cached_cloud)
+                or not np.array_equal(patch_errors,self._cached_errors)):
+            self._cached_patches,self._cached_patch_sigma=surface_patches(patch_cloud,patch_errors)
+            self._cached_cloud,self._cached_errors=patch_cloud.copy(),patch_errors.copy()
         # Keep cached geometry independent of arrays returned to callers. Receipt
         # ages and the current query timestamp still update on every observation.
         patches,patch_sigma=self._cached_patches.copy(),self._cached_patch_sigma.copy()
         return dict(points=cloud,sigma=errors,triangles=patches,triangle_sigma=patch_sigma,
                     timestamp=timestamp,coverage_certified=False,
                     oldest_observation_age_s=max(timestamp-v[0] for v in values) if values else None,
-                    capacity_evictions=self.capacity_evictions)
+                    capacity_evictions=self.capacity_evictions,patch_support_points=int(fresh.sum()))
 
 
 def observed_path_margin(path,surfaces,*,vehicle_radius=.35):
@@ -151,9 +159,23 @@ def observed_path_margin(path,surfaces,*,vehicle_radius=.35):
     path=np.asarray(path,float)
     if not np.isfinite(vehicle_radius) or vehicle_radius<=0:
         raise ValueError('Use a positive vehicle radius')
-    distances=triangle_distance(path,surfaces['triangles'])
-    margin=float(np.min(distances-surfaces['triangle_sigma'][None,:]-vehicle_radius)) if distances.size else float('inf')
+    triangles=np.asarray(surfaces['triangles'],float)
+    if (path.ndim!=2 or path.shape[1]!=3 or not len(path) or not np.isfinite(path).all()
+            or triangles.ndim!=3 or triangles.shape[1:]!=(3,3) or not np.isfinite(triangles).all()):
+        raise ValueError('Use finite nonempty path and finite triangles')
+    margin=float('inf')
     if len(surfaces['points']):
         distances=np.linalg.norm(path[:,None,:]-surfaces['points'],axis=2)
         margin=min(margin,float(np.min(distances-surfaces['sigma'][None,:]-vehicle_radius)))
+    if len(triangles):
+        # Point distances supply an exact upper bound on the final minimum.
+        # Disjoint axis-aligned boxes supply conservative lower bounds for each
+        # triangle. A triangle beyond that upper bound cannot change the answer.
+        separation=np.maximum(0.,np.maximum(triangles.min(axis=1)-path.max(axis=0),
+                                            path.min(axis=0)-triangles.max(axis=1)))
+        lower=np.linalg.norm(separation,axis=1)-surfaces['triangle_sigma']-vehicle_radius
+        keep=lower<=margin+1e-10
+        distances=triangle_distance(path,triangles[keep])
+        if distances.size:
+            margin=min(margin,float(np.min(distances-surfaces['triangle_sigma'][keep][None,:]-vehicle_radius)))
     return dict(margin_m=margin,observed_collision=margin<0,coverage_certified=False)

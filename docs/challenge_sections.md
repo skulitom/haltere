@@ -241,4 +241,14 @@ and reports capacity evictions. Identical surface patches are reused until the
 points or uncertainties change. This assumes stationary Liftoff scenery in the
 telemetry frame; false points can persist, and no free-space certificate or new
 flight success follows from the memory change alone. The older time-limited
-memory remains the default for historical offline replays.
+memory remains the default for historical offline replays. That first persistent
+revision finished 0/3: one freshness stop and two operator-stopped stalls.
+
+The next revision keeps measured points but requires support within three seconds
+for interpolated patches. Interpolation can falsely span an opening; its weaker
+evidence must not silently receive the point measurements' retention policy.
+The local planner also samples vertical speed at quarter increments, permitting
+shallow climb/descent alternatives within the existing speed and field-of-view
+limits. Exact distance/cost bounds avoid unnecessary collision queries without
+changing their answer. These revisions remain experimental until complete
+flights establish a benefit.

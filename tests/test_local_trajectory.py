@@ -86,3 +86,11 @@ def test_no_new_detour_without_a_view_and_no_blind_dive():
     cloud=[[4,y,z] for y in [-.4,0,.4] for z in np.arange(-4,4.1,.5)]
     result=LocalTrajectoryPlanner().propose([0,0,0],[2,0,0],[2,0,0],surfaces(cloud),1.)
     np.testing.assert_array_equal(result['velocity'],[0,0,0])
+
+
+def test_shallow_descent_can_clear_an_overhead_observation_inside_current_view():
+    result=LocalTrajectoryPlanner().propose([0,0,0],[2.5,0,0],[2.5,0,0],
+        surfaces([[4,0,.4]]),1.,view=view())
+    assert result['status']=='observed_obstacle_detour'
+    assert result['velocity'][0]>2. and -1.2<result['velocity'][2]<0.
+    assert result['selected_margin_m']>=.15

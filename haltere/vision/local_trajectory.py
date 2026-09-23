@@ -26,6 +26,7 @@ class TrajectoryConfig:
     response_s: float = .6
     horizontal_speed_mps: float = 2.5
     vertical_speed_mps: float = 1.2
+    vertical_subdivisions: int = 4
     vehicle_radius_m: float = .35
     extra_margin_m: float = .15
     max_surface_age_s: float = .5
@@ -34,6 +35,8 @@ class TrajectoryConfig:
         values = list(asdict(self).values())
         if not np.isfinite(values).all() or min(values) <= 0 or self.dt > .1:
             raise ValueError('Use finite positive trajectory limits and dt <= 0.1 s')
+        if not isinstance(self.vertical_subdivisions,int):
+            raise ValueError('Use a positive integer number of vertical subdivisions')
 
 
 def bounded_velocity(velocity, config):
@@ -136,30 +139,44 @@ class LocalTrajectoryPlanner:
         heading = np.arctan2(requested[1], requested[0])
         horizontal = min(config.horizontal_speed_mps, max(.5, np.linalg.norm(requested[:2])))
         candidates = [np.zeros(3)]
+        verticals=[requested[2],-config.vertical_speed_mps,config.vertical_speed_mps]
+        for vertical in np.linspace(-config.vertical_speed_mps,config.vertical_speed_mps,
+                                    2*config.vertical_subdivisions+1):
+            if not np.any(np.isclose(vertical,verticals)):
+                verticals.append(vertical)
         for fraction in (0., .5, 1.):
-            for angle in (0., -np.pi/6, np.pi/6, -np.pi/3, np.pi/3, -np.pi/2, np.pi/2):
-                for vertical in (requested[2], -config.vertical_speed_mps, config.vertical_speed_mps):
+            angles=(0.,) if fraction==0 else (0., -np.pi/6, np.pi/6, -np.pi/3, np.pi/3, -np.pi/2, np.pi/2)
+            for angle in angles:
+                for vertical in verticals:
                     candidate = np.array([fraction*horizontal*np.cos(heading+angle),
                                           fraction*horizontal*np.sin(heading+angle), vertical])
-                    if not np.any(np.all(np.isclose(candidate,np.asarray(candidates)),axis=1)):
+                    if fraction or abs(vertical)>1e-8:
                         candidates.append(candidate)
         best = None
         brake = None
         batch = rollout_batch(position,velocity,candidates,config)
+        checked=1
         for index,candidate in enumerate(candidates):
             path = {name:values[index] for name,values in batch.items()}
+            velocity_cost=np.sum((candidate-requested)**2)
+            # Preserve enumeration/tie order. Even perfect clearance can lower
+            # this cost by only .1, so these candidates cannot beat the current
+            # best. View rejection is also independent of collision distance.
+            if best is not None and velocity_cost-.1>=best[0]-1e-8:
+                continue
+            if np.linalg.norm(candidate)>.01 and not detour_in_view(path['positions'],view,
+                                                                    config.vehicle_radius_m):
+                continue
+            checked+=1
             clearance = observed_path_margin(path['positions'], surfaces,
                                              vehicle_radius=config.vehicle_radius_m)['margin_m']
             if brake is None:
                 brake = candidate, path, clearance
             if clearance < config.extra_margin_m:
                 continue
-            if np.linalg.norm(candidate) > .01 and not detour_in_view(path['positions'], view,
-                                                                    config.vehicle_radius_m):
-                continue
             # Retain task progress while preferring the smallest velocity change.
             # A clearance reward is capped: unknown surfaces cannot earn infinity.
-            cost = np.sum((candidate-requested)**2) - .1*min(1., clearance)
+            cost = velocity_cost - .1*min(1., clearance)
             # Keep task-frame enumeration order for numerically equal costs;
             # a translated/rotated scene must not flip a symmetric detour.
             if best is None or cost < best[0]-1e-8:
@@ -171,7 +188,7 @@ class LocalTrajectoryPlanner:
             _, candidate, path, clearance = best
             status = 'observed_obstacle_detour' if np.linalg.norm(candidate) > .01 else 'observed_obstacle_brake'
         return dict(velocity=candidate, path=path, status=status, selected_margin_m=clearance,
-                    nominal_margin_m=margin, candidates_checked=1+len(candidates), changed=True,
+                    nominal_margin_m=margin, candidates_checked=checked, changed=True,
                     coverage_certified=False)
 
 

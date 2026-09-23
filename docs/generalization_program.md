@@ -57,8 +57,12 @@ finished **0/1 off versus 1/1 on**, with a **2:26.657** autonomous PD finish on
 the same known course. This is initial development evidence; the brain was in
 shadow, and main-track speed, transfer and reliable completion remain unmet.
 Two unchanged assisted repeats added one finish and one wall impact (2/3 overall).
-The failed repeat lost nearby obstacle memory while nearly stationary; address
-that before treating the local planner as a reliable input to broader flight.
+The failed repeat lost nearby obstacle memory while nearly stationary. Retaining
+both points and interpolated surfaces subsequently finished 0/3 (one geometry
+timing stop and two operator-stopped stalls). The next frozen flight batch tests
+persistent measured points, short-lived interpolation, faster exact clearance
+queries and gentler vertical choices. Resolve these failures before treating the
+local planner as a reliable input to broader flight.
 The [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
 the failure and causal replay limits.
 

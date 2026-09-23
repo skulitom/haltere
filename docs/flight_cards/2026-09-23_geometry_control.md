@@ -90,3 +90,39 @@ depth stopped refreshing while nearly stationary. All local obstacle points
 expired at game time 154.96 s; the wall was still nearby. The nominal forward/
 descent commands then resumed, followed by impact at 158.80 s. This exposes a
 memory-lifetime failure, rather than supporting promotion from the two finishes.
+
+## Persistent local memory revision
+
+The three attempts frozen at `9bf30fd` retained nearby points and their
+interpolated patches instead of expiring them after three seconds. All used the
+same original drone and settings as before. **None finished (0/3)**:
+
+| Attempt | Stop | Race clock | Detected impact |
+|---|---|---|---|
+| 1 | Automatic geometry-freshness pause near final wall | 2:28.395 | None |
+| 2 | Operator ended prolonged stationary braking before start | 0:00.000 | None |
+| 3 | Operator ended prolonged stationary braking beneath overhang | 3:56.684 | None |
+
+The two operator stops occurred before the declared 500-second cap; no stall
+cutoff had been preregistered. They are retained as incomplete, operator-censored
+attempts, not proof that the race could never finish within that cap. There was
+no reset, camera failure or controller-deadline failure. All three complete
+videos decode. Local evidence: `runs/geometry-static-memory-20260923`.
+
+The first run's geometry worker reached 447.5 ms per update; the unchanged
+freshness boundary correctly refused late proposals. In attempt 2, offline
+reconstruction gives current-position clearance of +0.470 m against measured
+points but −0.369 m after interpolating patches. The inferred interior crosses
+the gate opening. Attempt 3 also has a predicted conflict with uncertain points,
+so expiring patches alone is not a complete solution to both stalls.
+
+Exact computational pruning subsequently preserved all velocities, statuses
+and margins on 2,809 earlier recorded frames while reducing geometry/planning
+p95 to 18–22 ms. It skips surfaces whose conservative distance bound cannot
+affect the result, and candidates that cannot improve the current cost or lie
+outside the current view. This is replay timing, not live performance proof.
+
+The next experimental revision keeps measured points locally, requires recent
+support for interpolated patches, and samples shallow vertical alternatives
+as well as maximum-rate climbing/descending. Those changes require their own
+frozen complete-flight batch; none of the earlier attempts is reclassified.

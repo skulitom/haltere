@@ -67,7 +67,7 @@ class ShadowGeometry:
         # Liftoff scenery is stationary in the observed telemetry frame. Braking
         # removes the translation needed for fresh depth; it must not make a
         # nearby observed obstacle disappear merely because three seconds pass.
-        self.memory = SurfaceMemory(lifetime=None,max_points=512)
+        self.memory = SurfaceMemory(lifetime=None,max_points=512,patch_lifetime=3.)
         self.planner = LocalTrajectoryPlanner()
         self.last_game_time = None
 
@@ -115,6 +115,7 @@ class ShadowGeometry:
                     valid_points=len(points),memory_points=len(surfaces['points']),triangles=len(surfaces['triangles']),
                     oldest_observation_age_s=surfaces['oldest_observation_age_s'],
                     memory_capacity_evictions=surfaces['capacity_evictions'],
+                    patch_support_points=surfaces['patch_support_points'],
                     requested_velocity=latest[13:16].tolist(),proposal_velocity=proposal['velocity'].tolist(),
                     nominal_margin_m=finite(proposal['nominal_margin_m']),
                     selected_margin_m=finite(proposal['selected_margin_m']),
