@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from haltere.vision.camera import Camera,quat_wxyz_to_mat
-from haltere.vision.temporal_depth import TemporalDepth,triangulate_motion
+from haltere.vision.temporal_depth import TemporalDepth,MultiBaselineDepth,triangulate_motion
 
 
 def project(camera,world,position,q):
@@ -75,3 +75,36 @@ def test_third_view_rejects_a_surface_with_inconsistent_image_motion():
     last=cv2.warpAffine(old,np.float32([[1,0,10],[0,1,0]]),(160,90))
     result=tracker.update(last,[0,1.,0],[1,0,0,0],1.4,mask)
     assert not result['valid'].any()
+
+
+def test_longer_baseline_adds_precise_depth_during_slow_translation():
+    import cv2
+    rng = np.random.default_rng(19)
+    original = cv2.GaussianBlur(rng.integers(0, 256, (180, 320), dtype=np.uint8), (3, 3), 0)
+    mask = np.zeros_like(original)
+    mask[20:-20, 40:-40] = 255
+    camera = Camera(320, 180, 200, 0)
+    fast, combined = TemporalDepth(camera), MultiBaselineDepth(camera)
+    fast_precise = combined_precise = 0
+    for i in range(20):
+        frame = cv2.warpAffine(original, np.float32([[1, 0, 2*i], [0, 1, 0]]), (320, 180))
+        arguments = (frame, [0, .02*i, 0], [1, 0, 0, 0], 1.+.1*i, mask)
+        one, both = fast.update(*arguments), combined.update(*arguments)
+        for result, name in ((one, 'fast'), (both, 'combined')):
+            if result is None:
+                continue
+            good = result['valid'] & (result['range_sigma_m'] < .1*result['range_m'])
+            if good.any():
+                assert np.median(result['optical_depth_m'][good]) == pytest.approx(2., rel=.02)
+            if name == 'fast':
+                fast_precise += good.sum()
+            else:
+                combined_precise += good.sum()
+                assert not result['establishes_free_space']
+    assert combined_precise > fast_precise + 20
+
+
+def test_precision_keyframe_limits_are_validated():
+    for limits in ({'refresh_sigma_fraction': 0}, {'refresh_sigma_m': float('nan')}):
+        with pytest.raises(ValueError, match='precision'):
+            TemporalDepth(Camera(), **limits)

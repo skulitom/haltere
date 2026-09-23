@@ -27,6 +27,8 @@ class TrajectoryConfig:
     horizontal_speed_mps: float = 2.5
     vertical_speed_mps: float = 1.2
     vertical_subdivisions: int = 4
+    retreat_speed_mps: float = .5
+    direction_consistency_weight: float = .5
     vehicle_radius_m: float = .35
     extra_margin_m: float = .15
     max_surface_age_s: float = .5
@@ -113,10 +115,22 @@ def rollout_batch(position, velocity, desired_velocities, config=TrajectoryConfi
 class LocalTrajectoryPlanner:
     def __init__(self, config=TrajectoryConfig()):
         self.config = config
+        self.previous_detour = None
 
     def propose(self, position, velocity, requested_velocity, surfaces, timestamp, *, view=None):
         config = self.config
         requested = bounded_velocity(requested_velocity, config)
+        previous = None
+        if self.previous_detour is not None:
+            stamp, old_position, old_request, old_velocity = self.previous_detour
+            elapsed = timestamp-stamp
+            if (0 < elapsed <= config.max_surface_age_s
+                    and np.linalg.norm(np.asarray(position)-old_position) <= config.horizontal_speed_mps*elapsed+.5
+                    and np.linalg.norm(requested-old_request) < 1.):
+                previous = old_velocity
+        # A stale, nominal or infeasible proposal ends the commitment. Every
+        # continuing detour must pass fresh clearance/view checks below.
+        self.previous_detour = None
         age = timestamp-surfaces['timestamp']
         if not np.isfinite(age) or age < -1e-6:
             raise ValueError('Surface observations must be finite and causal')
@@ -152,6 +166,14 @@ class LocalTrajectoryPlanner:
                                           fraction*horizontal*np.sin(heading+angle), vertical])
                     if fraction or abs(vertical)>=config.vertical_speed_mps/config.vertical_subdivisions-1e-9:
                         candidates.append(candidate)
+        # A nearby uncertain wall can invalidate every forward/sideways path.
+        # Include a short retreat in the task frame. It receives the same
+        # observed-surface, reaction, braking and view checks as every detour;
+        # this does not authorize a long blind reversal.
+        retreat = min(config.retreat_speed_mps, horizontal)
+        for vertical in verticals:
+            candidates.append(np.array([-retreat*np.cos(heading),
+                                        -retreat*np.sin(heading), vertical]))
         best = None
         brake = None
         initial_margin=observed_path_margin(np.asarray(position)[None,:],surfaces,
@@ -176,10 +198,13 @@ class LocalTrajectoryPlanner:
         for index,candidate in enumerate(candidates):
             path = {name:values[index] for name,values in batch.items()}
             velocity_cost=np.sum((candidate-requested)**2)
-            # Preserve enumeration/tie order. Even perfect clearance can lower
-            # this cost by only .1, so these candidates cannot beat the current
-            # best. View rejection is also independent of collision distance.
-            if best is not None and velocity_cost-.1>=best[0]-1e-8:
+            if previous is not None:
+                velocity_cost += config.direction_consistency_weight*np.sum((candidate-previous)**2)
+            # Clearance is a feasibility constraint. Rewarding small changes in
+            # uncertain clearance made equally feasible up/down choices chatter.
+            # Preserve the previous direction when the task remains similar,
+            # without accepting an infeasible continuation.
+            if best is not None and velocity_cost>=best[0]-1e-8:
                 continue
             if np.linalg.norm(candidate)>.01 and not detour_in_view(path['positions'],view,
                                                                     config.vehicle_radius_m):
@@ -195,7 +220,6 @@ class LocalTrajectoryPlanner:
             if np.linalg.norm(candidate)<=.01:
                 continue
             escaping=False
-            cost_clearance=clearance
             if clearance < config.extra_margin_m:
                 if not can_escape:
                     continue
@@ -204,10 +228,7 @@ class LocalTrajectoryPlanner:
                 if not recovery['allowed']:
                     continue
                 escaping=True
-                cost_clearance=recovery['terminal_margin_m']
-            # Retain task progress while preferring the smallest velocity change.
-            # A clearance reward is capped: unknown surfaces cannot earn infinity.
-            cost = velocity_cost - .1*min(1., cost_clearance)
+            cost = velocity_cost
             # Keep task-frame enumeration order for numerically equal costs;
             # a translated/rotated scene must not flip a symmetric detour.
             if best is None or cost < best[0]-1e-8:
@@ -217,6 +238,8 @@ class LocalTrajectoryPlanner:
             status = 'no_observed_clear_path_brake'
         else:
             _, candidate, path, clearance, escaping = best
+            self.previous_detour = (timestamp, np.array(position, copy=True),
+                                    requested.copy(), candidate.copy())
             status = 'observed_obstacle_escape' if escaping else (
                 'observed_obstacle_detour' if np.linalg.norm(candidate) > .01 else 'observed_obstacle_brake')
         return dict(velocity=candidate, path=path, status=status, selected_margin_m=clearance,

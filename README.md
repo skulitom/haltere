@@ -99,8 +99,17 @@ amplitudes. The experimental simulator and flight-cost trainer retain explicit
 limits on unvalidated high-speed translation; no new racing result is implied.
 The first flight-cost checkpoint regressed and was rejected; the trainer now
 selects snapshots on complete maneuvers and checks a separate test seed.
+The second checkpoint improved simulated cost but was slower and less precise
+in Liftoff. A generic launch/braking fix let the unchanged motor10 brain finish
+the generated S-bend motor task in **29.315 s**, versus **28.505 s** for PD and
+**39.557 s** for the new weights. This is privileged trajectory guidance, not
+autonomous navigation or a race. All six attempts, including the earlier failed
+batch, are in the [motor comparison videos and evidence](https://github.com/skulitom/haltere/releases/tag/motor-tracking-comparison-20260923).
+The third training attempt completed that same motor task in **29.929 s**,
+but remained slower and less precise than its unchanged parent. None of these
+flight-cost checkpoints replaces the published model.
 
-Validation: **439 automated tests passed** (three existing warnings). The CPU
+Validation: **452 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

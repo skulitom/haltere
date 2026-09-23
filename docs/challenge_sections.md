@@ -258,5 +258,37 @@ moving detour takes precedence over permanent braking. Vertical alternatives,
 existing speed/view limits and original receipt ages remain intact. This is
 still incomplete observed geometry, not a free-space certificate. Its frozen
 batch finished 2/3 (2:28.763 and 2:39.492), with one declared wall stall and no
-detected impacts or runtime failures. A subsequent fix excludes tiny pure
-vertical corrections from the moving-detour candidates; it has not yet flown.
+detected impacts or runtime failures. The subsequent minimum-motion revision
+finished 1/3 (2:31.664), with one wall stall and one wall impact. It did not
+demonstrate an improvement.
+
+### Consistent detours and longer image baselines
+
+The stalled flight's last minute contained 107 reversals between upward and
+downward proposals. The drone remained almost stationary despite the 0.3 m/s
+minimum command. The revised planner treats clearance as a required constraint
+and penalizes changing a recently feasible detour when the task remains similar.
+Every continuation still receives fresh reaction, surface, braking and view
+checks. A short 0.5 m/s retreat is also considered when forward choices cannot
+leave an uncertain overlap. No route or course geometry supplies these choices.
+On the same recorded poses, the consistency change reduced vertical reversals
+from 107 to 1. This replay does not simulate the resulting motion or prove a
+completed flight.
+
+The image worker retains its existing 0.7 s tracker and adds a second reference
+of up to 2 s. Additional points require three-view agreement, uncertainty below
+10% of range and below 0.5 m; duplicate corners retain the more precise estimate.
+Across five recorded development approaches, the combined tracker added points
+with similar collider-relative depth error. Its 95th-percentile tracking time
+was 25--40 ms in that offline check. Missing pixels still remain unknown.
+Logs identify the added points and both reference-image limits. The full suite
+passed 452 tests; complete-system flight qualification remains separate.
+
+A parallel offline check of frozen Depth Anything V2 Small relative and metric
+models did not justify runtime integration. The strict relative-depth alignment
+had insufficient reliable anchors on all 25 selected frames. The unscaled
+outdoor metric model substantially overestimated some wall distances; the indoor
+model also retained material errors. These models have no control authority.
+Local probes and model revisions are retained in
+`runs/dense-depth-probe-20260923`, `runs/depth-keyframe-probe-20260923` and
+`runs/depth-multibaseline-probe-20260923`.

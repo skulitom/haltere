@@ -132,3 +132,37 @@ def test_tiny_requested_vertical_component_cannot_masquerade_as_a_detour():
     result=LocalTrajectoryPlanner().propose([0,0,0],[0,0,0],[2.5,0,-.02],scene,1.,view=view())
     assert result['status']=='observed_obstacle_detour'
     assert np.linalg.norm(result['velocity'])>=.3-1e-9
+
+
+def test_near_wall_overlap_can_retreat_when_forward_and_sideways_cannot_exit():
+    scene = surfaces([[.3, y, z] for y in np.arange(-5, 5.1, .5)
+                      for z in np.arange(-5, 5.1, .5)])
+    planner = LocalTrajectoryPlanner()
+    result = planner.propose([0, 0, 0], [0, 0, 0], [2.5, 0, 0], scene, 1., view=view())
+    assert result['status'] == 'observed_obstacle_escape'
+    assert result['velocity'][0] < 0
+    assert np.linalg.norm(result['path']['velocities'][-1]) < .01
+    from haltere.vision.surface_memory import observed_escape
+    assert observed_escape(result['path']['positions'], scene)['allowed']
+    # The same candidate cannot be used without the camera/view contract.
+    blind = planner.propose([0, 0, 0], [0, 0, 0], [2.5, 0, 0], scene, 1.)
+    assert blind['status'] == 'no_observed_clear_path_brake'
+
+
+def test_detour_direction_survives_small_cue_changes_but_never_bypasses_clearance():
+    planner = LocalTrajectoryPlanner()
+    low_bar = [[2, y, z] for y in np.arange(-5, 5.1, .5) for z in [-.1, .1]]
+    first = None
+    for i, vertical in enumerate([.02, -.02, .02, -.02]):
+        stamp = 1.+.2*i
+        result = planner.propose([0, 0, 0], [0, 0, 0], [2.5, 0, vertical],
+                                 surfaces(low_bar, stamp), stamp, view=view())
+        if first is None:
+            first = result['velocity'].copy()
+            assert first[2] > 0
+        np.testing.assert_allclose(result['velocity'], first)
+    tall_wall = [[2, y, z] for y in np.arange(-5, 5.1, .5) for z in np.arange(0, 5.1, .5)]
+    changed = planner.propose([0, 0, 0], [0, 0, 0], [2.5, 0, -.02],
+                              surfaces(tall_wall, 1.8), 1.8, view=view())
+    assert not np.allclose(changed['velocity'], first)
+    assert changed['selected_margin_m'] >= planner.config.extra_margin_m

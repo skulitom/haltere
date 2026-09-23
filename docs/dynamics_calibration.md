@@ -160,6 +160,11 @@ All three recordings decoded. These are three different controllers completing
 one stored motor task, **not 3/3 autonomous races**. The new weights were slower
 and less precise than their parent and remain unpromoted. Evidence is in
 `runs/motor-tracking-stable-guidance-20260923`.
+The [motor comparison release](https://github.com/skulitom/haltere/releases/tag/motor-tracking-comparison-20260923)
+contains all six untrimmed standard brain/gameplay videos from both batches,
+their telemetry, cards, frozen manifests and the training audits. All eight
+uploaded assets matched their local hashes and sizes. Rejected weights were
+retained locally rather than published as a new model download.
 
 Native-interval analysis of the PD recording estimated forward drag at
 0.0275/s, versus the surrogate's assumed 0.1/s. A small thrust-scale correction
@@ -176,6 +181,30 @@ recorded takes supply additional empty-arena retinal currents; they are sensory
 perturbations independent of the simulated pose. New development and final-test
 seeds are declared for each subsequent run. Ground contact and autonomous visual
 navigation still require live evidence.
+
+The third run (`motor-brain-11-flight-cost-03-20260923`, revision `432b390`)
+selected update 50 from 200 updates. On the separate seed 17493, its 16 tasks
+reduced cost from 4.461 to 3.109, velocity RMSE from 0.951 to 0.905 m/s and
+height RMSE from 1.245 to 0.989 m; neither brain crashed. The audit found changes
+to 2,767,278 edge magnitudes, 29,825 neuron gains, 29,864 neuron biases and the
+first three readout rows/biases. Wiring, transmitter signs, encoders and sensory
+normalization stayed unchanged. Its checkpoint SHA256 is
+`2729587ec0e3474280307e0f7ba16fb01dac67c324e7ec2f5c91ec1dd837071b`.
+
+The unchanged live S-bend comparison then produced:
+
+| Motor | Complete task time | Moving path RMS |
+| --- | ---: | ---: |
+| PD | 28.507 s | 0.164 m |
+| motor10 candidate05 | 29.319 s | 0.300 m |
+| motor11 flight-cost candidate03 | 29.929 s | 0.361 m |
+
+All three tasks completed with settled endpoints, no detected impacts or
+runtime failures, and fully decoded standard videos. The new weights improved
+substantially over candidate02, but were still slower and less precise than
+their unchanged parent. They remain unpromoted. This is one stored-route motor
+task per controller, not three autonomous races. Raw evidence and frozen cards
+are in `runs/motor-tracking-flightcost03-20260923`.
 
 Local raw evidence: `runs/dynamics-calibration-20260923` and
 `runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and

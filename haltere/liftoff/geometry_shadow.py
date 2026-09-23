@@ -20,7 +20,7 @@ from ..vision.camera import Camera
 from ..vision.geometry_mask import liftoff_geometry_mask
 from ..vision.local_trajectory import LocalTrajectoryPlanner
 from ..vision.surface_memory import SurfaceMemory
-from ..vision.temporal_depth import TemporalDepth
+from ..vision.temporal_depth import MultiBaselineDepth
 from .camera_pose import CameraPoseHistory
 
 
@@ -63,7 +63,7 @@ class MotionBuffer:
 class ShadowGeometry:
     def __init__(self, camera):
         self.camera = camera
-        self.tracker = TemporalDepth(camera)
+        self.tracker = MultiBaselineDepth(camera)
         # Liftoff scenery is stationary in the observed telemetry frame. Braking
         # removes the translation needed for fresh depth; it must not make a
         # nearby observed obstacle disappear merely because three seconds pass.
@@ -94,9 +94,11 @@ class ShadowGeometry:
         result = self.tracker.update(cv2.cvtColor(rgb,cv2.COLOR_RGB2GRAY),position,quaternion,
                                      captured_at,liftoff_geometry_mask(rgb))
         points,sigma = np.empty((0,3)),np.empty(0)
+        long_baseline_points = 0
         if result is not None:
             good = result['valid'] & (result['range_sigma_m'] < .25*result['range_m'])
             points,sigma = result['position_world'][good],result['range_sigma_m'][good]
+            long_baseline_points = int(result['long_baseline'][good].sum())
         tracked = time.monotonic()
         surfaces = self.memory.update(latest[3:6],captured_at,points,sigma)
         # Compute against current motion and retain original depth receipt times.
@@ -113,6 +115,7 @@ class ShadowGeometry:
                     input_age_s=now-latest[1],proposal_age_s=finished-captured_at,
                     tracking_ms=1000*(tracked-start),planning_and_surfaces_ms=1000*(finished-tracked),
                     valid_points=len(points),memory_points=len(surfaces['points']),triangles=len(surfaces['triangles']),
+                    long_baseline_points=long_baseline_points,
                     oldest_observation_age_s=surfaces['oldest_observation_age_s'],
                     memory_capacity_evictions=surfaces['capacity_evictions'],
                     patch_support_points=surfaces['patch_support_points'],
@@ -168,6 +171,7 @@ def shadow_worker(buffer, done, path, camera_config, source_route_oracle, fps, p
                       live_authority=proposals is not None,
                       runtime_course_geometry=False,source_flight_runtime_route_oracle=source_route_oracle,
                       camera=camera_config,planner_config=asdict(diagnostic.planner.config),
+                      depth_tracking=diagnostic.tracker.metadata(),
                       surface_memory=diagnostic.memory.metadata(),
                       fps=fps,frames=sum(counts.values()),status_counts=dict(counts),error=error,
                       images_preserved=archive_images,

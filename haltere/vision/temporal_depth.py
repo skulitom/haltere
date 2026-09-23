@@ -75,7 +75,8 @@ class TemporalDepth:
     The caller supplies them so task overlays never silently become obstacles.
     """
     def __init__(self, camera: Camera, *, max_age=.7, max_corners=500,
-                 require_third_view=True, reprojection_limit=2.):
+                 require_third_view=True, reprojection_limit=2.,
+                 refresh_sigma_fraction=None, refresh_sigma_m=None):
         if not np.isfinite(max_age) or max_age <= 0 or max_corners < 1:
             raise ValueError('Use a positive history window and feature count')
         self.camera,self.max_age,self.max_corners = camera,max_age,max_corners
@@ -86,6 +87,11 @@ class TemporalDepth:
             raise ValueError('Use a positive reprojection limit')
         self.require_third_view = require_third_view
         self.reprojection_limit = reprojection_limit
+        for limit in (refresh_sigma_fraction, refresh_sigma_m):
+            if limit is not None and (not np.isfinite(limit) or limit <= 0):
+                raise ValueError('Use positive finite keyframe precision limits')
+        self.refresh_sigma_fraction = refresh_sigma_fraction
+        self.refresh_sigma_m = refresh_sigma_m
 
     def update(self, gray, position, quaternion, timestamp, valid_mask):
         import cv2
@@ -134,8 +140,13 @@ class TemporalDepth:
                                   third_view_required=self.require_third_view)
         # Refresh after a usable translation, a stale keyframe or failed tracks.
         # The returned measurements always use the old and current frame only.
+        precise = np.zeros(0, bool) if result is None else result['valid'].copy()
+        if result is not None and self.refresh_sigma_fraction is not None:
+            precise &= result['range_sigma_m'] < self.refresh_sigma_fraction*result['range_m']
+        if result is not None and self.refresh_sigma_m is not None:
+            precise &= result['range_sigma_m'] < self.refresh_sigma_m
         refresh = (self.reference is None or timestamp-self.reference[4] >= self.max_age
-                   or result is not None and result['valid'].sum() >= 12)
+                   or precise.sum() >= 12)
         if refresh:
             points = cv2.goodFeaturesToTrack(gray,maxCorners=self.max_corners,qualityLevel=.01,
                                              minDistance=5,mask=valid_mask,blockSize=5)
@@ -144,3 +155,54 @@ class TemporalDepth:
         else:
             self.previous_tracks = tracks
         return result
+
+
+class MultiBaselineDepth:
+    """Keep the fast tracker while adding precise longer-baseline observations.
+
+    The second tracker can retain a reference for two seconds while the drone
+    slows down. Its additional points require three-view consistency, uncertainty
+    below 10% of range and below 0.5 m. Neither tracker fills unobserved pixels.
+    """
+    def __init__(self, camera: Camera):
+        self.fast = TemporalDepth(camera)
+        self.precise = TemporalDepth(camera, max_age=2.,
+                                     refresh_sigma_fraction=.1, refresh_sigma_m=.5)
+
+    def update(self, gray, position, quaternion, timestamp, valid_mask):
+        results = []
+        for tracker, strict in ((self.fast, False), (self.precise, True)):
+            result = tracker.update(gray, position, quaternion, timestamp, valid_mask)
+            if result is None:
+                continue
+            good = result['valid'].copy()
+            if strict:
+                good &= ((result['range_sigma_m'] < .1*result['range_m'])
+                         & (result['range_sigma_m'] < .5))
+            results.append((result, good, strict))
+        if not results:
+            return None
+        keys = ('position_world', 'range_m', 'optical_depth_m', 'range_sigma_m',
+                'parallax_deg', 'ray_gap_m', 'pixels')
+        merged = {key: np.concatenate([r[key][good] for r, good, _ in results]) for key in keys}
+        merged['long_baseline'] = np.concatenate([
+            np.full(good.sum(), strict, dtype=bool) for _, good, strict in results])
+        # Both keyframes can track the same corner. Keep its more precise
+        # measurement, rather than counting duplicates as independent support.
+        selected = {}
+        for i in np.argsort(merged['range_sigma_m'], kind='stable'):
+            cell = tuple(np.floor(merged['pixels'][i]/2).astype(int))
+            selected.setdefault(cell, i)
+        indices = np.asarray(sorted(selected.values()), dtype=int)
+        merged = {key: value[indices] for key, value in merged.items()}
+        return dict(**merged, valid=np.ones(len(indices), bool), capture_time=timestamp,
+                    third_view_required=True, establishes_free_space=False,
+                    source='causal dual-keyframe image correspondences and metric telemetry')
+
+    def metadata(self):
+        return dict(mode='dual keyframes', fast_max_age_s=self.fast.max_age,
+                    precise_max_age_s=self.precise.max_age,
+                    precise_max_sigma_m=self.precise.refresh_sigma_m,
+                    precise_max_sigma_fraction=self.precise.refresh_sigma_fraction,
+                    third_view_required=True, runtime_course_geometry=False,
+                    limits='Sparse surface observations only; no free-space certificate')
