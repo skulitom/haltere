@@ -69,21 +69,16 @@ finished that course in **3:35.704**, qualifying its playability; this is not an
 autonomous result. A causal image/motion geometry prototype detects the wall in
 the failed-flight replay. On the complete collection trajectory it produced no
 warnings, with 6.7% mean relative depth error on matched primitive surfaces, but
-coverage remains sparse. The first matched live geometry comparison finished
-**0/1 with geometry off and 1/1 with it on**, in **2:26.657**, on this known
-development course. Two unchanged assisted repeats then produced one finish
-(**2:24.148**) and another wall impact: **2/3 assisted finishes overall**.
-Both conditions used PD motors with the newest brain in shadow.
-After two unsuccessful memory revisions (0/3 each), the frozen recovery
-batch finished **2/3**, in **2:28.763** and **2:39.492**. The other attempt stalled
-at the final wall. There were no detected impacts or runtime failures in that
-batch. Its [three complete videos and evidence](https://github.com/skulitom/haltere/releases/tag/visual-geometry-recovery-20260923)
-include the failed attempt. A subsequent minimum-detour-motion revision finished
-**1/3**, in **2:31.664**, with one wall impact and one declared wall stall.
-It is not a demonstrated improvement. The brain remained in shadow throughout;
-no new neural weights were trained.
-This is an initial obstacle-assistance result, not evidence of reliable transfer
-or progress against the five-track speed threshold.
+coverage remains sparse. The latest frozen geometry batch finished **2/3** on
+this known development course, in **2:31.958** and **6:51.857**. The third attempt
+hit the final wall after descending through a gap in the observed geometry.
+All three complete standard brain/gameplay videos decode. PD controlled the
+motors and the brain ran in shadow; no neural weights changed. Earlier batches
+and failures remain in the linked flight record. Reliable obstacle avoidance,
+brain-controlled transfer and the five-track speed target remain unmet.
+The experimental runner now also accepts geometry guidance with a motor-tracking
+brain, preserving its throttle/roll/pitch outputs; that integration still needs
+complete flight evidence before promotion.
 [Live comparison and limits](docs/flight_cards/2026-09-23_geometry_control.md).
 [Attempts, diagnostic and limits](docs/flight_cards/2026-09-23_obstacle_geometry.md).
 Course geometry is excluded from autonomous runtime; oracle collection is
@@ -109,7 +104,7 @@ The third training attempt completed that same motor task in **29.929 s**,
 but remained slower and less precise than its unchanged parent. None of these
 flight-cost checkpoints replaces the published model.
 
-Validation: **452 automated tests passed** (three existing warnings). The CPU
+Validation: **464 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

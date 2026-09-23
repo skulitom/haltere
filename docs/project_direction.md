@@ -119,6 +119,10 @@ failures. Retaining static surfaces with explicit recovery and feasible motion
 before braking then finished 2/3 (2:28.763 and 2:39.492), with one declared wall
 stall and no detected impacts or runtime failures. The subsequent minimum-motion
 revision finished 1/3 (2:31.664), with one wall impact and one declared wall stall.
+Consistent detours and dual image keyframes then finished 2/3 (2:31.958 and
+6:51.857), with another final wall impact through incomplete observed geometry.
+That batch still used PD motors with the brain in shadow; it does not qualify
+the subsequent brain/geometry integration or establish a reliable improvement.
 This is development PD
 evidence, not main-track, transfer or brain-control acceptance.
 See the [live geometry comparison](flight_cards/2026-09-23_geometry_control.md).

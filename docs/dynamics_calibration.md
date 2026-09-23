@@ -205,6 +205,8 @@ substantially over candidate02, but were still slower and less precise than
 their unchanged parent. They remain unpromoted. This is one stored-route motor
 task per controller, not three autonomous races. Raw evidence and frozen cards
 are in `runs/motor-tracking-flightcost03-20260923`.
+All three [candidate03 comparison videos and their evidence](https://github.com/skulitom/haltere/releases/tag/motor-flightcost03-comparison-20260923)
+are published; all five remote asset hashes and sizes were verified.
 
 Local raw evidence: `runs/dynamics-calibration-20260923` and
 `runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and

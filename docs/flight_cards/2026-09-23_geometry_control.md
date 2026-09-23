@@ -212,3 +212,33 @@ constraints block further climbing. The impact's final nominal path was reported
 clear despite a hole in observed wall coverage. Fixing tiny motions did not solve
 either underlying limitation. The local audit is descriptive, never a
 counterfactual finish or proof of safe free space.
+
+## Consistent detours and dual keyframes: 2/3
+
+Frozen runtime `c76722d`, `runs/geometry-consistent-depth-20260923`. All three
+attempts retained the original `[Copy] New Drone`, PD motors, motor10 in shadow,
+the same known one-lap course, 2.5 m/s guidance and the existing stop rules.
+
+| Attempt | Result | Full race time |
+|---|---|---|
+| 1 | Game-confirmed full finish | 2:31.958 |
+| 2 | Game-confirmed full finish | 6:51.857 |
+| 3 | Detected final wall impact; clock 2:18.872 | Incomplete |
+
+All three standard brain/gameplay videos fully decode. There were no resets,
+operator flight interventions, camera failures or controller deadline failures.
+Worker p95 was 104.2, 307.8 and 137.5 ms. Attempt 2 frequently rejected aging
+proposals and spent several minutes near the wall before climbing over it.
+Attempt 3 descended until a hole in the observed wall coverage admitted forward
+motion, then hit the wall. Its final images still show the wall filling the view.
+This batch does not establish reliable obstacle avoidance or faster racing.
+The local runtime received only causal images, telemetry and visible race cues;
+no course geometry or learned depth model was loaded. No neural weights changed.
+
+The next integration exposes the same local target/velocity boundary to a
+motor-tracking brain. Its training reference speed and the visual assistant's
+velocity scaling determine target conversion; the connectome still supplies
+throttle, roll and pitch, with assisted yaw. PD remains a separate comparison.
+The footage and metadata distinguish these motor roles. Unit checks establish
+the coordinate/authority contract only; complete brain-controlled flights and
+transfer remain required. The incomplete geometry is shared by both motors.

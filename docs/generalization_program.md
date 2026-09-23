@@ -69,6 +69,10 @@ faster queries also finished 0/3, without timing failures. Explicit overlap
 recovery and feasible motion before braking then finished 2/3, with one wall
 stall and no detected impacts or runtime failures. A subsequent minimum-motion
 revision finished 1/3 (2:31.664), with one wall impact and one declared wall stall.
+The following dual-keyframe/consistent-detour batch finished 2/3 (2:31.958 and
+6:51.857), again with a final wall impact. Its PD motors and shadow brain do not
+establish brain-controlled obstacle avoidance. Sparse depth coverage remains
+the immediate perception limitation; do not infer free space from missing points.
 These failures prevent a reliability claim; broader geometry and motor work
 remain required. Do not promote a local planner change from a successful replay.
 The [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves

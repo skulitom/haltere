@@ -69,12 +69,25 @@ def test_explicit_escape_proposal_survives_transport_and_freshness_gate():
 
 
 @pytest.mark.parametrize('change',[{'collection_route':'known-route.json'},
-                                 {'motor_controller':'brain'},{'pilot_assistance':'rabbit'},
+                                 {'pilot_assistance':'rabbit'},
                                  {'geometry_shadow':True}])
 def test_runtime_refuses_oracle_or_unsupported_geometry_control_before_loading(change):
     from types import SimpleNamespace
     from haltere.liftoff.visual_brain import run
     options=dict(seconds=10,max_height=10,max_speed=5,max_distance=20,geometry_control=True,
                  geometry_shadow=False,motor_controller='pd',pilot_assistance='race-cue',collection_route=None)
-    with pytest.raises(ValueError,match='requires race-cue PD'):
+    with pytest.raises(ValueError,match='requires race-cue guidance'):
         run(SimpleNamespace(**{**options,**change}))
+
+
+def test_runtime_accepts_explicit_brain_geometry_up_to_normal_preflight(monkeypatch):
+    from types import SimpleNamespace
+    from haltere.liftoff.visual_brain import run
+    def stop_at_preflight(*args, **kwargs):
+        raise RuntimeError('normal workload check reached')
+    monkeypatch.setattr('haltere.liftoff.preflight.require_quiet', stop_at_preflight)
+    options = SimpleNamespace(seconds=10, max_height=10, max_speed=5, max_distance=20,
+        geometry_control=True, geometry_shadow=False, motor_controller='brain',
+        pilot_assistance='race-cue', collection_route=None, log='unused-test-geometry.csv', record=None)
+    with pytest.raises(RuntimeError, match='normal workload check reached'):
+        run(options)

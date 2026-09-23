@@ -1,4 +1,4 @@
-"""Explicit experimental boundary between visual proposals and PD guidance.
+"""Explicit experimental boundary between visual proposals and local guidance.
 
 No control process is created here. The caller must opt in and retain its own
 image, telemetry, flight-limit and impact guards. Unknown space is never certified.

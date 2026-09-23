@@ -26,6 +26,9 @@ finished **0/3** with two declared stalls and a wall impact, without timing
 failures. Explicit overlap recovery and feasible motion before braking then
 finished **2/3**, in **2:28.763** and **2:39.492**, with one wall stall and no
 detected impacts or runtime failures. All failures remain in the record.
+The latest dual-keyframe/consistent-detour batch finished **2/3**, in **2:31.958**
+and **6:51.857**, with a final wall impact in the third attempt. All videos decode;
+PD still controlled the motors. Missing observed surfaces remain a failure mode.
 
 ## 2026-09-23 full-race motor comparison
 
