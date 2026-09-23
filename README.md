@@ -20,70 +20,57 @@ experimental brain or evidence of arbitrary-course flight.*
 
 ## Current status
 
-**Reviewed against the code and tracked evidence on 2026-09-22.**
-The automated suite and targeted scorer regression checks passed. The CPU
-quickstart executed, and the newest local scene brain passed headless checks in both
-assisted and unassisted modes. Command examples and local links were checked.
-The Rabbit baseline recordings cover Straw Bale, Minus Two and three unchanged
-attempts on the project-unseen Hangar C03 track. **No attempt completed a lap;
-all five race attempts stopped on impact.** The newest brain and restored pilot
-run together, but race generalization remains unsolved. See the
-[recordings and flight evidence](docs/flight_cards/README.md#2026-09-22-assisted-scene-brain).
-A fresh installation has not been revalidated.
-An explicit [race-cue experiment](docs/race_cue_assistance.md) now reads the
-game's visible checkpoint marker alongside the frozen learned scene features.
-After fixing flag clearance and downhill recovery, it completed all three
-Straw Bale laps in **14:05.703**, with no detected contact or flight intervention.
-[Straw Bale evidence](docs/flight_cards/2026-09-22_strawbale_cue_04.md).
-The unchanged controller then finished all three Minus Two laps in **09:27.415**,
-also without detected contact or intervention.
-[Minus Two evidence](docs/flight_cards/2026-09-22_minustwo_cue_01.md).
-Both are seen courses; unseen completion remains unproven.
-The race-cue stack finished **0/5 first-exposure courses** across successive
-development revisions. The [next development sequence](docs/generalization_program.md)
-uses code-generated and Workshop course pools, frozen evaluation batches, a
-matched motor-controller comparison, and camera-based free-space planning.
-An edited Workshop copy and a fully generated course both loaded successfully.
-The generated loop has now completed a full race; the geometry layer is still pending.
-Manual map design is not part of this workflow.
-A [matched motor comparison](docs/motor_tracking.md) now covers three development
-courses. The conventional baseline ran faster at the same nominal speed setting,
-but one indoor attempt stopped on a control deadline. Faster brain motor-readout
-training is experimental; simulation gains alone do not qualify new weights.
-The [motor10 candidate05 bundle](docs/motor_brain_10_release.md), reviewed on
-2026-09-23, improves simulated braking and uses optional GPU vision. Its first
-frozen development batch finished 0/3; a separate generated-loop repeat finished
-in **3:01.576** at a **2.31 m/s** median, without detected contact or intervention.
-It remains experimental: the flag and pillar collisions are unresolved, and
-the open generated loop does not establish unseen-race or freestyle capability.
-Subsequent held-out attempts exposed descent, camera-timing, high-checkpoint
-and obstacle-planning failures. Generic recovery fixes are tracked alongside
-every failed attempt in the [flight index](docs/flight_cards/README.md).
-The full suite passed 342 automated tests; earlier race finishes
-do not substitute for full-race checks of later controller revisions.
-These cues do not supply a freestyle planner.
-The [project direction](docs/project_direction.md) records the current goal,
-allowed helpers and evaluation criteria. It supersedes the earlier restriction
-that the navigation predictor must be training-only.
+**Reviewed against code and flight evidence on 2026-09-23.** Haltere can finish
+specific seen races with assistance, but reliable, fast general race and
+freestyle flight remains unsolved. The newest published weights are
+[motor10 candidate05](docs/motor_brain_10_release.md), an experimental download,
+not a promoted replacement for [scene09](docs/scene_brain_09_release.md).
 
-| Area | What exists | What the evidence establishes |
-|---|---|---|
-| Published controllers | `ftSmooth` for hover/patterns; `ftPath2` for guided flight | Recorded Liftoff flight on specific setups. Route and visual-pilot assistance contribute to the results. |
-| New visual brain | Human, gate and scene training; a separate visual runtime | Experimental progress, including partial course traversal. No qualified general race/freestyle controller. |
-| Restored pilot assistance | Optional Rabbit guidance, speed and yaw around the visual brain | Live integration verified on three maps; zero completed laps in five race attempts. [Usage and limits](docs/visual_pilot_assistance.md). |
-| Visible race cues | Experimental checkpoint-ring guidance with flag clearance and downhill recovery | Full three-lap finishes on Straw Bale and Minus Two with identical controller settings. [Inputs and limits](docs/race_cue_assistance.md). |
-| Navigation predictor | Causal 0.25–1 s path forecasts; offline evaluation and distillation | Runtime use is allowed, but no current live runner loads it. Prediction error is not flight success. |
-| Generalization | Whole-flight splits, race flight cards and synthetic stress tests | Unseen race and freestyle completion remain open goals. |
+The current acceptance target is **three clean full races on each of five
+tracks, within 20% of the user's matching full-race time**, on one frozen stack
+using the same original `[Copy] New Drone`:
 
-The newest completed scene candidate reviewed here is
-`runs/scene-brain-09-navigation/last.pt`. It learns visual currents into the
-brain's goal neurons while preserving the parent's original weights. It is not
-the separate path predictor. Its [experimental inference bundle](docs/scene_brain_09_release.md)
-is available on GitHub and Hugging Face with the exact matching detector and
-mapping. It does not replace `ftPath2`: it failed the Rabbit baseline and
-completed two seen races with visible-cue assistance. See
-[the training record](docs/human_brain_training.md) and
-[assisted-run guide](docs/visual_pilot_assistance.md).
+| Three-lap race | User's full-race time | Maximum target time |
+|---|---:|---:|
+| Straw Bale / Field Day | 1:19.006 | 1:34.807 |
+| Pine Valley / Forest For The Trees | 2:07.049 | 2:32.459 |
+| Minus Two / Turn Signals | 1:29.277 | 1:47.132 |
+| Autumn Fields / Walk In The Park | 1:04.494 | 1:17.392 |
+| Hangar C03 / Shipments | 1:24.076 | 1:40.891 |
+
+These are saved **race**, not single-lap, times. Exact IDs, values and provenance
+are in [main_track_targets.json](configs/main_track_targets.json). They are
+scoring metadata and are never supplied to the flight controller.
+
+The latest [frozen full-race comparison](docs/flight_cards/2026-09-23_matched_full_races.md)
+used motor10 and a corrected PD baseline under the same visual pilot at 2.5 m/s:
+**brain 0/2 finishes; PD 1/2**. PD finished Straw Bale in **13:04.047**;
+both motors hit a pillar on Minus Two. There were no camera or control-deadline
+stops. All four untrimmed standard brain/gameplay videos fully decode; PD footage
+explicitly labels the brain as running in shadow. This diagnostic supports
+geometry as the next priority and also exposes a motor-tracking gap.
+
+| Component | Current evidence and limits |
+|---|---|
+| Scene09 + visible race cues | Earlier full three-lap finishes: Straw Bale **14:05.703**, Minus Two **9:27.415**. Both are seen courses. |
+| Motor10 candidate05 | Only three motor-readout rows/biases changed; recurrent weights are unchanged. Its release batch finished 0/3; a separate open development-loop repeat finished in **3:01.576**. Later diagnostic results are retained separately. |
+| Full Rabbit visual assistance | Gate selection, target smoothing, speed and heading run with the visual brain. Its frozen five-attempt baseline completed no laps. [Guide](docs/visual_pilot_assistance.md). |
+| Visible race cues | Causal checkpoint-marker guidance is disclosed. It supplies a direction, not free space or a freestyle objective. [Inputs](docs/race_cue_assistance.md). |
+| Navigation predictor | Runtime use is allowed. No current flight runner loads the motion-forecasting predictor; it lacks task-directed flight evidence. [Direction](docs/project_direction.md). |
+| Generalization | Five first-exposure courses failed across successive development revisions. A completed open generated loop does not establish obstacle avoidance or unseen racing. |
+
+The [development program](docs/generalization_program.md) uses generated and
+Workshop courses, frozen comparisons, camera-derived geometry, then broader
+brain training. Manual map design is unnecessary. The
+[obstacle-section generator and offline scorer](docs/challenge_sections.md)
+include physical gate frames, descents and occlusions; their game qualification
+and the live geometry layer are still pending. Course geometry remains offline.
+
+Validation: **366 automated tests passed** (three existing warnings). The CPU
+quickstart and checkpoint loading were checked in this checkout, and recorded
+flights verified actual processed controls. A fresh installation has not been
+revalidated. See the [flight index](docs/flight_cards/README.md) for historical
+attempts and [project direction](docs/project_direction.md) for acceptance rules.
 
 ## Quickstart
 

@@ -9,6 +9,15 @@ and success criterion rather than substitute a gate count.
 One card per flight, written **before** it and appended to after. A prediction written after the
 flight does not exist. Rules: `docs/generalisation.md`.
 
+## 2026-09-23 full-race motor comparison
+
+[The corrected, frozen four-flight comparison](2026-09-23_matched_full_races.md)
+finished **0/2 with motor10 candidate05 and 1/2 with PD**. PD completed all three
+Straw Bale laps in **13:04.047**; both motors hit a Minus Two pillar. No camera or
+control-deadline stops occurred. All four standard brain/gameplay videos fully
+decode. These results prioritize geometry while preserving the observed motor
+tracking gap; they do not meet the user's five-track speed target.
+
 ## 2026-09-22 assisted scene brain
 
 Newest completed local brain `runs/scene-brain-09-navigation/last.pt`, full

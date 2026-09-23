@@ -9,10 +9,17 @@ gain bottoms out at one, and its parent motor objective targets about 2 m/s.
 
 `--motor-controller pd` substitutes a conventional position/velocity/attitude
 controller under the same race-cue guidance. It consumes the same causal local
-target and assisted velocity measurements, with no course geometry. It uses
+target and unscaled measured velocity, with no course geometry. It uses
 the original drone's rate curves and measured near-hover throttle calibration.
 The brain continues in shadow for inspection. CSV, metadata, scorer and video
 identify which controller actually commands the motors.
+
+Since 2026-09-23, PD uses the effective requested speed and
+`position_gain=max(.8, speed/3)`, matching the motor-training teacher. Previously,
+when requested speed was below the trained reference, it incorrectly received
+scaled velocity and the reference speed. Only brain observations retain the
+speed-dependent sensory scaling. The earlier scene09 comparison at equal
+requested/reference speeds of 2 m/s was unaffected by that mismatch.
 
 ```powershell
 .venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/scene-brain-09-navigation/last.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --motor-controller pd --pilot-assistance race-cue --assist-speed 2 --device cpu --seconds 180 --log runs/comparison-pd.csv --record runs/comparison-pd.mp4 --udp-out 127.0.0.1:9003 --pause-on-stop --max-height 250 --max-speed 12 --max-distance 2000

@@ -66,3 +66,16 @@ def test_impact_monitor_distinguishes_thrust_from_a_side_collision():
     ground=ImpactMonitor()
     for i in range(4):
         assert not ground.update(i*.01,pos*0,np.array([0.,0.,-i]),q)
+
+
+def test_impact_guard_stays_active_below_launch_height_and_on_a_drop():
+    from haltere.liftoff.flight_guard import ImpactMonitor
+    q=np.array([1.,0.,0.,0.])
+    for start_height in [1., -1.]:
+        guard=ImpactMonitor()
+        for i in range(4):
+            assert not guard.update(i*.01,[0.,0.,start_height],[2.,0.,0.],q)
+        # A low checkpoint after a climb, or a launch off a raised platform,
+        # still needs the same lateral collision guard.
+        assert guard.update(.04,[0.,0.,-3.],np.zeros(3),q)
+        assert guard.impact['unexplained_mps2']>60

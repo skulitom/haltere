@@ -10,13 +10,18 @@ class ImpactMonitor:
     def __init__(self):
         self.history=deque(maxlen=4)
         self.impact=None
+        self.departed_launch_plane=False
 
     def update(self, timestamp, position, velocity, quaternion):
         if self.history and timestamp<=self.history[-1][0]:
             return False
         up=quat_wxyz_to_mat(quaternion)[:,2]
         self.history.append((float(timestamp),np.array(velocity,copy=True),up))
-        if len(self.history)<4 or position[2]<.4:
+        # Position is relative to launch, not height above local ground.
+        # Once the drone leaves that plane, descending below it must not
+        # disable collision detection. A drop from a raised start also arms it.
+        self.departed_launch_plane |= abs(float(position[2]))>=.4
+        if len(self.history)<4 or not self.departed_launch_plane:
             return False
         first,last=self.history[0],self.history[-1]
         dt=last[0]-first[0]

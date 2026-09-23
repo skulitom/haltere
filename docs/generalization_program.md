@@ -11,8 +11,13 @@ completion requirement per track; speed without clean finishes does not pass.
 The user confirmed that these personal times used `[Copy] New Drone`; autonomous
 runs retain that same original calibrated drone.
 
-Current priority: correct PD wiring and workload isolation, then four full-race
-comparisons (PD and motor10 candidate05 on Straw Bale and Minus Two at 2.5 m/s).
+The corrected PD wiring and workload checks are implemented. The four full-race
+comparisons (PD and motor10 candidate05 on Straw Bale and Minus Two at 2.5 m/s)
+finished **brain 0/2, PD 1/2**. Both motors hit the Minus Two pillar; PD alone
+finished Straw Bale in **13:04.047**. There were no camera/deadline failures.
+The [complete batch record](flight_cards/2026-09-23_matched_full_races.md)
+retains all attempts. Current priority is obstacle geometry, while retaining the
+motor-tracking gap as a separate problem to address through later flight-cost training.
 Use unscaled measured velocity, the effective requested speed and
 `position_gain=max(.8, speed/3)` for PD, matching its training-teacher contract.
 The brain alone retains its speed-dependent sensory scaling. Report finishes,
@@ -35,10 +40,13 @@ still rejects any exception measured at half a CPU core or more, and retains
 preflight and postflight snapshots. This is a disclosed exception to the original
 "nothing else running" condition, not evidence that Windows sessions isolate CPU/GPU resources.
 
-Next build challenge sections with nearby obstacles and per-section outcomes,
+Next qualify challenge sections with nearby obstacles and per-section outcomes,
 then develop and freeze the geometry on/off comparison. Do not substitute another
 readout fit for obstacle clearance. Full-throttle/high-rate measurements and brain
 training through flight costs come after these steps.
+The [section generator and offline scorer](challenge_sections.md) now implement
+that course format, including explicit unknown geometry and a separate box-only
+depth-calibration variant. In-game qualification and live depth integration remain pending.
 
 The race-cue stack has two seen-course full finishes and **zero full finishes on
 five first-exposure courses**: Hannover, The Pit, Paris, Hall 26 and The Green.
