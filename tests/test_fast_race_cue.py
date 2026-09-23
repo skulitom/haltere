@@ -451,3 +451,22 @@ def test_fast_cue_reads_no_files_and_imports_no_course_or_route_module():
     forbidden = called & {'open', 'load', 'safe_load', 'loads', 'read_text', 'read_bytes', 'Path', '__import__',
                           'import_module'}
     assert not forbidden, f'FastRaceCue calls {forbidden}'
+
+
+def test_fast_brain_contract_scales_goal_and_velocity_senses():
+    from haltere.train.fast_motor_tracking import fast_contract
+    contract = fast_contract(8.)
+    assert contract['goal_seconds'] * 8. == pytest.approx(3.)
+    assert contract['velocity_scale'] * 8. == pytest.approx(3.)
+    with pytest.raises(ValueError):
+        fast_contract(0.)
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 8., reference_speed=8., velocity_scale=contract['velocity_scale'])
+    drive(pilot, history, cue_toward([10., 0., 0.]), 5, velocity=(4., 0., 0.))
+    assert pilot.host.flow_gain == pytest.approx(.375)
+    s = senses(position=(0., 0., 5.), velocity=(4., 0., 0.))
+    _, modified = pilot.update(s, np.zeros(3), None, None, 20.)
+    assert float(modified['vel_world'][0, 0]) == pytest.approx(1.5)
+    assert float(modified['vel_world'][0, 2]) == pytest.approx(float(s['vel_world'][0, 2]))
+    with pytest.raises(ValueError):
+        FastRaceCue(SENSOR, CameraPoseHistory(), 8., velocity_scale=0.)

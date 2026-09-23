@@ -262,11 +262,17 @@ class VisualController:
                 if not axis.get('super_after_expo'):
                     raise ValueError('The fast pilot requires a measured post-expo yaw curve')
                 yaw_curve = (axis['coefficient_deg_s'], axis['super_rate'], axis['expo'])
+            fast_brain = self.meta.get('fast_motor_tracking') if motor_controller == 'brain' else None
+            if fast_brain:
+                reference = fast_brain['nominal_speed_mps']
+                if assist_speed > reference+1e-9:
+                    raise ValueError('The fast brain contract was trained up to its nominal speed')
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
                                           reference_speed=assist_speed if pd_profile == 'fast' else reference,
-                                          yaw_curve=yaw_curve,calibration=self.calibration)
+                                          yaw_curve=yaw_curve,calibration=self.calibration,
+                                          velocity_scale=fast_brain['velocity_scale'] if fast_brain else None)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
             reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
@@ -295,6 +301,19 @@ class VisualController:
             self.motor_speed = min(self.assistance.speed, self.assistance.reference_speed)
             self.guidance_velocity = GuidanceVelocityContract.brain(
                 self.assistance.speed, self.assistance.reference_speed)
+        if (motor_controller == 'brain' and pilot_profile == 'fast'
+                and self.meta.get('fast_motor_tracking')):
+            from .guidance_contract import GuidanceVelocityContract
+            fast_brain = self.meta['fast_motor_tracking']
+            # The brain's trained contract: goal = request * declared seconds.
+            self.motor_speed = self.assistance.speed
+            self.guidance_velocity = GuidanceVelocityContract(1./fast_brain['goal_seconds'],
+                                                              1./fast_brain['vertical_goal_seconds'],
+                                                              self.motor_speed, self.assistance.config.vertical_up)
+            self.motor_metadata = dict(kind='brain', brain_controls_motors=True, contract='fast_velocity_brain_v1',
+                                       fast_motor_tracking={k: fast_brain[k] for k in
+                                                            ('nominal_speed_mps','goal_seconds','velocity_scale',
+                                                             'vertical_goal_seconds','teacher')})
         if motor_controller == 'pd':
             from dataclasses import replace
             from ..brain.motor_baseline import MotorPD, MotorPDConfig
@@ -665,7 +684,8 @@ def run(args):
                                'ORACLE MOTOR DIAGNOSTIC | BRAIN MOTORS | ASSISTED YAW')
                               if controller.assistance_mode == 'oracle-route' else 'FAST PD MOTORS | FAST CUE PILOT | BRAIN IN SHADOW'
                               if controller.fast_motor is not None else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
-                              if controller.motor_baseline else '') if shared else None
+                              if controller.motor_baseline else 'BRAIN MOTORS | FAST CUE PILOT | ASSISTED YAW'
+                              if controller.pilot_profile == 'fast' else '') if shared else None
     if recorder:
         try:
             recorder.start()
