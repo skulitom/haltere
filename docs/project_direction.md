@@ -117,7 +117,9 @@ and two operator-stopped stalls. Short-lived interpolation and faster queries
 then finished 0/3 with two declared stall stops and a wall impact, without timing
 failures. Retaining static surfaces with explicit recovery and feasible motion
 before braking then finished 2/3 (2:28.763 and 2:39.492), with one declared wall
-stall and no detected impacts or runtime failures. This is development PD
+stall and no detected impacts or runtime failures. The subsequent minimum-motion
+revision finished 1/3 (2:31.664), with one wall impact and one declared wall stall.
+This is development PD
 evidence, not main-track, transfer or brain-control acceptance.
 See the [live geometry comparison](flight_cards/2026-09-23_geometry_control.md).
 See the [current program](generalization_program.md) and

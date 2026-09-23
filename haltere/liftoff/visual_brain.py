@@ -173,14 +173,17 @@ class RetinaCamera:
 class VisualController:
     """Visual brain with an explicit optional guidance/yaw assistant."""
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
-                 pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None):
+                 pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
+                 dynamics_calibration=None):
         if pilot_assistance not in ('none', 'rabbit', 'race-cue'):
             raise ValueError('Unknown pilot assistance mode')
         if motor_controller not in ('brain', 'pd'):
             raise ValueError('Unknown motor controller')
         if collection_route and (motor_controller != 'pd' or pilot_assistance != 'none'):
             raise ValueError('Oracle collection requires explicit PD motors and no visual pilot mode')
-        if motor_controller == 'pd' and pilot_assistance != 'race-cue' and not collection_route:
+        if dynamics_calibration and (motor_controller!='pd' or pilot_assistance!='none' or collection_route):
+            raise ValueError('Dynamics calibration requires PD and no visual pilot or oracle route')
+        if motor_controller == 'pd' and pilot_assistance != 'race-cue' and not collection_route and not dynamics_calibration:
             raise ValueError('PD comparison requires the frozen race-cue guidance')
         # Offline demonstration replay must preserve missing-gate observations
         # even when the demonstrator safely continues beyond the live stop limit.
@@ -244,6 +247,10 @@ class VisualController:
             self.assistance = RaceCueAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
                                                 reference_speed=reference)
         self.assistance_mode = pilot_assistance
+        if dynamics_calibration:
+            from .dynamics_calibration import DynamicsCalibration
+            self.assistance = DynamicsCalibration(dynamics_calibration,c)
+            self.assistance_mode = 'dynamics-calibration'
         if collection_route:
             from .oracle_assistance import OracleCollectionAssistance
             self.assistance = OracleCollectionAssistance(collection_route,
@@ -283,7 +290,7 @@ class VisualController:
         if self.last_ts is not None and frame.timestamp < self.last_ts-.1:
             raise RuntimeError('Game reset; stop this attempt')
         if self.last_ts != frame.timestamp:
-            if self.assistance_mode == 'oracle-route':
+            if self.assistance_mode in ('oracle-route','dynamics-calibration'):
                 self.assistance.bind(frame)
             previous = self.pose.prev_quat.copy() if self.pose.prev_quat is not None else None
             prev_omega = self.pose.omega.copy()
@@ -520,6 +527,10 @@ def run(args):
         raise ValueError('Use finite positive flight limits')
     camera_fps = getattr(args, 'camera_fps', 48.)
     geometry_control = getattr(args,'geometry_control',False)
+    calibration_mode = getattr(args,'dynamics_calibration',None)
+    if calibration_mode and (geometry_control or getattr(args,'geometry_shadow',False)
+                             or not args.pause_on_stop or not args.udp_out):
+        raise ValueError('Dynamics calibration requires explicit UDP control, pause-on-stop and no geometry mode')
     if geometry_control and (getattr(args,'geometry_shadow',False)
                              or getattr(args,'collection_route',None)
                              or getattr(args,'motor_controller','brain')!='pd'
@@ -540,7 +551,8 @@ def run(args):
                                   pilot_assistance=getattr(args,'pilot_assistance','none'),
                                   assist_speed=getattr(args,'assist_speed',2.),
                                   motor_controller=getattr(args,'motor_controller','brain'),
-                                  collection_route=getattr(args,'collection_route',None))
+                                  collection_route=getattr(args,'collection_route',None),
+                                  dynamics_calibration=calibration_mode)
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -576,6 +588,7 @@ def run(args):
                               encoder=getattr(args,'video_encoder','libx264'),
                               controller_label='SHADOW ONLY | NO CONTROL OUTPUT' if not pad else
                               'VISUAL GEOMETRY | PD MOTORS | BRAIN IN SHADOW' if geometry_control else
+                              'DYNAMICS CALIBRATION | PD + PULSES | BRAIN IN SHADOW' if calibration_mode else
                               'ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW'
                               if controller.assistance_mode == 'oracle-route' else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
                               if controller.motor_baseline else '') if shared else None
@@ -639,7 +652,8 @@ def run(args):
                              'command_thr','command_roll','command_pitch','command_yaw',
                              'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase',
                                  'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller',
-                                 'nominal_gate_bx','nominal_gate_by','nominal_gate_bz','geometry_control_status'])
+                                 'nominal_gate_bx','nominal_gate_by','nominal_gate_bz','geometry_control_status',
+                                 'rpm_lf','rpm_rf','rpm_lb','rpm_rb'])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -732,11 +746,12 @@ def run(args):
                                  controller.assistance.pilot.mode if controller.assistance else -1,
                                  controller.assistance.host.flow_gain if controller.assistance else 1.,
                                  controller.assistance.pilot.n_passes if controller.assistance else 0,elapsed,
-                                 {'none':0,'rabbit':1,'race-cue':2,'oracle-route':3}[controller.assistance_mode],
+                                 {'none':0,'rabbit':1,'race-cue':2,'oracle-route':3,'dynamics-calibration':4}[controller.assistance_mode],
                                  *((detection.get('race_cue') or {}).get(k,-1) if detection else -1
                                    for k in ('u','v','edge','aim_u')),controller.motor_controller,
                                  *controller.nominal_relative_gate,
-                                 controller.geometry_gate.status if controller.geometry_gate else 'disabled'])
+                                 controller.geometry_gate.status if controller.geometry_gate else 'disabled',
+                                 *(list(frame.motor_rpm[:4])+[float('nan')]*max(0,4-len(frame.motor_rpm)))])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -756,6 +771,9 @@ def run(args):
                     geometry.buffer.publish(now,last_frame,frame.timestamp,pos,q,velocity,desired)
                     loop_phases['geometry_publish_ms'] = 1000*(time.monotonic()-loop_mark)
                 count += 1
+                if calibration_mode and controller.assistance.complete:
+                    reason = 'Dynamics calibration sequence complete; stable hover restored'
+                    break
                 if controller.assistance_mode == 'oracle-route' and controller.assistance.complete:
                     reason = 'Oracle collection route endpoint reached; game finish requires separate confirmation'
                     break
@@ -798,11 +816,12 @@ def run(args):
             gc.enable()
         assisted = controller.assistance is not None
         pilot_meta = controller.assistance.metadata() if assisted else dict(mode='none')
-        if controller.motor_baseline and controller.assistance_mode != 'oracle-route':
+        if controller.motor_baseline and controller.assistance_mode not in ('oracle-route','dynamics-calibration'):
             pilot_meta['motor_control'] = 'PD throttle/roll/pitch; assisted yaw; brain runs in shadow'
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
                       control_mode=('experimental visual geometry guidance; PD motors; brain in shadow' if geometry_control else
+                                    'Dynamics calibration; PD and input pulses; brain in shadow' if calibration_mode else
                                     'PRIVILEGED oracle collection; PD motors; brain in shadow' if controller.assistance_mode == 'oracle-route' else
                                     'PD motor baseline; brain in shadow' if controller.motor_baseline else
                                     'pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
@@ -833,7 +852,7 @@ def run(args):
                       visible_race_cues=controller.assistance_mode=='race-cue',
                       gate_sensor=controller.meta.get('gate_sensor'),
                       runtime_route_oracle=controller.assistance_mode == 'oracle-route',
-                      autonomous_evaluation_eligible=controller.assistance_mode != 'oracle-route',
+                      autonomous_evaluation_eligible=controller.assistance_mode not in ('oracle-route','dynamics-calibration'),
                       raw_retina_active=not args.blank_retina and (not controller.meta.get('gate_sensor')
                                          or controller.meta['gate_sensor'].get('raw_retina_active',False)),
                       camera_fps=camera.fps,
@@ -862,7 +881,7 @@ def run(args):
             result['neural_replay']['sha256'] = sha256(replay.path)
             result['neural_replay']['pilot_assistance'] = controller.assistance_mode
             result['neural_replay']['privileged_goal_observations'] = controller.assistance_mode == 'oracle-route'
-            result['neural_replay']['autonomous_evaluation_eligible'] = controller.assistance_mode != 'oracle-route'
+            result['neural_replay']['autonomous_evaluation_eligible'] = controller.assistance_mode not in ('oracle-route','dynamics-calibration')
             if controller.assistance_mode == 'oracle-route':
                 result['neural_replay']['route_labels_present'] = True
             result['neural_replay']['action_source'] = ('shadow brain; not commanded' if controller.motor_baseline else
@@ -888,6 +907,8 @@ def main():
                    help='PD is a matched diagnostic baseline; its brain panel is explicitly labelled as shadow')
     p.add_argument('--collection-route', default=None,
                    help='PRIVILEGED route for course qualification/data collection only; requires PD and no visual pilot; never an autonomous evaluation')
+    p.add_argument('--dynamics-calibration',choices=['hover','throttle','roll','pitch','yaw'],default=None,
+                   help='PD hover and bounded identification pulses in an operator-verified empty arena; not a race or brain-control evaluation')
     geometry_options=p.add_mutually_exclusive_group()
     geometry_options.add_argument('--geometry-shadow', action='store_true',
                    help='Passive isolated image-geometry/trajectory audit alongside PD; never changes controls')

@@ -179,6 +179,36 @@ refusal evidence are retained; controller source/settings/order did not change.
 The stalled attempt repeatedly chose about 0.02 m/s vertical motion as a detour.
 A subsequent selection fix requires pure vertical alternatives to reach the
 existing sampling increment; ordinary unobstructed nominal commands are
-unchanged. That fix has not yet flown. The completed batch remains 2/3, and
+unchanged. The completed recovery batch remains 2/3, and
 neither main-track speed, reliable transfer nor brain-controlled obstacle
 avoidance is established. No neural weights changed.
+
+All three full recovery videos, including the stall, and their frozen evidence
+are in the [recovery release](https://github.com/skulitom/haltere/releases/tag/visual-geometry-recovery-20260923).
+The release targets runtime `946056e`; its five asset hashes and sizes were
+checked against GitHub, and the evidence archive's 2,971 entries passed CRC checks.
+
+## Minimum detour motion: 1/3
+
+Frozen runtime `abe1d83`, `runs/geometry-motion-floor-20260923`. The same original
+`[Copy] New Drone`, course, motor baseline, speed, camera and stop rules were
+retained for all three attempts without intervening changes.
+
+| Attempt | Result | Full race time |
+|---|---|---|
+| 1 | Declared wall stall; clock 4:14.302 | Incomplete |
+| 2 | Detected final wall impact; clock 2:19.074 | Incomplete |
+| 3 | Game-confirmed full finish | 2:31.664 |
+
+All three videos fully decode. There were no resets, camera failures, controller
+deadline failures or geometry-freshness stops. Worker p95 was 235.7, 106.0 and
+107.6 ms. Attempt 1 was stopped by the operator under the declared 60-second/
+1-metre stall rule; attempt 2 stopped automatically on impact. PD controlled the
+motors and the newest brain ran in shadow. No neural weights changed.
+
+Offline reconstruction from the saved causal points shows that the stall now
+alternates meaningful upward/downward commands, while its observed surface
+constraints block further climbing. The impact's final nominal path was reported
+clear despite a hole in observed wall coverage. Fixing tiny motions did not solve
+either underlying limitation. The local audit is descriptive, never a
+counterfactual finish or proof of safe free space.

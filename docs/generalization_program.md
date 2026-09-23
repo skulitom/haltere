@@ -62,8 +62,10 @@ both points and interpolated surfaces subsequently finished 0/3 (one geometry
 timing stop and two operator-stopped stalls). Short-lived interpolation and
 faster queries also finished 0/3, without timing failures. Explicit overlap
 recovery and feasible motion before braking then finished 2/3, with one wall
-stall and no detected impacts or runtime failures. The remaining stall still
-prevents a reliability claim; broader geometry and motor work remain required.
+stall and no detected impacts or runtime failures. A subsequent minimum-motion
+revision finished 1/3 (2:31.664), with one wall impact and one declared wall stall.
+These failures prevent a reliability claim; broader geometry and motor work
+remain required. Do not promote a local planner change from a successful replay.
 The [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
 the failure and causal replay limits.
 
