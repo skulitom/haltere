@@ -69,8 +69,14 @@ finished that course in **3:35.704**, qualifying its playability; this is not an
 autonomous result. A causal image/motion geometry prototype detects the wall in
 the failed-flight replay. On the complete collection trajectory it produced no
 warnings, with 6.7% mean relative depth error on matched primitive surfaces, but
-coverage remains sparse. Published geometry flights are passive; experimental
-steering integration has not yet established an autonomous improvement.
+coverage remains sparse. The first matched live geometry comparison finished
+**0/1 with geometry off and 1/1 with it on**, in **2:26.657**, on this known
+development course. Two unchanged assisted repeats then produced one finish
+(**2:24.148**) and another wall impact: **2/3 assisted finishes overall**.
+Both conditions used PD motors with the newest brain in shadow.
+This is an initial obstacle-assistance result, not evidence of reliable transfer
+or progress against the five-track speed threshold.
+[Live comparison and limits](docs/flight_cards/2026-09-23_geometry_control.md).
 [Attempts, diagnostic and limits](docs/flight_cards/2026-09-23_obstacle_geometry.md).
 Course geometry is excluded from autonomous runtime; oracle collection is
 explicitly labelled and scored separately.

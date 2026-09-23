@@ -40,17 +40,25 @@ still rejects any exception measured at half a CPU core or more, and retains
 preflight and postflight snapshots. This is a disclosed exception to the original
 "nothing else running" condition, not evidence that Windows sessions isolate CPU/GPU resources.
 
-Next qualify challenge sections with nearby obstacles and per-section outcomes,
-then develop and freeze the geometry on/off comparison. Do not substitute another
-readout fit for obstacle clearance. Full-throttle/high-rate measurements and brain
-training through flight costs come after these steps.
+Challenge sections with nearby obstacles and per-section outcomes now support
+the first frozen geometry on/off comparison. Extend the complete-system evidence
+across layouts before promotion. Do not substitute another readout fit for
+obstacle clearance. Full-throttle/high-rate measurements and brain training
+through flight costs follow this comparison.
 The [section generator and offline scorer](challenge_sections.md) now implement
 that course format, including explicit unknown geometry and a separate box-only
 depth-calibration variant. The box variant rendered in game and its first PD
 attempt crossed five of six sections geometrically before hitting the last
 wall. Separate privileged PD collection subsequently qualified that box course
-with a game-confirmed **3:35.704** finish. The flag variant and live depth
-integration remain pending; this oracle finish is not an autonomous score.
+with a game-confirmed **3:35.704** finish. The flag variant remains unqualified;
+this oracle finish is not an autonomous score. The subsequent
+[matched live geometry comparison](flight_cards/2026-09-23_geometry_control.md)
+finished **0/1 off versus 1/1 on**, with a **2:26.657** autonomous PD finish on
+the same known course. This is initial development evidence; the brain was in
+shadow, and main-track speed, transfer and reliable completion remain unmet.
+Two unchanged assisted repeats added one finish and one wall impact (2/3 overall).
+The failed repeat lost nearby obstacle memory while nearly stationary; address
+that before treating the local planner as a reliable input to broader flight.
 The [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
 the failure and causal replay limits.
 

@@ -105,8 +105,13 @@ workflow only. A seeded open generated loop subsequently finished. On 2026-09-23
 a frozen main-track comparison finished brain 0/2 and corrected PD 1/2, identifying
 both obstacle and motor-tracking failures. A generated box-obstacle course has
 since been qualified by a separate oracle-guided PD finish in 3:35.704; its
-autonomous visual baseline hit the last wall. The causal geometry prototype is
-still confined to replay/passive diagnostics and broader brain training has not
-yet addressed these failures.
+autonomous visual baseline hit the last wall. A subsequent frozen comparison
+finished **0/1 with camera geometry off and 1/1 with it on**, in **2:26.657**.
+Those flights used PD motors with the newest brain in shadow, on the same known
+development layout. Broader brain training has not yet addressed the motor gap,
+and this initial geometry result does not establish transfer or main-track speed.
+Two unchanged assisted repeats subsequently finished once and hit the wall once,
+leaving 2/3 assisted finishes overall; nearby obstacle memory expired in the failure.
+See the [live geometry comparison](flight_cards/2026-09-23_geometry_control.md).
 See the [current program](generalization_program.md) and
 [obstacle evidence](flight_cards/2026-09-23_obstacle_geometry.md).

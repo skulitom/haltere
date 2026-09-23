@@ -90,8 +90,8 @@ behind-camera points and tracks that fail a third-view reprojection check.
 it also sacrifices some bright/green scene features. `surface_memory.py` forms
 short-lived finite surface hypotheses. Neither missing points nor positive
 clearance certify free space; triangulation noise, pose timing, thin obstacles
-and holes between samples remain limitations. **Published geometry flights are
-passive.** The optional `--geometry-shadow` runner mode below measures live
+and holes between samples remain limitations. Early geometry flights were
+passive. The optional `--geometry-shadow` runner mode below measures live
 timing in a separate process; experimental control is a separate explicit mode.
 
 Reproduce the causal replay, optionally scoring predictions against the separate
@@ -202,14 +202,14 @@ Subsequent batched rollout evaluation preserved every proposed velocity and
 status across the failed trajectory's 598 frames while reducing replay planner
 time from 133.6 to 41.3 ms p95 (211.0 to 114.5 ms maximum). A second 1,122-frame
 replay also retained its decision counts. These are replay measurements; the
-optimized worker still needs its own live timing check before control integration.
+optimized worker was subsequently measured in the matched live comparison below.
 
 ## Experimental control boundary (not promoted)
 
 `--geometry-control` explicitly enables causal image-geometry guidance around
 the PD diagnostic motor controller. It requires `--pilot-assistance race-cue`,
 refuses an oracle collection route, and cannot be combined with shadow mode.
-This is an experiment, not established obstacle avoidance. The newest brain
+This remains an experiment with limited development evidence. The newest brain
 runs in shadow and the video labels both PD control and visual geometry.
 
 The control boundary accepts only finite proposals with current image/task
@@ -224,6 +224,10 @@ geometry or future pose enters perception or planning.
 Use `--geometry-shadow --geometry-record-images` for a passive comparison with
 the same input archival workload as the control experiment.
 
-A frozen matched on/off flight comparison is still required. Passing the
-control-boundary tests does not validate sparse free space, motor-model accuracy,
-reliable race completion or improved speed.
+The first [frozen off/on comparison](flight_cards/2026-09-23_geometry_control.md)
+finished 0/1 off and 1/1 on, with a 2:26.657 full development-course finish.
+Both conditions retained exact worker input images and the same recording work.
+Two unchanged assisted repeats left 2/3 finishes overall; obstacle memory expired
+before the failed repeat had passed the wall. The failure remains in the record.
+Passing the control-boundary tests and one course does not validate sparse free
+space, motor-model accuracy, reliable transfer or main-track speed.

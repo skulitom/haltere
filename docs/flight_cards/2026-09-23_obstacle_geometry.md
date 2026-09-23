@@ -59,10 +59,11 @@ was 13.9 ms median / 18.6 ms p95; surfaces/query added 2.9 / 12.1 ms on this
 paused-game CPU replay. This is not a live controller latency measurement.
 
 Surface patches may interpolate small unobserved holes; missing surfaces never
-establish clear space. The prototype has **no live authority**, and this replay
+establish clear space. This replay prototype had **no live authority**, and the replay
 does not demonstrate obstacle avoidance, a feasible local planner, unseen-course
 success or an improvement in race time. Next qualify uncertainty/coverage and
-live timing before a frozen geometry on/off comparison.
+live timing before a frozen geometry on/off comparison. That subsequent
+[live comparison is recorded separately](2026-09-23_geometry_control.md).
 
 ## Subsequent oracle qualification and second-trajectory check
 

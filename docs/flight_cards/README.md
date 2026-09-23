@@ -9,12 +9,24 @@ and success criterion rather than substitute a gate count.
 One card per flight, written **before** it and appended to after. A prediction written after the
 flight does not exist. Rules: `docs/generalisation.md`.
 
+## 2026-09-23 live visual geometry
+
+The first [matched geometry off/on comparison](2026-09-23_geometry_control.md)
+finished **0/1 off versus 1/1 on** on the known generated box course. The on
+condition completed its full lap in **2:26.657**, with no detected impact or
+human flight intervention. Both conditions used PD motors, the newest brain
+in shadow, and identical capture/recording work. This is initial development
+evidence, outside the five main-track speed/completion target.
+Two unchanged on-condition repeats subsequently finished once and hit the wall
+once: **2/3 assisted finishes overall**, with a nearby-obstacle memory expiry
+identified in the failure. All attempts remain in the linked record.
+
 ## 2026-09-23 full-race motor comparison
 
 The subsequent [generated obstacle/depth diagnostic](2026-09-23_obstacle_geometry.md)
 completed five sections geometrically, then hit the final wall (**0/1 whole
 courses**). It supplied 599 passive images for causal geometry development;
-the current geometry prototype has no live steering authority.
+the geometry prototype was passive during that initial attempt.
 A separate oracle-guided qualification series retained two runtime-censored
 attempts and then a **3:35.704 full box-course finish**, with the brain in shadow.
 That establishes course playability and supplies a second perception trajectory;
