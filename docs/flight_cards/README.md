@@ -21,8 +21,10 @@ Two unchanged on-condition repeats subsequently finished once and hit the wall
 once: **2/3 assisted finishes overall**, with a nearby-obstacle memory expiry
 identified in the failure. All attempts remain in the linked record.
 The subsequent persistent-memory revision finished **0/3**, with one geometry
-timing stop and two operator-stopped stalls. The current revision has passed
-414 automated tests and causal replay checks; flight validation remains pending.
+timing stop and two operator-stopped stalls. Short-lived interpolation then
+finished **0/3** with two declared stalls and a wall impact, without timing
+failures. Explicit overlap recovery and feasible motion before braking are
+being checked for the next flight batch. All failures remain in the record.
 
 ## 2026-09-23 full-race motor comparison
 

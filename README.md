@@ -75,7 +75,9 @@ development course. Two unchanged assisted repeats then produced one finish
 (**2:24.148**) and another wall impact: **2/3 assisted finishes overall**.
 Both conditions used PD motors with the newest brain in shadow.
 The subsequent persistent-memory revision finished **0/3** (one geometry timing
-stop and two operator-stopped stalls); it is not promoted.
+stop and two operator-stopped stalls). A second revision with transient inferred
+surfaces also finished **0/3** (two declared stall stops and one wall impact),
+without timing failures. Neither is promoted.
 This is an initial obstacle-assistance result, not evidence of reliable transfer
 or progress against the five-track speed threshold.
 [Live comparison and limits](docs/flight_cards/2026-09-23_geometry_control.md).
@@ -83,7 +85,7 @@ or progress against the five-track speed threshold.
 Course geometry is excluded from autonomous runtime; oracle collection is
 explicitly labelled and scored separately.
 
-Validation: **414 automated tests passed** (three existing warnings). The CPU
+Validation: **418 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

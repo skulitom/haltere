@@ -126,3 +126,30 @@ The next experimental revision keeps measured points locally, requires recent
 support for interpolated patches, and samples shallow vertical alternatives
 as well as maximum-rate climbing/descending. Those changes require their own
 frozen complete-flight batch; none of the earlier attempts is reclassified.
+
+## Transient surfaces and faster planning: 0/3
+
+Source `0bfa419`, frozen batch `runs/geometry-two-tier-20260923`, same vehicle,
+course, motor baseline and 500-second cap. A stop after at least 60 seconds
+within 1 m was declared before flying and checked from causal logged telemetry.
+
+| Attempt | Result | Clock at stop |
+|---|---|---|
+| 1 | Declared stall stop near gate; retained uncertain point overlaps current position | 2:22.540 |
+| 2 | Final wall impact after clearing overhang | 2:13.870 |
+| 3 | Declared stall stop before gate; retained point overlaps current position | 2:13.884 |
+
+All three videos fully decode. There were no camera, controller deadline or
+geometry-freshness stops; worker p95 was 117.6, 95.2 and 123.8 ms respectively.
+No reset occurred during an attempt. The two stall stops were operator pauses
+under the preregistered rule and are explicitly counted as incomplete. PD
+controlled the motors; the newest brain remained in shadow. No weights changed.
+
+Offline reconstruction identifies a planning trap: every candidate includes
+the occupied starting position, so an initial uncertain overlap makes all
+ordinary clearance checks fail. Separately, a feasible downward path beneath
+the overhang was being outscored by a stationary hold. The next revision adds
+explicit receding-clearance recovery and treats braking as a fallback when no
+feasible moving option exists. It retains static surface memory rather than
+inferring that old surfaces disappeared. These changes require new complete
+flights. The sparse wall coverage remains uncertain; no replay is a finish.

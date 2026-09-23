@@ -67,7 +67,7 @@ class ShadowGeometry:
         # Liftoff scenery is stationary in the observed telemetry frame. Braking
         # removes the translation needed for fresh depth; it must not make a
         # nearby observed obstacle disappear merely because three seconds pass.
-        self.memory = SurfaceMemory(lifetime=None,max_points=512,patch_lifetime=3.)
+        self.memory = SurfaceMemory(lifetime=None,max_points=512)
         self.planner = LocalTrajectoryPlanner()
         self.last_game_time = None
 

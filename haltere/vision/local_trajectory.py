@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
-from .surface_memory import observed_path_margin
+from .surface_memory import observed_path_margin, observed_escape
 from .camera import quat_wxyz_to_mat
 
 
@@ -154,6 +154,23 @@ class LocalTrajectoryPlanner:
                         candidates.append(candidate)
         best = None
         brake = None
+        initial_margin=observed_path_margin(np.asarray(position)[None,:],surfaces,
+                                            vehicle_radius=config.vehicle_radius_m)['margin_m']
+        reaction=nominal['positions'][nominal['times']<=config.reaction_s+1e-8]
+        can_escape=(initial_margin<config.extra_margin_m and observed_escape(reaction,surfaces,
+            vehicle_radius=config.vehicle_radius_m,required_margin=config.extra_margin_m,
+            require_exit=False)['allowed'])
+        reaction_margin=observed_path_margin(reaction,surfaces,
+                                             vehicle_radius=config.vehicle_radius_m)['margin_m']
+        if reaction_margin<config.extra_margin_m and not can_escape:
+            # All alternatives share this already measured coasting interval.
+            # Enumerating them cannot remove an inevitable initial violation.
+            stopped=rollout(position,velocity,np.zeros(3),config)
+            clearance=observed_path_margin(stopped['positions'],surfaces,
+                                             vehicle_radius=config.vehicle_radius_m)['margin_m']
+            return dict(velocity=np.zeros(3),path=stopped,status='no_observed_clear_path_brake',
+                        selected_margin_m=clearance,nominal_margin_m=margin,candidates_checked=3,
+                        changed=True,coverage_certified=False)
         batch = rollout_batch(position,velocity,candidates,config)
         checked=1
         for index,candidate in enumerate(candidates):
@@ -172,21 +189,36 @@ class LocalTrajectoryPlanner:
                                              vehicle_radius=config.vehicle_radius_m)['margin_m']
             if brake is None:
                 brake = candidate, path, clearance
-            if clearance < config.extra_margin_m:
+            # Braking is the fallback when no feasible motion exists. Ranking it
+            # against detours by immediate task-velocity error otherwise makes
+            # a stationary hold beat the small descent needed to clear a ceiling.
+            if np.linalg.norm(candidate)<=.01:
                 continue
+            escaping=False
+            cost_clearance=clearance
+            if clearance < config.extra_margin_m:
+                if not can_escape:
+                    continue
+                recovery=observed_escape(path['positions'],surfaces,
+                    vehicle_radius=config.vehicle_radius_m,required_margin=config.extra_margin_m)
+                if not recovery['allowed']:
+                    continue
+                escaping=True
+                cost_clearance=recovery['terminal_margin_m']
             # Retain task progress while preferring the smallest velocity change.
             # A clearance reward is capped: unknown surfaces cannot earn infinity.
-            cost = velocity_cost - .1*min(1., clearance)
+            cost = velocity_cost - .1*min(1., cost_clearance)
             # Keep task-frame enumeration order for numerically equal costs;
             # a translated/rotated scene must not flip a symmetric detour.
             if best is None or cost < best[0]-1e-8:
-                best = cost, candidate, path, clearance
+                best = cost, candidate, path, clearance, escaping
         if best is None:
             candidate, path, clearance = brake
             status = 'no_observed_clear_path_brake'
         else:
-            _, candidate, path, clearance = best
-            status = 'observed_obstacle_detour' if np.linalg.norm(candidate) > .01 else 'observed_obstacle_brake'
+            _, candidate, path, clearance, escaping = best
+            status = 'observed_obstacle_escape' if escaping else (
+                'observed_obstacle_detour' if np.linalg.norm(candidate) > .01 else 'observed_obstacle_brake')
         return dict(velocity=candidate, path=path, status=status, selected_margin_m=clearance,
                     nominal_margin_m=margin, candidates_checked=checked, changed=True,
                     coverage_certified=False)

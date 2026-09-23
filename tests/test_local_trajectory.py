@@ -94,3 +94,34 @@ def test_shallow_descent_can_clear_an_overhead_observation_inside_current_view()
     assert result['status']=='observed_obstacle_detour'
     assert result['velocity'][0]>2. and -1.2<result['velocity'][2]<0.
     assert result['selected_margin_m']>=.15
+
+
+def test_initial_uncertain_overlap_can_recede_but_cannot_be_crossed():
+    from haltere.vision.surface_memory import observed_escape
+    scene=surfaces([[0,0,.4]])
+    assert observed_escape([[0,0,0],[1,0,0],[2,0,0]],scene)['allowed']
+    assert not observed_escape([[0,0,0],[0,0,.4],[0,0,2]],scene)['allowed']
+    assert not observed_escape([[0,0,0],[1,0,0],[0,0,.1],[2,0,0]],scene)['allowed']
+    assert not observed_escape([[0,0,0],[.1,0,0]],scene)['allowed']
+    other=surfaces([[0,0,.4],[2,0,0]])
+    assert not observed_escape([[0,0,0],[1,0,0],[2,0,0],[3,0,0]],other)['allowed']
+    result=LocalTrajectoryPlanner().propose([0,0,0],[0,0,0],[2,0,0],scene,1.,view=view())
+    assert result['status']=='observed_obstacle_escape'
+    assert result['velocity'][0]>0
+    assert result['selected_margin_m']<.15  # Initial overlap remains honestly reported.
+
+
+def test_escape_needs_current_view_and_cannot_remove_reaction_motion():
+    scene=surfaces([[.2,0,0]])
+    result=LocalTrajectoryPlanner().propose([0,0,0],[3,0,0],[2,0,0],scene,1.,view=view())
+    assert result['status']=='no_observed_clear_path_brake'
+    result=LocalTrajectoryPlanner().propose([0,0,0],[0,0,0],[2,0,0],surfaces([[0,0,.4]]),1.)
+    assert result['status']=='no_observed_clear_path_brake'
+
+
+def test_feasible_descent_is_not_outscored_by_permanent_braking():
+    scene=surfaces([[2,y,z] for y in np.arange(-5,5.1,.5) for z in np.arange(0,5.1,.5)])
+    result=LocalTrajectoryPlanner().propose([0,0,0],[0,0,0],[2.5,0,0],scene,1.,view=view())
+    assert result['status']=='observed_obstacle_detour'
+    assert np.linalg.norm(result['velocity'])>.01
+    assert result['selected_margin_m']>=.15

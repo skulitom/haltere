@@ -13,7 +13,7 @@ import numpy as np
 
 
 PROPOSAL_STATUSES = ('nominal_unverified','observed_obstacle_detour','observed_obstacle_brake',
-                    'no_observed_clear_path_brake','stale_geometry_brake')
+                    'no_observed_clear_path_brake','stale_geometry_brake','observed_obstacle_escape')
 
 
 class ProposalBuffer:
@@ -101,8 +101,9 @@ class GeometryControlGate:
                 selected=np.array(proposal['proposal_velocity'] if proposal['changed'] else requested,dtype=float,copy=True)
                 selected[:2] *= min(1.,self.speed/max(1e-9,np.linalg.norm(selected[:2])))
                 selected[2]=np.clip(selected[2],-self.vertical_speed,self.vertical_speed)
-                self.status='detour' if proposal['changed'] and np.linalg.norm(selected)>.01 else (
-                    'obstacle_brake' if proposal['changed'] else 'pilot_unchanged')
+                self.status='escape' if proposal['status']=='observed_obstacle_escape' else (
+                    'detour' if proposal['changed'] and np.linalg.norm(selected)>.01 else (
+                        'obstacle_brake' if proposal['changed'] else 'pilot_unchanged'))
                 self.counts[self.status]+=1
                 return selected
         self.status=rejection
@@ -119,4 +120,5 @@ class GeometryControlGate:
                     startup_grace_s=5.,stale_stop_s=1.,counts=dict(self.counts),
                     horizontal_speed_mps=self.speed,vertical_speed_mps=self.vertical_speed,
                     coverage_certified=False,
+                    recovery='Initially violated surfaces must recede within 1 cm slack; all other margins and braking-endpoint clearance remain required',
                     limits='Incomplete image geometry and unvalidated point-mass response; not a collision-avoidance guarantee')

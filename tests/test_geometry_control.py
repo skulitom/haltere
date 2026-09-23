@@ -59,6 +59,15 @@ def test_missing_worker_eventually_stops_and_valid_snapshot_does_not_refresh_its
         empty.resolve([2,0,0],[0,0,0],15.01,None)
 
 
+def test_explicit_escape_proposal_survives_transport_and_freshness_gate():
+    buffer=ProposalBuffer();row=proposal(status='observed_obstacle_escape')
+    assert buffer.publish(row,row['available_at'])
+    assert buffer.read()['status']=='observed_obstacle_escape'
+    gate=GeometryControlGate()
+    np.testing.assert_array_equal(gate.resolve([2,0,0],[0,0,0],1.2,buffer.read()),[1,1,0])
+    assert gate.status=='escape'
+
+
 @pytest.mark.parametrize('change',[{'collection_route':'known-route.json'},
                                  {'motor_controller':'brain'},{'pilot_assistance':'rabbit'},
                                  {'geometry_shadow':True}])

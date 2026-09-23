@@ -244,11 +244,17 @@ flight success follows from the memory change alone. The older time-limited
 memory remains the default for historical offline replays. That first persistent
 revision finished 0/3: one freshness stop and two operator-stopped stalls.
 
-The next revision keeps measured points but requires support within three seconds
-for interpolated patches. Interpolation can falsely span an opening; its weaker
-evidence must not silently receive the point measurements' retention policy.
-The local planner also samples vertical speed at quarter increments, permitting
-shallow climb/descent alternatives within the existing speed and field-of-view
-limits. Exact distance/cost bounds avoid unnecessary collision queries without
-changing their answer. These revisions remain experimental until complete
-flights establish a benefit.
+The transient-patch revision kept measured points but required support within
+three seconds for interpolated patches. It also finished 0/3: two declared stall
+stops and one wall impact. No geometry freshness, camera or controller deadline
+failure occurred. Expiry alone did not solve the coverage/recovery problem.
+
+The current experiment retains local static surfaces and adds explicit recovery
+from an initially violated clearance constraint: each overlapping observation
+must recede within 1 cm slack, other obstacles retain their required clearance,
+and the full braking endpoint must be clear. Initial overlap remains reported;
+the observations are not deleted. When nominal travel is blocked, a feasible
+moving detour takes precedence over permanent braking. Vertical alternatives,
+existing speed/view limits and original receipt ages remain intact. This is
+still incomplete observed geometry, not a free-space certificate. Complete
+flight validation remains pending.

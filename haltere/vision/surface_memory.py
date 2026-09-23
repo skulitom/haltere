@@ -179,3 +179,47 @@ def observed_path_margin(path,surfaces,*,vehicle_radius=.35):
         if distances.size:
             margin=min(margin,float(np.min(distances-surfaces['triangle_sigma'][keep][None,:]-vehicle_radius)))
     return dict(margin_m=margin,observed_collision=margin<0,coverage_certified=False)
+
+
+def observed_escape(path,surfaces,*,vehicle_radius=.35,required_margin=.15,slack=.01,require_exit=True):
+    """Test recovery from an already violated uncertain clearance constraint.
+
+    Each initially overlapping primitive must recede monotonically (within a
+    declared 1 cm motion/numerical slack) until clearance is restored. Other
+    primitives retain the full required margin. The complete braking endpoint
+    must clear every observation. ``require_exit=False`` checks only a shared
+    reaction prefix to reject impossible recoveries before enumerating paths.
+    No obstacle is deleted or declared free.
+    """
+    path=np.asarray(path,float)
+    if (path.ndim!=2 or path.shape[1]!=3 or len(path)<2 or not np.isfinite(path).all()
+            or not np.isfinite([vehicle_radius,required_margin,slack]).all()
+            or min(vehicle_radius,required_margin)<=0 or slack<0):
+        raise ValueError('Use a finite recovery path and valid clearance limits')
+    terminal=observed_path_margin(path[-1:],surfaces,vehicle_radius=vehicle_radius)['margin_m']
+    if require_exit and terminal<required_margin:
+        return dict(allowed=False,terminal_margin_m=terminal)
+    initially_violated=False
+    for kind in ('points','triangles'):
+        geometry=surfaces[kind]
+        if not len(geometry):
+            continue
+        sigma=surfaces['sigma' if kind=='points' else 'triangle_sigma']
+        lower=geometry if kind=='points' else geometry.min(axis=1)
+        upper=geometry if kind=='points' else geometry.max(axis=1)
+        separation=np.maximum(0.,np.maximum(lower-path.max(axis=0),path.min(axis=0)-upper))
+        # A lower distance bound already above the required margin cannot
+        # violate recovery or ordinary clearance anywhere on this path.
+        keep=np.linalg.norm(separation,axis=1)-sigma-vehicle_radius<required_margin+1e-10
+        if not keep.any():
+            continue
+        distances=(np.linalg.norm(path[:,None,:]-geometry[keep],axis=2) if kind=='points'
+                   else triangle_distance(path,geometry[keep]))
+        margins=distances-sigma[keep][None,:]-vehicle_radius
+        initial=margins[0]<required_margin
+        initially_violated |= bool(initial.any())
+        clipped=np.minimum(margins[:,initial],required_margin)
+        if (not np.all(margins[:,~initial]>=required_margin)
+                or not np.all(clipped>=np.maximum.accumulate(clipped,axis=0)-slack)):
+            return dict(allowed=False,terminal_margin_m=terminal)
+    return dict(allowed=initially_violated,terminal_margin_m=terminal)
