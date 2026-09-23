@@ -42,11 +42,16 @@ from ..vision.camera import Camera
 from ..vision.datasets import sha256
 
 
-def fast_contract(speed, vertical_goal_seconds=1.):
-    """Declared sensory scaling: a nominal-speed request maps to a 3 m goal."""
-    if not 0 < speed <= 20:
-        raise ValueError('Use a nominal speed in (0, 20] m/s')
-    return dict(nominal_speed_mps=float(speed), goal_seconds=3./speed, velocity_scale=3./speed,
+def fast_contract(speed, vertical_goal_seconds=1., scaled_speed=3.):
+    """Declared sensory scaling: a nominal-speed request looks like `scaled_speed`.
+
+    The brain's velocity senses saturate (tanh) above about 3 m/s, so a smaller
+    scaled speed keeps requests between half and full speed distinguishable.
+    """
+    if not 0 < speed <= 20 or not 0 < scaled_speed <= 3:
+        raise ValueError('Use a nominal speed in (0, 20] m/s and a scaled speed in (0, 3]')
+    return dict(nominal_speed_mps=float(speed), goal_seconds=scaled_speed/speed, velocity_scale=scaled_speed/speed,
+                scaled_speed_mps=float(scaled_speed),
                 vertical_goal_seconds=float(vertical_goal_seconds),
                 encoding='horizontal goal = request*goal_seconds, vertical goal = request*vertical_goal_seconds; '
                          'horizontal velocity senses scaled by velocity_scale, vertical unscaled')
@@ -219,6 +224,7 @@ def main():
     parser.add_argument('--evaluation-seeds', type=int, nargs='+', default=[900, 901, 902, 903, 904, 905, 906, 907])
     parser.add_argument('--rest', type=float, default=5., help='seconds of rest between rollouts (thermal duty cycle)')
     parser.add_argument('--steep', type=float, default=0., help='probability of a 15-35 degree climbing/descending leg')
+    parser.add_argument('--scaled-speed', type=float, default=3., help='apparent speed of a nominal request in the brain senses')
     args = parser.parse_args()
     if args.ridge <= 0 or args.rounds < 1:
         raise ValueError('Use positive ridge and at least one round')
@@ -229,7 +235,7 @@ def main():
     brain, cfg, _ = load_checkpoint(args.checkpoint, args.device)
     meta = copy.deepcopy(torch.load(args.checkpoint, map_location='cpu', weights_only=True)['visual_brain'])
     profile = json.loads(Path(args.profile).read_text())
-    contract = fast_contract(args.speed)
+    contract = fast_contract(args.speed, scaled_speed=args.scaled_speed)
     config = dict(**vars(args), parent_sha256=sha256(args.checkpoint), source_sha256=sha256(__file__),
                   profile_sha256=sha256(args.profile), contract=contract,
                   retina_data_sha256=sha256(args.retina_data) if args.retina_data else None,

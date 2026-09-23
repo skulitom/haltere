@@ -49,3 +49,34 @@ drone. Each pad session passed a processed-control ground check (idle, throttle,
 roll, pitch, yaw). Raw CSV/JSON, full brain/gameplay videos and screenshots are in
 `runs/fast-stack-20260923/`. The first loop launch was refused by the workload
 guard (a transient Adobe process) before takeoff; the unchanged retry is `-02`.
+
+## Brain motors under the fast pilot (same day)
+
+The fast PD was distilled into the connectome's throttle/roll/pitch readout
+(`haltere.train.fast_motor_tracking`, DAgger in the measured surrogate; only
+readout rows 0-2 and their biases change; wiring, transmitter signs, yaw readout
+and all other tensors are unchanged and audited). A declared contract scales the
+velocity request and horizontal velocity senses so the brain operates in its
+familiar range. All attempts below used 6 m/s, the fast pilot and brain motors,
+and one configuration across the three tracks. **0/4 finishes.**
+
+| Brain | Course | Result |
+|---|---|---|
+| fast-brain-02 (flat training) | Straw Bale | Hill-climb impact at ~0:36, lap 1: climbed at 1.2 m/s where 2.0-2.2 was requested |
+| fast-brain-03 (steep legs added) | Straw Bale | Climbed the hill; impact on the steep descent at ~1:25, lap 1: flew 4.4-5.4 m/s horizontally where 3 was requested and dithered over a checkpoint below |
+| fast-brain-03 | Minus Two | Pillar impact at 0:07.8 (a pillar stood between the drone and the ring) |
+| fast-brain-03 | Pine Valley | Rising-mound impact at ~0:10 at the same place as the PD |
+
+In surrogate evaluation fast-brain-03 finished 5/8 steep held-out courses (PD 6/8)
+and 7/8 ordinary ones, 10-20% slower than the PD. Its speed tracking below the
+nominal speed is loose; the next contract maps the nominal speed to 2.4 m/s
+instead of 3 so the brain's saturating velocity senses resolve it better.
+
+## First live looming test
+
+PD motors, 6 m/s, `--looming-brake`, Pine Valley: impact on the same mound.
+Looming produced a sample every camera frame (~0.1 s old, camera loop p50 60 ms)
+and time-to-contact stayed below ~1.5 s for over 2 s before impact, but its
+distance estimate read 4-9 m, so the distance-based cap braked only ~0.3 s before
+contact. A time-to-contact-driven slow-down with a terrain climb is being
+developed offline next. The looming brake remains off by default.
