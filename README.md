@@ -97,8 +97,10 @@ an initial roll overshoot, all 72 revised angular pulses with stable recovery.
 The frozen angular fit also passed an independent 72-pulse batch at different
 amplitudes. The experimental simulator and flight-cost trainer retain explicit
 limits on unvalidated high-speed translation; no new racing result is implied.
+The first flight-cost checkpoint regressed and was rejected; the trainer now
+selects snapshots on complete maneuvers and checks a separate test seed.
 
-Validation: **426 automated tests passed** (three existing warnings). The CPU
+Validation: **439 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

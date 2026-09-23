@@ -28,7 +28,7 @@ def trainable_motor_parameters(brain):
 
 class FlightCostRollout:
     def __init__(self,brain,cfg,meta,profile,*,batch=4,reference_speed=3.,seed=20001,
-                 retina_stream=None,randomize=.2,episode_steps=800,controller='brain'):
+                 retina_stream=None,randomize=.2,episode_steps=800,controller='brain',reset_on_crash=True):
         if not cfg.brain.mask_motor_feedback:
             raise ValueError('Effective plant training requires masked RPM feedback; its rotor model is not qualified')
         if batch<1 or not 0<reference_speed<=10 or episode_steps<64:
@@ -36,6 +36,7 @@ class FlightCostRollout:
         if controller not in ('brain','pd'):
             raise ValueError('Expected brain or matched PD diagnostic')
         self.controller=controller
+        self.reset_on_crash=reset_on_crash
         self.brain,self.cfg,self.meta=brain,cfg,meta
         self.batch,self.reference_speed,self.retina_stream=batch,reference_speed,retina_stream
         self.sim=IdentifiedSim(profile,meta['calibration'],brain.device,cfg.brain.dt)
@@ -78,7 +79,8 @@ class FlightCostRollout:
     def loss(self,steps=32):
         if not 8<=steps<=self.episode_steps:
             raise ValueError('Use a bounded flight-cost window of at least eight steps')
-        if self.state is None or self.age+steps>self.episode_steps or bool(self.state.quad.crashed.any()):
+        if (self.state is None or self.age+steps>self.episode_steps
+                or (self.reset_on_crash and bool(self.state.quad.crashed.any()))):
             self.reset()
         brain=self.brain;neural=brain.detach_state(self.neural);W=brain.weight_matrix()
         state=self.state.detach();costs=[];errors=[]
@@ -100,23 +102,26 @@ class FlightCostRollout:
             obs=gate_observation(modified,state.quad.motor.mean(-1,keepdim=True),self.cfg.task,retina,relative,
                 height_invariant=sensor['height_invariant'],gravity_aligned_height=sensor['gravity_aligned_height'],
                 search_height_error=relative.new_zeros(self.batch,1),raw_retina_active=sensor['raw_retina_active'])
-            if age==0:
-                with torch.no_grad():
-                    for _ in range(50):_,neural,_=brain(obs,neural,W.detach())
-            if t and t%8==0:neural=brain.detach_state(neural)
-            action,neural,_=brain(obs,neural,W)
             if self.controller=='pd':
                 action=self.pd.command(senses,relative,self.speed)
+            else:
+                if age==0:
+                    with torch.no_grad():
+                        for _ in range(50):_,neural,_=brain(obs,neural,W.detach())
+                if t and t%8==0:neural=brain.detach_state(neural)
+                action,neural,_=brain(obs,neural,W)
             command=torch.cat((action[:,:3],yaw[:,None]),-1)
             self.delay.append(command);state=self.sim.step(state,self.delay.popleft())
             desired_speed=torch.where(moving,self.speed*(relative[:,:2].norm(dim=-1)/3).clamp(max=1),0.)
-            desired_velocity=torch.stack((heading.cos(),heading.sin()),-1)*desired_speed[:,None]
+            # The requested motion is a reference, not a differentiable escape
+            # from the objective by changing the attitude-dependent guidance.
+            desired_velocity=(torch.stack((heading.cos(),heading.sin()),-1)*desired_speed[:,None]).detach()
             velocity_error=(state.quad.vel[:,:2]-desired_velocity).square().sum(-1)
             up=quat_to_mat(state.quad.quat)[:,2,2]
             cost=(velocity_error+2*(state.quad.pos[:,2]-altitude).square()+state.quad.vel[:,2].square()
                   +.5*(1-up)+.02*state.quad.omega.square().sum(-1)
                   +.05*(command-self.previous).square().sum(-1)
-                  +20*torch.relu(1-state.quad.pos[:,2]).square())
+                  +20*torch.relu(1-state.quad.pos[:,2]).square()+100*state.quad.crashed.float())
             costs.append(cost.mean());errors.append(velocity_error.detach().mean())
             self.previous=command.detach()
         self.age+=steps;self.neural=brain.detach_state(neural);self.state=state.detach()
@@ -128,20 +133,39 @@ class FlightCostRollout:
 
 
 @torch.no_grad()
-def evaluate(brain,cfg,meta,profile,*,retina_stream,reference_speed,seed=8293,windows=25,batch=4):
+def evaluate(brain,cfg,meta,profile,*,retina_stream,reference_speed,seed=8293,episodes=2,batch=4,
+             controllers=('brain','pd'),episode_steps=800):
+    """Matched complete tasks: a crash cannot advance the random task schedule.
+
+    Every controller sees the same starts, dynamics and four maneuver phases.
+    Crashes remain failures for the rest of that fixed episode. Development
+    selection and final evaluation must use distinct seeds.
+    """
     from .thermal import wait_if_hot
+    if episodes<1 or episode_steps<64 or episode_steps%32:
+        raise ValueError('Evaluate positive complete episodes in 32-step windows')
     reports={}
-    for controller in ('brain','pd'):
+    for controller in controllers:
         rollout=FlightCostRollout(brain,cfg,meta,profile,batch=batch,reference_speed=reference_speed,
-            seed=seed,retina_stream=retina_stream,controller=controller)
-        rows=[]
-        for window in range(windows):
-            if window%5==0 and brain.device.type=='cuda':wait_if_hot(68.)
-            _,metrics=rollout.loss(32);rows.append(metrics)
+            seed=seed,retina_stream=retina_stream,controller=controller,
+            episode_steps=episode_steps,reset_on_crash=False)
+        rows=[];crashed_tasks=0
+        for episode in range(episodes):
+            rollout.reset()
+            for window in range(episode_steps//32):
+                if window%5==0 and brain.device.type=='cuda':wait_if_hot(68.)
+                _,metrics=rollout.loss(32);rows.append(metrics)
+            crashed_tasks+=int(rollout.state.quad.crashed.sum())
         reports[controller]=dict(mean_flight_cost=sum(r['flight_cost'] for r in rows)/len(rows),
             velocity_rmse=(sum(r['velocity_rmse']**2 for r in rows)/len(rows))**.5,
-            crash_windows=sum(r['crashes']>0 for r in rows),windows=windows,rows=rows)
+            crash_windows=sum(r['crashes']>0 for r in rows),crashed_tasks=crashed_tasks,
+            tasks=episodes*batch,episodes=episodes,seed=seed,windows=len(rows),rows=rows)
     return reports
+
+
+def evaluation_rank(report):
+    """Any additional crash is worse than a reduction in average tracking cost."""
+    return report['crashed_tasks'],report['mean_flight_cost']
 
 
 def main():
@@ -157,10 +181,17 @@ def main():
     p.add_argument('--batch',type=int,default=4);p.add_argument('--window',type=int,default=32)
     p.add_argument('--speed',type=float,default=3.);p.add_argument('--seed',type=int,default=20001)
     p.add_argument('--retina-data',required=True);p.add_argument('--validation-retina-data',required=True)
-    p.add_argument('--evaluation-windows',type=int,default=25)
+    p.add_argument('--evaluation-episodes',type=int,default=2)
+    p.add_argument('--test-episodes',type=int,default=4)
+    p.add_argument('--validation-every',type=int,default=100)
+    p.add_argument('--edge-lr',type=float,default=1e-5)
+    p.add_argument('--neuron-lr',type=float,default=1e-5)
+    p.add_argument('--readout-lr',type=float,default=1e-6)
     a=p.parse_args()
-    if a.updates<1 or a.evaluation_windows<1:
+    if min(a.updates,a.evaluation_episodes,a.test_episodes,a.validation_every)<1:
         raise ValueError('Use positive training and evaluation budgets')
+    if not all(0<lr<.01 for lr in (a.edge_lr,a.neuron_lr,a.readout_lr)):
+        raise ValueError('Use finite positive learning rates below 0.01')
     out=Path(a.out);out.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(2);torch.manual_seed(a.seed)
     sha=lambda name:hashlib.sha256(Path(name).read_bytes()).hexdigest()
@@ -175,7 +206,8 @@ def main():
     validation_retina=load_recorded_retina(a.validation_retina_data,meta['gate_sensor'])
     if sha(a.retina_data)==sha(a.validation_retina_data):
         raise ValueError('Use different recorded scene takes for training and validation')
-    config=vars(a)|dict(parent_sha256=sha(a.checkpoint),profile_sha256=sha(a.profile),
+    config=vars(a)|dict(protocol=2,parent_sha256=sha(a.checkpoint),profile_sha256=sha(a.profile),
+        development_seed=8293,test_seed=17491,
         source_sha256=sha(__file__),loss='Differentiable flight cost; no action imitation',
         source_revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
         source_hashes={name:sha(name) for name in ['haltere/train/flight_cost.py','haltere/sim/identified.py',
@@ -187,13 +219,35 @@ def main():
     initial={k:v.detach().cpu().clone() for k,v in brain.state_dict().items()}
     selected=trainable_motor_parameters(brain)
     priors={k:p.detach().clone() for k,p in selected.items()}
-    opt=torch.optim.Adam([dict(params=[selected['log_edge_gain']],lr=1e-4),
-        dict(params=[v for k,v in selected.items() if k!='log_edge_gain'],lr=2e-4)])
+    opt=torch.optim.Adam([dict(params=[selected['log_edge_gain']],lr=a.edge_lr),
+        dict(params=[v for k,v in selected.items() if k.startswith('readout.')],lr=a.readout_lr),
+        dict(params=[v for k,v in selected.items() if k not in ('log_edge_gain','readout.weight','readout.bias')],
+             lr=a.neuron_lr)])
     wait_if_hot(68.)
     baseline=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
-                      windows=a.evaluation_windows,batch=a.batch)
+                      episodes=a.evaluation_episodes,batch=a.batch)
     (out/'baseline.json').write_text(json.dumps(baseline,indent=2))
     print('Baseline',json.dumps({k:{n:v for n,v in r.items() if n!='rows'} for k,r in baseline.items()}),flush=True)
+    best_state=initial;best_report=baseline['brain'];best_iteration=0
+
+    def save_candidate(path,iteration,report):
+        audit={}
+        for name,value in brain.state_dict().items():
+            old=initial[name];current=value.detach().cpu()
+            if not torch.equal(old,current):
+                if name not in selected:raise RuntimeError('Unexpected changed brain tensor: '+name)
+                audit[name]=dict(changed=int((old!=current).sum()),total=old.numel(),
+                                 max_abs_change=float((old-current).abs().max()))
+        provenance=copy.deepcopy(meta)
+        provenance.pop('schema',None)
+        provenance['motor_tracking']={**provenance.get('motor_tracking',{}),'nominal_speed_mps':a.speed}
+        provenance['flight_cost_training']=dict(**config,selected_iteration=iteration,changed_tensors=audit,
+            simulation_evaluation={k:{n:v for n,v in r.items() if n!='rows'} for k,r in report.items()},
+            live_qualified=False,limits='Experimental motor surrogate; no new autonomous race or freestyle evidence')
+        provenance['qualified']=False
+        export(path,brain,cfg,provenance,iteration)
+        return dict(changes=audit,wiring_and_signs_unchanged=True,candidate_sha256=sha(path))
+
     rollout=FlightCostRollout(brain,cfg,meta,profile,batch=a.batch,reference_speed=a.speed,
                               seed=a.seed,retina_stream=train_retina)
     start=time.monotonic()
@@ -210,28 +264,30 @@ def main():
             row=dict(iteration=iteration,elapsed_s=time.monotonic()-start,gradient_norm=float(norm),**metrics)
             log.write(json.dumps(row)+'\n');log.flush()
             if iteration==1 or iteration%10==0:print(json.dumps(row),flush=True)
-    result=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
-                    windows=a.evaluation_windows,batch=a.batch)
+            if iteration%a.validation_every==0 or iteration==a.updates:
+                result=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
+                    episodes=a.evaluation_episodes,batch=a.batch,controllers=('brain',))
+                (out/f'development-{iteration:05d}.json').write_text(json.dumps(result,indent=2))
+                save_candidate(out/f'step-{iteration:05d}.pt',iteration,result)
+                if evaluation_rank(result['brain'])<evaluation_rank(best_report):
+                    best_state={k:v.detach().cpu().clone() for k,v in brain.state_dict().items()}
+                    best_report=result['brain'];best_iteration=iteration
+                print('Development',iteration,json.dumps({k:v for k,v in result['brain'].items() if k!='rows'}),
+                      'selected',best_iteration,flush=True)
+    # This seed is never used to select a snapshot. Evaluate both the unchanged
+    # parent and selected candidate after selection, on the same complete tasks.
+    brain.load_state_dict(initial)
+    test_parent=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
+        seed=config['test_seed'],episodes=a.test_episodes,batch=a.batch)
+    brain.load_state_dict(best_state)
+    test_candidate=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
+        seed=config['test_seed'],episodes=a.test_episodes,batch=a.batch,controllers=('brain',))
+    result=dict(selected_iteration=best_iteration,parent=test_parent,candidate=test_candidate,
+        improved_on_test=(best_iteration>0 and evaluation_rank(test_candidate['brain'])<evaluation_rank(test_parent['brain'])))
     (out/'evaluation.json').write_text(json.dumps(result,indent=2))
-    audit={}
-    for name,value in brain.state_dict().items():
-        old=initial[name];current=value.detach().cpu()
-        if not torch.equal(old,current):
-            if name not in selected:raise RuntimeError('Unexpected changed brain tensor: '+name)
-            audit[name]=dict(changed=int((old!=current).sum()),total=old.numel(),
-                             max_abs_change=float((old-current).abs().max()))
-    if 'log_edge_gain' not in audit:raise RuntimeError('No recurrent brain weights changed')
-    provenance=copy.deepcopy(meta)
-    provenance.pop('schema',None)  # export writes the inference schema itself
-    provenance['motor_tracking']={**provenance.get('motor_tracking',{}),'nominal_speed_mps':a.speed}
-    provenance['flight_cost_training']=dict(**config,changed_tensors=audit,
-        simulation_evaluation={k:{n:v for n,v in r.items() if n!='rows'} for k,r in result.items()},
-        live_qualified=False,limits='Experimental motor surrogate; no new autonomous race or freestyle evidence')
-    provenance['qualified']=False
-    export(out/'candidate.pt',brain,cfg,provenance,a.updates)
-    (out/'weights-audit.json').write_text(json.dumps(dict(changes=audit,wiring_and_signs_unchanged=True,
-        candidate_sha256=sha(out/'candidate.pt')),indent=2))
-    print('Candidate',str(out/'candidate.pt'),json.dumps({k:{n:v for n,v in r.items() if n!='rows'} for k,r in result.items()}),flush=True)
+    audit=save_candidate(out/'candidate.pt',best_iteration,test_candidate)
+    (out/'weights-audit.json').write_text(json.dumps(audit,indent=2))
+    print('Candidate',str(out/'candidate.pt'),'iteration',best_iteration,'improved on test',result['improved_on_test'],flush=True)
 
 
 if __name__=='__main__':

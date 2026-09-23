@@ -102,9 +102,25 @@ cost gradients may change recurrent edge magnitudes, neuron parameters and the
 motor readout; graph wiring, signs, encoders and normalization remain frozen.
 The export audits every changed tensor and remains unqualified until live tests.
 
+The first 400-update flight-cost attempt (`motor-brain-11-flight-cost-01`,
+revision `4e89e21`) changed 2,767,316 recurrent edge magnitudes, 29,869 neuron
+gains, 29,912 neuron biases and the first three motor readout rows. Wiring,
+transmitter signs, encoders and normalization stayed unchanged. It was rejected:
+development flight cost worsened from 3.016 to 7.100 and velocity RMSE from
+1.094 to 1.629 m/s. Neither model crashed in that short evaluation, but training
+was unstable. This is retained failed brain training, not a promoted checkpoint.
+
+Protocol 2 uses smaller, separate edge/neuron/readout learning rates and saves
+intermediate snapshots. Evaluation runs every declared maneuver to its fixed
+duration: a crash cannot skip later phases or change the following task's random
+start. Snapshot selection prioritizes fewer crashed tasks, then lower flight
+cost, on a development seed. A separate seed compares the selected snapshot
+with the unchanged parent after selection. These are still motor simulations;
+successful live flight and full-race comparisons are required before promotion.
+
 Local raw evidence: `runs/dynamics-calibration-20260923` and
 `runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and
 workload refusals are retained separately from flown attempts. Fresh project
 family resolution now handles the user-authorized rotating LitHarness jobs;
-busy or unknown-load jobs still fail the preflight. No new brain weights were
-trained.
+busy or unknown-load jobs still fail the preflight. The calibration flights
+themselves did not train brain weights.
