@@ -349,10 +349,10 @@ class FastRaceCue:
             blended = self.direction+self.config.direction_blend*(ray-self.direction)
             self.direction = blended/max(np.linalg.norm(blended), 1e-9)
         self.last_seen, self.edge = capture_time, bool(cue['edge'])
-        # Corner clamps are both vertical and lateral bounds: descend or climb
-        # while turning toward that side, rather than turning level.
-        self.below = self.edge and cue['v'] > .96
-        self.above = self.edge and cue['v'] < .04
+        # Corner clamps stay lateral: Liftoff clamps a marker behind the drone
+        # to a top corner, so a corner is not evidence of a target above/below.
+        self.below = self.edge and cue['v'] > .96 and .1 < cue['u'] < .9
+        self.above = self.edge and cue['v'] < .04 and .1 < cue['u'] < .9
         c = self.config
         if self.below:
             # A bottom clip only bounds the target below the clamped edge ray.

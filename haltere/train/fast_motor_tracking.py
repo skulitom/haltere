@@ -111,8 +111,9 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
     steps = int(seconds/cfg.brain.dt)
     retinal = (retina_sequence(retina_stream, steps, batch, seed, retina_dropout)
                if retina_stream is not None else None)
-    features, labels = [], []
+    features, labels, requested = [], [], []
     chatter, speeds, previous = [], [], None
+    slow_excess = []  # measured minus requested horizontal speed when the request is below 70% of nominal
     for k in range(steps):
         now = k*cfg.brain.dt
         positions = state.quad.pos.numpy().astype(float)
@@ -164,6 +165,7 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
             mask = torch.as_tensor(active)
             features.append(m[mask])
             labels.append(target_action[mask, :3].clamp(-.97, .97).atanh())
+            requested.append(request[mask, :2].norm(dim=-1))
         if previous is not None:
             chatter.append(float((command[:, 1:3]-previous[:, 1:3]).abs().mean()))
         previous = command
@@ -172,6 +174,9 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
         velocity = state.quad.vel
         state.quad.vel = velocity-quadratic_drag*velocity.norm(dim=-1, keepdim=True)*velocity*cfg.brain.dt
         speeds.append(float(velocity[torch.as_tensor(active)].norm(dim=-1).mean()) if active.any() else 0.)
+        slow = torch.as_tensor(active) & (request[:, :2].norm(dim=-1) < .7*speed) & torch.tensor(now > 3.)
+        if slow.any():
+            slow_excess.append(float((velocity[slow, :2].norm(dim=-1)-request[slow, :2].norm(dim=-1)).mean()))
         if now <= 1.5:
             state.quad.pos[:, 2] = state.quad.pos[:, 2].clamp_min(0.)
             state.quad.vel[:, 2] = state.quad.vel[:, 2].clamp_min(0.)
@@ -183,19 +188,31 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
                   finished=int(np.isfinite(finish).sum()), crashed=int(crashed.sum()),
                   finish_s=[None if not np.isfinite(t) else round(float(t), 2) for t in finish],
                   gates=targets.tolist(), mean_speed=round(float(np.mean(speeds)), 2),
-                  stick_chatter=round(float(np.mean(chatter)), 5))
-    data = dict(features=torch.cat(features), labels=torch.cat(labels)) if collect and features else None
+                  stick_chatter=round(float(np.mean(chatter)), 5),
+                  slow_request_excess_mps=round(float(np.mean(slow_excess)), 3) if slow_excess else None)
+    data = (dict(features=torch.cat(features), labels=torch.cat(labels), requested_speed=torch.cat(requested))
+            if collect and features else None)
     return result, data
 
 
-def fit_readout(brain, features, labels, ridge):
-    """Parent-centred ridge on throttle/roll/pitch rows; nothing else may change."""
+def speed_balance_weights(requested_speed, nominal, bins=6):
+    """Equal total weight per requested-speed bin, so slow requests (descents,
+    turns, braking) are not swamped by cruise samples. Mean weight is one."""
+    index = (requested_speed/max(nominal, 1e-6)*bins).long().clamp(0, bins-1)
+    counts = torch.bincount(index, minlength=bins).float()
+    weights = 1./counts[index].clamp_min(1.)
+    return weights*len(weights)/weights.sum()
+
+
+def fit_readout(brain, features, labels, ridge, weights=None):
+    """Parent-centred (optionally weighted) ridge on throttle/roll/pitch rows; nothing else may change."""
     x = torch.cat((features, torch.ones(len(features), 1)), -1).to(brain.readout.weight.device)
     y = labels.to(x.device)
+    w = (torch.ones(len(x)) if weights is None else weights).to(x.device)[:, None]
     parent = torch.cat((brain.readout.weight[:3].detach(), brain.readout.bias[:3, None].detach()), -1)
-    gram = x.T@x/len(x)
+    gram = (x*w).T@x/w.sum()
     delta = torch.linalg.solve(gram+ridge*torch.eye(x.shape[1], device=x.device),
-                               x.T@(y-x@parent.T)/len(x)).T
+                               (x*w).T@(y-x@parent.T)/w.sum()).T
     before = {n: p.detach().cpu().clone() for n, p in brain.named_parameters()}
     with torch.no_grad():
         brain.readout.weight[:3].add_(delta[:, :-1])
@@ -225,6 +242,7 @@ def main():
     parser.add_argument('--rest', type=float, default=5., help='seconds of rest between rollouts (thermal duty cycle)')
     parser.add_argument('--steep', type=float, default=0., help='probability of a 15-35 degree climbing/descending leg')
     parser.add_argument('--scaled-speed', type=float, default=3., help='apparent speed of a nominal request in the brain senses')
+    parser.add_argument('--balance-speed', action='store_true', help='weight samples so each requested-speed bin counts equally')
     args = parser.parse_args()
     if args.ridge <= 0 or args.rounds < 1:
         raise ValueError('Use positive ridge and at least one round')
@@ -255,7 +273,7 @@ def main():
         row, _ = rollout(brain, cfg, meta, profile, contract, evaluation_courses, controller=controller,
                          seconds=args.seconds, seed=17, retina_stream=evaluation_retina, retina_dropout=args.retina_dropout)
         record(dict(stage='baseline', **row))
-    rows, targets, history = [], [], []
+    rows, targets, requests, history = [], [], [], []
     for round_index in range(args.rounds):
         controller = 'pd' if round_index == 0 else 'brain'
         seeds = [1000*round_index+s for s in range(args.courses)]
@@ -266,17 +284,19 @@ def main():
         record(dict(stage=f'collect-{round_index}', **row, samples=len(data['labels']) if data else 0))
         if data is None:
             break
-        rows.append(data['features']); targets.append(data['labels'])
+        rows.append(data['features']); targets.append(data['labels']); requests.append(data['requested_speed'])
         # Refit from the parent each round on all data gathered so far.
         fresh, _, _ = load_checkpoint(args.checkpoint, args.device)
         brain.load_state_dict(fresh.state_dict())
-        changed = fit_readout(brain, torch.cat(rows), torch.cat(targets), args.ridge)
+        weights = speed_balance_weights(torch.cat(requests), args.speed) if args.balance_speed else None
+        changed = fit_readout(brain, torch.cat(rows), torch.cat(targets), args.ridge, weights)
         time.sleep(args.rest)
         row, _ = rollout(brain, cfg, meta, profile, contract, evaluation_courses, controller='brain',
                          seconds=args.seconds, seed=17, retina_stream=evaluation_retina, retina_dropout=args.retina_dropout)
         record(dict(stage=f'evaluate-{round_index}', **row))
         history.append(dict(round=round_index, evaluation=row, changed=changed))
-    torch.save(dict(features=torch.cat(rows), labels=torch.cat(targets), config=config), out/'training.pt')
+    torch.save(dict(features=torch.cat(rows), labels=torch.cat(targets), requested_speed=torch.cat(requests),
+                    config=config), out/'training.pt')
     meta.pop('schema', None)
     meta.update(qualified=False, fast_motor_tracking=dict(
         **contract, teacher='FastMotorPD in the measured surrogate; offline only, never loaded at runtime',
