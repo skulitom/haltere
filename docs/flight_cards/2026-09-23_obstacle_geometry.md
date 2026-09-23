@@ -134,3 +134,33 @@ absolute relative error was **49.1%**, and **15.1%** overestimated by more than
 25%. This rejects simple per-image scaling as a clearance solution; the existing
 pretrained model remains outside control. Results are preserved under
 `runs/depth-calibration-20260923/sparse-scaled-dense-v1`.
+
+## Live passive geometry observer
+
+A separate follow-up at commit `01614de` repeated the same oracle route and
+finished in **3:35.708**, with original drone and unchanged neural weights. The
+geometry/planner worker was strictly passive: none of its proposals reached
+control. There was no detected impact, reset or flight intervention, and no
+camera or controller-deadline failure. Unlike the earlier finish's receipt gap,
+this run stopped on `live_pose=false` during the game's finish transition.
+The game results screen confirms completion, and the geometric scorer also
+crosses all six sections in this run. The full standard video decodes.
+
+The worker processed 1,130 images: 1,126 had usable pose alignment, 211 supplied
+accepted current points, and 572 retained any recent points. It proposed 14
+detours, all ignored by control. Total update time was **46.3 ms median / 69.6 ms
+p95 / 284.5 ms maximum**. Controller steps were 6.66 ms median / 8.42 ms p95 /
+13.27 ms maximum. No inferred empty space or counterfactual finish is claimed.
+Exact worker images were not archived; the full gameplay video and JSONL
+observations are retained, so this run qualifies runtime/coverage only.
+
+Local evidence: `runs/challenge-box-geometry-shadow-20260923`. It was preceded
+by a 60-second ground-only shadow/video check (5,992 ticks, no camera/deadline
+failure, no worker errors), retained under
+`runs/geometry-shadow-ground-repeat-20260923`. An earlier preflight-only refusal
+under `runs/geometry-shadow-ground-20260923` started no controller/capture. The
+already-authorized LitHarness family in session 1 was identified by process
+ancestry, explicitly excepted, and measured idle in the successful runs' preflight
+and postflight checks. The viewer stayed hidden and GPU temperature stayed near
+44 degrees C. This follow-up is another oracle diagnostic, outside the original
+three-attempt qualification series and outside autonomous acceptance counts.

@@ -174,9 +174,12 @@ goals. It never changes the recorded states or claims a counterfactual finish:
 On the failed obstacle trajectory, the first prototype proposed changes in 62
 frames. Offline collider checking found 12 proposals with positive observed
 clearance that still intersected an unobserved surface. Restricting new detours
-to the camera view reduced that count to one. The remaining error, sparse
-coverage, and surrogate motion model keep it outside steering. These proposals
-are correlated development diagnostics, not successful flight attempts.
+to the camera view reduced that count to one. A subsequent review located that
+overlap at the initially occupied launch platform: the conservative sphere
+starts 0.258 m inside it, exits after 0.75 s, and never reenters. Both original
+audits and this correction are retained. Sparse coverage and the surrogate
+motion model still prevent a safety or closed-loop improvement claim. These
+proposals are correlated development diagnostics, not successful flight attempts.
 
 The visual runner's explicit `--geometry-shadow` option is currently restricted
 to PD diagnostics. A separate process captures at 5 fps, reads a bounded live
@@ -184,4 +187,13 @@ pose/goal history, and writes `.geometry.jsonl` and `.geometry.json` beside the
 flight log. Sharing never waits on a lock, and **no proposed action returns to
 the motor controller**. This permits timing and perception checks during a
 flight without interpreting them as geometry-enabled navigation. Oracle source
-goals remain explicitly labelled privileged. Live timings still require testing.
+goals remain explicitly labelled privileged.
+
+The first live observer check passed 60 s on the ground. A separate complete
+oracle flight then finished in **3:35.708**, with no detected impact or camera/
+controller-deadline failure. The observer processed 1,130 frames, recovered
+current points in 211, and held recent points in 572. It made 14 uncommanded
+detour proposals. Total update time was 46.3 ms median, 69.6 ms p95 and 284.5 ms
+maximum; sparse coverage and occasional slow proposals remain visible. The
+telemetry guard stopped on `live_pose=false` at the finish transition. This
+checks runtime alongside one slow oracle flight, not autonomous obstacle avoidance.
