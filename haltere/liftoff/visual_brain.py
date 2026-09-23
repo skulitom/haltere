@@ -249,7 +249,7 @@ class VisualController:
         self.assistance_mode = pilot_assistance
         if dynamics_calibration:
             from .dynamics_calibration import DynamicsCalibration
-            self.assistance = DynamicsCalibration(dynamics_calibration,c)
+            self.assistance = DynamicsCalibration(dynamics_calibration,c,self.cfg.rates)
             self.assistance_mode = 'dynamics-calibration'
         if collection_route:
             from .oracle_assistance import OracleCollectionAssistance

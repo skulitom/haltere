@@ -15,9 +15,11 @@ Start with `--dynamics-calibration hover`. The PD baseline climbs to 15 m above
 launch and must remain within 0.6 m, below 0.35 m/s and below 0.25 rad/s for two
 continuous seconds. Only then does a pulse sequence begin. `throttle` requests
 processed inputs 0.25, 0.5, 0.75 and 1.0, three times each, for 0.25/0.15 seconds.
-`roll`, `pitch` and `yaw` request both signs at those amplitudes, three times each,
-with shorter durations at larger inputs. Each angular pulse ends after its time
-limit or 35 degrees of measured attitude change. Every pulse requires a new
+`roll`, `pitch` and `yaw` request both signs at those amplitudes, three times each.
+Their durations are limited to 20 degrees of requested rotation under the
+checkpoint's calibrated rate curve, or 0.25 seconds, whichever is shorter. Each
+angular pulse also ends if measured attitude change plus 40 ms of continued
+measured rotation reaches 35 degrees. Every pulse requires a new
 stable recovery before the next; missing recovery stops the experiment.
 
 The calibration-specific limits are 35 m above launch, 15 m horizontal radius,
@@ -38,3 +40,17 @@ does not change brain weights or drone settings. Preserve raw attempts, fit on
 declared windows and validate on separate pulses before changing training
 dynamics. Hover qualification and wider measurements remain live checks, not
 capabilities implied by the automated tests.
+
+The first measured batch at `9220911` qualified hover and completed all 12
+throttle pulses, including three at actual processed input 0.99996. No impact,
+camera failure or controller deadline failure occurred. The first roll sequence
+completed the 18 lower-amplitude pulses, then exceeded the tilt limit during the
+first full-input pulse. It paused without a detected impact; pitch and yaw were
+not attempted on that revision. Command-to-game input lag was about 30 ms. This
+failure motivated the advance rotation/time bounds above. Preserve it alongside
+subsequent attempts; the complete high-rate sequence is not yet qualified.
+
+Local raw evidence: `runs/dynamics-calibration-20260923`. An initial pad-binding
+failure and a preflight refusal for newly restarted, idle user-authorized
+LitHarness processes occurred before flight and are retained. Neither is a
+flown attempt. No new brain weights were trained.

@@ -20,17 +20,32 @@ class Pulse:
     duration_s: float
 
 
-def pulse_plan(mode):
+def pulse_plan(mode, rates=None):
     if mode not in ('hover', 'throttle', 'roll', 'pitch', 'yaw'):
         raise ValueError('Unknown dynamics calibration mode')
     if mode == 'hover':
         return []
+    if mode != 'throttle' and rates is None:
+        raise ValueError('Angular pulses require the calibrated vehicle rate profile')
     result = []
     # Ascending amplitude, independent repetitions, stable recovery between all.
     for amplitude in (.25, .5, .75, 1.):
         for _ in range(3):
             for sign in ((1.,) if mode == 'throttle' else (1., -1.)):
-                duration = (.25 if amplitude <= .5 else .15) if mode == 'throttle' else .0625/amplitude
+                if mode == 'throttle':
+                    duration = .25 if amplitude <= .5 else .15
+                else:
+                    import torch
+                    from ..sim.rates import betaflight_rate_curve
+                    axis = ('roll','pitch','yaw').index(mode)
+                    rate = float(betaflight_rate_curve(torch.tensor(amplitude), rates.rc_rate[axis],
+                                                       rates.super_rate[axis],rates.expo[axis]))
+                    if not np.isfinite(rate) or rate <= 0:
+                        raise ValueError('Use a finite positive calibrated rate curve')
+                    # A retrospective angle cutoff is too late at high rates:
+                    # measured command-to-game input lag was about 30 ms.
+                    # Bound requested rotation before sending the pulse, too.
+                    duration = min(.25,20./rate)
                 result.append(Pulse(mode, sign*amplitude, duration))
     return result
 
@@ -40,10 +55,11 @@ class DynamicsCalibration:
     stable_s = 2.
     recovery_timeout_s = 35.
     pulse_angle_limit_deg = 35.
+    stop_latency_s = .04
 
-    def __init__(self, mode, calibration):
+    def __init__(self, mode, calibration, rates=None):
         self.mode, self.calibration = mode, calibration
-        self.plan = pulse_plan(mode)
+        self.plan = pulse_plan(mode,rates)
         self.speed = self.reference_speed = 2.
         self.host = SimpleNamespace(flow_gain=1.)
         self.pilot = SimpleNamespace(carrot=np.array([0., 0., self.height]), target=None,
@@ -58,6 +74,7 @@ class DynamicsCalibration:
         self.events = []
         self.complete = False
         self.airborne = False
+        self.failure = None
 
     def bind(self, frame):
         timestamp = float(frame.timestamp)
@@ -84,6 +101,9 @@ class DynamicsCalibration:
         if (position[2] > 35 or self.airborne and position[2] < 3
                 or np.linalg.norm(position[:2]) > 15 or np.linalg.norm(velocity) > 15
                 or tilt > 55 or np.linalg.norm(omega) > np.deg2rad(1800)):
+            self.failure = dict(timestamp=float(timestamp),position=position.tolist(),velocity=velocity.tolist(),
+                                quaternion=quaternion.tolist(),omega=omega.tolist(),tilt_deg=float(tilt),
+                                phase=self.phase,pulse_index=self.next_pulse-1)
             raise RuntimeError('Dynamics calibration motion limit exceeded')
         yaw = np.arctan2(rotation[1,0],rotation[0,0])
         self.heading = yaw if self.heading is None else self.heading
@@ -95,9 +115,12 @@ class DynamicsCalibration:
         if self.phase == 'pulse':
             angle = np.rad2deg(2*np.arccos(np.clip(abs(quaternion@self.pulse_quaternion),0,1)))
             elapsed = timestamp-self.phase_start
-            if elapsed >= self.active.duration_s or angle >= self.pulse_angle_limit_deg:
+            predicted_angle = angle+np.rad2deg(np.linalg.norm(omega))*self.stop_latency_s
+            if elapsed >= self.active.duration_s or predicted_angle >= self.pulse_angle_limit_deg:
                 self.events[-1].update(ended=timestamp, duration_s=elapsed,
-                                      termination='angle_limit' if angle>=self.pulse_angle_limit_deg else 'duration')
+                    predicted_stop_angle_deg=float(predicted_angle),
+                    termination='angle_limit' if angle>=self.pulse_angle_limit_deg else
+                                'predicted_angle_limit' if predicted_angle>=self.pulse_angle_limit_deg else 'duration')
                 self.active = None
                 self.phase, self.phase_start, self.stable_since = 'recover', timestamp, None
                 self.pilot.n_passes += 1
@@ -141,6 +164,7 @@ class DynamicsCalibration:
                     plan=[asdict(p) for p in self.plan], events=self.events, complete=self.complete,
                     phase=self.phase, stable_hover_before_each_pulse_s=self.stable_s,
                     angular_pulse_cutoff_deg=self.pulse_angle_limit_deg,
+                    requested_rotation_limit_deg=20.,stop_latency_allowance_s=self.stop_latency_s,failure=self.failure,
                     runtime_route_oracle=False, autonomous_evaluation_eligible=False,
                     goal_source='Declared hover and identification pulses in verified empty arena',
                     motor_control='PD hover plus processed-input pulses; brain runs in shadow',

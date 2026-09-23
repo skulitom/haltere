@@ -93,7 +93,7 @@ The [dynamics measurement mode](docs/dynamics_calibration.md) adds bounded input
 pulses and measured recovery for calibrating the original drone before faster
 flight training. It is a separate PD calibration tool, not a brain flight result.
 
-Validation: **425 automated tests passed** (three existing warnings). The CPU
+Validation: **426 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical
