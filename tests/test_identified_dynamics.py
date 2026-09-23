@@ -63,3 +63,13 @@ def test_uncertainty_is_per_episode_and_repeatable():
     assert first.std()>0
     with pytest.raises(ValueError,match='batch'):
         sim.hover(2)
+
+
+def test_measured_drag_bounds_can_vary_a_nominally_zero_axis():
+    profile={**PROFILE,'translation_drag_s_inv':[.03,0,.35],
+             'translation_drag_uncertainty_s_inv':[[.01,.05],[0,.04],[.3,.4]]}
+    sim=IdentifiedSim(profile,CAL)
+    sim.randomize(4,.05,torch.Generator().manual_seed(7))
+    assert (sim.drag[:,1]>0).all() and (sim.drag[:,1]<.04).all()
+    sim.randomize(4,0.)
+    assert not sim.drag[:,1].any()

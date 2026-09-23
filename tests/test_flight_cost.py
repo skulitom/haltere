@@ -2,7 +2,7 @@ import copy
 
 import torch
 
-from haltere.train.flight_cost import FlightCostRollout,trainable_motor_parameters,evaluation_rank
+from haltere.train.flight_cost import FlightCostRollout,trainable_motor_parameters,evaluation_rank,acceptable_tracking
 from tests.test_human_brain import small_brain
 from tests.test_identified_dynamics import CAL,PROFILE
 from tests.test_visual_assistance import SENSOR
@@ -57,3 +57,22 @@ def test_snapshot_selection_prioritizes_fewer_crashes_over_lower_cost():
     fast_crash=dict(crashed_tasks=1,mean_flight_cost=1.)
     improved=dict(crashed_tasks=0,mean_flight_cost=4.)
     assert evaluation_rank(improved)<evaluation_rank(clean)<evaluation_rank(fast_crash)
+
+
+def test_expanded_curriculum_starts_with_real_climb_error_and_horizontal_hold():
+    brain,cfg,_=small_brain();cfg.brain.mask_motor_feedback=True
+    rollout=FlightCostRollout(brain,cfg,dict(calibration=CAL,gate_sensor=SENSOR),PROFILE,
+        batch=2,episode_steps=192,curriculum='launch-turn-stop',randomize=.05)
+    rollout.reset()
+    delta=rollout.altitude0-rollout.state.quad.pos[:,2]
+    assert ((delta>2)&(delta<4)).all()
+    assert not rollout.state.quad.vel[:,:2].any()
+    with torch.no_grad():_,report=rollout.loss(16)
+    assert rollout.phase==0 and report['height_rmse']>1.5
+
+
+def test_lower_aggregate_cost_cannot_hide_worse_height_or_velocity():
+    parent=dict(height_rmse=.5,velocity_rmse=1.)
+    assert acceptable_tracking(dict(height_rmse=.4,velocity_rmse=.9),parent)
+    assert not acceptable_tracking(dict(height_rmse=.6,velocity_rmse=.1),parent)
+    assert not acceptable_tracking(dict(height_rmse=.1,velocity_rmse=1.1),parent)

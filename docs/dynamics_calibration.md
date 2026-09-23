@@ -147,6 +147,36 @@ hover within 0.6 m at less than 0.6 m/s for one second. Endpoint criteria and
 weights remain unchanged. This is a generic guidance revision for another
 declared comparison, not a reinterpretation of the failed first batch.
 
+That revised comparison (`d6cc806`) completed the generated trajectory with all
+three controllers and no detected impacts or runtime failures:
+
+| Motor | Complete task time | Moving path RMS |
+| --- | ---: | ---: |
+| PD | 28.505 s | 0.165 m |
+| motor10 candidate05 | 29.315 s | 0.299 m |
+| motor11 flight-cost candidate02 | 39.557 s | 0.396 m |
+
+All three recordings decoded. These are three different controllers completing
+one stored motor task, **not 3/3 autonomous races**. The new weights were slower
+and less precise than their parent and remain unpromoted. Evidence is in
+`runs/motor-tracking-stable-guidance-20260923`.
+
+Native-interval analysis of the PD recording estimated forward drag at
+0.0275/s, versus the surrogate's assumed 0.1/s. A small thrust-scale correction
+(3.1561 to 3.1378) reduced its vertical acceleration fit RMSE from 0.0592 to
+0.0125 m/s². These are development fits at roughly 3 m/s; lateral drag is weakly
+identified and high-speed transfer remains unvalidated. The next profile keeps
+explicit drag uncertainty, uses 5% variation of the measured parameters, and
+retains 20--60 ms command delay uncertainty. It is not installed in the live PD.
+
+Training protocol 3 adds sustained airborne climbs, descents and stops, longer
+episodes and separate height/velocity metrics. Selection rejects a regression
+greater than 5% in either metric even if aggregate cost decreases. Distinct
+recorded takes supply additional empty-arena retinal currents; they are sensory
+perturbations independent of the simulated pose. New development and final-test
+seeds are declared for each subsequent run. Ground contact and autonomous visual
+navigation still require live evidence.
+
 Local raw evidence: `runs/dynamics-calibration-20260923` and
 `runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and
 workload refusals are retained separately from flown attempts. Fresh project

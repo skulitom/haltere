@@ -81,6 +81,12 @@ class IdentifiedSim:
         self.expo=torch.tensor([axes[a]['expo'] for a in ('roll','pitch','yaw')],device=self.device)
         self.super_rate=torch.tensor([axes[a]['super_rate'] for a in ('roll','pitch','yaw')],device=self.device)
         self.drag=jitter(self.profile['translation_drag_s_inv'])
+        if scale and 'translation_drag_uncertainty_s_inv' in self.profile:
+            bounds=torch.as_tensor(self.profile['translation_drag_uncertainty_s_inv'],device=self.device)
+            if (bounds.shape!=(3,2) or not torch.isfinite(bounds).all()
+                    or (bounds[:,0]<0).any() or (bounds[:,0]>bounds[:,1]).any()):
+                raise ValueError('Use three finite nonnegative ordered drag uncertainty bounds')
+            self.drag=bounds[:,0]+(bounds[:,1]-bounds[:,0])*torch.rand((batch,3),device=self.device,generator=generator)
 
     def hover(self,batch,height=6.):
         if self.twr.shape[0]!=batch:

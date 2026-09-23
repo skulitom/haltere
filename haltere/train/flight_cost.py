@@ -28,13 +28,17 @@ def trainable_motor_parameters(brain):
 
 class FlightCostRollout:
     def __init__(self,brain,cfg,meta,profile,*,batch=4,reference_speed=3.,seed=20001,
-                 retina_stream=None,randomize=.2,episode_steps=800,controller='brain',reset_on_crash=True):
+                 retina_stream=None,randomize=.2,episode_steps=800,controller='brain',reset_on_crash=True,
+                 curriculum='turns'):
         if not cfg.brain.mask_motor_feedback:
             raise ValueError('Effective plant training requires masked RPM feedback; its rotor model is not qualified')
         if batch<1 or not 0<reference_speed<=10 or episode_steps<64:
             raise ValueError('Use positive batch/speed and an episode of at least 64 steps')
         if controller not in ('brain','pd'):
             raise ValueError('Expected brain or matched PD diagnostic')
+        if curriculum not in ('turns','launch-turn-stop'):
+            raise ValueError('Unknown motor curriculum')
+        self.curriculum=curriculum
         self.controller=controller
         self.reset_on_crash=reset_on_crash
         self.brain,self.cfg,self.meta=brain,cfg,meta
@@ -62,6 +66,11 @@ class FlightCostRollout:
         self.state.quad.vel[:,:2]=torch.stack((self.heading0.cos(),self.heading0.sin()),-1)*self.speed*rand(B,1)
         self.state.quad.vel[:,2]=(rand(B)-.5)*.4
         self.altitude0=self.state.quad.pos[:,2].clone()
+        if self.curriculum=='launch-turn-stop':
+            # An airborne climb avoids inventing a ground/contact model. Its
+            # target is 2--4 m above the start, unlike the old near-hover starts.
+            self.state.quad.pos[:,2]=2+2*rand(B)
+            self.state.quad.vel[:,:2]=0.
         self.turn=(rand(B)*2-1)*1.2
         self.climb=(rand(B)*2-1)*1.2
         self.hold=self.state.quad.pos.clone();self.phase=-1
@@ -83,14 +92,19 @@ class FlightCostRollout:
                 or (self.reset_on_crash and bool(self.state.quad.crashed.any()))):
             self.reset()
         brain=self.brain;neural=brain.detach_state(self.neural);W=brain.weight_matrix()
-        state=self.state.detach();costs=[];errors=[]
+        state=self.state.detach();costs=[];errors=[];height_errors=[]
         for t in range(steps):
-            age=self.age+t;phase=min(3,int(4*age/self.episode_steps))
+            age=self.age+t
+            if self.curriculum=='launch-turn-stop':
+                phase=0 if age<self.episode_steps/3 else min(4,1+int(6*(age-self.episode_steps/3)/self.episode_steps))
+                moving_phase=phase-1
+            else:
+                phase=min(3,int(4*age/self.episode_steps));moving_phase=phase
             if phase!=self.phase:
                 self.hold=state.quad.pos.detach().clone();self.phase=phase
-            heading=self.heading0+(self.turn if phase==1 else -self.turn if phase==2 else 0)
-            altitude=self.altitude0+(self.climb if phase in (1,2) else 0)
-            braking=torch.full((self.batch,),phase==3,dtype=torch.bool,device=brain.device)
+            heading=self.heading0+(self.turn if moving_phase==1 else -self.turn if moving_phase==2 else 0)
+            altitude=self.altitude0+(self.climb if moving_phase==1 else -self.climb if moving_phase==2 else 0)
+            braking=torch.full((self.batch,),moving_phase in (-1,3),dtype=torch.bool,device=brain.device)
             senses=self.sim.sensors(state)
             relative,yaw,moving=local_guidance(senses,heading,altitude,self.hold,braking)
             gain=max(1.,self.reference_speed/self.speed)
@@ -117,24 +131,28 @@ class FlightCostRollout:
             # from the objective by changing the attitude-dependent guidance.
             desired_velocity=(torch.stack((heading.cos(),heading.sin()),-1)*desired_speed[:,None]).detach()
             velocity_error=(state.quad.vel[:,:2]-desired_velocity).square().sum(-1)
+            height_error=(state.quad.pos[:,2]-altitude).square()
+            hold_error=(state.quad.pos[:,:2]-self.hold[:,:2]).square().sum(-1)*braking
             up=quat_to_mat(state.quad.quat)[:,2,2]
-            cost=(velocity_error+2*(state.quad.pos[:,2]-altitude).square()+state.quad.vel[:,2].square()
+            cost=(velocity_error+2*height_error+.5*hold_error+state.quad.vel[:,2].square()
                   +.5*(1-up)+.02*state.quad.omega.square().sum(-1)
                   +.05*(command-self.previous).square().sum(-1)
                   +20*torch.relu(1-state.quad.pos[:,2]).square()+100*state.quad.crashed.float())
             costs.append(cost.mean());errors.append(velocity_error.detach().mean())
+            height_errors.append(height_error.detach().mean())
             self.previous=command.detach()
         self.age+=steps;self.neural=brain.detach_state(neural);self.state=state.detach()
         self.delay=deque(a.detach() for a in self.delay)
         metrics=dict(flight_cost=float(torch.stack(costs).mean().detach()),
             velocity_rmse=float(torch.stack(errors).mean().sqrt()),crashes=int(state.quad.crashed.sum()),
+            height_rmse=float(torch.stack(height_errors).mean().sqrt()),
             episode=self.episode,step=self.age,speed_mps=self.speed,delay_steps=self.delay_steps)
         return torch.stack(costs).mean(),metrics
 
 
 @torch.no_grad()
 def evaluate(brain,cfg,meta,profile,*,retina_stream,reference_speed,seed=8293,episodes=2,batch=4,
-             controllers=('brain','pd'),episode_steps=800):
+             controllers=('brain','pd'),episode_steps=800,randomize=.2,curriculum='turns'):
     """Matched complete tasks: a crash cannot advance the random task schedule.
 
     Every controller sees the same starts, dynamics and four maneuver phases.
@@ -148,7 +166,7 @@ def evaluate(brain,cfg,meta,profile,*,retina_stream,reference_speed,seed=8293,ep
     for controller in controllers:
         rollout=FlightCostRollout(brain,cfg,meta,profile,batch=batch,reference_speed=reference_speed,
             seed=seed,retina_stream=retina_stream,controller=controller,
-            episode_steps=episode_steps,reset_on_crash=False)
+            episode_steps=episode_steps,reset_on_crash=False,randomize=randomize,curriculum=curriculum)
         rows=[];crashed_tasks=0
         for episode in range(episodes):
             rollout.reset()
@@ -158,6 +176,7 @@ def evaluate(brain,cfg,meta,profile,*,retina_stream,reference_speed,seed=8293,ep
             crashed_tasks+=int(rollout.state.quad.crashed.sum())
         reports[controller]=dict(mean_flight_cost=sum(r['flight_cost'] for r in rows)/len(rows),
             velocity_rmse=(sum(r['velocity_rmse']**2 for r in rows)/len(rows))**.5,
+            height_rmse=(sum(r['height_rmse']**2 for r in rows)/len(rows))**.5,
             crash_windows=sum(r['crashes']>0 for r in rows),crashed_tasks=crashed_tasks,
             tasks=episodes*batch,episodes=episodes,seed=seed,windows=len(rows),rows=rows)
     return reports
@@ -166,6 +185,11 @@ def evaluate(brain,cfg,meta,profile,*,retina_stream,reference_speed,seed=8293,ep
 def evaluation_rank(report):
     """Any additional crash is worse than a reduction in average tracking cost."""
     return report['crashed_tasks'],report['mean_flight_cost']
+
+
+def acceptable_tracking(report,parent):
+    """Do not conceal a material velocity/height regression in the total cost."""
+    return all(report[key]<=1.05*parent[key] for key in ('velocity_rmse','height_rmse'))
 
 
 def main():
@@ -187,11 +211,21 @@ def main():
     p.add_argument('--edge-lr',type=float,default=1e-5)
     p.add_argument('--neuron-lr',type=float,default=1e-5)
     p.add_argument('--readout-lr',type=float,default=1e-6)
+    p.add_argument('--randomize',type=float,default=.05)
+    p.add_argument('--episode-steps',type=int,default=1920)
+    p.add_argument('--curriculum',choices=['turns','launch-turn-stop'],default='launch-turn-stop')
+    p.add_argument('--development-seed',type=int,default=8293)
+    p.add_argument('--test-seed',type=int,default=17491)
     a=p.parse_args()
     if min(a.updates,a.evaluation_episodes,a.test_episodes,a.validation_every)<1:
         raise ValueError('Use positive training and evaluation budgets')
     if not all(0<lr<.01 for lr in (a.edge_lr,a.neuron_lr,a.readout_lr)):
         raise ValueError('Use finite positive learning rates below 0.01')
+    if (not 0<=a.randomize<1 or a.episode_steps<64 or a.episode_steps%32
+            or not 8<=a.window<=a.episode_steps or a.episode_steps%a.window):
+        raise ValueError('Use bounded uncertainty and complete fixed training/evaluation windows')
+    if len({a.seed,a.development_seed,a.test_seed})!=3:
+        raise ValueError('Training, development and final test seeds must differ')
     out=Path(a.out);out.mkdir(parents=True,exist_ok=False)
     torch.set_num_threads(2);torch.manual_seed(a.seed)
     sha=lambda name:hashlib.sha256(Path(name).read_bytes()).hexdigest()
@@ -206,8 +240,10 @@ def main():
     validation_retina=load_recorded_retina(a.validation_retina_data,meta['gate_sensor'])
     if sha(a.retina_data)==sha(a.validation_retina_data):
         raise ValueError('Use different recorded scene takes for training and validation')
-    config=vars(a)|dict(protocol=2,parent_sha256=sha(a.checkpoint),profile_sha256=sha(a.profile),
-        development_seed=8293,test_seed=17491,
+    config=vars(a)|dict(protocol=3,parent_sha256=sha(a.checkpoint),profile_sha256=sha(a.profile),
+        retina_data_sha256=sha(a.retina_data),validation_retina_data_sha256=sha(a.validation_retina_data),
+        retina_manifest_sha256=sha(Path(a.retina_data).parent/'manifest.json'),
+        validation_retina_manifest_sha256=sha(Path(a.validation_retina_data).parent/'manifest.json'),
         source_sha256=sha(__file__),loss='Differentiable flight cost; no action imitation',
         source_revision=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
         source_hashes={name:sha(name) for name in ['haltere/train/flight_cost.py','haltere/sim/identified.py',
@@ -224,8 +260,9 @@ def main():
         dict(params=[v for k,v in selected.items() if k not in ('log_edge_gain','readout.weight','readout.bias')],
              lr=a.neuron_lr)])
     wait_if_hot(68.)
+    evaluation_options=dict(episode_steps=a.episode_steps,randomize=a.randomize,curriculum=a.curriculum)
     baseline=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
-                      episodes=a.evaluation_episodes,batch=a.batch)
+                      episodes=a.evaluation_episodes,batch=a.batch,seed=a.development_seed,**evaluation_options)
     (out/'baseline.json').write_text(json.dumps(baseline,indent=2))
     print('Baseline',json.dumps({k:{n:v for n,v in r.items() if n!='rows'} for k,r in baseline.items()}),flush=True)
     best_state=initial;best_report=baseline['brain'];best_iteration=0
@@ -249,7 +286,7 @@ def main():
         return dict(changes=audit,wiring_and_signs_unchanged=True,candidate_sha256=sha(path))
 
     rollout=FlightCostRollout(brain,cfg,meta,profile,batch=a.batch,reference_speed=a.speed,
-                              seed=a.seed,retina_stream=train_retina)
+                              seed=a.seed,retina_stream=train_retina,**evaluation_options)
     start=time.monotonic()
     with (out/'training.jsonl').open('x') as log:
         for iteration in range(1,a.updates+1):
@@ -266,10 +303,12 @@ def main():
             if iteration==1 or iteration%10==0:print(json.dumps(row),flush=True)
             if iteration%a.validation_every==0 or iteration==a.updates:
                 result=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
-                    episodes=a.evaluation_episodes,batch=a.batch,controllers=('brain',))
+                    episodes=a.evaluation_episodes,batch=a.batch,controllers=('brain',),
+                    seed=a.development_seed,**evaluation_options)
                 (out/f'development-{iteration:05d}.json').write_text(json.dumps(result,indent=2))
                 save_candidate(out/f'step-{iteration:05d}.pt',iteration,result)
-                if evaluation_rank(result['brain'])<evaluation_rank(best_report):
+                if (evaluation_rank(result['brain'])<evaluation_rank(best_report)
+                        and acceptable_tracking(result['brain'],baseline['brain'])):
                     best_state={k:v.detach().cpu().clone() for k,v in brain.state_dict().items()}
                     best_report=result['brain'];best_iteration=iteration
                 print('Development',iteration,json.dumps({k:v for k,v in result['brain'].items() if k!='rows'}),
@@ -278,12 +317,13 @@ def main():
     # parent and selected candidate after selection, on the same complete tasks.
     brain.load_state_dict(initial)
     test_parent=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
-        seed=config['test_seed'],episodes=a.test_episodes,batch=a.batch)
+        seed=config['test_seed'],episodes=a.test_episodes,batch=a.batch,**evaluation_options)
     brain.load_state_dict(best_state)
     test_candidate=evaluate(brain,cfg,meta,profile,retina_stream=validation_retina,reference_speed=a.speed,
-        seed=config['test_seed'],episodes=a.test_episodes,batch=a.batch,controllers=('brain',))
+        seed=config['test_seed'],episodes=a.test_episodes,batch=a.batch,controllers=('brain',),**evaluation_options)
     result=dict(selected_iteration=best_iteration,parent=test_parent,candidate=test_candidate,
-        improved_on_test=(best_iteration>0 and evaluation_rank(test_candidate['brain'])<evaluation_rank(test_parent['brain'])))
+        improved_on_test=(best_iteration>0 and evaluation_rank(test_candidate['brain'])<evaluation_rank(test_parent['brain'])
+                          and acceptable_tracking(test_candidate['brain'],test_parent['brain'])))
     (out/'evaluation.json').write_text(json.dumps(result,indent=2))
     audit=save_candidate(out/'candidate.pt',best_iteration,test_candidate)
     (out/'weights-audit.json').write_text(json.dumps(audit,indent=2))
