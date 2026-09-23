@@ -17,8 +17,11 @@ file hashes and a separate `offline-geometry.json`. Installation refuses to
 overwrite existing content. Install before the game's next content refresh,
 then verify rendering, directed checkpoint progression and playability in Anode.
 **Passing file and geometry tests does not qualify a course as playable.** The
-initial six-section development bundle is installed locally; game verification
-is pending. Do not report its seeds as unseen layout families.
+initial six-section development bundle is installed locally. The box-calibration
+variant rendered and started correctly in Anode. Its first PD run crossed five
+sections geometrically, then hit the final wall: **0/1 complete courses**. Full
+playability and the flag variant remain unqualified. Do not report these seeds
+as unseen layout families.
 
 ## Score attempts without inventing finishes
 
@@ -71,3 +74,34 @@ capture` on that port; two receivers must not compete for the game's 9001 stream
 The visual runner records the forwarding port. Keep the collection labelled
 with its actual controller and assistance mode; image/UDP receipt alignment does
 not by itself measure physical display latency.
+
+## Current camera-geometry experiment
+
+The [2026-09-23 obstacle diagnostic](flight_cards/2026-09-23_obstacle_geometry.md)
+retains the failed flight, video and 599 passive images. A pretrained metric-depth
+candidate produced inconsistent scale and remains outside flight control.
+
+`temporal_depth.py` instead tracks actual image features and triangulates them
+from measured motion. It rejects insufficient translation, incompatible rays,
+behind-camera points and tracks that fail a third-view reprojection check.
+`geometry_mask.py` excludes the configured HUD and original drone's propellers;
+it also sacrifices some bright/green scene features. `surface_memory.py` forms
+short-lived finite surface hypotheses. Neither missing points nor positive
+clearance certify free space; triangulation noise, pose timing, thin obstacles
+and holes between samples remain limitations. **These modules have no live
+steering authority and are not imported by the flight controller.**
+
+Reproduce the causal replay, optionally scoring predictions against the separate
+offline collider file after each frame's prediction. Use a new output directory:
+
+```powershell
+.venv/Scripts/python.exe -m haltere.vision.geometry_replay --dataset data/vision/challenge_boxes_pd_20260923 --out runs/geometry-replay-check --offline-labels runs/challenge-box-calibration-20260923/offline-geometry.json --stop-timestamp 136.57421875
+```
+
+The stop timestamp excludes the terminal impact sample from this particular
+recording; it is evaluation metadata. Omitting `--offline-labels` produces the
+same geometry and warnings without reading course geometry. The 1.2-second
+constant-velocity query is a diagnostic, not a dynamically feasible planner.
+On this development replay it warns about the wall 1.98 s before impact, but
+also warns during successful passages. Broader calibration and a frozen live
+on/off comparison are still required.

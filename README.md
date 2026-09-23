@@ -63,10 +63,14 @@ The [development program](docs/generalization_program.md) uses generated and
 Workshop courses, frozen comparisons, camera-derived geometry, then broader
 brain training. Manual map design is unnecessary. The
 [obstacle-section generator and offline scorer](docs/challenge_sections.md)
-include physical gate frames, descents and occlusions; their game qualification
-and the live geometry layer are still pending. Course geometry remains offline.
+include physical gate frames, descents and occlusions. The first box-calibration
+flight crossed five of six sections geometrically and hit the last wall; whole
+course qualification remains pending. A causal image/motion geometry prototype
+detects that wall in replay but still raises false warnings and has no live
+authority. [Diagnostic and limits](docs/flight_cards/2026-09-23_obstacle_geometry.md).
+Course geometry remains offline.
 
-Validation: **366 automated tests passed** (three existing warnings). The CPU
+Validation: **375 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

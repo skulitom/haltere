@@ -11,6 +11,11 @@ flight does not exist. Rules: `docs/generalisation.md`.
 
 ## 2026-09-23 full-race motor comparison
 
+The subsequent [generated obstacle/depth diagnostic](2026-09-23_obstacle_geometry.md)
+completed five sections geometrically, then hit the final wall (**0/1 whole
+courses**). It supplied 599 passive images for causal geometry development;
+the current geometry prototype has no live steering authority.
+
 [The corrected, frozen four-flight comparison](2026-09-23_matched_full_races.md)
 finished **0/2 with motor10 candidate05 and 1/2 with PD**. PD completed all three
 Straw Bale laps in **13:04.047**; both motors hit a Minus Two pillar. No camera or

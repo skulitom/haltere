@@ -46,7 +46,11 @@ readout fit for obstacle clearance. Full-throttle/high-rate measurements and bra
 training through flight costs come after these steps.
 The [section generator and offline scorer](challenge_sections.md) now implement
 that course format, including explicit unknown geometry and a separate box-only
-depth-calibration variant. In-game qualification and live depth integration remain pending.
+depth-calibration variant. The box variant rendered in game and its first PD
+attempt crossed five of six sections geometrically before hitting the last
+wall. Whole-course qualification and live depth integration remain pending;
+the [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
+the failure and causal replay limits.
 
 The race-cue stack has two seen-course full finishes and **zero full finishes on
 five first-exposure courses**: Hannover, The Pit, Paris, Hall 26 and The Green.
