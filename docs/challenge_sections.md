@@ -64,3 +64,10 @@ post-flight scoring and checking causal image-depth predictions. A live geometry
 layer must derive obstacles from camera observations, account for uncertainty,
 vehicle clearance and braking distance, and pass a frozen on/off flight comparison
 before any improvement is claimed. See the [generalization program](generalization_program.md).
+
+For aligned passive image collection, the visual runner can copy its telemetry
+to another local port with `--telemetry-copy-port 9011`. Start `haltere liftoff
+capture` on that port; two receivers must not compete for the game's 9001 stream.
+The visual runner records the forwarding port. Keep the collection labelled
+with its actual controller and assistance mode; image/UDP receipt alignment does
+not by itself measure physical display latency.

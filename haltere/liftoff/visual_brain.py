@@ -488,6 +488,9 @@ def run(args):
         raise ValueError('Use a bounded run of 0 < seconds <= 1800')
     if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
         raise ValueError('Use finite positive flight limits')
+    copy_port = getattr(args, 'telemetry_copy_port', 0)
+    if copy_port and (not 1 <= copy_port <= 65535 or copy_port == args.port):
+        raise ValueError('Forward telemetry to a different valid local UDP port')
     log_path = Path(args.log)
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
@@ -512,7 +515,8 @@ def run(args):
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
         pad = UdpSticks(host,int(port))
-    rx = TelemetryReceiver(port=args.port,stream=(read_config() or {}).get('StreamFormat',DEFAULT_STREAM))
+    rx = TelemetryReceiver(port=args.port,stream=(read_config() or {}).get('StreamFormat',DEFAULT_STREAM),
+                           forward_port=copy_port or None)
     shared = SharedFlightState(controller.brain.N) if args.record else None
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
                               encoder=getattr(args,'video_encoder','libx264'),
@@ -738,6 +742,7 @@ def run(args):
                                               max=float(max(step_times)*1000)) if step_times else None,
                       controller_deadline_failure=deadline_failure,
                       origin_sim=controller.pose.pos0.tolist() if controller.pose.pos0 is not None else None,
+                      telemetry_copy_port=copy_port or None,
                       images_blanked=args.blank_retina,
                       limits=dict(height_m=args.max_height,speed_mps=args.max_speed,distance_m=args.max_distance),
                       process_session=windows_session_id())
@@ -776,6 +781,8 @@ def main():
     p.add_argument('--replay-out',default='',help='Save exact causal senses and passive frozen scene features for offline correction')
     p.add_argument('--udp-out',default='')
     p.add_argument('--port',type=int,default=9001)
+    p.add_argument('--telemetry-copy-port',type=int,default=0,
+                   help='Copy telemetry to a separate local passive image recorder; avoids competing UDP receivers')
     p.add_argument('--device',default='cuda')
     p.add_argument('--vision-device',choices=['cpu','cuda'],default='cpu',
                    help='Device for the frozen image model, independent of the brain device')

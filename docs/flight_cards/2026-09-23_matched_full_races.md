@@ -51,6 +51,9 @@ HUD reviews and result cards. `batch-results.json` pins their hashes. The
 earlier candidate05 release batch remains a separate **0/3**, plus its separate
 generated-loop finish; this diagnostic does not overwrite those results.
 
+[Download all four videos and the evidence archive](https://github.com/skulitom/haltere/releases/tag/full-race-diagnostic-20260923).
+The uploaded asset sizes and SHA-256 digests match the preserved local files.
+
 ## Recording headroom check
 
 Before this batch, six 35-second ground-shadow runs compared recording off,
