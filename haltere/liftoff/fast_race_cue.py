@@ -12,7 +12,15 @@ required, commands are acceleration-limited, and a brief cue dropout coasts on
 the previous request instead of stopping. Clipped markers set bounded climb or
 descent, and a descent that the vehicle cannot achieve is treated as support
 by terrain and answered with a short climb. These are generic heuristics, not
-obstacle avoidance or a completed-lap estimate.
+a completed-lap estimate.
+
+Optionally, `update(..., clearance=...)` accepts a causal forward-clearance
+sample (e.g. fly-style looming time-to-contact from `vision.looming`). A wall
+ahead caps the speed along the looming ray so the drone can still stop before
+it; expansion that lies below the flight path (terrain) adds a bounded climb
+instead. Without that input the behaviour is unchanged. Missing evidence is
+not free space, but it is not an obstacle either: recent evidence is dead-
+reckoned for a short memory and nothing else is inferred.
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -73,13 +81,181 @@ class FastCueConfig:
             raise ValueError('Bottom-edge evidence needs an increasing depression range')
 
 
+def stopping_speed(distance, deceleration, latency, margin):
+    """Largest speed v with v*latency + v^2/(2*deceleration) + margin <= distance."""
+    room = max(0., float(distance)-margin)
+    return float(-deceleration*latency+np.sqrt((deceleration*latency)**2+2*deceleration*room))
+
+
+@dataclass(frozen=True)
+class ClearanceConfig:
+    """Pilot response to forward clearance samples (looming time-to-contact).
+
+    Each sample is dead-reckoned along its ray with odometry, which removes the
+    perception delay; `latency` covers only the velocity loop (measured fast-PD
+    onset 0.13 s, equivalent delay 0.14 s). A wall is braked for when at least
+    `confirm` of the last `window` samples, taken within `confirm_window_s`,
+    place it ahead; the distance used is their median (the nearer of two). A
+    single sample below `urgent_ttc_s` acts at once. Samples are forgotten
+    `memory_s` after they arrive; once a wall has been seen in `window` samples
+    they are kept up to `memory_max_s` while the drone is too slow for looming
+    (`slow_speed`), so a drone halted at a wall stays halted. The cap holds its
+    lowest value for `hold_s`, then rises at `release` m/s^2. Samples whose
+    expansion lies mostly below the path (`below_fraction` >= `terrain_fraction`)
+    add a climb floor instead, unless their TTC is below `terrain_brake_s`.
+    Missing evidence changes nothing unless `blind_after_s` is finite (off by
+    default: 65% of frames at speed on the clean Straw Bale run had none).
+    """
+    deceleration: float = 10.
+    latency: float = .15
+    margin: float = .5
+    brake_slew: float = 15.
+    hold_s: float = .15
+    release: float = 10.
+    max_age_s: float = .25
+    memory_s: float = .3
+    slow_speed: float = 1.5
+    memory_max_s: float = 2.
+    standoff_speed: float = 1.
+    confirm: int = 2
+    window: int = 3
+    confirm_window_s: float = .2
+    urgent_ttc_s: float = .25
+    terrain_fraction: float = .7
+    terrain_on_s: float = 1.
+    terrain_full_s: float = .6
+    terrain_climb_acceleration: float = 10.
+    terrain_brake_s: float = .3
+    terrain_release: float = 3.
+    blind_after_s: float = float('inf')
+    blind_speed: float = 4.
+
+    def __post_init__(self):
+        values = asdict(self)
+        blind_after = values.pop('blind_after_s')
+        if not np.isfinite(list(values.values())).all() or min(values.values()) <= 0 or not blind_after > 0:
+            raise ValueError('Use finite positive clearance parameters')
+        if int(self.confirm) != self.confirm or int(self.window) != self.window or self.confirm > self.window:
+            raise ValueError('confirm and window count samples, confirm <= window')
+        if not self.terrain_fraction <= 1 or not self.terrain_on_s > self.terrain_full_s:
+            raise ValueError('Terrain fraction must be <= 1 and terrain_on_s > terrain_full_s')
+
+
+class ClearanceGovernor:
+    """Speed cap along a looming ray and a terrain climb floor from clearance samples.
+
+    Pure and causal: samples carry their capture time, the capture position and
+    the travel direction (ray); limits are evaluated at the current position.
+    """
+
+    def __init__(self, config=None):
+        self.config = config or ClearanceConfig()
+        self.samples = []
+        self.last_time = self.last_evidence = self.first_input = None
+        self.cap = self.cap_ray = None
+        self.cap_hold_until = self.climb_hold_until = -np.inf
+        self.climb = 0.
+        self.status = 'none'
+        self.blind = self.sustained = False
+        self.counts = dict(samples=0, no_evidence=0, brake_engagements=0, climb_engagements=0, blind_engagements=0)
+
+    def ingest(self, time, ttc, distance, below_fraction, position, ray, closing_speed, received=None):
+        """Add one fresh sample captured at `time` at `position` and received at `received`
+        (default: `time`); `ray` is the unit travel direction, closing_speed the speed along it."""
+        self.first_input = time if self.first_input is None else self.first_input
+        self.last_time = time
+        if ttc is None and distance is None:
+            self.counts['no_evidence'] += 1
+            return
+        if distance is None:
+            distance = ttc*max(closing_speed, 0.)
+        if ttc is None:
+            ttc = distance/max(closing_speed, 1e-3)
+        b = .5 if below_fraction is None else float(below_fraction)
+        keep = int(self.config.window)-1
+        self.samples = (self.samples[-keep:] if keep else [])+[
+            (float(time), float(distance), float(ttc), b, np.array(position, float), np.array(ray, float),
+             float(time if received is None else received))]
+        self.last_evidence = time
+        self.counts['samples'] += 1
+
+    def _recent(self, position, velocity, now):
+        """Remembered samples at the current position: (time, distance, ttc, is_wall, ray)."""
+        c = self.config
+        out = []
+        position, velocity = np.asarray(position, float), np.asarray(velocity, float)
+        for time, distance, ttc, b, where, ray, received in self.samples:
+            closing = float(velocity @ ray)
+            age = now-received
+            # Too slow for looming: a wall seen in `window` samples is still there.
+            slow_hold = self.sustained and closing < c.slow_speed
+            if age > c.memory_max_s or (age > c.memory_s and not slow_hold):
+                continue
+            # Classified on the measurement itself; ground under the path is not on the
+            # ray, so terrain samples age in time instead of being dead-reckoned along it.
+            wall = b < c.terrain_fraction or ttc < c.terrain_brake_s
+            d = distance-float((position-where) @ ray)
+            out.append((time, d, d/max(closing, .3) if wall else ttc-(now-time), wall, ray))
+        return [s for s in out if out[-1][0]-s[0] <= c.confirm_window_s]
+
+    def limits(self, position, velocity, now, dt, vertical_up):
+        """Return (cap or None, ray or None, climb floor) for the current tick."""
+        c = self.config
+        recent = self._recent(position, velocity, now)
+        wall = [s for s in recent if s[3]]
+        terrain = [s for s in recent if not s[3]]
+        cap_now, ray = np.inf, None
+        if len(wall) >= c.confirm:
+            # median of three rejects one outlier; with two, the nearer one is used
+            d = float(np.median([s[1] for s in wall])) if len(wall) >= 3 else min(s[1] for s in wall)
+            cap_now, ray = stopping_speed(d, c.deceleration, c.latency, c.margin), wall[-1][4]
+            self.sustained = self.sustained or len(wall) >= c.window
+        elif wall and wall[-1] is recent[-1] and wall[-1][2] < c.urgent_ttc_s:
+            cap_now, ray = stopping_speed(wall[-1][1], c.deceleration, c.latency, c.margin), wall[-1][4]
+        blind = (np.isfinite(c.blind_after_s) and self.first_input is not None
+                 and now-(self.last_evidence if self.last_evidence is not None else self.first_input) > c.blind_after_s)
+        speed = float(np.linalg.norm(velocity))
+        if blind and speed > 1e-3 and c.blind_speed < cap_now:
+            cap_now, ray = c.blind_speed, np.asarray(velocity, float)/speed
+        if self.cap is None or cap_now <= self.cap:
+            if np.isfinite(cap_now):
+                self.cap, self.cap_ray, self.cap_hold_until = cap_now, ray, now+c.hold_s
+        elif self.sustained and self.cap < c.standoff_speed and wall:
+            pass  # stand-off: never creep back toward a confirmed, still remembered wall
+        elif now >= self.cap_hold_until:
+            self.cap = min(cap_now, self.cap+c.release*dt)
+            if np.isfinite(cap_now) and ray is not None:
+                self.cap_ray = ray
+        if self.cap is not None and self.cap > 25.:
+            self.cap = self.cap_ray = None
+        if self.cap is None:
+            self.sustained = False
+        # Terrain under the path: the same confirmation, a climb floor instead of a brake.
+        floor = 0.
+        if len(terrain) >= c.confirm:
+            ttc = float(np.median([s[2] for s in terrain]))
+            floor = vertical_up*float(np.clip((c.terrain_on_s-ttc)/(c.terrain_on_s-c.terrain_full_s), 0, 1))
+        if floor >= self.climb:
+            if floor > 0 and self.climb == 0:
+                self.counts['climb_engagements'] += 1
+            self.climb = floor
+            if floor > 0:
+                self.climb_hold_until = now+c.hold_s
+        elif now >= self.climb_hold_until:
+            self.climb = max(floor, self.climb-c.terrain_release*dt)
+        self.blind = bool(blind and self.cap == c.blind_speed)
+        self.status = ('climb' if self.climb > 0 else 'armed' if self.cap is not None
+                       else 'clear' if recent else 'no_evidence')
+        return self.cap, self.cap_ray, self.climb
+
+
 class FastRaceCue:
     """Follow the visible checkpoint bearing with a continuous velocity request."""
 
     profile = 'fast-v1'
 
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
-                 yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None):
+                 yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -119,6 +295,33 @@ class FastRaceCue:
         self.launching = True
         self.state = 'launch'
         self.state_time = {}
+        # Created on the first clearance sample: without that input nothing changes.
+        self.clearance_config = clearance_config or ClearanceConfig()
+        self.clearance = None
+        self.clearance_braking = False
+        self.clearance_time = {}
+
+    def _ingest_clearance(self, clearance, velocity, yaw, now):
+        c = self.clearance_config
+        stamp = clearance.get('time')
+        if stamp is None or not np.isfinite(stamp):
+            raise ValueError('A clearance sample needs its capture time')
+        if self.clearance is None:
+            self.clearance = ClearanceGovernor(c)
+        if not (0 <= now-stamp <= c.max_age_s
+                and (self.clearance.last_time is None or stamp > self.clearance.last_time)):
+            return
+        ttc, distance, below = (clearance.get(k) for k in ('ttc', 'distance', 'below_fraction'))
+        for name, value in (('ttc', ttc), ('distance', distance)):
+            if value is not None and (not np.isfinite(value) or value < 0):
+                raise ValueError(f'Invalid clearance {name}')
+        if below is not None and not (np.isfinite(below) and 0 <= below <= 1):
+            raise ValueError('Invalid clearance below_fraction')
+        position, _ = self.pose_history.at(stamp)
+        speed = float(np.linalg.norm(velocity))
+        # Looming is measured around the focus of expansion: the travel direction.
+        ray = velocity/speed if speed > .5 else np.array([np.cos(yaw), np.sin(yaw), 0.])
+        self.clearance.ingest(float(stamp), ttc, distance, below, position, ray, speed, received=now)
 
     def _ingest(self, detection, capture_time, now):
         cue = detection.get('race_cue') if detection else None
@@ -213,7 +416,12 @@ class FastRaceCue:
             vertical = np.sign(vertical)*limit
         return np.r_[dh*speed, vertical], 'cue'
 
-    def update(self, senses, omega, detection, capture_time, now):
+    def update(self, senses, omega, detection, capture_time, now, clearance=None):
+        """One control tick. `clearance`, when given, is a causal forward-clearance sample:
+        dict(time=capture time, ttc=s or None, distance=m or None, below_fraction=0..1 or None),
+        where below_fraction is the share of the image expansion below the flight path
+        (about 0.5 for a wall facing the drone, towards 1 for ground under the path).
+        ttc and distance both None means no evidence (e.g. low texture)."""
         c = self.config
         position = senses['pos'][0].cpu().numpy().astype(float)
         velocity = senses['vel_world'][0].cpu().numpy().astype(float)
@@ -246,6 +454,24 @@ class FastRaceCue:
                 self.climb_until, self.support_since = now+c.support_climb_s, None
         else:
             self.support_since = None
+        cap = ray = None
+        climb = 0.
+        if clearance is not None and not self.launching:
+            self._ingest_clearance(clearance, velocity, yaw, now)
+        if self.clearance is not None:
+            cap, ray, climb = self.clearance.limits(position, velocity, now, dt, c.vertical_up)
+            if climb > 0:
+                # Expansion below the flight path: rise over it rather than stop.
+                desired[2] = max(desired[2], climb)
+            along = float(desired @ ray) if cap is not None else 0.
+            braking = cap is not None and along > cap
+            if braking:
+                desired = desired-ray*(along-cap)
+                if not self.clearance_braking:
+                    self.clearance.counts['blind_engagements' if self.clearance.blind else 'brake_engagements'] += 1
+            self.clearance_braking = braking
+            status = ('blind' if self.clearance.blind else 'brake') if braking else self.clearance.status
+            self.clearance_time[status] = self.clearance_time.get(status, 0.)+dt
         if self.velocity_command is None:
             self.velocity_command = velocity.copy()
         step = desired-self.velocity_command
@@ -255,9 +481,23 @@ class FastRaceCue:
         limit = min(c.command_acceleration*dt, norm*dt/c.command_time_constant)
         if norm > limit:
             step[:2] *= limit/norm
-        step[2] = np.clip(step[2], -c.vertical_command_acceleration*dt, c.vertical_command_acceleration*dt)
+        up = max(c.vertical_command_acceleration, self.clearance_config.terrain_climb_acceleration if climb > 0 else 0.)
+        step[2] = np.clip(step[2], -c.vertical_command_acceleration*dt, up*dt)
         previous = self.velocity_command.copy()
         self.velocity_command = self.velocity_command+step
+        if cap is not None:
+            # The cap acts on the request itself, without the taper, at up to brake_slew.
+            before, after = float(previous @ ray), float(self.velocity_command @ ray)
+            if after > cap:
+                room = max(0., self.clearance_config.brake_slew*dt-max(0., before-after))
+                self.velocity_command = self.velocity_command-ray*min(after-cap, room)
+                change = self.velocity_command-previous
+                top = max(c.command_acceleration, self.clearance_config.brake_slew)*dt
+                norm = float(np.linalg.norm(change[:2]))
+                if norm > top:
+                    change[:2] *= top/norm
+                change[2] = np.clip(change[2], -c.vertical_command_acceleration*dt, up*dt)
+                self.velocity_command = previous+change
         raw_ff = (self.velocity_command-previous)/max(dt, 1e-3)
         alpha = 1-np.exp(-dt/c.feedforward_time_constant)
         self.feedforward = self.feedforward+alpha*(raw_ff-self.feedforward)
@@ -329,4 +569,14 @@ class FastRaceCue:
                     cue_frames=self.frames, target_switches_observed=self.target_switches,
                     state_seconds={k: round(v, 3) for k, v in self.state_time.items()},
                     estimated_passages=None,
+                    clearance_response=None if self.clearance is None else dict(
+                        input='causal forward clearance samples (time, ttc, distance, below_fraction)',
+                        wall='speed along the looming ray capped at the stopping speed '
+                             '-aL + sqrt((aL)^2 + 2a(d - margin)); sample age removed by odometry dead reckoning',
+                        terrain='below_fraction >= terrain_fraction adds a climb floor instead of braking',
+                        no_evidence='no constraint beyond dead-reckoned memory unless blind_after_s is finite',
+                        parameters={k: (v if np.isfinite(v) else None)
+                                    for k, v in asdict(self.clearance_config).items()},
+                        counts=dict(self.clearance.counts),
+                        status_seconds={k: round(v, 3) for k, v in self.clearance_time.items()}),
                     limitations='Race guidance only; no freestyle objective, obstacle model or completed-lap inference')

@@ -31,8 +31,9 @@ from .telemetry import TelemetryReceiver, read_config, DEFAULT_STREAM
 
 class RetinaCamera:
     def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss',phase_status=None,on_frame=None,
-                 race_cues=False,detector_device='cpu'):
+                 race_cues=False,detector_device='cpu',on_image=None):
         self.title, self.fps = title, fps
+        self.on_image = on_image
         self.gate_sensor = gate_sensor
         self.backend = backend
         self.phase_status = phase_status
@@ -121,6 +122,7 @@ class RetinaCamera:
                         if not ok:
                             raise RuntimeError('Image encoding failed')
                         small = cv2.cvtColor(cv2.imdecode(enc,cv2.IMREAD_COLOR),cv2.COLOR_BGR2RGB)
+                        image = small
                         prepared = self._phase('inference')
                         detection = None
                         if self.detector is not None:
@@ -159,6 +161,8 @@ class RetinaCamera:
                         self.latest = (capture_time,retina,detection)
                         if self.on_frame is not None:
                             self.on_frame(self.latest)
+                        if self.on_image is not None:
+                            self.on_image(capture_time,image)
                         self.frames += 1
                         published = self._phase('wait')
                         self.timings.append((captured-begin,prepared-captured,inferred-prepared,
@@ -354,7 +358,7 @@ class VisualController:
                 torch.cuda.synchronize(self.brain.device)
 
     @torch.no_grad()
-    def step(self,frame,retina,detection=None,capture_time=None,frame_time=None,observation_time=None):
+    def step(self,frame,retina,detection=None,capture_time=None,frame_time=None,observation_time=None,clearance=None):
         observation_time = time.monotonic() if observation_time is None else observation_time
         if self.last_ts is not None and frame.timestamp < self.last_ts-.1:
             raise RuntimeError('Game reset; stop this attempt')
@@ -379,8 +383,9 @@ class VisualController:
         obs = visual_observation(self.senses,self.motor,self.cfg.task,retina.to(self.brain.device))
         if self.assistance is not None:
             from ..brain.gate_senses import gate_observation
+            extra = dict(clearance=clearance) if clearance is not None and self.pilot_profile == 'fast' else {}
             self.relative_gate,assisted_senses = self.assistance.update(
-                self.senses,self.pose.omega,detection,capture_time,observation_time)
+                self.senses,self.pose.omega,detection,capture_time,observation_time,**extra)
             if self.pilot_profile == 'fast':
                 from ..vision.camera import quat_wxyz_to_mat
                 # Express the velocity request in each motor contract's own goal units.
@@ -484,6 +489,21 @@ class VisualController:
         processed = brain_to_processed(action.new_tensor(command)[None],self.calibration)[0].cpu().numpy()
         raw = np.clip(self.mapping.to_raw(command),-1,1)
         return brain_action,processed,raw
+
+
+def looming_row(sample, now):
+    if not sample:
+        return float('nan'),float('nan'),float('nan')
+    return (sample['ttc'] if sample['ttc'] is not None else float('inf'),
+            sample['distance'] if sample['distance'] is not None else float('inf'),now-sample['time'])
+
+
+def clearance_row(assistance):
+    governor = getattr(assistance,'clearance',None)
+    if governor is None:
+        return '',float('nan')
+    return ('brake' if assistance.clearance_braking else governor.status,
+            governor.cap if governor.cap is not None else float('nan'))
 
 
 def fuse_gate_detection(previous,previous_time,point,stamp,position,rotation):
@@ -664,9 +684,12 @@ def run(args):
                              archive_images=getattr(args,'geometry_record_images',False),
                              dense_checkpoint=dense_checkpoint,depth_device=getattr(args,'vision_device','cpu'))
     gc.collect()
+    looming = bool(getattr(args,'looming_brake',False))
+    if looming and getattr(args,'pilot_profile','standard') != 'fast':
+        raise ValueError('The looming brake is part of the fast pilot profile')
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
                                   race_cues=controller.assistance_mode=='race-cue',
-                                  detector_device=getattr(args,'vision_device','cpu')).start()
+                                  detector_device=getattr(args,'vision_device','cpu'),looming=looming).start()
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -748,7 +771,8 @@ def run(args):
                                  'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller',
                                  'nominal_gate_bx','nominal_gate_by','nominal_gate_bz','geometry_control_status',
                                  'rpm_lf','rpm_rf','rpm_lb','rpm_rb',
-                                 'cmd_vx','cmd_vy','cmd_vz','pilot_state'])
+                                 'cmd_vx','cmd_vy','cmd_vz','pilot_state',
+                                 'looming_ttc','looming_distance','looming_age','clearance_status','clearance_cap'])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -802,7 +826,8 @@ def run(args):
                     raise RuntimeError('Controller missed its real-time deadline')
                 next_tick = max(next_tick+controller.cfg.brain.dt,now)
                 step_begin = time.monotonic()
-                action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame,now)
+                action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame,now,
+                                                       clearance=camera.clearance if looming else None)
                 memory_only_ticks += int(not fresh)
                 step_times.append(time.monotonic()-step_begin)
                 loop_phases['brain_ms'] = 1000*(time.monotonic()-step_begin)
@@ -849,13 +874,17 @@ def run(args):
                                  *(list(frame.motor_rpm[:4])+[float('nan')]*max(0,4-len(frame.motor_rpm))),
                                  *(controller.assistance.velocity_command if getattr(controller.assistance,'velocity_command',None) is not None
                                    else [float('nan')]*3),
-                                 getattr(controller.assistance,'state','') if controller.assistance else ''])
+                                 getattr(controller.assistance,'state','') if controller.assistance else '',
+                                 *looming_row(camera.clearance if looming else None,now),
+                                 *clearance_row(controller.assistance)])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
                     replay.append(controller.last_observation,retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
                 loop_phases['replay_ms'] = 1000*(time.monotonic()-loop_mark)
+                if looming:
+                    camera.motion.publish(now,last_frame,frame.timestamp,pos,q,velocity,np.zeros(3))
                 if geometry:
                     # Always publish the unmodified task goal, so a detour does
                     # not feed itself back as the next navigation objective.
@@ -1049,6 +1078,8 @@ def main():
     p.add_argument('--pd-profile',choices=['teacher','fast'],default='teacher',
                    help='fast: velocity-command PD on the measured full-envelope dynamics; requires --dynamics-profile')
     p.add_argument('--dynamics-profile',default=None,help='Measured original-drone dynamics profile JSON for --pd-profile fast')
+    p.add_argument('--looming-brake',action='store_true',
+                   help='EXPERIMENTAL fly-style looming (image expansion) time-to-contact caps speed toward surfaces ahead; fast pilot only')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

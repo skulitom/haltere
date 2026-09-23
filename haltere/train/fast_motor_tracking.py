@@ -218,6 +218,7 @@ def main():
     parser.add_argument('--retina-dropout', type=float, default=.25)
     parser.add_argument('--evaluation-seeds', type=int, nargs='+', default=[900, 901, 902, 903, 904, 905, 906, 907])
     parser.add_argument('--rest', type=float, default=5., help='seconds of rest between rollouts (thermal duty cycle)')
+    parser.add_argument('--steep', type=float, default=0., help='probability of a 15-35 degree climbing/descending leg')
     args = parser.parse_args()
     if args.ridge <= 0 or args.rounds < 1:
         raise ValueError('Use positive ridge and at least one round')
@@ -237,7 +238,7 @@ def main():
     (out/'config.json').write_text(json.dumps(config, indent=2))
     training_retina = load_recorded_retina(args.retina_data, meta['gate_sensor'])
     evaluation_retina = load_recorded_retina(args.validation_retina_data, meta['gate_sensor'])
-    evaluation_courses = [synthetic_course(s) for s in args.evaluation_seeds]
+    evaluation_courses = [synthetic_course(s, steep=args.steep) for s in args.evaluation_seeds]
     log = open(out/'log.jsonl', 'w')
 
     def record(entry):
@@ -253,7 +254,7 @@ def main():
         controller = 'pd' if round_index == 0 else 'brain'
         seeds = [1000*round_index+s for s in range(args.courses)]
         time.sleep(args.rest)
-        row, data = rollout(brain, cfg, meta, profile, contract, [synthetic_course(s) for s in seeds],
+        row, data = rollout(brain, cfg, meta, profile, contract, [synthetic_course(s, steep=args.steep) for s in seeds],
                             controller=controller, seconds=args.seconds, seed=100+round_index, collect=True,
                             retina_stream=training_retina, retina_dropout=args.retina_dropout)
         record(dict(stage=f'collect-{round_index}', **row, samples=len(data['labels']) if data else 0))

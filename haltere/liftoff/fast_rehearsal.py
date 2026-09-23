@@ -54,14 +54,23 @@ def hud_marker(camera, point, position, quaternion):
     return dict(u=float(np.clip(u, 0, SCREEN[0]))/SCREEN[0], v=float(np.clip(v, 0, SCREEN[1]))/SCREEN[1], edge=True)
 
 
-def synthetic_course(seed, gates=8, laps=1):
-    """Seeded loop-free sequence of turns, climbs and drops; not a Liftoff course."""
+def synthetic_course(seed, gates=8, laps=1, steep=0.):
+    """Seeded loop-free sequence of turns, climbs and drops; not a Liftoff course.
+
+    `steep` is the probability that a leg climbs or descends along a slope of
+    15-35 degrees, as racing lines over hills do; the default keeps the
+    original gentle height changes.
+    """
     rng = np.random.default_rng(seed)
     points, heading, position = [], 0., np.array([0., 0., 0.])
     for index in range(gates):
         heading += rng.uniform(-np.radians(150), np.radians(150)) if index else rng.uniform(-.3, .3)
         leg = rng.uniform(15., 60.)
-        height = float(np.clip(position[2]+rng.normal(0, 4.), 1.5, 25.)) if index else rng.uniform(1.5, 4.)
+        if index and steep and rng.random() < steep:
+            slope = np.radians(rng.uniform(15., 35.))*rng.choice([-1., 1.])
+            height = float(np.clip(position[2]+leg*np.tan(slope), 1.5, 45.))
+        else:
+            height = float(np.clip(position[2]+rng.normal(0, 4.), 1.5, 25.)) if index else rng.uniform(1.5, 4.)
         position = position+np.array([np.cos(heading)*leg, np.sin(heading)*leg, 0.])
         position[2] = height
         points.append(position.copy())

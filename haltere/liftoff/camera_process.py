@@ -24,7 +24,36 @@ def put_latest(queue, packet):
             pass  # the next camera frame will replace it; never block capture
 
 
-def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, race_cues=False,detector_device='cpu'):
+LOOMING_SLOTS = slice(732, 736)  # capture time, time-to-contact (s), distance (m), evidence flag
+
+
+def pose_at(rows, capture_time, now, max_age=.12):
+    """Attitude and world velocity at a capture time from already observed motion rows.
+
+    Rows are MotionBuffer rows: available, pose receipt, game time, position,
+    quaternion (wxyz), velocity, request. Returns None when the motion is stale
+    or the capture time lies outside the observed interval (no extrapolation
+    beyond 40 ms).
+    """
+    if rows is None or len(rows) < 2 or now-rows[-1, 0] > max_age:
+        return None
+    times = rows[:, 1]
+    if capture_time < times[0] or capture_time > times[-1]+.04:
+        return None
+    index = int(np.clip(np.searchsorted(times, capture_time), 1, len(rows)-1))
+    t0, t1 = times[index-1], times[index]
+    a = float(np.clip((capture_time-t0)/max(t1-t0, 1e-6), 0., 1.))
+    q0, q1 = rows[index-1, 6:10], rows[index, 6:10]
+    if q0 @ q1 < 0:
+        q1 = -q1
+    quaternion = (1-a)*q0+a*q1
+    quaternion /= max(np.linalg.norm(quaternion), 1e-9)
+    velocity = (1-a)*rows[index-1, 10:13]+a*rows[index, 10:13]
+    return quaternion, velocity
+
+
+def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, race_cues=False,detector_device='cpu',
+                  motion=None, looming=False):
     import torch
     import cv2
     from .visual_brain import RetinaCamera
@@ -43,17 +72,37 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
                           detection['width'] if detection else 0.,*(detection['point'] if detection else [0.,0.,0.])]
             shared[7:727] = retina.numpy().ravel()
             cue = detection.get('race_cue') if detection else None
-            shared[727:] = [cue is not None, cue['u'] if cue else 0.,
+            shared[727:732] = [cue is not None, cue['u'] if cue else 0.,
                             cue['v'] if cue else 0., cue['edge'] if cue else 0.,
                             cue.get('aim_u',cue['u']) if cue else 0.]
         if time.monotonic()-last_diagnostics>.5:
             put_latest(queue,dict(diagnostics=dict(camera.diagnostics(),priority=priority),error=camera.error))
             last_diagnostics = time.monotonic()
+    estimator = None
+    if looming:
+        from ..vision.looming2 import LoomingEstimator2, Looming2Config
+        estimator = LoomingEstimator2(Looming2Config(width=240, height=135, focal_320=gate_sensor['focal_320'],
+                                                     tilt_deg=gate_sensor['tilt_deg']))
+
+    def measure_looming(capture_time, image):
+        # Runs after the cue is published, so it never delays checkpoint guidance.
+        sample = pose_at(motion.read(), capture_time, time.monotonic())
+        if sample is None:
+            estimator.reset()
+            return
+        result = estimator.update(image, capture_time, *sample)
+        if result is None:
+            return
+        values = [capture_time, result['ttc'] if result['ttc'] is not None else np.nan,
+                  result['distance'] if result['distance'] is not None else np.nan, float(result['evidence'])]
+        with data.get_lock():
+            np.frombuffer(data.get_obj(),dtype=np.float64)[LOOMING_SLOTS] = values
     try:
         from .scheduling import flight_process_priority
         priority = flight_process_priority()
         camera = RetinaCamera(title,fps,gate_sensor,backend,phase_status=phase,on_frame=publish,
-                              race_cues=race_cues,detector_device=detector_device)
+                              race_cues=race_cues,detector_device=detector_device,
+                              on_image=measure_looming if estimator is not None else None)
         camera.done = done
         gc.collect()
         gc.disable()
@@ -68,14 +117,24 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
 
 
 class ProcessRetinaCamera:
-    def __init__(self,title='Liftoff',fps=24,gate_sensor=None,backend='mss',race_cues=False,detector_device='cpu'):
+    def __init__(self,title='Liftoff',fps=24,gate_sensor=None,backend='mss',race_cues=False,detector_device='cpu',
+                 looming=False):
         context = mp.get_context('spawn')
         self.queue = context.Queue(maxsize=2)
-        self.data = context.Array('d',732,lock=True)
+        self.data = context.Array('d',736,lock=True)
         self.done = context.Event()
         self.phase = context.Array('d',[0.,time.monotonic()],lock=False)
+        self.looming = bool(looming)
+        self.motion = None
+        if self.looming:
+            if not gate_sensor:
+                raise ValueError('Looming needs the calibrated camera')
+            from .geometry_shadow import MotionBuffer
+            self.motion = MotionBuffer()
+        self._clearance = None
         self.process = context.Process(target=camera_worker,
-            args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend,race_cues,detector_device),daemon=True)
+            args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend,race_cues,detector_device,
+                  self.motion,self.looming),daemon=True)
         self.fps, self.backend = fps,backend
         self._latest = None
         self._error = None
@@ -101,6 +160,13 @@ class ProcessRetinaCamera:
                         if len(snapshot) > 731:
                             detection['race_cue']['aim_u'] = snapshot[731]
                     self._latest = snapshot[0],torch.from_numpy(snapshot[7:727].astype(np.float32)[None]),detection
+                if getattr(self,'looming',False):
+                    stamp,ttc,distance,evidence = shared[LOOMING_SLOTS]
+                    if stamp and (self._clearance is None or stamp != self._clearance['time']):
+                        self._clearance = dict(time=float(stamp),
+                                               ttc=None if not np.isfinite(ttc) else float(ttc),
+                                               distance=None if not np.isfinite(distance) else float(distance),
+                                               evidence=bool(evidence),below_fraction=None)
             finally:
                 lock.release()
         while True:
@@ -114,6 +180,12 @@ class ProcessRetinaCamera:
                 self._error = packet['error']
         if self.process.exitcode is not None and not self.done.is_set() and self._error is None:
             self._error = f'Camera process exited ({self.process.exitcode})'
+
+    @property
+    def clearance(self):
+        """Latest looming sample (capture time, ttc, distance, evidence) or None."""
+        self._poll()
+        return self._clearance
 
     @property
     def latest(self):
