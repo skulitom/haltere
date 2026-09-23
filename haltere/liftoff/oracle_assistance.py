@@ -9,7 +9,10 @@ from ..vision.camera import quat_wxyz_to_mat
 
 
 class OracleCollectionAssistance:
-    def __init__(self, path, *, reference_speed):
+    def __init__(self, path, *, reference_speed, motor_controller='pd'):
+        if motor_controller not in ('brain','pd'):
+            raise ValueError('Unknown oracle motor controller')
+        self.motor_controller=motor_controller
         self.route = CollectionRoute(path)
         self.route_sha256 = hashlib.sha256(self.route.path.read_bytes()).hexdigest()
         self.speed = self.route.data['speed_mps']
@@ -22,6 +25,12 @@ class OracleCollectionAssistance:
         self.last_time = None
         self.launching = True
         self.complete = False
+        self.finish_speed=float(self.route.data.get('finish_speed_mps',float('inf')))
+        self.finish_hold=float(self.route.data.get('finish_hold_s',0.))
+        if (not np.isfinite(self.finish_hold) or self.finish_hold<0 or self.finish_speed<=0
+                or np.isnan(self.finish_speed) or self.finish_hold and not np.isfinite(self.finish_speed)):
+            raise ValueError('A settling route needs a finite positive finish speed and nonnegative hold duration')
+        self.stable_since=None
 
     def bind(self, frame):
         if self.points is not None:
@@ -52,21 +61,36 @@ class OracleCollectionAssistance:
                 self.progress = max(self.progress, along[index])
             ahead = min(self.distance[-1], self.progress+self.route.data['lookahead_m'])
             target = np.array([np.interp(ahead, self.distance, self.points[:, k]) for k in range(3)])
-            self.complete = bool(self.progress >= self.distance[-1]-.8
-                                 and np.linalg.norm(position-self.points[-1]) < .8)
+            endpoint = bool(self.progress >= self.distance[-1]-.8
+                            and np.linalg.norm(position-self.points[-1]) < .8)
+            stable=endpoint and (not np.isfinite(self.finish_speed)
+                                 or float(senses['vel_world'].norm())<self.finish_speed)
+            self.stable_since=(now if self.stable_since is None else self.stable_since) if stable else None
+            self.complete=bool(stable and now-self.stable_since>=self.finish_hold)
         relative = target-position
         if np.linalg.norm(relative[:2]) > 3.:
             relative[:2] *= 3./np.linalg.norm(relative[:2])
         relative[2] = np.clip(relative[2], -1.2, 1.2)
         yaw = np.arctan2(rotation[1, 0], rotation[0, 0])
         horizontal = target-position
+        if self.finish_hold and not self.launching and self.distance[-1]-self.progress<3.:
+            horizontal=self.points[-1]-self.points[-2]
         angle = (np.arctan2(horizontal[1], horizontal[0])-yaw+np.pi) % (2*np.pi)-np.pi
         world_rate = float((rotation@np.asarray(omega))[2])
         desired_yaw = -np.clip(1.6*angle-.22*world_rate, -.8, .8)/2.3 if np.linalg.norm(horizontal[:2]) > .2 else 0.
         self.pilot.sight_yaw += float(np.clip(desired_yaw-self.pilot.sight_yaw, -2*dt, 2*dt))
         self.pilot.carrot = position+relative
         self.pilot.target = SimpleNamespace(t_last=now)
-        return rotation.T@relative, senses
+        modified=senses
+        if self.motor_controller=='brain':
+            # Match the deployed brain's nominal-speed sensory contract. PD
+            # continues to receive actual, unscaled velocity from its caller.
+            import torch
+            velocity=senses['vel_world']*senses['vel_world'].new_tensor(
+                [max(1.,self.reference_speed/self.speed)]*2+[1.])
+            modified={**senses,'vel_world':velocity,
+                'vel_body':velocity@torch.as_tensor(rotation,dtype=velocity.dtype,device=velocity.device)}
+        return rotation.T@relative, modified
 
     def command(self, action):
         result = np.array(action, copy=True)
@@ -82,5 +106,8 @@ class OracleCollectionAssistance:
                     route_sha256=self.route_sha256,
                     source_kind=self.route.data.get('source_kind', 'recorded route'),
                     progress_m=float(self.progress), route_endpoint_reached=self.complete,
-                    motor_control='PD motors; privileged route guidance; brain in shadow',
+                    finish_hold_s=self.finish_hold,finish_speed_mps=self.finish_speed if np.isfinite(self.finish_speed) else None,
+                    motor_control=('Brain throttle/roll/pitch; privileged route and assisted yaw'
+                                   if self.motor_controller=='brain' else
+                                   'PD motors; privileged route guidance; brain in shadow'),
                     limitations='Does not establish causal visual navigation or autonomous race success')

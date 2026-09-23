@@ -43,6 +43,13 @@ def test_oracle_mode_requires_pd_and_cannot_masquerade_as_visual_pilot():
             VisualController('unused','unused',motor_controller=motor,pilot_assistance=pilot,collection_route='unused')
 
 
+@pytest.mark.parametrize('options',[{},dict(collection_route='unused',motor_controller='pd'),
+                                    dict(collection_route='unused',pilot_assistance='race-cue')])
+def test_brain_oracle_diagnostic_requires_explicit_brain_route_without_visual_pilot(options):
+    with pytest.raises(ValueError,match='Oracle motor diagnostic'):
+        VisualController('unused','unused',oracle_motor_diagnostic=True,**options)
+
+
 def test_collection_teacher_validates_start_and_reports_privilege(tmp_path):
     route=dict(schema='haltere.collection_route.v1',frame='unity_world_xyz_m',loop=False,
                waypoints_unity=[[0,2,0],[0,2,8]],expected_start_unity=[0,0,0],
@@ -80,6 +87,49 @@ def test_oracle_runner_uses_route_goal_and_preserves_the_shadow_brain(checkpoint
     assert np.isfinite(np.r_[action,processed,raw]).all()
     assert controller.assistance_mode=='oracle-route'
     assert not controller.motor_metadata['brain_controls_motors']
+
+
+def test_explicit_oracle_brain_diagnostic_commands_brain_and_keeps_privileged_label(checkpoint,tmp_path):
+    checkpoint_path,mapping=checkpoint
+    path=tmp_path/'route.json'
+    path.write_text(json.dumps(dict(schema='haltere.collection_route.v1',frame='unity_world_xyz_m',loop=False,
+        waypoints_unity=[[0,2,0],[0,2,8]],expected_start_unity=[0,0,0],speed_mps=1.,
+        lookahead_m=1.5,max_start_error_m=2.,max_start_speed_mps=.5)))
+    controller=VisualController(checkpoint_path,mapping,'cpu',motor_controller='brain',
+                                collection_route=path,oracle_motor_diagnostic=True)
+    action,_,_=controller.step(TelemetryFrame(timestamp=1.,motor_rpm=np.ones(4)*1000.),torch.zeros(1,720))
+    np.testing.assert_array_equal(controller.last_command[:3],action[:3])
+    assert controller.motor_metadata['brain_controls_motors'] and controller.motor_baseline is None
+    meta=controller.assistance.metadata()
+    assert meta['runtime_route_oracle'] and not meta['autonomous_evaluation_eligible']
+    assert 'Brain throttle' in meta['motor_control']
+    senses=dict(pos=torch.tensor([[0.,0.,2.]]),quat=torch.tensor([[1.,0,0,0]]),
+                vel_world=torch.tensor([[.2,.3,.4]]),vel_body=torch.tensor([[.2,.3,.4]]))
+    _,modified=controller.assistance.update(senses,np.zeros(3),None,None,2.)
+    torch.testing.assert_close(modified['vel_world'],torch.tensor([[.4,.6,.4]]))
+    torch.testing.assert_close(modified['vel_body'],modified['vel_world'])
+    torch.testing.assert_close(senses['vel_world'],torch.tensor([[.2,.3,.4]]))
+
+
+def test_declared_route_settling_requires_continuous_low_speed(tmp_path):
+    path=tmp_path/'route.json'
+    path.write_text(json.dumps(dict(schema='haltere.collection_route.v1',frame='unity_world_xyz_m',loop=False,
+        waypoints_unity=[[0,2,0],[0,2,2]],expected_start_unity=[0,0,0],speed_mps=2.,
+        lookahead_m=1.5,max_start_error_m=2.,max_start_speed_mps=.5,finish_speed_mps=.4,finish_hold_s=2.)))
+    pilot=OracleCollectionAssistance(path,reference_speed=2.)
+    pilot.bind(TelemetryFrame())
+    senses=dict(pos=torch.tensor([[2.,0.,2.]]),quat=torch.tensor([[1.,0,0,0]]),vel_world=torch.zeros(1,3))
+    pilot.update(senses,np.zeros(3),None,None,1.)
+    assert not pilot.complete
+    senses['vel_world'][:,0]=1.
+    pilot.update(senses,np.zeros(3),None,None,3.)
+    assert not pilot.complete and pilot.stable_since is None
+    senses['vel_world'].zero_()
+    pilot.update(senses,np.zeros(3),None,None,4.)
+    pilot.update(senses,np.zeros(3),None,None,5.9)
+    assert not pilot.complete
+    pilot.update(senses,np.zeros(3),None,None,6.)
+    assert pilot.complete
 
 
 @pytest.mark.parametrize('fps',[0,11,61,float('nan')])

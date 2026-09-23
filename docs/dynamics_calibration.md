@@ -87,6 +87,10 @@ most 20 degrees/s), without refitting:
 | Yaw | 5.69 degrees/s | 8.55 degrees/s |
 
 Evidence is in `runs/dynamics-independent-20260923`; all three videos decoded.
+The [original-drone response release](https://github.com/skulitom/haltere/releases/tag/original-drone-response-20260923)
+contains all nine calibration videos, including the initial failed roll pulse,
+raw telemetry, flight cards, fitted profiles and independent predictions.
+All 12 uploaded assets matched their local hashes and sizes.
 This validates short angular-pulse predictions on this drone. It does not
 validate high-speed translation, obstacle clearance or acrobatics.
 
@@ -117,6 +121,16 @@ start. Snapshot selection prioritizes fewer crashed tasks, then lower flight
 cost, on a development seed. A separate seed compares the selected snapshot
 with the unchanged parent after selection. These are still motor simulations;
 successful live flight and full-race comparisons are required before promotion.
+
+For matched motor checks in an empty arena, the visual runner accepts
+`--collection-route PATH --motor-controller brain --oracle-motor-diagnostic`.
+This explicit diagnostic runs the same brain, camera, mapping, recorder and
+assisted yaw as other flights, but supplies a declared stored trajectory. Its
+video and metadata identify privileged guidance; it cannot count as autonomous
+navigation or a race result. PD remains the default permitted route-collection
+motor. Optional route fields `finish_speed_mps` and `finish_hold_s` require a
+settled endpoint before completion. Routes for these checks are generated in
+code, not manually designed maps.
 
 Local raw evidence: `runs/dynamics-calibration-20260923` and
 `runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and

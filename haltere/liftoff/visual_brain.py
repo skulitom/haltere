@@ -174,12 +174,14 @@ class VisualController:
     """Visual brain with an explicit optional guidance/yaw assistant."""
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
-                 dynamics_calibration=None, calibration_amplitudes=None):
+                 dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False):
         if pilot_assistance not in ('none', 'rabbit', 'race-cue'):
             raise ValueError('Unknown pilot assistance mode')
         if motor_controller not in ('brain', 'pd'):
             raise ValueError('Unknown motor controller')
-        if collection_route and (motor_controller != 'pd' or pilot_assistance != 'none'):
+        if oracle_motor_diagnostic and (not collection_route or motor_controller!='brain' or pilot_assistance!='none'):
+            raise ValueError('Oracle motor diagnostic requires an explicit route, brain motors and no visual pilot')
+        if collection_route and (motor_controller != 'pd' and not oracle_motor_diagnostic or pilot_assistance != 'none'):
             raise ValueError('Oracle collection requires explicit PD motors and no visual pilot mode')
         if dynamics_calibration and (motor_controller!='pd' or pilot_assistance!='none' or collection_route):
             raise ValueError('Dynamics calibration requires PD and no visual pilot or oracle route')
@@ -254,7 +256,8 @@ class VisualController:
         if collection_route:
             from .oracle_assistance import OracleCollectionAssistance
             self.assistance = OracleCollectionAssistance(collection_route,
-                reference_speed=self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.))
+                reference_speed=self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.),
+                motor_controller=motor_controller)
             self.assistance_mode = 'oracle-route'
         self.motor_controller = motor_controller
         self.motor_baseline = None
@@ -555,7 +558,8 @@ def run(args):
                                   motor_controller=getattr(args,'motor_controller','brain'),
                                   collection_route=getattr(args,'collection_route',None),
                                   dynamics_calibration=calibration_mode,
-                                  calibration_amplitudes=getattr(args,'calibration_amplitudes',None))
+                                  calibration_amplitudes=getattr(args,'calibration_amplitudes',None),
+                                  oracle_motor_diagnostic=getattr(args,'oracle_motor_diagnostic',False))
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -592,7 +596,8 @@ def run(args):
                               controller_label='SHADOW ONLY | NO CONTROL OUTPUT' if not pad else
                               'VISUAL GEOMETRY | PD MOTORS | BRAIN IN SHADOW' if geometry_control else
                               'DYNAMICS CALIBRATION | PD + PULSES | BRAIN IN SHADOW' if calibration_mode else
-                              'ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW'
+                              ('ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW' if controller.motor_baseline else
+                               'ORACLE MOTOR DIAGNOSTIC | BRAIN MOTORS | ASSISTED YAW')
                               if controller.assistance_mode == 'oracle-route' else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
                               if controller.motor_baseline else '') if shared else None
     if recorder:
@@ -825,7 +830,8 @@ def run(args):
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
                       control_mode=('experimental visual geometry guidance; PD motors; brain in shadow' if geometry_control else
                                     'Dynamics calibration; PD and input pulses; brain in shadow' if calibration_mode else
-                                    'PRIVILEGED oracle collection; PD motors; brain in shadow' if controller.assistance_mode == 'oracle-route' else
+                                    ('PRIVILEGED oracle collection; PD motors; brain in shadow' if controller.motor_baseline else
+                                     'PRIVILEGED oracle motor diagnostic; brain motors; assisted yaw') if controller.assistance_mode == 'oracle-route' else
                                     'PD motor baseline; brain in shadow' if controller.motor_baseline else
                                     'pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
                       motor_controller=controller.motor_metadata,
@@ -910,6 +916,8 @@ def main():
                    help='PD is a matched diagnostic baseline; its brain panel is explicitly labelled as shadow')
     p.add_argument('--collection-route', default=None,
                    help='PRIVILEGED route for course qualification/data collection only; requires PD and no visual pilot; never an autonomous evaluation')
+    p.add_argument('--oracle-motor-diagnostic',action='store_true',
+                   help='Explicitly allow brain motors with a stored collection route for motor tracking diagnostics; never autonomous navigation evidence')
     p.add_argument('--dynamics-calibration',choices=['hover','throttle','roll','pitch','yaw'],default=None,
                    help='PD hover and bounded identification pulses in an operator-verified empty arena; not a race or brain-control evaluation')
     geometry_options=p.add_mutually_exclusive_group()
