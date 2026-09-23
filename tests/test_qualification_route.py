@@ -59,7 +59,7 @@ def test_collection_teacher_validates_start_and_reports_privilege(tmp_path):
     with pytest.raises(ValueError,match='Route start'):
         assistance.bind(TelemetryFrame(position=np.array([20,0,0.])))
     assistance.bind(TelemetryFrame())
-    senses=dict(pos=torch.zeros(1,3),quat=torch.tensor([[1.,0,0,0]]))
+    senses=dict(pos=torch.zeros(1,3),quat=torch.tensor([[1.,0,0,0]]),vel_world=torch.zeros(1,3))
     goal,_=assistance.update(senses,np.zeros(3),None,None,1.)
     np.testing.assert_allclose(goal,[0,0,1.2])
     meta=assistance.metadata()
@@ -118,7 +118,10 @@ def test_declared_route_settling_requires_continuous_low_speed(tmp_path):
         lookahead_m=1.5,max_start_error_m=2.,max_start_speed_mps=.5,finish_speed_mps=.4,finish_hold_s=2.)))
     pilot=OracleCollectionAssistance(path,reference_speed=2.)
     pilot.bind(TelemetryFrame())
-    senses=dict(pos=torch.tensor([[2.,0.,2.]]),quat=torch.tensor([[1.,0,0,0]]),vel_world=torch.zeros(1,3))
+    senses=dict(pos=torch.tensor([[0.,0.,2.]]),quat=torch.tensor([[1.,0,0,0]]),vel_world=torch.zeros(1,3))
+    pilot.update(senses,np.zeros(3),None,None,-1.)
+    pilot.update(senses,np.zeros(3),None,None,0.)
+    senses['pos'][:,0]=2.
     pilot.update(senses,np.zeros(3),None,None,1.)
     assert not pilot.complete
     senses['vel_world'][:,0]=1.
@@ -130,6 +133,25 @@ def test_declared_route_settling_requires_continuous_low_speed(tmp_path):
     assert not pilot.complete
     pilot.update(senses,np.zeros(3),None,None,6.)
     assert pilot.complete
+
+
+def test_route_launch_holds_heading_and_accepts_a_measured_hover_volume(tmp_path):
+    path=tmp_path/'route.json'
+    path.write_text(json.dumps(dict(schema='haltere.collection_route.v1',frame='unity_world_xyz_m',loop=False,
+        waypoints_unity=[[0,6,0],[0,6,8]],expected_start_unity=[0,0,0],speed_mps=2.,
+        lookahead_m=3.,max_start_error_m=2.,max_start_speed_mps=.5)))
+    pilot=OracleCollectionAssistance(path,reference_speed=2.)
+    pilot.bind(TelemetryFrame())
+    senses=dict(pos=torch.tensor([[.3,0.,5.75]]),quat=torch.tensor([[1.,0,0,0]]),vel_world=torch.tensor([[.2,0,0]]))
+    goal,_=pilot.update(senses,np.zeros(3),None,None,0.)
+    # Returning toward launch must not point the camera backwards and spin.
+    assert abs(pilot.pilot.sight_yaw)<1e-8
+    np.testing.assert_allclose(goal,[-.54,0,.25],atol=1e-7)
+    pilot.update(senses,np.zeros(3),None,None,.9)
+    assert pilot.launching
+    pilot.update(senses,np.zeros(3),None,None,1.)
+    assert not pilot.launching
+    assert not pilot.metadata()['autonomous_evaluation_eligible']
 
 
 @pytest.mark.parametrize('fps',[0,11,61,float('nan')])

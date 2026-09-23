@@ -132,6 +132,21 @@ motor. Optional route fields `finish_speed_mps` and `finish_hold_s` require a
 settled endpoint before completion. Routes for these checks are generated in
 code, not manually designed maps.
 
+The first generated S-bend motor check (`552fe9d`) finished with PD in 29.515 s
+(path RMS 0.173 m). The parent brain followed the path (RMS 0.655 m) but did not
+settle by 120 s. Flight-cost candidate02, selected at update 150, never left the
+launch phase: its maximum height was 5.846 m against a 5.85 m launch threshold.
+All three videos decoded, with no detected impacts or runtime failures. The
+candidate had reduced separate-seed simulated cost from 4.954 to 2.366, with
+0/16 crashed tasks for either brain; this did not establish a live improvement.
+The recordings remain in `runs/motor-tracking-live-20260923`.
+
+The revised route diagnostic holds launch heading, applies the same horizontal
+velocity damping as the training/race pilot, and requires a measured launch
+hover within 0.6 m at less than 0.6 m/s for one second. Endpoint criteria and
+weights remain unchanged. This is a generic guidance revision for another
+declared comparison, not a reinterpretation of the failed first batch.
+
 Local raw evidence: `runs/dynamics-calibration-20260923` and
 `runs/dynamics-rate-calibration-20260923`. Ground-check binding failures and
 workload refusals are retained separately from flown attempts. Fresh project

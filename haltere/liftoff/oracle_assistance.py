@@ -31,6 +31,9 @@ class OracleCollectionAssistance:
                 or np.isnan(self.finish_speed) or self.finish_hold and not np.isfinite(self.finish_speed)):
             raise ValueError('A settling route needs a finite positive finish speed and nonnegative hold duration')
         self.stable_since=None
+        self.launch_heading=None
+        self.launch_stable_since=None
+        self.launch_completed_at=None
 
     def bind(self, frame):
         if self.points is not None:
@@ -43,11 +46,20 @@ class OracleCollectionAssistance:
         if self.points is None:
             raise RuntimeError('Oracle collection route has not been aligned to the live reset')
         position = senses['pos'][0].cpu().numpy().astype(float)
+        velocity = senses['vel_world'][0].cpu().numpy().astype(float)
         rotation = quat_wxyz_to_mat(senses['quat'][0].cpu().numpy())
+        yaw = np.arctan2(rotation[1, 0], rotation[0, 0])
+        self.launch_heading=yaw if self.launch_heading is None else self.launch_heading
         dt = .01 if self.last_time is None else float(np.clip(now-self.last_time, 0., .1))
         self.last_time = now
-        if self.launching and position[2] >= self.points[0, 2]-.15:
-            self.launching = False
+        if self.launching:
+            # A measured hover volume, rather than crossing an arbitrary height
+            # plane, avoids deadlocking a stable controller with a small offset.
+            stable=np.linalg.norm(position-self.points[0])<.6 and np.linalg.norm(velocity)<.6
+            self.launch_stable_since=(now if self.launch_stable_since is None else self.launch_stable_since) if stable else None
+            if stable and now-self.launch_stable_since>=1.:
+                self.launching=False
+                self.launch_completed_at=now
         if self.launching:
             target = self.points[0].copy()
         else:
@@ -68,12 +80,20 @@ class OracleCollectionAssistance:
             self.stable_since=(now if self.stable_since is None else self.stable_since) if stable else None
             self.complete=bool(stable and now-self.stable_since>=self.finish_hold)
         relative = target-position
+        settling=bool(self.finish_hold and not self.launching and self.distance[-1]-self.progress<3.)
+        if self.launching or settling:
+            relative[:2]-=1.2*velocity[:2]
+        else:
+            # Same lateral drift damping as the training and visual race pilot.
+            direction=relative[:2]/max(1e-9,np.linalg.norm(relative[:2]))
+            relative[:2]-=.8*(velocity[:2]-direction*(velocity[:2]@direction))
         if np.linalg.norm(relative[:2]) > 3.:
             relative[:2] *= 3./np.linalg.norm(relative[:2])
         relative[2] = np.clip(relative[2], -1.2, 1.2)
-        yaw = np.arctan2(rotation[1, 0], rotation[0, 0])
         horizontal = target-position
-        if self.finish_hold and not self.launching and self.distance[-1]-self.progress<3.:
+        if self.launching:
+            horizontal=np.array([np.cos(self.launch_heading),np.sin(self.launch_heading),0.])
+        elif settling:
             horizontal=self.points[-1]-self.points[-2]
         angle = (np.arctan2(horizontal[1], horizontal[0])-yaw+np.pi) % (2*np.pi)-np.pi
         world_rate = float((rotation@np.asarray(omega))[2])
@@ -99,6 +119,11 @@ class OracleCollectionAssistance:
 
     def metadata(self):
         return dict(mode='oracle-route', goal_source='PRIVILEGED stored route for collection/qualification',
+                    guidance_contract='declared-route-stable-launch-v2',
+                    launch_acceptance=dict(radius_m=.6,speed_mps=.6,stable_s=1.),
+                    launch_complete=not self.launching,launch_heading_held=True,
+                    launch_completed_at=self.launch_completed_at,
+                    horizontal_hold_damping_s=1.2,lateral_motion_damping_s=.8,
                     runtime_route_oracle=True, visible_race_cues=False,
                     autonomous_evaluation_eligible=False, yaw_assistance=True,
                     speed_assistance=True, nominal_speed_mps=self.speed,
