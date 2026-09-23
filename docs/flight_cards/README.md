@@ -15,6 +15,10 @@ The subsequent [generated obstacle/depth diagnostic](2026-09-23_obstacle_geometr
 completed five sections geometrically, then hit the final wall (**0/1 whole
 courses**). It supplied 599 passive images for causal geometry development;
 the current geometry prototype has no live steering authority.
+A separate oracle-guided qualification series retained two runtime-censored
+attempts and then a **3:35.704 full box-course finish**, with the brain in shadow.
+That establishes course playability and supplies a second perception trajectory;
+it does not count as autonomous race success.
 
 [The corrected, frozen four-flight comparison](2026-09-23_matched_full_races.md)
 finished **0/2 with motor10 candidate05 and 1/2 with PD**. PD completed all three

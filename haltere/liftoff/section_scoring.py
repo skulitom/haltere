@@ -1,8 +1,9 @@
 """Offline section scoring from logged pose and generated checkpoint planes.
 
 Geometric crossings are estimates until checked against game checkpoint progress.
-They never establish a game finish. Geometry is used only after a run, never by
-the flight controller. Report course outcomes as well as correlated sections.
+They never establish a game finish. This scorer uses geometry only after a run;
+the flight sidecar separately declares any privileged runtime route use.
+Report course outcomes as well as correlated sections.
 """
 from __future__ import annotations
 
@@ -32,7 +33,8 @@ def crossing(a, b, checkpoint):
     return None
 
 
-def score_sections(geometry, times, positions, *, impact_time=None, runtime_stop=False, max_gap=.2):
+def score_sections(geometry, times, positions, *, impact_time=None, runtime_stop=False, max_gap=.2,
+                   runtime_geometry_used=None):
     times, positions = np.asarray(times, dtype=float), np.asarray(positions, dtype=float)
     if (times.ndim != 1 or len(times) < 2 or positions.shape != (len(times), 3)
             or not np.isfinite(times).all() or not np.isfinite(positions).all()
@@ -79,7 +81,7 @@ def score_sections(geometry, times, positions, *, impact_time=None, runtime_stop
         counts[row['status']] = counts.get(row['status'], 0)+1
     return dict(schema=1, method='offline directed checkpoint-plane crossings',
                 game_finish_confirmed=False, game_checkpoint_progress_confirmed=False,
-                runtime_geometry_used=False, telemetry_gap_at=gap_time, impact_time=impact_time,
+                runtime_geometry_used=runtime_geometry_used, telemetry_gap_at=gap_time, impact_time=impact_time,
                 runtime_stop=runtime_stop, sections=outcomes, per_obstacle_type=groups,
                 per_course=dict(geometric_sections_completed=sum(r['status']=='geometric_success' for r in outcomes),
                                 total_sections=len(outcomes), impact=impact_time is not None),
@@ -106,7 +108,11 @@ def main():
     reason = meta['stop_reason']
     runtime_stop = any(word in reason.lower() for word in ['telemetry', 'camera', 'deadline', 'recorder', 'hidden'])
     report = score_sections(json.loads(geometry_path.read_text()), rows['ts'], sim_vec_to_unity(positions),
-                            impact_time=(meta.get('impact') or {}).get('timestamp'), runtime_stop=runtime_stop)
+                            impact_time=(meta.get('impact') or {}).get('timestamp'), runtime_stop=runtime_stop,
+                            runtime_geometry_used=meta.get('runtime_route_oracle'))
+    report['runtime_route_oracle'] = meta.get('runtime_route_oracle')
+    report['autonomous_evaluation_eligible'] = (False if meta.get('runtime_route_oracle') is True
+                                               else meta.get('autonomous_evaluation_eligible'))
     report['sources'] = {str(f): digest(f) for f in [log, log.with_suffix('.json'), bundle/'manifest.json', geometry_path]}
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2), encoding='utf-8')

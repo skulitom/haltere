@@ -19,9 +19,10 @@ then verify rendering, directed checkpoint progression and playability in Anode.
 **Passing file and geometry tests does not qualify a course as playable.** The
 initial six-section development bundle is installed locally. The box-calibration
 variant rendered and started correctly in Anode. Its first PD run crossed five
-sections geometrically, then hit the final wall: **0/1 complete courses**. Full
-playability and the flag variant remain unqualified. Do not report these seeds
-as unseen layout families.
+sections geometrically, then hit the final wall: **0/1 autonomous completions**.
+A separate oracle-guided PD run finished the box course in **3:35.704**, qualifying
+that exact course as playable. The flag variant remains unqualified. Do not
+report these seeds as unseen layout families.
 
 ## Score attempts without inventing finishes
 
@@ -62,8 +63,9 @@ distance along each ray and optical-axis depth. Pixel centers, camera tilt and
 coordinate conversion are explicit. Unhit rays remain unknown; neither they
 nor unvalidated primitive boundaries establish safe space.
 
-The runtime controller does not import these geometry files. They are for
-post-flight scoring and checking causal image-depth predictions. A live geometry
+Autonomous visual modes do not import these geometry files. They are for
+post-flight scoring, checking causal image-depth predictions, and the explicitly
+privileged qualification/collection mode below. A live visual geometry
 layer must derive obstacles from camera observations, account for uncertainty,
 vehicle clearance and braking distance, and pass a frozen on/off flight comparison
 before any improvement is claimed. See the [generalization program](generalization_program.md).
@@ -135,3 +137,21 @@ runtime investigation; neither weakens the existing freshness or stop limits.
 A subsequent **60 s shadow/video check at 16 camera fps passed 5,994 ticks**
 without camera or controller-deadline failure. This motivates a reduced-load
 collection attempt; it does not establish the cause of either prior stall.
+
+The third attempt, at 16 camera fps with the same route and PD settings,
+**finished the complete one-lap box course in 3:35.704**. The game results screen
+confirms the finish, with no detected impact, reset or flight intervention. A
+134 ms telemetry gap triggered the guard at the finish transition; retain that
+runtime stop. Across the series there was one game finish in three attempts,
+with two earlier runtime-censored attempts, not a frozen performance comparison.
+The endpoint beyond the finish line was not reached because the game ended.
+Only five sections are credited by the geometric scorer because the controller
+CSV ends just before the last plane; the independent game result establishes
+whole-course completion. See the [evidence record](flight_cards/2026-09-23_obstacle_geometry.md).
+
+The complete run supplied 1,123 passive images. Applying the unchanged geometry
+prototype to the 1,122 pre-transition images gave 213 frames with accepted
+points and no warnings. On 1,292 primitive-collider matches, median range ratio
+was 1.000 and mean absolute relative error was 6.7%; 0.93% overestimated by more
+than 25%. This tests a second trajectory in the same development course, not
+an unseen family or live obstacle avoidance. Sparse observations remain a limit.

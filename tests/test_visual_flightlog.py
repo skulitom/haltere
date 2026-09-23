@@ -79,6 +79,21 @@ def test_elapsed_flight_time_uses_timestamps_when_control_ticks_are_missed():
     assert scored['airborne_s'] > len(t)*np.median(np.diff(t))+3
 
 
+def test_oracle_attribution_and_flight_below_launch_height_are_preserved():
+    from haltere.liftoff.flightlog import score_attempt
+    t=np.arange(1000)*.01
+    log={k:np.zeros(len(t)) for k in ('px','py','pz','vx','vy','vz','qw','qx','qy','qz',
+           'wx','wy','wz','in_thr','in_roll','in_pitch','in_yaw')}
+    log.update(ts=t,phase=t+5,pz=np.linspace(2.,-5.,len(t)),qw=np.ones(len(t)),
+               shadow=np.zeros(len(t)),pilot_assisted=np.ones(len(t)),pilot_kind=np.full(len(t),3.),
+               motor_controller=np.full(len(t),'pd',dtype=object))
+    result=score_attempt(log,np.arange(len(t)))
+    assert result['airborne_s']==pytest.approx(t[-1])
+    assert result['pilot_assistance']=='oracle-route'
+    assert result['runtime_route_oracle'] and not result['autonomous_evaluation_eligible']
+    assert 'PRIVILEGED' in result['control_mode']
+
+
 @pytest.mark.parametrize('sidecar_case', ['matching', 'mismatch', 'after_short_reset'])
 def test_terminal_impact_is_not_lost_when_guard_stops_before_logging(tmp_path, sidecar_case):
     path = tmp_path / 'stopped.csv'

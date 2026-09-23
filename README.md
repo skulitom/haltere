@@ -64,13 +64,17 @@ Workshop courses, frozen comparisons, camera-derived geometry, then broader
 brain training. Manual map design is unnecessary. The
 [obstacle-section generator and offline scorer](docs/challenge_sections.md)
 include physical gate frames, descents and occlusions. The first box-calibration
-flight crossed five of six sections geometrically and hit the last wall; whole
-course qualification remains pending. A causal image/motion geometry prototype
-detects that wall in replay but still raises false warnings and has no live
-authority. [Diagnostic and limits](docs/flight_cards/2026-09-23_obstacle_geometry.md).
-Course geometry remains offline.
+autonomous flight hit the last wall. A separate **oracle-guided PD collection**
+finished that course in **3:35.704**, qualifying its playability; this is not an
+autonomous result. A causal image/motion geometry prototype detects the wall in
+the failed-flight replay. On the complete collection trajectory it produced no
+warnings, with 6.7% mean relative depth error on matched primitive surfaces, but
+coverage remains sparse and it has no live authority.
+[Attempts, diagnostic and limits](docs/flight_cards/2026-09-23_obstacle_geometry.md).
+Course geometry is excluded from autonomous runtime; oracle collection is
+explicitly labelled and scored separately.
 
-Validation: **384 automated tests passed** (three existing warnings). The CPU
+Validation: **387 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

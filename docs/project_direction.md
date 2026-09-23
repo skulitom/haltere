@@ -101,6 +101,11 @@ future headline claims. The Green repeat failed even with horizontal holding.
 
 On 2026-09-22 Liftoff loaded a programmatically edited Workshop copy with new
 IDs, translated geometry and a changed lap count. That verifies the course-file
-workflow only. A seeded generated course also loaded successfully. The generator,
-motor baseline comparison, geometry layer and broader training do not yet have
-qualifying flight results.
+workflow only. A seeded open generated loop subsequently finished. On 2026-09-23,
+a frozen main-track comparison finished brain 0/2 and corrected PD 1/2, identifying
+both obstacle and motor-tracking failures. A generated box-obstacle course has
+since been qualified by a separate oracle-guided PD finish in 3:35.704; its
+autonomous visual baseline hit the last wall. The causal geometry prototype is
+still replay-only and broader brain training has not yet addressed these failures.
+See the [current program](generalization_program.md) and
+[obstacle evidence](flight_cards/2026-09-23_obstacle_geometry.md).

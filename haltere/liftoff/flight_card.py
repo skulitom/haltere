@@ -36,6 +36,8 @@ def render_card(manifest, score=None, review=None):
         verdict = 'No confirmed game finish. Do not count as a completed race.'
     else:
         verdict = 'Preflight: result pending.'
+    if manifest.get('runtime_route_oracle') is True or manifest.get('pilot_assistance') == 'oracle-route':
+        verdict = 'Oracle collection only; ineligible for autonomous evaluation. '+verdict
 
     lines = [f"# {manifest.get('track', manifest.get('task', 'Flight'))}", '', verdict, '',
              f"- Exposure: {manifest.get('exposure', 'not recorded')}",

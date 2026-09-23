@@ -44,3 +44,10 @@ def test_gaps_censor_and_resets_need_separate_attempts():
     assert [s['status'] for s in result['sections']] == ['censored_runtime', 'unattempted']
     with pytest.raises(ValueError, match='resets'):
         score_sections(g, t[::-1], p)
+
+
+def test_scoring_does_not_assume_a_flight_was_free_of_privileged_geometry():
+    g,t,p=fixture()
+    assert score_sections(g,t,p)['runtime_geometry_used'] is None
+    assert score_sections(g,t,p,runtime_geometry_used=True)['runtime_geometry_used'] is True
+    assert score_sections(g,t,p,runtime_geometry_used=False)['runtime_geometry_used'] is False

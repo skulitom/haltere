@@ -188,14 +188,23 @@ def score_attempt(log: dict[str, np.ndarray], idx: np.ndarray, gates: list[dict]
                                                'none' if not assisted.any() else 'mixed')
             if 'pilot_kind' in log:
                 kinds = np.unique(log['pilot_kind'][idx])
-                attribution['pilot_assistance'] = ({0:'none',1:'rabbit',2:'race-cue'}.get(kinds[0], 'unknown')
+                attribution['pilot_assistance'] = ({0:'none',1:'rabbit',2:'race-cue',3:'oracle-route'}.get(kinds[0], 'unknown')
                                                    if len(kinds)==1 else 'mixed')
+                if 3 in kinds:
+                    attribution['runtime_route_oracle'] = True
+                    attribution['autonomous_evaluation_eligible'] = False
+                    if not shadow.any():
+                        attribution['control_mode'] = 'PRIVILEGED oracle collection; '+attribution['control_mode']
     ts = log['ts'][idx] - log['ts'][idx][0]
     dt = float(np.median(np.diff(ts)))
     P = np.c_[log['px'][idx], log['py'][idx], log['pz'][idx]]
     V = np.c_[log['vx'][idx], log['vy'][idx], log['vz'][idx]]
     Q = np.c_[log['qw'][idx], log['qx'][idx], log['qy'][idx], log['qz'][idx]]
-    air = (P[:, 2] > 0.5) & (log['phase'][idx] > 3.0)
+    # Launch-relative altitude is not terrain height. Once the vehicle departs
+    # its start plane, a descent below that plane must not erase flight time.
+    # This estimates time after departure; it cannot identify a later landing.
+    air = np.maximum.accumulate(abs(P[:, 2]) > .5) & (log['phase'][idx] > 3.0)
+    attribution['airborne_time_method'] = 'after departure from launch plane and arming; later landings not inferred'
     if air.sum() < 100:
         return dict(attribution, airborne_s=float((np.diff(ts)*air[:-1]).sum()))
     a0 = int(np.argmax(air))

@@ -48,7 +48,9 @@ The [section generator and offline scorer](challenge_sections.md) now implement
 that course format, including explicit unknown geometry and a separate box-only
 depth-calibration variant. The box variant rendered in game and its first PD
 attempt crossed five of six sections geometrically before hitting the last
-wall. Whole-course qualification and live depth integration remain pending;
+wall. Separate privileged PD collection subsequently qualified that box course
+with a game-confirmed **3:35.704** finish. The flag variant and live depth
+integration remain pending; this oracle finish is not an autonomous score.
 the [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
 the failure and causal replay limits.
 
@@ -135,8 +137,10 @@ Before a headline evaluation:
   invalid launches and timing failures. Summarize both first attempts and repeats.
   Compare variants on the same preregistered batch without tuning between them.
 
-Course geometry remains offline. The live controller gets causal camera frames,
-telemetry and a declared task, never the XML, a route lookup or a known waypoint.
+For autonomous evaluation, course geometry remains offline. The live controller
+gets causal camera frames, telemetry and a declared task, never the XML, a route
+lookup or a known waypoint. Explicit oracle qualification/collection may use
+geometry but is labelled privileged and excluded from autonomous scores.
 XML supplies object transforms and directed checkpoint labels. **It does not by
 itself supply exact image depth.** Depth ground truth also needs object meshes,
 terrain, occlusion, camera calibration and synchronized pose/rendering. Primitive

@@ -35,3 +35,10 @@ def test_card_requires_saved_evidence_and_never_overwrites_previous_card(tmp_pat
     write_card(manifest, out)
     with pytest.raises(FileExistsError):
         write_card(manifest, out)
+
+
+def test_oracle_finish_is_never_presented_as_an_autonomous_evaluation():
+    card=render_card({'runtime_route_oracle':True}, {},
+                     {'finish_confirmed':True,'finish_evidence':['finish.png']})
+    assert 'Oracle collection only; ineligible for autonomous evaluation.' in card
+    assert 'Game finish confirmed.' in card
