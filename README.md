@@ -26,6 +26,11 @@ freestyle flight remains unsolved. The newest published weights are
 [motor10 candidate05](docs/motor_brain_10_release.md), an experimental download,
 not a promoted replacement for [scene09](docs/scene_brain_09_release.md).
 
+The [session checkpoint](docs/resume_2026-09-23.md) records the unfinished dense
+geometry comparison and where to resume. [Automatic telemetry monitoring](docs/flight_monitoring.md)
+now reports progress and stalls without routine screenshots; automatic game
+finish recognition remains unfinished.
+
 The current acceptance target is **three clean full races on each of five
 tracks, within 20% of the user's matching full-race time**, on one frozen stack
 using the same original `[Copy] New Drone`:
@@ -108,7 +113,9 @@ The third training attempt completed that same motor task in **29.929 s**,
 but remained slower and less precise than its unchanged parent. None of these
 flight-cost checkpoints replaces the published model.
 
-Validation: **469 automated tests passed** (three existing warnings). The CPU
+Validation: the last full suite passed **469 tests** (three existing warnings);
+the subsequent monitor and flight-report checks passed **27 tests**, including
+four new monitoring cases. The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

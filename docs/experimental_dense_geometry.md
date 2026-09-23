@@ -1,7 +1,7 @@
 # Experimental dense obstacle input
 
 The sparse geometry trials can descend below their last observed wall points,
-then move forward through an apparent gap. The latest frozen batch finished
+then move forward through an apparent gap. The preceding completed frozen batch finished
 2/3 on the known box course with PD motors; it did not establish reliability.
 See the [complete recordings and flight record](flight_cards/2026-09-23_geometry_control.md).
 
@@ -43,3 +43,10 @@ the flight runner. Looser sparse anchors gave a large extrapolation error despit
 passing a same-image consistency split, so they are not accepted by the helper.
 All calibration, masks, labels and replay outputs remain in the local probe folder;
 collider geometry was used only for subsequent offline scoring.
+
+The first two live conditions at runtime `6d365a0` both failed: sparse PD hit the
+wall (clock 2:17.411), while dense PD descended to the ground and reached the
+declared stall cutoff (clock 5:05.407). Both videos fully decode. The third,
+dense-brain condition has not run; the user requested a session pause. The
+comparison is incomplete and supplies no evidence for promoting dense depth.
+See the [session checkpoint](resume_2026-09-23.md) for exact restart state.

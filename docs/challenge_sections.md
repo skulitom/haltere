@@ -80,15 +80,19 @@ not by itself measure physical display latency.
 ## Current camera-geometry experiment
 
 The [2026-09-23 obstacle diagnostic](flight_cards/2026-09-23_obstacle_geometry.md)
-retains the failed flight, video and 599 passive images. A pretrained metric-depth
-candidate produced inconsistent scale and remains outside flight control.
+retains the failed flight, video and 599 passive images. An initial pretrained
+metric-depth candidate produced inconsistent scale and was excluded from those
+flights. A later [explicit dense-obstacle experiment](experimental_dense_geometry.md)
+allows a frozen pretrained model as an additional, unqualified input. It is off
+by default and must earn promotion through complete-system comparisons.
 
 `temporal_depth.py` instead tracks actual image features and triangulates them
 from measured motion. It rejects insufficient translation, incompatible rays,
 behind-camera points and tracks that fail a third-view reprojection check.
 `geometry_mask.py` excludes the configured HUD and original drone's propellers;
-it also sacrifices some bright/green scene features. `surface_memory.py` forms
-short-lived finite surface hypotheses. Neither missing points nor positive
+it also sacrifices some bright/green scene features. `surface_memory.py` retains
+bounded nearby static triangulations and finite surface hypotheses; the optional
+dense model uses a separate transient point layer. Neither missing points nor positive
 clearance certify free space; triangulation noise, pose timing, thin obstacles
 and holes between samples remain limitations. Early geometry flights were
 passive. The optional `--geometry-shadow` runner mode below measures live
