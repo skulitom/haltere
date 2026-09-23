@@ -545,7 +545,7 @@ def run(args):
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
     from .preflight import require_quiet
-    preflight = require_quiet(log_path, getattr(args,'allow_workload_pid',()))
+    preflight = require_quiet(log_path, getattr(args,'allow_workload_pid',()),getattr(args,'allow_workload_project',()))
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device,
                                   pilot_assistance=getattr(args,'pilot_assistance','none'),
@@ -809,7 +809,7 @@ def run(args):
             recorder.stop()
         from .preflight import check_workloads
         try:
-            postflight = check_workloads(getattr(args,'allow_workload_pid',()))
+            postflight = check_workloads(getattr(args,'allow_workload_pid',()),getattr(args,'allow_workload_project',()))
         except Exception as exc:
             postflight = dict(passed=None, error=str(exc))
         if gc_was_enabled:
@@ -921,6 +921,8 @@ def main():
     p.add_argument('--record',default='')
     p.add_argument('--allow-workload-pid',type=int,action='append',default=[],
                    help='Operator-authorized workload exception; recorded and rejected if using >= 0.5 CPU core')
+    p.add_argument('--allow-workload-project',action='append',default=[],
+                   help='Explicitly authorized project with absolute Python script paths; resolve related idle compute PIDs on each preflight, retain busy-load refusal')
     p.add_argument('--video-encoder',choices=['libx264','h264_nvenc'],default='libx264',
                    help='Explicit encoder; tested before arming, never silently falls back')
     p.add_argument('--replay-out',default='',help='Save exact causal senses and passive frozen scene features for offline correction')

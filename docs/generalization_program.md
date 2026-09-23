@@ -39,6 +39,11 @@ running while we use Anode. Its explicit PID exceptions are recorded; the guard
 still rejects any exception measured at half a CPU core or more, and retains
 preflight and postflight snapshots. This is a disclosed exception to the original
 "nothing else running" condition, not evidence that Windows sessions isolate CPU/GPU resources.
+For a repeatedly restarting authorized benchmark, `--allow-workload-project`
+accepts an explicit Windows project directory. It identifies absolute Python
+script paths and their connected compute-process family on each fresh inventory;
+shell boundaries, unrelated paths and busy or unknown-load processes remain
+excluded. A project exception is never inferred from a venv or output path alone.
 
 Challenge sections with nearby obstacles and per-section outcomes now support
 the first frozen geometry on/off comparison. Extend the complete-system evidence

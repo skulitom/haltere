@@ -43,3 +43,34 @@ def test_operator_exception_is_recorded_but_cannot_exempt_busy_job(monkeypatch):
     monkeypatch.setattr(preflight, 'classify', lambda *args: [dict(pid=900001, cpu_cores=1.)])
     report = preflight.check_workloads([900001])
     assert not report['passed'] and not report['exceptions']
+
+
+def test_project_authorization_tracks_only_verified_script_compute_family():
+    from haltere.liftoff.preflight import project_workload_pids
+    rows=[process(10,'powershell run.ps1',name='powershell.exe'),
+          process(11,'uv run python research/benchmark.py',name='uv.exe',parent=10),
+          process(12,'"C:/DEV/LitHarness/.venv/python.exe" research/benchmark.py',parent=11),
+          process(13,'python C:/DEV/LitHarness/research/benchmark.py',parent=12),
+          process(14,'python worker.py',parent=13),
+          process(15,'python C:/DEV/LitHarness-other/benchmark.py'),
+          process(16,'python C:/DEV/LitHarness/../Haltere/benchmark.py'),
+          process(17,'python other.py --output C:/DEV/LitHarness/report.py'),
+          process(18,'"C:/DEV/LitHarness/python.exe" other.py'),
+          process(19,'python -c "C:/DEV/LitHarness/benchmark.py"'),
+          process(20,'powershell C:/DEV/LitHarness/script.py',name='powershell.exe',parent=13),
+          process(21,'python other.py',parent=20)]
+    assert set(project_workload_pids(rows,['C:/DEV/LitHarness']))=={11,12,13,14}
+    assert project_workload_pids(rows,[])=={}
+
+
+def test_project_authorization_still_rejects_busy_or_unknown_load(monkeypatch):
+    from haltere.liftoff import preflight
+    rows=[process(900001,'python C:/DEV/LitHarness/research/benchmark.py')]
+    monkeypatch.setattr(preflight,'inventory',lambda:rows)
+    monkeypatch.setattr(preflight.time,'sleep',lambda _:None)
+    result=preflight.check_workloads(allowed_projects=['C:/DEV/LitHarness'])
+    assert result['passed'] and result['resolved_project_workloads'][0]['pid']==900001
+    for load in [None,.5,1.]:
+        monkeypatch.setattr(preflight,'classify',lambda *args:[dict(pid=900001,cpu_cores=load)])
+        result=preflight.check_workloads(allowed_projects=['C:/DEV/LitHarness'])
+        assert not result['passed'] and not result['exceptions']
