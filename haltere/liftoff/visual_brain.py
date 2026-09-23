@@ -533,6 +533,9 @@ def run(args):
         raise ValueError('Use finite positive flight limits')
     camera_fps = getattr(args, 'camera_fps', 48.)
     geometry_control = getattr(args,'geometry_control',False)
+    dense_checkpoint = getattr(args,'dense_obstacles',None)
+    if dense_checkpoint and not (geometry_control or getattr(args,'geometry_shadow',False)):
+        raise ValueError('Dense obstacle hypotheses require an explicit geometry mode')
     calibration_mode = getattr(args,'dynamics_calibration',None)
     if getattr(args,'calibration_amplitudes',None) is not None and calibration_mode in (None,'hover'):
         raise ValueError('Custom amplitudes require an explicit pulse calibration mode')
@@ -577,13 +580,15 @@ def run(args):
         from .geometry_shadow import ProcessGeometryShadow,ProcessGeometryControl
         if geometry_control:
             from .geometry_control import GeometryControlGate
-            geometry=ProcessGeometryControl(log_path.with_suffix('.geometry.jsonl'),camera_sensor)
+            geometry=ProcessGeometryControl(log_path.with_suffix('.geometry.jsonl'),camera_sensor,
+                                            dense_checkpoint=dense_checkpoint,depth_device=getattr(args,'vision_device','cpu'))
             controller.geometry_gate=GeometryControlGate(speed=controller.motor_speed)
             controller.geometry_provider=geometry
         else:
             geometry = ProcessGeometryShadow(log_path.with_suffix('.geometry.jsonl'),camera_sensor,
                              source_route_oracle=controller.assistance_mode == 'oracle-route',
-                             archive_images=getattr(args,'geometry_record_images',False))
+                             archive_images=getattr(args,'geometry_record_images',False),
+                             dense_checkpoint=dense_checkpoint,depth_device=getattr(args,'vision_device','cpu'))
     gc.collect()
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
                                   race_cues=controller.assistance_mode=='race-cue',
@@ -931,6 +936,8 @@ def main():
                    help='EXPERIMENTAL causal image-geometry guidance with race-cue PD or a motor-tracking brain; forbids oracle route, archives worker images')
     p.add_argument('--geometry-record-images', action='store_true',
                    help='Archive exact worker inputs in passive geometry mode too, for matched on/off runs')
+    p.add_argument('--dense-obstacles',
+                   help='EXPERIMENTAL verified TorchScript metric-depth export; adds transient obstacle hypotheses to explicit geometry mode')
     p.add_argument('--calibration-amplitudes',type=float,nargs='+',default=None,
                    help='Ascending processed-input magnitudes for a separately declared calibration validation batch')
     p.add_argument('--seconds',type=float,default=15)

@@ -80,6 +80,9 @@ brain-controlled transfer and the five-track speed target remain unmet.
 The experimental runner now also accepts geometry guidance with a motor-tracking
 brain, preserving its throttle/roll/pitch outputs; that integration still needs
 complete flight evidence before promotion.
+An optional [pretrained dense obstacle input](docs/experimental_dense_geometry.md)
+is available for a matched experiment. Its metric scale is unqualified for
+Liftoff and it is off by default; offline depth checks are not race results.
 [Live comparison and limits](docs/flight_cards/2026-09-23_geometry_control.md).
 [Attempts, diagnostic and limits](docs/flight_cards/2026-09-23_obstacle_geometry.md).
 Course geometry is excluded from autonomous runtime; oracle collection is
@@ -105,7 +108,7 @@ The third training attempt completed that same motor task in **29.929 s**,
 but remained slower and less precise than its unchanged parent. None of these
 flight-cost checkpoints replaces the published model.
 
-Validation: **464 automated tests passed** (three existing warnings). The CPU
+Validation: **469 automated tests passed** (three existing warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
 revalidated. See the [flight index](docs/flight_cards/README.md) for historical

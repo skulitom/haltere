@@ -78,7 +78,8 @@ def surface_patches(points,sigma,*,max_edge=3.5,plane_tolerance=.2,max_planes=4)
 
 
 class SurfaceMemory:
-    def __init__(self,*,lifetime=3.,range_m=12.,voxel=.25,max_sigma=1.5,max_points=None,patch_lifetime=None):
+    def __init__(self,*,lifetime=3.,range_m=12.,voxel=.25,max_sigma=1.5,max_points=None,patch_lifetime=None,
+                 build_patches=True):
         if (not np.isfinite([range_m,voxel,max_sigma]).all() or min(range_m,voxel,max_sigma)<=0
                 or lifetime is not None and (not np.isfinite(lifetime) or lifetime<=0)
                 or patch_lifetime is not None and (not np.isfinite(patch_lifetime) or patch_lifetime<=0)
@@ -88,6 +89,7 @@ class SurfaceMemory:
         self.lifetime,self.range,self.voxel,self.max_sigma=lifetime,range_m,voxel,max_sigma
         self.max_points=max_points
         self.patch_lifetime=patch_lifetime
+        self.build_patches=bool(build_patches)
         self.capacity_evictions=0
         self._cached_cloud=self._cached_errors=self._cached_patches=self._cached_patch_sigma=None
         self.cells={};self.last_time=None
@@ -95,6 +97,7 @@ class SurfaceMemory:
     def metadata(self):
         return dict(lifetime_s=self.lifetime,range_m=self.range,voxel_m=self.voxel,
                     max_sigma_m=self.max_sigma,max_points=self.max_points,patch_lifetime_s=self.patch_lifetime,
+                    interpolated_patches=self.build_patches,
                     capacity_evictions=self.capacity_evictions,
                     policy='retain nearby static obstacles until outside radius or farthest-first capacity eviction'
                            if self.lifetime is None else 'time-limited observations',
@@ -138,7 +141,8 @@ class SurfaceMemory:
         patch_cloud,patch_errors=cloud[fresh],errors[fresh]
         if (self._cached_cloud is None or not np.array_equal(patch_cloud,self._cached_cloud)
                 or not np.array_equal(patch_errors,self._cached_errors)):
-            self._cached_patches,self._cached_patch_sigma=surface_patches(patch_cloud,patch_errors)
+            self._cached_patches,self._cached_patch_sigma=(surface_patches(patch_cloud,patch_errors)
+                if self.build_patches else (np.empty((0,3,3)),np.empty(0)))
             self._cached_cloud,self._cached_errors=patch_cloud.copy(),patch_errors.copy()
         # Keep cached geometry independent of arrays returned to callers. Receipt
         # ages and the current query timestamp still update on every observation.

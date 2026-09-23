@@ -61,7 +61,7 @@ class MotionBuffer:
 
 
 class ShadowGeometry:
-    def __init__(self, camera):
+    def __init__(self, camera, dense_model=None):
         self.camera = camera
         self.tracker = MultiBaselineDepth(camera)
         # Liftoff scenery is stationary in the observed telemetry frame. Braking
@@ -70,6 +70,8 @@ class ShadowGeometry:
         self.memory = SurfaceMemory(lifetime=None,max_points=512)
         self.planner = LocalTrajectoryPlanner()
         self.last_game_time = None
+        self.dense_model = dense_model
+        self.dense_memory = SurfaceMemory(lifetime=1.,max_points=384,build_patches=False) if dense_model else None
 
     def observe(self, rgb, captured_at, motion, now):
         import cv2
@@ -101,6 +103,19 @@ class ShadowGeometry:
             long_baseline_points = int(result['long_baseline'][good].sum())
         tracked = time.monotonic()
         surfaces = self.memory.update(latest[3:6],captured_at,points,sigma)
+        dense_points, dense_sigma = np.empty((0,3)), np.empty(0)
+        dense_ms = None
+        if self.dense_model is not None:
+            from ..vision.metric_obstacles import metric_obstacle_points
+            dense_start = time.monotonic()
+            dense = metric_obstacle_points(self.dense_model.predict(rgb),rgb,self.camera,position,quaternion)
+            dense_points, dense_sigma = dense['points'], dense['sigma']
+            layer = self.dense_memory.update(latest[3:6],captured_at,dense_points,dense_sigma)
+            # Keep model hypotheses transient and distinct from persistent
+            # triangulations. Neither can erase an obstacle from the other.
+            surfaces = {**surfaces, 'points':np.concatenate([surfaces['points'],layer['points']]),
+                        'sigma':np.concatenate([surfaces['sigma'],layer['sigma']])}
+            dense_ms = 1000*(time.monotonic()-dense_start)
         # Compute against current motion and retain original depth receipt times.
         # The map query timestamp is current; it does not imply fresh depth.
         proposal = self.planner.propose(latest[3:6],latest[10:13],latest[13:16],surfaces,
@@ -111,6 +126,8 @@ class ShadowGeometry:
                     requested_goal_time=float(latest[0]),position=latest[3:6].tolist(),
                     camera_position=np.asarray(position).tolist(),camera_quaternion=np.asarray(quaternion).tolist(),
                     velocity=latest[10:13].tolist(),accepted_points=np.column_stack((points,sigma)).tolist(),
+                    dense_obstacle_points=np.column_stack((dense_points,dense_sigma)).tolist(),
+                    dense_depth_ms=dense_ms,
                     pose_extrapolation_s=max(0.,captured_at-motion[-1,1]),
                     input_age_s=now-latest[1],proposal_age_s=finished-captured_at,
                     tracking_ms=1000*(tracked-start),planning_and_surfaces_ms=1000*(finished-tracked),
@@ -125,12 +142,19 @@ class ShadowGeometry:
                     changed=proposal['changed'],coverage_certified=False,live_authority=False)
 
 
-def shadow_worker(buffer, done, path, camera_config, source_route_oracle, fps, proposals=None, archive_images=False):
+def shadow_worker(buffer, done, path, camera_config, source_route_oracle, fps, proposals=None, archive_images=False,
+                  dense_checkpoint=None, depth_device='cuda', ready=None):
     import cv2
     import mss
     from .recorder import _capture_game_frame
     cv2.setNumThreads(2)
-    diagnostic = ShadowGeometry(Camera(**camera_config))
+    dense_model = None
+    if dense_checkpoint:
+        from ..vision.metric_obstacles import MetricObstacleDepth
+        dense_model = MetricObstacleDepth(dense_checkpoint,depth_device)
+    diagnostic = ShadowGeometry(Camera(**camera_config),dense_model)
+    if ready is not None:
+        ready.set()
     counts, timings = Counter(), []
     error = None
     path = Path(path)
@@ -173,6 +197,8 @@ def shadow_worker(buffer, done, path, camera_config, source_route_oracle, fps, p
                       camera=camera_config,planner_config=asdict(diagnostic.planner.config),
                       depth_tracking=diagnostic.tracker.metadata(),
                       surface_memory=diagnostic.memory.metadata(),
+                      dense_obstacles=dense_model.metadata() if dense_model else None,
+                      dense_memory=diagnostic.dense_memory.metadata() if diagnostic.dense_memory else None,
                       fps=fps,frames=sum(counts.values()),status_counts=dict(counts),error=error,
                       images_preserved=archive_images,
                       total_ms=dict(p50=float(np.median(timings)),p95=float(np.percentile(timings,95)),
@@ -182,7 +208,8 @@ def shadow_worker(buffer, done, path, camera_config, source_route_oracle, fps, p
 
 
 class _ProcessGeometry:
-    def __init__(self, path, sensor, *, source_route_oracle=False, fps=5., proposals=None, archive_images=False):
+    def __init__(self, path, sensor, *, source_route_oracle=False, fps=5., proposals=None, archive_images=False,
+                 dense_checkpoint=None, depth_device='cuda'):
         self.path = Path(path)
         if (self.path.exists() or self.path.with_suffix('.json').exists()
                 or archive_images and self.path.with_suffix('').exists()):
@@ -195,12 +222,19 @@ class _ProcessGeometry:
         self.proposals = proposals
         self._last_proposal = None
         self.done = context.Event()
+        self.ready = context.Event()
         camera = dict(width=640,height=360,f=2*sensor['focal_320'],tilt_deg=sensor['tilt_deg'])
         self.process = context.Process(target=shadow_worker,
-            args=(self.buffer,self.done,str(self.path),camera,source_route_oracle,fps,proposals,archive_images),daemon=True)
+            args=(self.buffer,self.done,str(self.path),camera,source_route_oracle,fps,proposals,archive_images,
+                  dense_checkpoint,depth_device,self.ready),daemon=True)
 
     def start(self):
         self.process.start()
+        deadline = time.monotonic()+30.
+        while not self.ready.wait(.1):
+            if not self.process.is_alive() or time.monotonic()>deadline:
+                self.stop()
+                raise RuntimeError('Geometry worker did not initialize before flight')
         return self
 
     def stop(self):
@@ -218,14 +252,17 @@ class _ProcessGeometry:
 
 class ProcessGeometryShadow(_ProcessGeometry):
     """Passive by construction: there is no proposal channel to read."""
-    def __init__(self,path,sensor,*,source_route_oracle=False,fps=5.,archive_images=False):
-        super().__init__(path,sensor,source_route_oracle=source_route_oracle,fps=fps,archive_images=archive_images)
+    def __init__(self,path,sensor,*,source_route_oracle=False,fps=5.,archive_images=False,
+                 dense_checkpoint=None,depth_device='cuda'):
+        super().__init__(path,sensor,source_route_oracle=source_route_oracle,fps=fps,archive_images=archive_images,
+                         dense_checkpoint=dense_checkpoint,depth_device=depth_device)
 
 
 class ProcessGeometryControl(_ProcessGeometry):
-    def __init__(self,path,sensor,*,fps=5.):
+    def __init__(self,path,sensor,*,fps=5.,dense_checkpoint=None,depth_device='cuda'):
         from .geometry_control import ProposalBuffer
-        super().__init__(path,sensor,fps=fps,proposals=ProposalBuffer(),archive_images=True)
+        super().__init__(path,sensor,fps=fps,proposals=ProposalBuffer(),archive_images=True,
+                         dense_checkpoint=dense_checkpoint,depth_device=depth_device)
 
     def latest(self):
         row=self.proposals.read()

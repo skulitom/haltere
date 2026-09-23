@@ -195,11 +195,17 @@ class LocalTrajectoryPlanner:
                         changed=True,coverage_certified=False)
         batch = rollout_batch(position,velocity,candidates,config)
         checked=1
-        for index,candidate in enumerate(candidates):
+        costs=np.sum((np.asarray(candidates)-requested)**2,axis=1)
+        if previous is not None:
+            costs+=config.direction_consistency_weight*np.sum((np.asarray(candidates)-previous)**2,axis=1)
+        # Visit inexpensive motions first; most scenes then need only a few
+        # expensive surface queries. Quantized ties retain task-frame order.
+        # Braking is still measured first and remains a fallback, not a rival.
+        order=[0]+sorted(range(1,len(candidates)),key=lambda i:(round(float(costs[i]),8),i))
+        for index in order:
+            candidate=candidates[index]
             path = {name:values[index] for name,values in batch.items()}
-            velocity_cost=np.sum((candidate-requested)**2)
-            if previous is not None:
-                velocity_cost += config.direction_consistency_weight*np.sum((candidate-previous)**2)
+            velocity_cost=costs[index]
             # Clearance is a feasibility constraint. Rewarding small changes in
             # uncertain clearance made equally feasible up/down choices chatter.
             # Preserve the previous direction when the task remains similar,

@@ -32,3 +32,22 @@ def test_shadow_waits_for_pose_alignment_and_keeps_unknown_space_explicit():
     assert result['valid_points']==0 and not result['live_authority']
     assert not result['coverage_certified']
     assert result['status']=='nominal_unverified'
+
+
+def test_dense_hypotheses_remain_separate_transient_and_never_claim_free_space():
+    class Depth:
+        def predict(self, rgb):
+            return np.full(rgb.shape[:2], 2., np.float32)
+    diagnostic = ShadowGeometry(Camera(640, 360, 200, 30), Depth())
+    rgb = np.full((360, 640, 3), 240, np.uint8)
+    stamp = time.monotonic(); buffer = MotionBuffer()
+    buffer.publish(stamp, stamp, 1., [0, 0, 0], [1, 0, 0, 0], [0, 0, 0], [2, 0, 0])
+    result = diagnostic.observe(rgb, stamp, buffer.read(), stamp)
+    assert result['accepted_points'] == []
+    assert len(result['dense_obstacle_points']) > 100
+    assert len(diagnostic.memory.cells) == 0  # No model points become triangulations.
+    assert len(diagnostic.dense_memory.cells) <= 384
+    assert not diagnostic.dense_memory.metadata()['interpolated_patches']
+    assert not result['coverage_certified']
+    late = diagnostic.dense_memory.update([0, 0, 0], stamp+1.1)
+    assert len(late['points']) == len(late['triangles']) == 0

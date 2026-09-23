@@ -7,7 +7,7 @@ Different HUD layouts/cameras/drone silhouettes require a new calibration.
 import numpy as np
 
 
-def liftoff_geometry_mask(rgb):
+def liftoff_geometry_mask(rgb, *, exclude_white=True):
     import cv2
 
     rgb = np.asarray(rgb)
@@ -28,7 +28,11 @@ def liftoff_geometry_mask(rgb):
     colored = cv2.inRange(hsv, np.array([35, 75, 75]), np.array([100, 255, 255]))
     low, high = rgb.min(axis=2), rgb.max(axis=2)
     white = ((low > 175) & (high.astype(np.int16)-low < 55)).astype(np.uint8)*255
-    for excluded, radius in [(colored, 4), (white, 11)]:
+    # Feature triangulation rejects bright overlay-like pixels. Dense scene
+    # hypotheses still need white walls; their caller may retain bright pixels
+    # while keeping the fixed HUD, propeller and colored task-cue exclusions.
+    exclusions = [(colored, 4)] + ([(white, 11)] if exclude_white else [])
+    for excluded, radius in exclusions:
         size = 2*max(1, round(radius*width/640))+1
         mask[cv2.dilate(excluded, np.ones((size, size), np.uint8)) > 0] = 0
     return mask
