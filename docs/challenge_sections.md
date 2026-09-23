@@ -105,3 +105,33 @@ constant-velocity query is a diagnostic, not a dynamically feasible planner.
 On this development replay it warns about the wall 1.98 s before impact, but
 also warns during successful passages. Broader calibration and a frozen live
 on/off comparison are still required.
+
+## Privileged course qualification and collection
+
+`qualification_route.py` computes a route through the generated checkpoints and
+around known box colliders. It rejects unknown meshes and changed geometry
+hashes, checks directed gate order and samples the simplified path for model
+clearance. This is an **oracle**, used to check course playability and collect
+images; it is never an autonomous visual race result. Geometry clearance alone
+does not account for all motor tracking error or qualify the course in game.
+
+```powershell
+.venv/Scripts/python.exe -m haltere.liftoff.qualification_route --bundle runs/boxes-123 --out runs/boxes-123-collection-route.json
+```
+
+The visual runner's explicit `--collection-route` option requires
+`--motor-controller pd` with the visual pilot mode left at `none`. It uses the
+newest compatible brain only in shadow, labels the video **ORACLE ROUTE**, marks
+metadata and neural replay as privileged, and validates the stationary reset
+against the route's original coordinates. Passive capture must also receive
+`--teacher-route` pointing to that same file. Keep this dataset in development
+and separate from autonomous scores. Existing visual modes still load no route.
+
+The first qualification attempt stopped before takeoff on a 4.9 s controller
+stall; the unchanged route/motor retry stopped at 32.7 s on a 129 ms telemetry
+gap. Neither establishes a finish. A 20 s stationary shadow recording passed
+between them. Loop-stage diagnostics and an explicit camera-rate cap support
+runtime investigation; neither weakens the existing freshness or stop limits.
+A subsequent **60 s shadow/video check at 16 camera fps passed 5,994 ticks**
+without camera or controller-deadline failure. This motivates a reduced-load
+collection attempt; it does not establish the cause of either prior stall.

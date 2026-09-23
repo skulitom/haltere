@@ -1,5 +1,7 @@
 # Generated obstacle and camera-geometry diagnostic
 
+[Untrimmed standard brain/gameplay video and reproducible evidence archive](https://github.com/skulitom/haltere/releases/tag/obstacle-geometry-diagnostic-20260923).
+
 **Result: 0/1 complete courses.** The PD baseline crossed five of six sections
 geometrically, then hit the wall hiding the last marker. The game showed lap
 1/1 and **1:55.611**; no finish was observed. There were no resets, operator

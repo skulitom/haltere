@@ -3,7 +3,9 @@
 Default is shadow mode (no controller is opened). --udp-out explicitly connects
 the motor output to an already running, throttle-low virtual-pad bridge.
 --pilot-assistance rabbit adds visual guidance, speed scheduling and yaw control.
-The exported brain's training teachers are not loaded by either mode.
+The exported brain's training teachers are not loaded by either visual mode.
+--collection-route is a separate privileged PD qualification/collection mode;
+its footage and metadata explicitly exclude it from autonomous evaluation.
 """
 from __future__ import annotations
 
@@ -171,12 +173,14 @@ class RetinaCamera:
 class VisualController:
     """Visual brain with an explicit optional guidance/yaw assistant."""
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
-                 pilot_assistance='none', assist_speed=2., motor_controller='brain'):
+                 pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None):
         if pilot_assistance not in ('none', 'rabbit', 'race-cue'):
             raise ValueError('Unknown pilot assistance mode')
         if motor_controller not in ('brain', 'pd'):
             raise ValueError('Unknown motor controller')
-        if motor_controller == 'pd' and pilot_assistance != 'race-cue':
+        if collection_route and (motor_controller != 'pd' or pilot_assistance != 'none'):
+            raise ValueError('Oracle collection requires explicit PD motors and no visual pilot mode')
+        if motor_controller == 'pd' and pilot_assistance != 'race-cue' and not collection_route:
             raise ValueError('PD comparison requires the frozen race-cue guidance')
         # Offline demonstration replay must preserve missing-gate observations
         # even when the demonstrator safely continues beyond the live stop limit.
@@ -237,6 +241,11 @@ class VisualController:
             self.assistance = RaceCueAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
                                                 reference_speed=reference)
         self.assistance_mode = pilot_assistance
+        if collection_route:
+            from .oracle_assistance import OracleCollectionAssistance
+            self.assistance = OracleCollectionAssistance(collection_route,
+                reference_speed=self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.))
+            self.assistance_mode = 'oracle-route'
         self.motor_controller = motor_controller
         self.motor_baseline = None
         self.motor_metadata = dict(kind='brain', brain_controls_motors=True)
@@ -271,6 +280,8 @@ class VisualController:
         if self.last_ts is not None and frame.timestamp < self.last_ts-.1:
             raise RuntimeError('Game reset; stop this attempt')
         if self.last_ts != frame.timestamp:
+            if self.assistance_mode == 'oracle-route':
+                self.assistance.bind(frame)
             previous = self.pose.prev_quat.copy() if self.pose.prev_quat is not None else None
             prev_omega = self.pose.omega.copy()
             delta = frame.timestamp-self.last_ts if self.last_ts is not None else self.cfg.brain.dt
@@ -488,6 +499,9 @@ def run(args):
         raise ValueError('Use a bounded run of 0 < seconds <= 1800')
     if not all(np.isfinite(v) and v>0 for v in (args.max_height,args.max_speed,args.max_distance)):
         raise ValueError('Use finite positive flight limits')
+    camera_fps = getattr(args, 'camera_fps', 48.)
+    if not np.isfinite(camera_fps) or not 12 <= camera_fps <= 60:
+        raise ValueError('Camera rate must be between 12 and 60 fps for the freshness contract')
     copy_port = getattr(args, 'telemetry_copy_port', 0)
     if copy_port and (not 1 <= copy_port <= 65535 or copy_port == args.port):
         raise ValueError('Forward telemetry to a different valid local UDP port')
@@ -500,7 +514,8 @@ def run(args):
     controller = VisualController(args.checkpoint,args.mapping,args.device,
                                   pilot_assistance=getattr(args,'pilot_assistance','none'),
                                   assist_speed=getattr(args,'assist_speed',2.),
-                                  motor_controller=getattr(args,'motor_controller','brain'))
+                                  motor_controller=getattr(args,'motor_controller','brain'),
+                                  collection_route=getattr(args,'collection_route',None))
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -508,7 +523,7 @@ def run(args):
                           passive_retina=args.blank_retina or not controller.meta.get('gate_sensor',{}).get('raw_retina_active',False)) if replay_out else None
     camera_sensor = replay_camera_sensor(controller.meta.get('gate_sensor'),bool(replay))
     gc.collect()
-    camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=48,
+    camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
                                   race_cues=controller.assistance_mode=='race-cue',
                                   detector_device=getattr(args,'vision_device','cpu')).start()
     pad = None
@@ -520,7 +535,8 @@ def run(args):
     shared = SharedFlightState(controller.brain.N) if args.record else None
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
                               encoder=getattr(args,'video_encoder','libx264'),
-                              controller_label='PD MOTOR CONTROL | BRAIN IN SHADOW'
+                              controller_label='ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW'
+                              if controller.assistance_mode == 'oracle-route' else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
                               if controller.motor_baseline else '') if shared else None
     if recorder:
         try:
@@ -557,6 +573,7 @@ def run(args):
     telemetry_failure = None
     memory_only_ticks = 0
     max_image_age = 0.
+    previous_loop_phases = {}
     try:
         with log_path.open('w',newline='') as f:
             writer = csv.writer(f)
@@ -570,11 +587,16 @@ def run(args):
                              'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase',
                              'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller'])
             while time.monotonic()-begin < args.seconds:
+                loop_mark = time.monotonic()
+                loop_phases = {}
                 if recorder and count % 100 == 0 and not recorder.proc.is_alive():
                     raise RuntimeError('Flight recorder stopped during the attempt')
                 new = rx.wait(.001)
+                loop_phases['telemetry_ms'] = 1000*(time.monotonic()-loop_mark)
+                loop_mark = time.monotonic()
                 camera_frame = camera.latest
                 now = time.monotonic()
+                loop_phases['camera_snapshot_ms'] = 1000*(now-loop_mark)
                 if new is not None:
                     frame,last_frame = new,now
                     if new.timestamp != last_timestamp:
@@ -612,13 +634,15 @@ def run(args):
                 if now<next_tick:
                     continue
                 if now-next_tick>.12 and count:
-                    deadline_failure = dict(stage='loop',late_ms=1000*(now-next_tick))
+                    deadline_failure = dict(stage='loop',late_ms=1000*(now-next_tick),
+                                            current_phases=loop_phases, previous_phases=previous_loop_phases)
                     raise RuntimeError('Controller missed its real-time deadline')
                 next_tick = max(next_tick+controller.cfg.brain.dt,now)
                 step_begin = time.monotonic()
                 action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame,now)
                 memory_only_ticks += int(not fresh)
                 step_times.append(time.monotonic()-step_begin)
+                loop_phases['brain_ms'] = 1000*(time.monotonic()-step_begin)
                 if not np.isfinite(np.concatenate((action,processed,raw))).all():
                     raise RuntimeError('Nonfinite motor output')
                 first_ts = frame.timestamp if first_ts is None else first_ts
@@ -642,6 +666,7 @@ def run(args):
                         raw[0] = -1+ramp*(raw[0]+1)
                         raw[1:] *= ramp
                     pad.send(*raw)
+                loop_mark = time.monotonic()
                 writer.writerow([time.time(),frame.timestamp,now-capture_time,not bool(pad),*action,*processed,*pos,
                                  *frame.input,*raw,*velocity,*q,controller.gate_confidence,*controller.relative_gate,
                                  now-controller.gate_time if controller.gate_time is not None else -1,
@@ -653,19 +678,28 @@ def run(args):
                                  controller.assistance.pilot.mode if controller.assistance else -1,
                                  controller.assistance.host.flow_gain if controller.assistance else 1.,
                                  controller.assistance.pilot.n_passes if controller.assistance else 0,elapsed,
-                                 {'none':0,'rabbit':1,'race-cue':2}[controller.assistance_mode],
+                                 {'none':0,'rabbit':1,'race-cue':2,'oracle-route':3}[controller.assistance_mode],
                                  *((detection.get('race_cue') or {}).get(k,-1) if detection else -1
                                    for k in ('u','v','edge','aim_u')),controller.motor_controller])
+                loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
+                loop_mark = time.monotonic()
                 if replay is not None:
                     replay.append(controller.last_observation,retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
+                loop_phases['replay_ms'] = 1000*(time.monotonic()-loop_mark)
                 count += 1
+                if controller.assistance_mode == 'oracle-route' and controller.assistance.complete:
+                    reason = 'Oracle collection route endpoint reached; game finish requires separate confirmation'
+                    break
                 if shared:
+                    loop_mark = time.monotonic()
                     rates = (controller.brain.cfg.rate_max*torch.sigmoid(controller.state['v'][:,0])).cpu().numpy()
                     target = controller.gate_point if controller.gate_point is not None else pos
                     shared.publish(rates,t=elapsed,dist=float(np.linalg.norm(target-pos)),thr=raw[0],roll=raw[1],pitch=raw[2],yaw=raw[3],
                                    px=pos[0],py=pos[1],pz=pos[2],tx=target[0],ty=target[1],tz=target[2],
                                    qw=q[0],qx=q[1],qy=q[2],qz=q[3],ts=frame.timestamp)
+                    loop_phases['panel_publish_ms'] = 1000*(time.monotonic()-loop_mark)
+                previous_loop_phases = loop_phases
     except Exception as e:
         reason = str(e)
         raise
@@ -695,10 +729,12 @@ def run(args):
             gc.enable()
         assisted = controller.assistance is not None
         pilot_meta = controller.assistance.metadata() if assisted else dict(mode='none')
-        if controller.motor_baseline:
+        if controller.motor_baseline and controller.assistance_mode != 'oracle-route':
             pilot_meta['motor_control'] = 'PD throttle/roll/pitch; assisted yaw; brain runs in shadow'
-        result = dict(checkpoint_sha256=sha256(args.checkpoint),runtime_requires_teacher=False,
-                      control_mode=('PD motor baseline; brain in shadow' if controller.motor_baseline else
+        result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
+                      runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
+                      control_mode=('PRIVILEGED oracle collection; PD motors; brain in shadow' if controller.assistance_mode == 'oracle-route' else
+                                    'PD motor baseline; brain in shadow' if controller.motor_baseline else
                                     'pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
                       motor_controller=controller.motor_metadata,
                       preflight=preflight,
@@ -722,7 +758,9 @@ def run(args):
                       external_goal=bool(controller.meta.get('gate_sensor')),yaw_assistance=assisted,
                       goal_source=controller.assistance.metadata()['goal_source'] if assisted else ('camera detector' if controller.meta.get('gate_sensor') else 'absent'),
                       visible_race_cues=controller.assistance_mode=='race-cue',
-                      gate_sensor=controller.meta.get('gate_sensor'),runtime_route_oracle=False,
+                      gate_sensor=controller.meta.get('gate_sensor'),
+                      runtime_route_oracle=controller.assistance_mode == 'oracle-route',
+                      autonomous_evaluation_eligible=controller.assistance_mode != 'oracle-route',
                       raw_retina_active=not args.blank_retina and (not controller.meta.get('gate_sensor')
                                          or controller.meta['gate_sensor'].get('raw_retina_active',False)),
                       camera_fps=camera.fps,
@@ -750,6 +788,10 @@ def run(args):
             result['neural_replay'] = replay.save()
             result['neural_replay']['sha256'] = sha256(replay.path)
             result['neural_replay']['pilot_assistance'] = controller.assistance_mode
+            result['neural_replay']['privileged_goal_observations'] = controller.assistance_mode == 'oracle-route'
+            result['neural_replay']['autonomous_evaluation_eligible'] = controller.assistance_mode != 'oracle-route'
+            if controller.assistance_mode == 'oracle-route':
+                result['neural_replay']['route_labels_present'] = True
             result['neural_replay']['action_source'] = ('shadow brain; not commanded' if controller.motor_baseline else
                                                       'brain before pilot yaw; senses include assistance' if assisted else 'brain')
         log_path.with_suffix('.json').write_text(json.dumps(result,indent=2))
@@ -771,6 +813,8 @@ def main():
     p.add_argument('--mapping',required=True)
     p.add_argument('--motor-controller',choices=['brain','pd'],default='brain',
                    help='PD is a matched diagnostic baseline; its brain panel is explicitly labelled as shadow')
+    p.add_argument('--collection-route', default=None,
+                   help='PRIVILEGED route for course qualification/data collection only; requires PD and no visual pilot; never an autonomous evaluation')
     p.add_argument('--seconds',type=float,default=15)
     p.add_argument('--log',required=True)
     p.add_argument('--record',default='')
@@ -786,6 +830,8 @@ def main():
     p.add_argument('--device',default='cuda')
     p.add_argument('--vision-device',choices=['cpu','cuda'],default='cpu',
                    help='Device for the frozen image model, independent of the brain device')
+    p.add_argument('--camera-fps', type=float, default=48.,
+                   help='Camera rate cap (12..60); freshness and stopping limits are unchanged')
     p.add_argument('--blank-retina',action='store_true',help='diagnostic ablation; zero image input, same brain weights')
     p.add_argument('--pilot-assistance',choices=['none','rabbit','race-cue'],default='none',
                    help='Rabbit arch guidance or explicitly game-cue-assisted race guidance around the chosen motor controller')
