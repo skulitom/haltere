@@ -35,6 +35,31 @@ STATE_FIELDS = ['t', 'dist', 'thr', 'roll', 'pitch', 'yaw', 'px', 'py', 'pz', 't
                 'qw', 'qx', 'qy', 'qz', 'ts']   # attitude quaternion (sim frame) and the game timestamp, for datasets
 
 
+def encoder_options(encoder):
+    if encoder == 'libx264':
+        return ['-c:v', encoder, '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'veryfast', '-threads', '2']
+    if encoder == 'h264_nvenc':
+        return ['-c:v', encoder, '-pix_fmt', 'yuv420p', '-preset', 'p4', '-tune', 'll',
+                '-rc', 'vbr', '-cq', '20', '-b:v', '0', '-bf', '0', '-threads', '2']
+    raise ValueError(f'Unsupported recording encoder: {encoder}')
+
+
+def validate_encoder(encoder):
+    """Actually encode before arming; listing an encoder does not prove it works.
+
+    In particular, NVENC must work in the Anode session. No silent CPU fallback.
+    """
+    options = encoder_options(encoder)
+    ffmpeg = shutil.which('ffmpeg')
+    if not ffmpeg:
+        raise RuntimeError('Video recording requested but ffmpeg is unavailable')
+    result = subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-filter_threads', '1',
+                             '-f', 'lavfi', '-i', 'color=size=1928x720:rate=18', '-frames:v', '2',
+                             *options, '-f', 'null', '-'], capture_output=True, text=True, timeout=20)
+    if result.returncode:
+        raise RuntimeError(f'Recording encoder {encoder} failed its startup check: {result.stderr[-2000:]}')
+
+
 def find_window_rect(title_substring: str) -> tuple[int, int, int, int] | None:
     """Screen rectangle (left, top, width, height) of the client area of the first visible window whose
     title contains the text."""
@@ -105,7 +130,8 @@ def _capture_game_frame(sct, capture, rect=None):
 
 def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, capture: str | None,
                    rect: tuple | None, fps: int, show: bool, panel_height: int, dataset: str | None = None,
-                   dataset_every: int = 2, dataset_size: tuple[int, int] = (640, 360), controller_label: str = ''):
+                   dataset_every: int = 2, dataset_size: tuple[int, int] = (640, 360), controller_label: str = '',
+                   encoder: str = 'libx264'):
     from ..connectome.graph import BrainGraph
     from ..viz.fastpanel import FastBrainPanel
     from ..viz.render import neuron_layout
@@ -133,6 +159,8 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
     proc = None
     frame_h = frame_w = None
     ffmpeg = shutil.which('ffmpeg')
+    if out and not ffmpeg:
+        raise RuntimeError('Video recording requested but ffmpeg is unavailable')
     ds_dir = ds_index = None
     n_ds = 0
     if dataset:
@@ -192,10 +220,11 @@ def _recorder_main(shared: SharedFlightState, graph_path: str, out: str | None, 
         if out and ffmpeg:
             if proc is None:
                 frame_h, frame_w = frame.shape[:2]
-                cmd = [ffmpeg, '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{frame_w}x{frame_h}',
-                       '-r', str(fps), '-i', '-', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'veryfast', out]
+                cmd = [ffmpeg, '-y', '-loglevel', 'error', '-filter_threads', '1', '-f', 'rawvideo',
+                       '-pix_fmt', 'rgb24', '-s', f'{frame_w}x{frame_h}', '-r', str(fps), '-i', '-',
+                       *encoder_options(encoder), out]
                 proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-                print(f'recorder: writing {frame_w}x{frame_h} @ {fps} fps to {out}', file=sys.stderr, flush=True)
+                print(f'recorder: writing {frame_w}x{frame_h} @ {fps} fps with {encoder} to {out}', file=sys.stderr, flush=True)
             if frame.shape[:2] != (frame_h, frame_w):
                 fixed = np.zeros((frame_h, frame_w, 3), dtype=np.uint8)
                 h, w = min(frame_h, frame.shape[0]), min(frame_w, frame.shape[1])
@@ -243,13 +272,18 @@ class FlightRecorder:
 
     def __init__(self, shared: SharedFlightState, graph_path: str, out: str | None = None, capture: str | None = 'Liftoff',
                  rect: tuple | None = None, fps: int = 20, show: bool = False, panel_height: int = 720,
-                 dataset: str | None = None, dataset_every: int = 2, controller_label: str = ''):
+                 dataset: str | None = None, dataset_every: int = 2, controller_label: str = '',
+                 encoder: str = 'libx264'):
         self.shared = shared
+        self.encoder, self.out = encoder, out
+        encoder_options(encoder)
         self.proc = mp.Process(target=_recorder_main, args=(shared, graph_path, out, capture, rect, fps, show, panel_height,
                                                             dataset, dataset_every),
-                               kwargs=dict(controller_label=controller_label), daemon=True)
+                               kwargs=dict(controller_label=controller_label, encoder=encoder), daemon=True)
 
     def start(self) -> None:
+        if self.out:
+            validate_encoder(self.encoder)
         _scrub_cv2_from_sys_path()          # the child copies sys.path at spawn time
         self.proc.start()
 

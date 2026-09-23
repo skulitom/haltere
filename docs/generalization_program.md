@@ -1,6 +1,45 @@
 # Generalization program
 
 Direction revised on 2026-09-22 after the user's review of the flight evidence.
+The 2026-09-23 acceptance scope is Straw Bale / Field Day, Pine Valley / Forest
+For The Trees, Minus Two / Turn Signals, Autumn Fields / Walk In The Park and
+Hangar C03 / Shipments, all three laps. The user requires full-race time within
+20% of their matching completion. Saved personal race times and thresholds are
+in [main_track_targets.json](../configs/main_track_targets.json). They are
+evaluation metadata, never runtime guidance. Preserve the user's earlier 3/3
+completion requirement per track; speed without clean finishes does not pass.
+The user confirmed that these personal times used `[Copy] New Drone`; autonomous
+runs retain that same original calibrated drone.
+
+Current priority: correct PD wiring and workload isolation, then four full-race
+comparisons (PD and motor10 candidate05 on Straw Bale and Minus Two at 2.5 m/s).
+Use unscaled measured velocity, the effective requested speed and
+`position_gain=max(.8, speed/3)` for PD, matching its training-teacher contract.
+The brain alone retains its speed-dependent sensory scaling. Report finishes,
+full-race times and impacts for both motors as the standing comparison; 180-second
+windows do not answer the full-race question. Runtime stops remain visible and
+receive one unchanged retry after fixing the runtime issue; do not count them as
+clean navigation failures or quietly replace the original attempt.
+
+The visual runner now refuses known training/evaluation/benchmark jobs in any
+Windows session and other busy compute processes before starting capture/control.
+The inventory is a snapshot, not a machine-wide reservation or exhaustive GPU
+detector. Arrange exclusive flight time, retain the preflight report and do not
+start training or benchmarking during a race. Compare recorder-off, bounded CPU
+libx264 and explicit `--video-encoder h264_nvenc` on the same scene before choosing
+the encoder for the frozen batch. NVENC must actually encode in Anode; it never
+falls back silently. New CPU recordings cap ffmpeg at two encoder threads.
+The user subsequently authorized leaving the separate LitHarness benchmark
+running while we use Anode. Its explicit PID exceptions are recorded; the guard
+still rejects any exception measured at half a CPU core or more, and retains
+preflight and postflight snapshots. This is a disclosed exception to the original
+"nothing else running" condition, not evidence that Windows sessions isolate CPU/GPU resources.
+
+Next build challenge sections with nearby obstacles and per-section outcomes,
+then develop and freeze the geometry on/off comparison. Do not substitute another
+readout fit for obstacle clearance. Full-throttle/high-rate measurements and brain
+training through flight costs come after these steps.
+
 The race-cue stack has two seen-course full finishes and **zero full finishes on
 five first-exposure courses**: Hannover, The Pit, Paris, Hall 26 and The Green.
 These attempts used successive development revisions, not one frozen test batch.

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "confirmed_by_user": "2026-09-23",
+  "purpose": "Offline evaluation targets only; never runtime route or steering input",
+  "max_time_ratio": 1.2,
+  "required_laps": 3,
+  "success": "Game-confirmed full race, no impact, reset or flight intervention, within 120% of the saved personal full-race time",
+  "repeat_requirement": "Three clean full-race completions per track on one frozen deployed stack; retain every attempt and separate runtime failures",
+  "baseline_source": "PersonalRaceTime/raceTimes.xml; race IDs and requiredLaps checked against installed Liftoff race assets",
+  "baseline_vehicle": "[Copy] New Drone; confirmed by the user on 2026-09-23. Autonomous tests retain the same original drone.",
+  "tracks": [
+    {"environment": "Straw Bale", "race": "01 - Field Day", "race_id": "fdca6e12-4dff-438d-91d8-bbabe74ae426", "personal_race_s": 79.00621, "target_max_s": 94.807452},
+    {"environment": "Pine Valley", "race": "01 - Forest For The Trees", "race_id": "58e6df20-7715-47ca-814d-05c57406a454", "personal_race_s": 127.049095, "target_max_s": 152.458914},
+    {"environment": "Minus Two", "race": "01 - Turn Signals", "race_id": "ddfd7bae-df2c-4d5b-bec5-dd917a261a39", "personal_race_s": 89.27663, "target_max_s": 107.131956},
+    {"environment": "Autumn Fields", "race": "01 - Walk In The Park", "race_id": "e721d07f-26e9-4cef-a785-8e517c3bd22d", "personal_race_s": 64.49372, "target_max_s": 77.392464},
+    {"environment": "Hangar C03", "race": "01 - Shipments", "race_id": "617761c7-d2e2-447e-91d8-33916be641e8", "personal_race_s": 84.0755157, "target_max_s": 100.89061884}
+  ]
+}

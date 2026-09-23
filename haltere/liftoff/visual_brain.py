@@ -247,10 +247,13 @@ class VisualController:
             profile = self.meta['gate_training']['dynamics']['profile']
             measured = profile['vertical_calibration']['mean']
             curve = equivalent_power_curve(measured, c, idle=self.cfg.ctl.idle)
+            self.motor_speed = min(self.assistance.speed, self.assistance.reference_speed)
             self.motor_baseline = MotorPD(replace(self.cfg.quad, **curve), self.cfg.rates, self.cfg.ctl.idle,
-                                          MotorPDConfig(position_gain=max(.8, self.assistance.reference_speed/3.)))
+                                          MotorPDConfig(position_gain=max(.8, self.motor_speed/3.)))
             self.motor_metadata = dict(**self.motor_baseline.metadata(), vertical_fit=measured,
-                                       effective_thrust_curve=curve, mixer_idle=self.cfg.ctl.idle)
+                                       effective_thrust_curve=curve, mixer_idle=self.cfg.ctl.idle,
+                                       speed_mps=self.motor_speed, velocity_input='unscaled measured motion',
+                                       contract='motor_tracking_teacher_v1')
         self.last_command = None
         # CUDA's first sparse call can take hundreds of milliseconds. Initialize
         # kernels before the timed flight, then discard this synthetic state.
@@ -357,12 +360,13 @@ class VisualController:
         brain_action = action[0].cpu().numpy()
         motor_action = brain_action
         if self.motor_baseline is not None:
-            # Identical causal target and assisted velocity observations. The
-            # cap matches the brain's trained target; slower settings use the
-            # same sensory scaling in RaceCueAssistance for both motors.
+            # Match the training teacher: measured velocity and requested speed.
+            # Sensory scaling belongs to the brain's fixed-speed readout only;
+            # applying it to PD strengthens its velocity feedback incorrectly.
+            # Both controllers retain the same causal target and speed cap.
             motor_action = self.motor_baseline.command(
-                assisted_senses, action.new_tensor(self.relative_gate)[None],
-                speed=self.assistance.reference_speed)[0].cpu().numpy()
+                self.senses, action.new_tensor(self.relative_gate)[None],
+                speed=self.motor_speed)[0].cpu().numpy()
         command = self.assistance.command(motor_action) if self.assistance is not None else motor_action.copy()
         self.last_command = command
         processed = brain_to_processed(action.new_tensor(command)[None],self.calibration)[0].cpu().numpy()
@@ -487,6 +491,8 @@ def run(args):
     log_path = Path(args.log)
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
+    from .preflight import require_quiet
+    preflight = require_quiet(log_path, getattr(args,'allow_workload_pid',()))
     torch.set_num_threads(2)
     controller = VisualController(args.checkpoint,args.mapping,args.device,
                                   pilot_assistance=getattr(args,'pilot_assistance','none'),
@@ -509,14 +515,16 @@ def run(args):
     rx = TelemetryReceiver(port=args.port,stream=(read_config() or {}).get('StreamFormat',DEFAULT_STREAM))
     shared = SharedFlightState(controller.brain.N) if args.record else None
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
+                              encoder=getattr(args,'video_encoder','libx264'),
                               controller_label='PD MOTOR CONTROL | BRAIN IN SHADOW'
                               if controller.motor_baseline else '') if shared else None
     if recorder:
-        recorder.start()
         try:
+            recorder.start()
             recorder.wait_ready()
         except Exception:
-            recorder.stop()
+            if recorder.proc.pid is not None:
+                recorder.stop()
             camera.stop()
             rx.close()
             if pad:
@@ -558,6 +566,8 @@ def run(args):
                              'pilot_assisted','pilot_mode','pilot_flow_gain','pilot_passes','phase',
                              'pilot_kind','cue_u','cue_v','cue_edge','cue_aim_u','motor_controller'])
             while time.monotonic()-begin < args.seconds:
+                if recorder and count % 100 == 0 and not recorder.proc.is_alive():
+                    raise RuntimeError('Flight recorder stopped during the attempt')
                 new = rx.wait(.001)
                 camera_frame = camera.latest
                 now = time.monotonic()
@@ -672,6 +682,11 @@ def run(args):
         rx.close()
         if recorder:
             recorder.stop()
+        from .preflight import check_workloads
+        try:
+            postflight = check_workloads(getattr(args,'allow_workload_pid',()))
+        except Exception as exc:
+            postflight = dict(passed=None, error=str(exc))
         if gc_was_enabled:
             gc.enable()
         assisted = controller.assistance is not None
@@ -682,6 +697,8 @@ def run(args):
                       control_mode=('PD motor baseline; brain in shadow' if controller.motor_baseline else
                                     'pilot-assisted visual fly brain' if assisted else 'visual fly brain') if pad else 'shadow: no control output',
                       motor_controller=controller.motor_metadata,
+                      preflight=preflight,
+                      postflight=postflight,
                       pilot_assistance=pilot_meta,
                       navigation_predictor_loaded=False,
                       brain_action_columns=['thr','roll','pitch','yaw'],
@@ -691,6 +708,8 @@ def run(args):
                       vision_device=getattr(args,'vision_device','cpu'),
                       telemetry_failure=telemetry_failure,
                       process_priority=priority,
+                      recording=dict(enabled=bool(args.record), encoder=getattr(args,'video_encoder','libx264')
+                                     if args.record else None, fps=18, cpu_encoder_threads=2),
                       image_freshness_s=.12,camera_outage_limit_s=.5 if camera_braking_allowed else .25 if memory_gap_allowed else .12,
                       camera_braking_after_s=.25 if camera_braking_allowed else None,
                       stale_image_memory_only_ticks=memory_only_ticks,max_image_age_ms=1000*max_image_age,
@@ -750,6 +769,10 @@ def main():
     p.add_argument('--seconds',type=float,default=15)
     p.add_argument('--log',required=True)
     p.add_argument('--record',default='')
+    p.add_argument('--allow-workload-pid',type=int,action='append',default=[],
+                   help='Operator-authorized workload exception; recorded and rejected if using >= 0.5 CPU core')
+    p.add_argument('--video-encoder',choices=['libx264','h264_nvenc'],default='libx264',
+                   help='Explicit encoder; tested before arming, never silently falls back')
     p.add_argument('--replay-out',default='',help='Save exact causal senses and passive frozen scene features for offline correction')
     p.add_argument('--udp-out',default='')
     p.add_argument('--port',type=int,default=9001)

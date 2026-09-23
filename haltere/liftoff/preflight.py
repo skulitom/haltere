@@ -1,0 +1,113 @@
+"""Read-only, machine-wide workload check before a measured flight.
+
+Checks every Windows session, not just Anode. Known training/benchmark commands
+block even while waiting for work; other busy compute processes block on CPU
+use. This is a snapshot, not an operating-system reservation. Recheck after the
+flight and keep runtime failures separate from navigation outcomes.
+"""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import time
+from datetime import datetime, timezone
+
+
+_INVENTORY = r"""
+Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,SessionId,Name,CommandLine,UserModeTime,KernelModeTime | ConvertTo-Json -Compress
+"""
+_COMPUTE = re.compile(r'^(python(?:w|\d+(?:\.\d+)?)?|pypy\d*|pytest|torchrun|accelerate|uv|node|java|dotnet|ffmpeg|cargo|rustc|cmake|ninja|msbuild|wsl|docker)(?:\.exe)?$', re.I)
+_WORK = re.compile(r'(?:^|[\\/._-])(train(?:ing)?|bench(?:mark)?s?|pytest|evaluate|evaluation|quality-measurement|bptt)(?:$|[\\/._-])', re.I)
+
+
+def workload_reason(process):
+    """Classify executable/argument tokens; never match a shell's script text."""
+    name = process.get('Name', '')
+    if not _COMPUTE.fullmatch(name):
+        return None
+    command = process.get('CommandLine') or ''
+    tokens = [a or b for a, b in re.findall(r'"([^"]*)"|(\S+)', command)]
+    # The executable's parent directory can contain 'training' incidentally.
+    for token in [Path(name).stem, *tokens[1:]]:
+        if _WORK.search(token) or token.lower() in {'train', 'test', 'bench', 'benchmark'}:
+            return 'training, evaluation, benchmark or test command'
+        if token.lower() == 'haltere.liftoff.visual_brain':
+            return 'another visual flight controller'
+    return None
+
+
+def inventory():
+    if sys.platform != 'win32':
+        raise RuntimeError('Flight workload inventory requires Windows; no unchecked fallback')
+    result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', _INVENTORY],
+                            capture_output=True, text=True, timeout=20, check=True,
+                            creationflags=subprocess.CREATE_NO_WINDOW)
+    data = json.loads(result.stdout)
+    return data if isinstance(data, list) else [data]
+
+
+def classify(before, after, elapsed, own_pid):
+    """Return safe-to-publish blockers without recording unrelated arguments."""
+    by_pid = {int(p['ProcessId']): p for p in after}
+    excluded = set()
+    pid = own_pid
+    while pid in by_pid and pid not in excluded:
+        excluded.add(pid)
+        pid = int(by_pid[pid].get('ParentProcessId', 0))
+    prior = {int(p['ProcessId']): p for p in before}
+    blockers = []
+    for pid, process in by_pid.items():
+        if pid in excluded:
+            continue
+        reason = workload_reason(process)
+        cpu_cores = None
+        if pid in prior and elapsed > 0:
+            def ticks(p):
+                return sum(int(p.get(key) or 0) for key in ('UserModeTime', 'KernelModeTime'))
+            cpu_cores = max(0., (ticks(process)-ticks(prior[pid]))/1e7/elapsed)
+        if not reason and _COMPUTE.fullmatch(process.get('Name', '')) and cpu_cores is not None and cpu_cores >= .5:
+            reason = 'other compute process using at least half a CPU core'
+        if reason:
+            blockers.append(dict(pid=pid, session=process.get('SessionId'), executable=process['Name'],
+                                 reason=reason, cpu_cores=cpu_cores))
+    return blockers
+
+
+def check_workloads(allowed_pids=()):
+    start = time.monotonic()
+    before = inventory()
+    time.sleep(1.)
+    after = inventory()
+    elapsed = time.monotonic()-start
+    blockers = classify(before, after, elapsed, os.getpid())
+    # Explicit operator exceptions still fail if their measured CPU work rises.
+    # Keep both the permission and observed load visible in the flight record.
+    exceptions = [b for b in blockers if b['pid'] in allowed_pids
+                  and b['cpu_cores'] is not None and b['cpu_cores'] < .5]
+    blockers = [b for b in blockers if b not in exceptions]
+    return dict(checked_at=datetime.now(timezone.utc).isoformat(), passed=not blockers,
+                blockers=blockers, operator_exception_pids=list(allowed_pids), exceptions=exceptions,
+                scope='all Windows sessions; known jobs and busy compute executables',
+                limitation='snapshot; does not reserve resources or identify all possible GPU jobs')
+
+
+def require_quiet(log_path, allowed_pids=()):
+    """Persist a refusal before opening capture, pads or the flight CSV."""
+    path = Path(log_path).with_suffix('.preflight.json')
+    if path.exists():
+        raise FileExistsError(f'Preserve the previous preflight record; use a new log path: {path}')
+    report = check_workloads(allowed_pids)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report, indent=2), encoding='utf-8')
+    if not report['passed']:
+        pids = ', '.join(str(p['pid']) for p in report['blockers'])
+        raise RuntimeError(f'Preflight refused: competing workloads (PIDs {pids}); see {path}')
+    return report
+
+
+if __name__ == '__main__':
+    print(json.dumps(check_workloads(), indent=2))
