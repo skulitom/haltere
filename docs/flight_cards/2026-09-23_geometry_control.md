@@ -153,3 +153,32 @@ explicit receding-clearance recovery and treats braking as a fallback when no
 feasible moving option exists. It retains static surface memory rather than
 inferring that old surfaces disappeared. These changes require new complete
 flights. The sparse wall coverage remains uncertain; no replay is a finish.
+
+## Explicit recovery and moving detours: 2/3
+
+Frozen runtime `946056e`, `runs/geometry-escape-20260923`. Same original drone,
+one-lap development course, PD motors, 2.5 m/s assistance, camera/video settings
+and 500-second/60-second-stall limits. The newest brain remained in shadow.
+
+| Attempt | Result | Full race time |
+|---|---|---|
+| 1 | Declared stall stop at final wall, clock 4:09.926 | Incomplete |
+| 2 | Game-confirmed full finish | 2:28.763 |
+| 3 | Game-confirmed full finish | 2:39.492 |
+
+All three full videos decode. No detected impacts, resets, camera failures,
+controller deadline failures or geometry-freshness stops occurred. Worker p95
+was 204.2, 100.2 and 101.6 ms. The stall was an operator pause under the declared
+rule. The other terminal telemetry stops correspond to the saved game results.
+
+One launch was refused before any flight because a new, idle LitHarness process
+family was missing from the existing user-authorized exception list. The list
+was amended uniformly before the batch flew. Original manifests, cards and
+refusal evidence are retained; controller source/settings/order did not change.
+
+The stalled attempt repeatedly chose about 0.02 m/s vertical motion as a detour.
+A subsequent selection fix requires pure vertical alternatives to reach the
+existing sampling increment; ordinary unobstructed nominal commands are
+unchanged. That fix has not yet flown. The completed batch remains 2/3, and
+neither main-track speed, reliable transfer nor brain-controlled obstacle
+avoidance is established. No neural weights changed.

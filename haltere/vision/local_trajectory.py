@@ -150,7 +150,7 @@ class LocalTrajectoryPlanner:
                 for vertical in verticals:
                     candidate = np.array([fraction*horizontal*np.cos(heading+angle),
                                           fraction*horizontal*np.sin(heading+angle), vertical])
-                    if fraction or abs(vertical)>1e-8:
+                    if fraction or abs(vertical)>=config.vertical_speed_mps/config.vertical_subdivisions-1e-9:
                         candidates.append(candidate)
         best = None
         brake = None

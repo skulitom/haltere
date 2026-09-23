@@ -60,10 +60,10 @@ Two unchanged assisted repeats added one finish and one wall impact (2/3 overall
 The failed repeat lost nearby obstacle memory while nearly stationary. Retaining
 both points and interpolated surfaces subsequently finished 0/3 (one geometry
 timing stop and two operator-stopped stalls). Short-lived interpolation and
-faster queries also finished 0/3, without timing failures. The next experiment
-retains static surfaces and tests explicit recovery from initial overlaps plus
-feasible moving detours before braking. Resolve these failures before treating
-the local planner as a reliable input to broader flight.
+faster queries also finished 0/3, without timing failures. Explicit overlap
+recovery and feasible motion before braking then finished 2/3, with one wall
+stall and no detected impacts or runtime failures. The remaining stall still
+prevents a reliability claim; broader geometry and motor work remain required.
 The [obstacle/depth record](flight_cards/2026-09-23_obstacle_geometry.md) preserves
 the failure and causal replay limits.
 

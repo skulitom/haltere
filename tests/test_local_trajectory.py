@@ -125,3 +125,10 @@ def test_feasible_descent_is_not_outscored_by_permanent_braking():
     assert result['status']=='observed_obstacle_detour'
     assert np.linalg.norm(result['velocity'])>.01
     assert result['selected_margin_m']>=.15
+
+
+def test_tiny_requested_vertical_component_cannot_masquerade_as_a_detour():
+    scene=surfaces([[2,y,z] for y in np.arange(-5,5.1,.5) for z in np.arange(0,5.1,.5)])
+    result=LocalTrajectoryPlanner().propose([0,0,0],[0,0,0],[2.5,0,-.02],scene,1.,view=view())
+    assert result['status']=='observed_obstacle_detour'
+    assert np.linalg.norm(result['velocity'])>=.3-1e-9

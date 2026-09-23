@@ -256,5 +256,7 @@ and the full braking endpoint must be clear. Initial overlap remains reported;
 the observations are not deleted. When nominal travel is blocked, a feasible
 moving detour takes precedence over permanent braking. Vertical alternatives,
 existing speed/view limits and original receipt ages remain intact. This is
-still incomplete observed geometry, not a free-space certificate. Complete
-flight validation remains pending.
+still incomplete observed geometry, not a free-space certificate. Its frozen
+batch finished 2/3 (2:28.763 and 2:39.492), with one declared wall stall and no
+detected impacts or runtime failures. A subsequent fix excludes tiny pure
+vertical corrections from the moving-detour candidates; it has not yet flown.
