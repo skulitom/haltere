@@ -158,14 +158,18 @@ def test_bottom_edge_cue_descends_with_reduced_speed():
     # nearly full descent evidence, latched for the clip episode.
     weight = pilot.below_weight
     assert .9 < weight <= 1.
-    assert command[2] == pytest.approx(-CONFIG.vertical_down * weight, abs=1e-6)
     horizontal = np.linalg.norm(command[:2])
-    assert horizontal <= speed * (1 - weight) + CONFIG.edge_speed * weight + 1e-9
-    assert horizontal < .5 * speed and command[0] > .5 and abs(command[1]) < 1e-6
+    expected = speed * (1 - weight) + max(CONFIG.edge_speed, CONFIG.below_speed_fraction * speed) * weight
+    assert horizontal == pytest.approx(expected, rel=2e-2)
+    # Descend along a slope just steeper than the clamped edge ray, not a dive.
+    slope = np.degrees(np.arctan2(-command[2], horizontal))
+    assert slope == pytest.approx((pilot.edge_depression + CONFIG.below_slope_margin_deg), abs=1.)
+    assert -command[2] <= CONFIG.vertical_down + 1e-9
+    assert horizontal < .6 * speed and command[0] > .5 and abs(command[1]) < 1e-6
     # The same bearing inside the image flies at the full aligned speed instead.
     free = FastRaceCue(SENSOR, CameraPoseHistory(), speed)
     free_rows = drive(free, free.pose_history, cue_toward([10., 0., 0.]), 250, height=20.)
-    assert np.linalg.norm(free_rows[-1][2][:2]) > 2 * horizontal
+    assert np.linalg.norm(free_rows[-1][2][:2]) > 1.5 * horizontal
 
 
 def test_top_edge_cue_climbs_and_bounds_forward_speed():
@@ -270,7 +274,7 @@ def test_support_detection_ignores_a_tracked_descent():
     pilot = FastRaceCue(SENSOR, history, 10.)
     rows = drive(pilot, history, BELOW, 300, height=30.)
     assert 'support_climb' not in states(rows)
-    assert rows[-1][2][2] == pytest.approx(-CONFIG.vertical_down)
+    assert rows[-1][2][2] < -1.
 
 
 def closed_loop(target, steps, height, *, floor=None, speed=8.):

@@ -39,6 +39,8 @@ class FastCueConfig:
     edge_speed: float = 1.2
     below_weak_deg: float = 2.
     below_full_deg: float = 10.
+    below_slope_margin_deg: float = 5.
+    below_speed_fraction: float = .5
     edge_sweep_after_s: float = 1.5
     edge_sweep_rate: float = 1.
     command_time_constant: float = .25
@@ -77,7 +79,7 @@ class FastRaceCue:
     profile = 'fast-v1'
 
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
-                 yaw_curve=DEFAULT_YAW_CURVE, calibration=None):
+                 yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -92,7 +94,13 @@ class FastRaceCue:
         self.calibration = None if calibration is None else tuple(
             float(calibration[k]) for k in ('hover_processed', 'throttle_scale', 'hover_stick_sim'))
         self.below_weight = 0.
+        self.edge_depression = 0.
         self.vertical_clip_since = None
+        # A fast-contract brain senses horizontal velocity scaled by a declared
+        # factor (below one at race speed); other motor contracts keep >= 1.
+        if velocity_scale is not None and (not np.isfinite(velocity_scale) or velocity_scale <= 0):
+            raise ValueError('Use a finite positive velocity scale')
+        self.velocity_scale = velocity_scale
         self.camera = Camera(320, 180, sensor['focal_320'], sensor['tilt_deg'])
         self.pose_history, self.speed, self.reference_speed = pose_history, float(speed), float(reference_speed)
         self.host = SimpleNamespace(flow_gain=1.)
@@ -149,8 +157,10 @@ class FastRaceCue:
             elevation = np.degrees(np.arcsin(np.clip(ray[2], -1, 1)))
             weight = float(np.clip((-elevation-c.below_weak_deg)/(c.below_full_deg-c.below_weak_deg), 0, 1))
             self.below_weight = max(self.below_weight, weight)
+            self.edge_depression = float(max(0., -elevation))
         else:
             self.below_weight = 0.
+            self.edge_depression = 0.
         if not ((self.below or self.above) and abs(cue['u']-.5) < .1):
             self.vertical_clip_since = None
         elif self.vertical_clip_since is None:
@@ -183,11 +193,15 @@ class FastRaceCue:
         speed = self.speed*fraction
         slope = d[2]/max(np.linalg.norm(d[:2]), 1e-6)
         if self.below:
-            # The target lies below the lower image edge: descend and slow down
-            # so the depression angle can shrink, in proportion to the evidence.
+            # The target lies below the lower image edge, i.e. at least as steep
+            # as the clamped edge ray. Descend along a slope only slightly
+            # steeper than that bound, rather than diving: racing lines often
+            # follow terrain down a hill, and forward pitch soon brings the
+            # marker back into view. Weight the response by the evidence.
             w = self.below_weight
-            return (np.r_[dh*(speed*(1-w)+min(speed, c.edge_speed)*w), -c.vertical_down*w],
-                    'below' if w > 0 else 'below_weak')
+            horizontal = speed*(1-w)+min(speed, max(c.edge_speed, c.below_speed_fraction*speed))*w
+            sink = min(c.vertical_down, horizontal*np.tan(np.radians(self.edge_depression+c.below_slope_margin_deg)))
+            return np.r_[dh*horizontal, -sink*w], 'below' if w > 0 else 'below_weak'
         if self.above:
             # The clipped elevation is only a lower bound: preserve that slope.
             speed = min(speed, c.vertical_up/max(slope, .2))
@@ -272,7 +286,8 @@ class FastRaceCue:
         fresh = self.last_seen is not None and now-self.last_seen < .25
         self.pilot.target = SimpleNamespace(t_last=self.last_seen) if fresh else None
         self.pilot.carrot = position+self.velocity_command
-        self.host.flow_gain = max(1., self.reference_speed/self.speed)
+        self.host.flow_gain = (self.velocity_scale if self.velocity_scale is not None
+                               else max(1., self.reference_speed/self.speed))
         scaled_velocity = senses['vel_world']*senses['vel_world'].new_tensor(
             [self.host.flow_gain, self.host.flow_gain, 1.])
         modified = {**senses, 'vel_world': scaled_velocity,
@@ -300,7 +315,8 @@ class FastRaceCue:
                     local_flag_clearance=True, visible_route_arrows_for_clearance_side=True,
                     guidance='world velocity along the filtered cue bearing, acceleration-limited with feedforward',
                     speed_schedule='min_speed_fraction + (1-min)*cos^2(angle between velocity and bearing)',
-                    bottom_edge='descent and slowing weighted by the clamped edge ray depression, latched per clip',
+                    bottom_edge='shallow descent bounded by the clamped edge ray depression plus a margin, '
+                                'weighted by that depression and latched per clip',
                     top_edge='climb while preserving the clipped slope bound',
                     centred_vertical_clip='slow search yaw after edge_sweep_after_s',
                     launch_surface='sink rate limited near and above the launch plane',
