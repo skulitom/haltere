@@ -83,11 +83,17 @@ RECIPES = {
                   weight_decay=0.01, warmup_frac=0.03, final_lr_frac=0.05, ema=0.998, grad_clip=1.0,
                   p_jpeg=0.3, p_ring=0.3, p_flip=0.5, p_lowlight=0.2, p_blur=0.2, p_noise=0.3,
                   val_per_env=400, eval_every_s=240.0, amp='bf16'),
+    # run B of v0: same architecture, pretrained DA-V2 backbone + DPT neck/head frozen (only the new heads learn)
+    'dav2s_frozen': dict(batch=16, lr_backbone=0.0, layer_decay=0.8, lr_patch=0.0, lr_dpt=0.0, lr_heads=5e-4,
+                         weight_decay=0.01, warmup_frac=0.03, final_lr_frac=0.05, ema=0.998, grad_clip=1.0,
+                         p_jpeg=0.3, p_ring=0.3, p_flip=0.5, p_lowlight=0.2, p_blur=0.2, p_noise=0.3,
+                         val_per_env=400, eval_every_s=120.0, amp='bf16', freeze_pretrained=True),
     'resnet18fpn': dict(batch=16, lr_backbone=1e-3, layer_decay=1.0, lr_patch=1e-3, lr_dpt=1e-3, lr_heads=1e-3,
                         weight_decay=0.01, warmup_frac=0.03, final_lr_frac=0.05, ema=0.995, grad_clip=1.0,
                         p_jpeg=0.3, p_ring=0.3, p_flip=0.5, p_lowlight=0.2, p_blur=0.2, p_noise=0.3,
                         val_per_env=400, eval_every_s=75.0, amp='bf16'),
 }
+RECIPES_ARCH = {'dav2s_frozen': 'dav2s'}
 SELECTION_RULE = ('lowest inner-validation objective (grid NLL + fan NLL + BCE4 + BCE8, near weights, EMA weights, '
                   'no augmentation, no teacher term) on <= 400 rows per inner-validation environment')
 
@@ -345,6 +351,11 @@ class Trainer:
         self.device = device
         self.recipe = recipe
         self.arch = arch
+        if recipe.get('freeze_pretrained'):
+            if arch != 'dav2s':
+                raise ValueError('freeze_pretrained applies to the dav2s arch')
+            for p in self.net.da.parameters():
+                p.requires_grad_(False)
         self.ema = self._ema_copy()
         self.opt = torch.optim.AdamW(self._param_groups(), lr=1.0, betas=(0.9, 0.999))
         for g in self.opt.param_groups:
@@ -370,6 +381,8 @@ class Trainer:
 
         def add(params, lr, name):
             params = [p for p in params if p.requires_grad and id(p) not in seen]
+            if lr <= 0:
+                return
             if not params:
                 return
             for p in params:
@@ -516,6 +529,8 @@ class Trainer:
     def step(self, t):
         torch = self.torch
         self.net.train()
+        if self.recipe.get('freeze_pretrained'):
+            self.net.da.eval()
         with self.autocast():
             out = self.net(t['x'], t['grav'])
         L = self.losses(out, t, teacher=True)
@@ -673,7 +688,10 @@ def train(args):
     thermal.limit_threads(2, torch=True, cv2=True)
     lock = thermal.require_flight_lock_path(args.flight_lock)
     arch = args.arch
-    recipe = dict(RECIPES[arch])
+    recipe_name = args.recipe_name or arch
+    if RECIPES_ARCH.get(recipe_name, recipe_name) != arch:
+        raise SystemExit(f'recipe {recipe_name} is for arch {RECIPES_ARCH.get(recipe_name, recipe_name)}')
+    recipe = dict(RECIPES[recipe_name], name=recipe_name)
     if args.batch:
         recipe['batch'] = int(args.batch)
     if args.eval_every_s:
@@ -702,6 +720,8 @@ def train(args):
 
     if args.bench:
         return bench(args, tr, va, probs, recipe, guard, dev)
+    if args.finalize_only:
+        return finalize(args, out_dir, store, labels, tr, va, recipe, shares)
 
     state = None
     ck = _checkpoints(out_dir)
@@ -867,6 +887,7 @@ def finalize(args, out_dir: Path, store, labels, tr, va, recipe, shares):
     from .model import DAV2S_LICENCE, DAV2S_MODEL_ID, dav2s_weights_dir, model_sha256
     from .splits import FOLDS
     ck = torch.load(_checkpoints(out_dir)[-1], map_location='cpu', weights_only=False)
+    recipe = ck.get('recipe', recipe)
     sd = torch.load(out_dir / 'best_ema.pt', map_location='cpu', weights_only=True)
     torch.save(sd, out_dir / 'model.pt')
     sha = model_sha256(out_dir / 'model.pt')
@@ -978,6 +999,8 @@ def main(argv=None):
     p.add_argument('--batch', type=int, default=None)
     p.add_argument('--eval-every-s', type=float, default=None)
     p.add_argument('--max-chunks', type=int, default=None, help='run at most this many chunks in this process')
+    p.add_argument('--recipe-name', default=None, choices=sorted(RECIPES), help='built-in v0 recipe (default: the arch)')
+    p.add_argument('--finalize-only', action='store_true', help='write model.pt/model.json from the run directory')
     p.add_argument('--bench', action='store_true')
     p.add_argument('--flight-lock', default=None)
     args = p.parse_args(argv)
