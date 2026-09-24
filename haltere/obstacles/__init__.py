@@ -20,6 +20,10 @@ Offline-only modules (never imported by runtime modules):
 - ``timing``    per-video clock refinement
 - ``labels``    offline label schema and builders (hindsight, colliders, impacts, tube, teacher)
 - ``evaluate``  held-out harness E1-E8, baselines B0-B4, thresholds freeze, scoring ledger
+- ``baselines`` pretrained-depth baselines B2-B4 (GPU runners, B3 calibration, B4 ceiling), model inference
+- ``leaks``     E8 perturbations (ring paint/removal, HUD-glyph scramble, ghost trails)
+- ``split_looming``  B1, the lateral study's split-field looming cue (vendored)
+- ``lateral_cache``  the lateral study's caches as a pseudo store (reproduction of prior numbers)
 - ``train``     ClearanceNet training
 - ``thermal``   flight lock, GPU temperature and thread limits for heavy jobs
 
@@ -61,6 +65,10 @@ OFFLINE_MODULES = (
     'haltere.obstacles.timing',
     'haltere.obstacles.labels',
     'haltere.obstacles.evaluate',
+    'haltere.obstacles.baselines',
+    'haltere.obstacles.leaks',
+    'haltere.obstacles.split_looming',
+    'haltere.obstacles.lateral_cache',
     'haltere.obstacles.train',
     'haltere.obstacles.thermal',
 )
