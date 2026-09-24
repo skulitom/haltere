@@ -72,23 +72,36 @@ def load_telemetry(path) -> dict | None:
         return None
     with open(path, newline='') as f:
         rd = csv.DictReader(f)
+        alias = {} if 'x' in (rd.fieldnames or []) else {'x': 'px', 'y': 'py', 'z': 'pz'}   # older recorder CSVs
         cols = {k: [] for k in TEL_COLS}
         for r in rd:
             for k in TEL_COLS:
-                v = r.get(k)
+                v = r.get(alias.get(k, k))
                 try:
                     cols[k].append(float(v) if v not in (None, '', 'nan') else np.nan)
                 except ValueError:
                     cols[k].append(np.nan)
     c = {k: np.asarray(v, np.float64) for k, v in cols.items()}
-    if len(c['wall']) < 5:
-        return None
     tel = dict(wall=c['wall'], ts=c['ts'], phase=c['phase'], pos=np.c_[c['x'], c['y'], c['z']],
                vel=np.c_[c['vx'], c['vy'], c['vz']], quat=np.c_[c['qw'], c['qx'], c['qy'], c['qz']])
     ok = np.isfinite(tel['wall']) & np.isfinite(tel['pos']).all(1)
+    if ok.sum() < 5:
+        return None
     tel = {k: v[ok] for k, v in tel.items()}
     o = np.argsort(tel['wall'], kind='stable')
     return {k: v[o] for k, v in tel.items()}
+
+
+def index_telemetry(store, run_id: int) -> dict | None:
+    """Coarse telemetry from the store index rows of a run (capture datasets without a flight CSV)."""
+    ix = store.index
+    rows = np.flatnonzero(ix['run_id'] == run_id)
+    if len(rows) < 5:
+        return None
+    r = ix[rows[np.argsort(ix['t_wall'][rows], kind='stable')]]
+    return dict(wall=r['t_wall'].astype(np.float64), ts=r['t_game'].astype(np.float64),
+                phase=r['t_phase'].astype(np.float64), pos=r['pos'].astype(np.float64),
+                vel=r['vel'].astype(np.float64), quat=r['quat'].astype(np.float64), coarse=True)
 
 
 def reset_times(tel) -> np.ndarray:
@@ -169,7 +182,8 @@ def build_events(store, store_root, lateral_path, extra_path, log=_log) -> list[
 
     def tel_of(run_id):
         if run_id not in tel_cache:
-            tel_cache[run_id] = load_telemetry(data_path(store.runs[run_id].get('telemetry_csv'), store_root))
+            tel_cache[run_id] = (load_telemetry(data_path(store.runs[run_id].get('telemetry_csv'), store_root))
+                                 or index_telemetry(store, run_id))
         return tel_cache[run_id]
 
     out, used_store = [], set()
@@ -457,6 +471,8 @@ def combine_sources(parts: dict) -> tuple:
     k = np.zeros(shape, np.uint8)
     src = np.zeros(shape, np.uint8)
     conflict = np.zeros(shape, bool)
+    lo_all = np.zeros(shape)
+    hi_all = np.full(shape, np.inf)
     for s in COMBINE_ORDER:
         if s not in parts:
             continue
@@ -464,14 +480,20 @@ def combine_sources(parts: dict) -> tuple:
         v, k, c = intersect(v, k, sv, sk, tol=EXACT_TOL)
         conflict |= c
         src |= np.where((sk != LabelKind.UNKNOWN) & ~c, np.uint8(int(s)), np.uint8(0))
+        from . import _intervals
+        lo_s, hi_s = _intervals(sv, sk)
+        lo_all, hi_all = np.maximum(lo_all, lo_s), np.minimum(hi_all, hi_s)
     k = np.where(conflict, LabelKind.UNKNOWN, k).astype(np.uint8)
     v = np.where(conflict, np.nan, v)
     src = np.where(conflict | (k == LabelKind.UNKNOWN), 0, src).astype(np.uint8)
+    # wide finite intervals resolved to their free-space (LOWER) end by labels.intersect's default
+    wide = ~conflict & (lo_all > 0) & np.isfinite(hi_all) & (hi_all > lo_all * (1 + EXACT_TOL))
+    combine_sources.last_wide = int(wide.sum())
     return v, k, src, conflict
 
 
 def combine_run(writer: LabelWriter, parts_dir: Path, run_id: int) -> dict:
-    stats = dict(conflicts_grid=0, conflicts_fan=0)
+    stats = dict(conflicts_grid=0, conflicts_fan=0, interval_to_lower_grid=0, interval_to_lower_fan=0)
     loaded = {}
     rows = None
     for stage, s in SOURCE_STAGES.items():
@@ -486,7 +508,9 @@ def combine_run(writer: LabelWriter, parts_dir: Path, run_id: int) -> dict:
     if not loaded:
         return stats
     gv, gk, gs, gc = combine_sources({s: (p['grid_v'], p['grid_k']) for s, p in loaded.items()})
+    wide_g = combine_sources.last_wide
     fv, fk, fs, fc = combine_sources({s: (p['fan_v'], p['fan_k']) for s, p in loaded.items()})
+    stats.update(interval_to_lower_grid=wide_g, interval_to_lower_fan=combine_sources.last_wide)
     gv, gk2 = clip_grid(gv, gk)
     fv, fk2 = clip_fan(fv, fk)
     gs = np.where(gk2 == LabelKind.UNKNOWN, 0, gs).astype(np.uint8)
@@ -549,7 +573,7 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
         ix = store.index[rows]
         T = float(e['t_wall'])
         sel = np.flatnonzero((ix['t_wall'] >= T - 2.0) & (ix['t_wall'] <= T - 0.5))
-        n_view, n_both, n_ok = 0, 0, 0
+        n_view, n_both, n_ok, n_cons = 0, 0, 0, 0
         ratios = []
         for i in sel:
             p = np.asarray(e['point_w'], float)
@@ -558,22 +582,30 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
                 continue
             n_view += 1
             r, c = _cell_of(uv[0])
-            if a['grid_k'][i, r, c] in (LabelKind.EXACT, LabelKind.UPPER):
+            kind = a['grid_k'][i, r, c]
+            if kind in (LabelKind.EXACT, LabelKind.UPPER):
                 n_both += 1
                 ratio = float(a['grid_v'][i, r, c]) / float(rng[0])
                 ratios.append(ratio)
-                n_ok += abs(ratio - 1) <= K0B['l2_vs_l3_within']
-        per_event.append(dict(event_id=e['event_id'], run=e['run'], env=e['env'], kind=e['kind'], frames_in_view=n_view,
-                              frames_both=n_both, frames_within_15pct=n_ok,
-                              median_ratio=float(np.median(ratios)) if ratios else None))
-        d = per_env.setdefault(e['env'], dict(frames_in_view=0, frames_both=0, frames_within_15pct=0))
+                within = abs(ratio - 1) <= K0B['l2_vs_l3_within']
+                n_ok += within
+                # consistent: EXACT within 15 %; UPPER (true <= v) not contradicted beyond 15 %
+                n_cons += within if kind == LabelKind.EXACT else ratio >= 1 / (1 + K0B['l2_vs_l3_within'])
+        per_event.append(dict(event_id=e['event_id'], run=e['run'], env=e['env'], kind=e['kind'], source=e['source'],
+                              frames_in_view=n_view, frames_both=n_both, frames_within_15pct=n_ok,
+                              frames_consistent=n_cons, median_ratio=float(np.median(ratios)) if ratios else None))
+        d = per_env.setdefault(e['env'], dict(frames_in_view=0, frames_both=0, frames_within_15pct=0,
+                                              frames_consistent=0))
         d['frames_in_view'] += n_view
         d['frames_both'] += n_both
         d['frames_within_15pct'] += n_ok
+        d['frames_consistent'] += n_cons
     for d in per_env.values():
         d['frac_within_15pct'] = d['frames_within_15pct'] / d['frames_both'] if d['frames_both'] else None
+        d['frac_consistent'] = d['frames_consistent'] / d['frames_both'] if d['frames_both'] else None
         d['coverage'] = d['frames_both'] / d['frames_in_view'] if d['frames_in_view'] else None
-    tot = {k: sum(d[k] for d in per_env.values()) for k in ('frames_in_view', 'frames_both', 'frames_within_15pct')}
+    tot = {k: sum(d[k] for d in per_env.values()) for k in ('frames_in_view', 'frames_both', 'frames_within_15pct',
+                                                             'frames_consistent')}
     frac = tot['frames_within_15pct'] / tot['frames_both'] if tot['frames_both'] else None
     q['l2_vs_l3'] = dict(per_env=per_env, per_event=per_event, total=tot, frac_within_15pct=frac,
                          passed=bool(frac is not None and frac >= K0B['l2_vs_l3_frac']),
@@ -603,6 +635,88 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
     return q
 
 
+
+# ----------------------------------------------------------------------------- resumability
+
+LABEL_CODE_VERSION = 'labels-m1-1'     # bump when a stage's output for the same inputs changes
+
+
+def _hash(*arrays) -> str:
+    import hashlib
+    h = hashlib.sha256(LABEL_CODE_VERSION.encode())
+    for a in arrays:
+        h.update(np.ascontiguousarray(np.asarray(a, dtype=np.float64)).tobytes())
+    return h.hexdigest()[:24]
+
+
+def stage_inputs(rd: 'RunData', stage: str) -> str:
+    """Hash of everything a stage's output for one run depends on (poses, rows, stops, event points)."""
+    base = [rd.rows, rd.t, rd.pos, rd.quat]
+    if stage == 'colliders':
+        return _hash(*base, np.asarray(rd.rec.get('origin_sim') or [np.nan] * 3, float))
+    if stage == 'tube':
+        return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)])
+    if stage == 'hindsight':
+        from .hindsight import mask_provenance
+        mask = np.frombuffer(mask_provenance().encode(), np.uint8)
+        return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)], mask)
+    ev = [np.r_[e.get('t_wall') or np.nan, e.get('point_w') or [np.nan] * 3, e.get('normal_w') or [np.nan] * 3]
+          for e in rd.events if e['kind'] in ('terminal_impact', 'contact')]
+    return _hash(*base, np.asarray(ev, float).reshape(-1, 7), rd.path_t[:: max(1, len(rd.path_t) // 500)])
+
+
+def part_current(parts_dir: Path, stage: str, run_id: int, inputs: str | None) -> bool:
+    """A stage part exists (and, when ``inputs`` is given, was built from these inputs)."""
+    p = parts_dir / stage / f'r{run_id:05d}.npz'
+    if not p.exists():
+        return False
+    if stage == 'hindsight' and not (parts_dir / 'hindsight_map' / f'r{run_id:05d}.npz').exists():
+        d = np.load(p, allow_pickle=False)
+        if not bool(d['empty']):
+            return False
+    if inputs is None:
+        return True
+    try:
+        meta = json.loads(str(np.load(p, allow_pickle=False)['meta']))
+    except Exception:
+        return False
+    return meta.get('inputs') == inputs
+
+
+def move_stale_arrays(root: Path, sha: str, n: int, log=_log) -> None:
+    """Labels built on another store index (e.g. before a timing re-pose) are moved to stale-<sha>/; the
+    per-run parts stay and are reused where their inputs did not change."""
+    mpath = root / 'manifest.json'
+    if not mpath.exists():
+        return
+    m = json.loads(mpath.read_text(encoding='utf-8'))
+    if m.get('store_index_sha256') == sha and m.get('n_frames') == n:
+        return
+    from . import ARRAYS
+    if m.get('status') != 'complete' and m.get('n_frames') == n:
+        # an unfinished build on the old index: reset its arrays in place (nothing final to keep)
+        for spec in ARRAYS.values():
+            if (root / spec.file).exists():
+                a = np.load(root / spec.file, mmap_mode='r+')
+                a[:] = spec.fill
+                a.flush()
+                del a
+        m.update(store_index_sha256=sha, status='building')
+        tmp = root / 'manifest.json.tmp'
+        tmp.write_text(json.dumps(m, indent=1) + '\n', encoding='utf-8')
+        os.replace(tmp, mpath)
+        (root / 'progress.json').write_text('{}', encoding='utf-8')
+        log('unfinished labels of another store index: arrays reset; parts reused where their inputs are unchanged')
+        return
+    stale = root / f"stale-{str(m.get('store_index_sha256'))[:12]}"
+    stale.mkdir(parents=True, exist_ok=True)
+    for name in ['manifest.json', 'progress.json', 'events.json', 'quality.json'] + [a.file for a in ARRAYS.values()]:
+        if (root / name).exists():
+            os.replace(root / name, stale / name)
+    log(f'labels were built on store index {m.get("store_index_sha256")}: arrays moved to {stale}; parts reused '
+        f'where their inputs are unchanged')
+
+
 # ----------------------------------------------------------------------------- CLI entry points
 
 def _sha(path) -> str | None:
@@ -628,9 +742,13 @@ def build(args):
     guard = thermal.ChunkGuard(lock)
     store_root = Path(args.store)
     store = FrameStore(store_root)
+    # Hold the index in memory, not memory-mapped: a timing re-pose must be able to replace index.npy
+    # (Windows refuses to replace a mapped file). Labels built on the old index are moved aside next time.
+    store.index = np.array(store.index)
     sha = store.manifest.get('index_sha256') or store.index_sha256()
-    writer = LabelWriter(store_root, len(store), sha)
     root = labels_root(store_root)
+    move_stale_arrays(root, sha, len(store))
+    writer = LabelWriter(store_root, len(store), sha)
     parts_dir = root / 'parts'
     stages = tuple(args.stages or STAGES)
     run_ids = [r['run_id'] for r in store.runs if r.get('n_frames')]
@@ -652,12 +770,19 @@ def build(args):
         from .colliders import BoxScene
         scene = BoxScene(json.loads(Path(args.colliders).read_text(encoding='utf-8')))
     per_stage = {s: {} for s in SOURCE_STAGES}
-    for rid in run_ids:
-        todo = [s for s in SOURCE_STAGES if s in stages and not writer.is_done(s, rid)]
+    order = sorted(run_ids, key=lambda r: (store.runs[r].get('source') == 'run_video', r)) \
+        if getattr(args, 'videos_last', True) else run_ids
+    for rid in order:
+        rd = None
+        todo = []
+        for s in (s for s in SOURCE_STAGES if s in stages):
+            if not writer.is_done(s, rid) or not part_current(parts_dir, s, rid, None):
+                todo.append(s)
         if not todo:
             continue
         guard.before_chunk()
         rd = RunData(store, rid, events, store_root)
+        todo = [s for s in todo if not part_current(parts_dir, s, rid, stage_inputs(rd, s))]
         for s in todo:
             t1 = time.monotonic()
             if s == 'colliders':
@@ -669,11 +794,15 @@ def build(args):
             else:
                 out = stage_hindsight(rd, store, guard, parts_dir)
             save_part(parts_dir / s / f'r{rid:05d}.npz', rd.rows, out,
-                      dict(seconds=round(time.monotonic() - t1, 1), path=rd.path_source))
+                      dict(seconds=round(time.monotonic() - t1, 1), path=rd.path_source, inputs=stage_inputs(rd, s)))
             writer.mark_done(s, rid)
-        _log(f'run {rid:4d} {rd.env[:22]:22s} {rd.rec["source_id"][:50]:50s} rows {len(rd.rows):6d} '
-             f'stages {",".join(todo)} ({time.monotonic() - t0:.0f} s)')
-    combine_stats = dict(conflicts_grid=0, conflicts_fan=0)
+        for s in SOURCE_STAGES:
+            if s in stages and not writer.is_done(s, rid):
+                writer.mark_done(s, rid)
+        if todo:
+            _log(f'run {rid:4d} {rd.env[:22]:22s} {rd.rec["source_id"][:50]:50s} rows {len(rd.rows):6d} '
+                 f'stages {",".join(todo)} ({time.monotonic() - t0:.0f} s)')
+    combine_stats = dict(conflicts_grid=0, conflicts_fan=0, interval_to_lower_grid=0, interval_to_lower_fan=0)
     if 'combine' in stages:
         for rid in run_ids:
             st = combine_run(writer, parts_dir, rid)
@@ -686,7 +815,8 @@ def build(args):
         TUBE=dict(parameters=dict(horizon_s=Tm.TUBE_HORIZON_S, radius_m=Tm.TUBE_RADIUS_M, grid_rule=Tm.GRID_RULE,
                                   fan_rule=Tm.FAN_RULE)),
         HINDSIGHT=dict(parameters=dict(voxel_m=Hm.VOXEL_M, keyframe_offsets_s=Hm.KEYFRAME_OFFSETS_S,
-                                       max_sigma_fraction=Hm.MAX_SIGMA_FRACTION, rules=Hm.RULES)),
+                                       max_sigma_fraction=Hm.MAX_SIGMA_FRACTION, rules=Hm.RULES,
+                                       feature_mask=Hm.mask_provenance())),
         IMPACT=dict(parameters=dict(window_s=Im.IMPACT_WINDOW_S, disc_radius_m=Im.IMPACT_DISC_RADIUS_M,
                                     visible_tube_m=Im.VISIBLE_TUBE_M, contact_offset_m=Im.CONTACT_OFFSET_M)),
         COLLIDER=dict(parameters=dict(assumption=Cm.ASSUMPTION, bundle_rings=Cm.BUNDLE_RINGS)),

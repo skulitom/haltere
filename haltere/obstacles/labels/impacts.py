@@ -227,7 +227,7 @@ def unique_obstacle_key(env: str, obstacle: str, point_w, cell_m: float = 0.1) -
     if point_w is None:
         return f'{slug}/{kind}/unlocated'
     x, y = (round(float(point_w[i]) / cell_m) * cell_m for i in (0, 1))
-    return f'{slug}/{kind}-{x:.1f}-{abs(y):.1f}'
+    return f'{slug}/{kind}@{x:.1f},{y:.1f}'
 
 
 def assign_unique_obstacles(events: list[dict], radius_m: float = None) -> list[dict]:

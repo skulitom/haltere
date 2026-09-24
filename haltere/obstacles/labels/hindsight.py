@@ -3,13 +3,15 @@
 Pipeline per flight (store frames of one run, time order; tracks break at frame gaps > MAX_GAP_S
 and at position jumps > MAX_JUMP_M, i.e. resets):
 
-1. Tracks. Chained pyramidal Lucas-Kanade tracks over consecutive store frames with the
-   parameters of haltere.vision.temporal_depth.TemporalDepth (goodFeaturesToTrack quality 0.01,
-   min distance 5 px, block 5; LK 21 x 21, 3 levels; forward-backward error < 1 px), seeded
-   with the rotation-only prediction from the logged attitudes. Features are detected and
-   kept only on scene pixels: ``feature_mask`` removes HUD glyphs, the checkpoint ring and
-   cyan volumes, ghost trails (haltere.obstacles.overlays) and the propeller zone; a point
-   that lands on a masked pixel ends its track (a ghost trail is never triangulated).
+1. Tracks. Chained pyramidal Lucas-Kanade tracks over consecutive store frames with the LK
+   parameters of haltere.vision.temporal_depth.TemporalDepth (21 x 21, 3 levels, forward-backward
+   error < 1 px), seeded with the rotation-only prediction from the logged attitudes, on a
+   CLAHE-equalised grey image (dark scenes). Up to MAX_CORNERS corners are kept alive; new ones are
+   detected per image tile (goodFeaturesToTrack, quality QUALITY relative to the tile, min distance
+   5 px, block 5) so that dark or low-contrast regions also get features. Features are detected and
+   kept only on scene pixels: ``feature_mask`` removes HUD glyphs, the checkpoint ring and cyan
+   volumes, ghost trails (haltere.obstacles.overlays) and the propeller zone, dilated by
+   MASK_DILATE_PX; a point that lands on a masked pixel ends its track.
 2. Multi-baseline triangulation, forward AND backward. For every observation of a track in
    frame a and every keyframe offset in KEYFRAME_OFFSETS_S (-2, -1, -0.5, +0.5, +1, +2 s),
    the track's observation in the frame b nearest t_a + offset is intersected with the one
@@ -24,23 +26,25 @@ and at position jumps > MAX_JUMP_M, i.e. resets):
    estimate marks the voxels along its line of sight free up to the point minus
    max(2 sigma, 2 voxels). A voxel carved more than FREE_OVER_OCC times its occupied count
    is not occupied (moving/ghost objects and outliers are carved away).
-4. Projection into every frame of the flight (``hindsight_labels``), per sub-ray of
+4. The flown path is free: occupied voxels within PATH_CLEAR_M of it are removed and voxels within
+   PATH_FREE_M are marked free (except near contacts), which also removes ghost-trail points that
+   lie on the racing line (``clear_flown_path``).
+5. Projection into every frame of the flight (``hindsight_labels``), per sub-ray of
    corridors.SUB_SHAPE (3 x 3 per grid cell):
 
-   - the sub-ray is marched through the map in MARCH_STEP_M steps up to MARCH_MAX_M;
-     e = distance to which it stays in carved-free voxels from the camera (the first
-     VOXEL_M around the camera counts as free: the drone is there);
-   - the first occupied voxel on the sub-ray (or an own-frame track point that projects into
-     the sub-ray's pixel cell) is a hit at s = the along-ray range of the voxel's mean point;
-   - hit and e >= s - max(0.1 s, 2 voxels) -> EXACT s; own-frame track points are EXACT
-     (the feature was seen in this frame, so its line of sight is free); other hits UPPER s;
-     no hit and e >= MIN_LOWER_M -> LOWER e; else UNKNOWN.
+   - e = distance to which the sub-ray stays in carved-free voxels from the camera, marched in
+     MARCH_STEP_M steps up to FREE_MAX_M (the first VOXEL_M around the camera counts as free);
+   - hits: every occupied voxel mean point within MARCH_MAX_M is splatted onto the sub-rays within
+     SPLAT_RADIUS_M of it (at least the nearest one); the nearest one per sub-ray is the hit s;
+   - hit and e >= s - max(0.1 s, 2 voxels) -> EXACT s; own-frame track points (the feature was seen
+     in this frame, so its line of sight is free) are EXACT on their nearest sub-ray unless a map
+     point is clearly nearer; other hits UPPER s; no hit and e >= MIN_LOWER_M -> LOWER e; else UNKNOWN.
 
-   Cells take labels.min_over of their sub-rays (strict). Fan corridors: occupied voxel means
-   (and own-frame points) within FAN_CORRIDOR_RADIUS_M of the axis give the hit distance; the
-   corridor is observed free to e when, at every MARCH_STEP_M slice, the axis sample and at
-   least FAN_FREE_FRACTION of the cross-section samples (axis, 8 at 0.25 m, 8 at 0.5 m) are
-   carved free; then corridors.fan_constraints (EXACT / UPPER / LOWER).
+   Cells take labels.min_over of their sub-rays (strict: a cell with some UNKNOWN sub-rays gets at
+   most UPPER). Fan corridors: occupied voxel means (and own-frame points) within
+   FAN_CORRIDOR_RADIUS_M of the axis give the hit distance; the corridor is observed free to e when,
+   at every MARCH_STEP_M slice, the axis sample and at least FAN_FREE_FRACTION of the cross-section
+   samples (axis, 8 at 0.25 m, 8 at 0.5 m) are carved free; then corridors.fan_constraints.
 
 The FAN_FREE_FRACTION rule is an approximation (sparse lines of sight cannot certify a whole
 0.5 m cylinder); it is recorded in the label manifest. Unreliable alignments get no L2.
@@ -128,6 +132,26 @@ def _box_mask_448() -> np.ndarray:
 
 
 _FALLBACK = None
+_PROVENANCE = None
+
+
+def mask_provenance() -> str:
+    """Which feature mask the labels use: 'overlays sha256=<module + asset files>' or the fallback rule."""
+    global _PROVENANCE
+    if _PROVENANCE is None:
+        import hashlib
+        try:
+            from .. import overlays
+            overlays.overlay_masks(np.zeros((IMAGE_H, IMAGE_W, 3), np.uint8))
+            h = hashlib.sha256(Path(overlays.__file__).read_bytes())
+            adir = getattr(overlays, 'ASSET_DIR', None)
+            for name in (getattr(overlays, 'STATIC_HUD_ASSET', None), getattr(overlays, 'PROPELLER_ASSET', None)):
+                if adir and name and (Path(adir) / name).exists():
+                    h.update((Path(adir) / name).read_bytes())
+            _PROVENANCE = f'overlays sha256={h.hexdigest()[:16]}'
+        except (NotImplementedError, FileNotFoundError, OSError, ImportError, AttributeError):
+            _PROVENANCE = 'fallback: survey HUD + propeller boxes and ring colour (overlays unavailable)'
+    return _PROVENANCE
 
 
 def feature_mask(rgb: np.ndarray) -> tuple[np.ndarray, str]:
@@ -199,7 +223,6 @@ def track_run(frames, t, pos, quat, *, mask_fn=None, guard=None, log=None) -> Tr
     prev_grey, pts, ids = None, np.zeros((0, 2), np.float32), np.zeros(0, np.int64)
     next_id = 0
     src = ''
-    kernel = None
     clahe = cv2.createCLAHE(clipLimit=CLAHE_CLIP, tileGridSize=(8, 8)) if CLAHE_CLIP else None
     for k in range(n):
         if guard is not None and k and k % CHUNK_FRAMES == 0:
@@ -306,7 +329,6 @@ def triangulate(tracks: Tracks, t, pos, quat, *, offsets=KEYFRAME_OFFSETS_S) -> 
     order, starts = tracks.by_frame()
     ids_f = [tracks.track[order[starts[k]:starts[k + 1]]] for k in range(n)]
     uv_f = [tracks.uv[order[starts[k]:starts[k + 1]]] for k in range(n)]
-    best = {}
     out_rows = []
     for a in range(n):
         if len(ids_f[a]) == 0:
