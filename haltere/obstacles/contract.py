@@ -203,14 +203,84 @@ def mirror_grid(a):
     return a[..., ::-1]
 
 
-def grid_to_fan(grid_range_m, quat_wb):
+_CELL_RAYS_BODY_FLAT = None
+_FAN_DIRS_FLAT = None
+_GRID_TO_FAN_BLOCK = 256     # frames per vectorised block (bounds the (block, 576, 36) temporaries)
+
+
+def _grid_fan_constants():
+    global _CELL_RAYS_BODY_FLAT, _FAN_DIRS_FLAT
+    if _CELL_RAYS_BODY_FLAT is None:
+        _CELL_RAYS_BODY_FLAT = cell_rays_body().reshape(-1, 3)
+        _FAN_DIRS_FLAT = fan_directions_heading().reshape(-1, 3)
+    return _CELL_RAYS_BODY_FLAT, _FAN_DIRS_FLAT
+
+
+def grid_to_fan(grid_range_m, quat_wb, *, radius_m: float = FAN_CORRIDOR_RADIUS_M):
     """Geometric fan from a range grid: first-blocked distance per direction within the corridor.
 
-    Contract (implemented by the evaluation agent for baselines B2-B4 and the governor
-    diagnostic): unproject every cell centre at its range into the heading frame, then for
-    each fan direction take the smallest along-ray distance s >= 0 among points within
-    FAN_CORRIDOR_RADIUS_M of the ray; directions with no such point return +inf.
-    Input (..., 18, 32) metres and (..., 4) quaternions; output (..., 4, 9) metres.
-    Must stay runtime-safe (numpy only) and run in < 1 ms per frame.
+    Contract (used by baselines B2-B4 and the governor diagnostic): unproject every cell centre
+    at its range into the heading frame, then for each fan direction take the smallest
+    along-ray distance s >= 0 among points within FAN_CORRIDOR_RADIUS_M of the ray; directions
+    with no such point return +inf. Cells whose range is NaN or +inf (unknown, no return) add
+    no point. Frames whose heading frame is undefined return NaN. +inf means "no grid point in
+    the corridor", NOT observed free space: directions outside the field of view are +inf too
+    (see ``fan_in_view``).
+    Input (..., 18, 32) metres and (..., 4) quaternions (broadcast); output (..., 4, 9) metres.
+    Runtime-safe (numpy only); about 0.1-0.3 ms per frame in batches.
     """
-    raise NotImplementedError('grid_to_fan is delivered by the evaluation build agent')
+    g = np.asarray(grid_range_m, dtype=np.float64)
+    q = np.asarray(quat_wb, dtype=np.float64)
+    if g.shape[-2:] != GRID_SHAPE or q.shape[-1] != 4:
+        raise ValueError(f'grid_to_fan needs (..., {GRID_H}, {GRID_W}) ranges and (..., 4) quaternions')
+    batch = np.broadcast_shapes(g.shape[:-2], q.shape[:-1])
+    g = np.broadcast_to(g, batch + GRID_SHAPE).reshape(-1, GRID_H * GRID_W)
+    q = np.broadcast_to(q, batch + (4,)).reshape(-1, 4)
+    rays_b, dirs = _grid_fan_constants()
+    r2max = float(radius_m) ** 2
+    out = np.empty((len(g), FAN_N), np.float64)
+    for a in range(0, len(g), _GRID_TO_FAN_BLOCK):
+        gb, qb = g[a:a + _GRID_TO_FAN_BLOCK], q[a:a + _GRID_TO_FAN_BLOCK]
+        H = heading_frame(qb)                                   # world-from-heading
+        M = np.swapaxes(H, -1, -2) @ quat_wxyz_to_mats(qb)       # heading-from-body
+        # along-ray distance of every cell point on every fan direction: s = r * (ray_h . d)
+        cos = (rays_b @ np.swapaxes(M, -1, -2)) @ dirs.T         # (n, 576, 36): (M ray_k) . d_m
+        ok_r = np.isfinite(gb)
+        r = np.where(ok_r, gb, 0.0)[..., None]
+        s = r * cos
+        perp2 = r * r - s * s                                    # |p|^2 - s^2 (unit rays)
+        hit = ok_r[..., None] & (s >= 0.0) & (perp2 <= r2max)
+        blk = np.where(hit, s, np.inf).min(axis=1)
+        blk[~np.isfinite(H).all(axis=(-1, -2))] = np.nan
+        out[a:a + len(gb)] = blk
+    return out.reshape(batch + FAN_SHAPE)
+
+
+def fan_in_view(quat_wb, margin_px: float = 0.0, tilt_deg: float = TILT_DEG) -> np.ndarray:
+    """(..., 4, 9) bool: fan directions that project into the 448 x 252 image (evidence can exist)."""
+    uv, ok = project_camera(fan_directions_camera(quat_wb, tilt_deg))
+    return in_image(uv, ok, margin_px)
+
+
+def image_bearing_heading(uv_norm, quat_wb, tilt_deg: float = TILT_DEG) -> tuple[np.ndarray, np.ndarray]:
+    """Normalised image points (..., 2) (u right, v down, 0..1) -> (yaw_deg, elev_deg) in the heading frame.
+
+    Used for the HUD ring bearing (store ``cue_uv``, a runtime observation). NaN where the input or
+    the heading frame is undefined. Yaw is positive to the LEFT, elevation positive up.
+    """
+    uv = np.asarray(uv_norm, dtype=np.float64)
+    d_c = np.stack([(uv[..., 0] * IMAGE_W - IMAGE_W / 2.0) / FOCAL_PX,
+                    (uv[..., 1] * IMAGE_H - IMAGE_H / 2.0) / FOCAL_PX, np.ones(uv.shape[:-1])], axis=-1)
+    d_w = np.einsum('...ij,...j->...i', camera_to_world(quat_wb, tilt_deg), d_c)
+    d_h = np.einsum('...ji,...j->...i', heading_frame(quat_wb, tilt_deg), d_w)
+    yaw = np.degrees(np.arctan2(d_h[..., 1], d_h[..., 0]))
+    elev = np.degrees(np.arctan2(d_h[..., 2], np.hypot(d_h[..., 0], d_h[..., 1])))
+    return yaw, elev
+
+
+def world_bearing_heading(vec_w, quat_wb, tilt_deg: float = TILT_DEG) -> tuple[np.ndarray, np.ndarray]:
+    """World FLU vectors (..., 3) (e.g. the telemetry velocity) -> (yaw_deg, elev_deg) in the heading frame."""
+    d_h = np.einsum('...ji,...j->...i', heading_frame(quat_wb, tilt_deg), np.asarray(vec_w, dtype=np.float64))
+    yaw = np.degrees(np.arctan2(d_h[..., 1], d_h[..., 0]))
+    elev = np.degrees(np.arctan2(d_h[..., 2], np.hypot(d_h[..., 0], d_h[..., 1])))
+    return yaw, elev

@@ -1,10 +1,10 @@
 {
  "schema": "haltere.obstacles.thresholds.v1",
- "version": 2,
+ "version": 1,
  "frozen": true,
- "frozen_at": "2026-09-24T19:49:06",
- "sha256": "8469884606a76c51b9045ab781a4586e53798d0b560a9b96647213858f3e90f7",
- "note": "Version 2. Every held-out score uses a frozen version (`python -m haltere.obstacles.evaluate freeze`); the hash covers everything except frozen/frozen_at/sha256. A changed file needs a new version and a new freeze; each frozen version is scored once per (predictor, fold) and every version is reported. Decision parameters are the a-priori values of version 1 (M3 governor design: reaction 0.3 s, margin 0.5 m, about 6 m at 6 m/s, side hold 0.6 s, release after 0.3 s clear), fitted to no data. The only change is decision.unseen (see previous_versions).",
+ "frozen_at": "2026-09-24T15:02:17",
+ "sha256": "daed6d8e6b36251ba7e42a9ed79d52a44b223f514fe80594a6331ec61243ceb5",
+ "note": "Version 1. Every held-out score uses a frozen version (`python -m haltere.obstacles.evaluate freeze`); the hash covers everything except frozen/frozen_at/sha256. A changed file needs a new version and a new freeze; each frozen version is scored once per (predictor, fold) and every version is reported. The decision parameters of version 1 are a-priori values from the M3 governor design (reaction 0.3 s, margin 0.5 m, required distance about 6 m at 6 m/s, side hold 0.6 s, release after 0.3 s clear); they were fitted to no data, held-out or otherwise.",
  "timing": {
   "latency_s": 0.065,
   "stress_latency_s": [
@@ -146,8 +146,7 @@
     2,
     3
    ],
-   "max_wrong_overall": 1,
-   "note": "the plan set 5/8 for the 8 lateral-study Minus+Pine events; the store now also holds 5 blind-labelled F12 lateral events (13 in total). M3 restates the count (a new version) before any M3 score; E4 records report all events and the lateral-study subset can be selected by event source."
+   "max_wrong_overall": 1
   }
  },
  "E5": {
@@ -199,7 +198,7 @@
   ]
  },
  "decision": {
-  "note": "frozen side rule (evaluate.decide_side): per frame, required distance D(v) = v (latency + reaction_s) + v^2 / (2 brake_mps2) + margin_m, latency = timing.latency_s (stress latencies only delay usability); a yaw column's free distance is the min of the quantile over the SEEN elevation rows within elev_window_deg of the travel elevation (at least the nearest row; 5 deg ~ the 0.5 m corridor at D); unseen = out of view or NaN; unseen: unknown = a column without a seen row is unknown (never a candidate side) and an unknown reference gives NONE; clear = known and free >= D; reference column = the ring bearing (velocity when no cue); reference clear or unknown = NONE, else the nearest clear column on the left/right of the reference = LEFT/RIGHT, none = CENTRE; hysteresis per the values below. Grid-only predictors use contract.grid_to_fan of their grid.",
+  "note": "frozen side rule (evaluate.decide_side): per frame, required distance D(v) = v (latency + reaction_s) + v^2 / (2 brake_mps2) + margin_m; a yaw column is clear when its free distance (min of the quantile over the elevation rows within elev_window_deg of the travel elevation, at least the nearest row; 5 deg ~ the 0.5 m corridor at D; out of view or NaN = blocked) is >= D; reference column = the ring bearing (velocity when no cue); reference clear = NONE, else the nearest clear column on the left/right of the reference = pass the blocking obstacle on its LEFT/RIGHT, none = CENTRE; hysteresis per the values below. Grid-only predictors use contract.grid_to_fan of their grid.",
   "quantile": "fan_q20",
   "required_distance": {
    "reaction_s": 0.3,
@@ -216,8 +215,7 @@
   "elev_window_deg": 5.0,
   "min_speed_mps": 1.0,
   "in_view_margin_px": 0.0,
-  "max_gap_s": 0.4,
-  "unseen": "unknown"
+  "max_gap_s": 0.4
  },
  "baselines": {
   "B0": {
@@ -265,15 +263,5 @@
    "4-7": 1.72
   },
   "tolerance": 0.15
- },
- "previous_versions": [
-  {
-   "version": 1,
-   "sha256": "daed6d8e6b36251ba7e42a9ed79d52a44b223f514fe80594a6331ec61243ceb5",
-   "frozen_at": "2026-09-24T15:02:17",
-   "file": "configs/obstacles/thresholds_v1.json",
-   "scored": "B2 (252x448, lateral-study caches) E1/E4/E6 in runs/obstacle-train/eval_ledger_reproduction.jsonl; no store score",
-   "superseded_because": "decision.unseen was implicitly 'blocked': on F12 TRAINING environments (Straw Bale + Drawing Board loop clean windows and event windows of the real store, 17,177 frames) a constant 20 m grid -- a predictor that reports no obstacle anywhere -- produced raw side/centre decisions on 770 frames and 4.8 activations per clean minute, all of them because the reference column was out of view (descending with the nose up: travel elevation -10..-30 deg, optical axis 42-61 deg up). The field of view alone could fail E6 and drive E4. Found with no held-out data and no predictor output; v1 parameters are otherwise unchanged."
-  }
- ]
+ }
 }
