@@ -785,11 +785,11 @@ def test_cli_scores_a_prediction_set_once_on_a_frame_store(tmp_path, monkeypatch
     grid = true_range_grid(s, rows, ev_list[0]['point_w'])
     pred = ev.PredictionSet('F12-cli', 'model', True, rows, fold='F12', sha256='cli-sha',
                             arrays=dict(grid_q50=grid, grid_q20=grid.copy()))
-    pred.save(tmp_path / 'pred.npz')
+    pred.save(tmp_path / 'preds' / 'pred.npz')             # save creates a missing directory
     th = tmp_path / 'thresholds.json'
     obj, _ = ev.load_thresholds(require_frozen=False)
     th.write_text(json.dumps(dict(obj, frozen=False, frozen_at=None, sha256=None)))
-    args = ['score', str(tmp_path / 'pred.npz'), '--store', str(root), '--thresholds', str(th),
+    args = ['score', str(tmp_path / 'preds' / 'pred.npz'), '--store', str(root), '--thresholds', str(th),
             '--ledger', str(tmp_path / 'ledger.jsonl'), '--out', str(tmp_path / 'out'), '--fold', 'F12',
             '--once', '--flight-lock', str(tmp_path / 'FLIGHT_LOCK'), '--metrics', 'E1,E4,E6,E7']
     with pytest.raises(RuntimeError):

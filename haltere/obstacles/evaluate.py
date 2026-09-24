@@ -187,6 +187,7 @@ class PredictionSet:
 
     def save(self, path: str | Path) -> None:
         path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)      # a fresh --out directory (first real-store score)
         meta = dict(schema=EVAL_SCHEMA, name=self.name, kind=self.kind, causal=self.causal, fold=self.fold,
                     sha256=self.sha256, baseline_id=self.baseline_id, latency_s=self.latency_s)
         np.savez_compressed(path, rows=np.asarray(self.rows, np.int64), meta=json.dumps(meta),
