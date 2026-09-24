@@ -15,10 +15,13 @@ RANGE_MAX_M, reduced with labels.min_over and clipped. The "no hit = free" rule 
 this course lists no unknown geometry (``unknown_geometry == 0``); the builder records that
 assumption and ``collider_labels`` refuses geometry with unknown meshes.
 
-Fan: each corridor is cast as a bundle of rays parallel to its axis (the axis plus rings at 0.25 m
-and 0.5 m = FAN_CORRIDOR_RADIUS_M, 8 and 16 rays); the first hit of any bundle ray is the along-axis
-distance to the first box point within the corridor (to ~0.1 m on the outer ring). A hit = EXACT,
-none within FAN_MAX_M = LOWER FAN_MAX_M. Rendered surfaces are not verified against the
+Fan: the first box point within FAN_CORRIDOR_RADIUS_M of a corridor axis is found as the minimum of
+(a) the entry depths of rays parallel to the axis through the corridor cross-section (the axis, 8 at
+0.25 m and 64 on the 0.5 m boundary circle, 5.6 deg apart), and (b) the along-axis distance of every
+box vertex that lies inside the corridor. For a convex box the front-surface depth over the
+cross-section is minimised on the cross-section boundary or at a vertex, so this is exact up to the
+boundary sampling (a box thinner than ~5 cm that crosses the boundary between two samples can be
+missed). A hit = EXACT, none within FAN_MAX_M = LOWER FAN_MAX_M. Rendered surfaces are not verified against the
 colliders (render_alignment_verified = false in the geometry file): K0b measures the agreement.
 """
 from __future__ import annotations
@@ -32,7 +35,7 @@ from .corridors import SUB_SHAPE, grid_from_subrays, subray_dirs_world, unknown_
 
 # sim = M @ unity (haltere.liftoff.frames.M); kept local so this module stays a pure-numpy reader.
 _M = np.array([[0.0, 0.0, 1.0], [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
-BUNDLE_RINGS = ((0.25, 8), (FAN_CORRIDOR_RADIUS_M, 16))
+BUNDLE_RINGS = ((0.25, 8), (FAN_CORRIDOR_RADIUS_M, 64))
 ASSUMPTION = ('box course lists no unknown geometry (unknown_geometry == 0): no collider hit within '
               'RANGE_MAX_M / FAN_MAX_M is labelled LOWER free; collider-vs-render alignment unverified')
 
@@ -63,6 +66,15 @@ class BoxScene:
         self.instance = np.array([p.get('instance_id', i + 1) for i, p in enumerate(prims)], dtype=np.int64)
         self.radius = np.linalg.norm(self.halfs, axis=1)
         self.ground_y = geometry.get('ground_plane_y')
+
+    def vertices_sim(self) -> np.ndarray:
+        """(8 * n_boxes, 3) box corners in the simulator FLU frame (absolute)."""
+        if not hasattr(self, '_vertices'):
+            signs = np.array([[x, y, z] for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)], dtype=np.float64)
+            local = signs[None] * self.halfs[:, None, :]                         # (b, 8, 3)
+            world_u = self.centers[:, None, :] + np.einsum('bvk,bjk->bvj', local, self.rot)   # local @ rot.T
+            self._vertices = world_u.reshape(-1, 3) @ _M.T                       # sim = M @ unity
+        return self._vertices
 
     def cast(self, origins_u, dirs_u, max_range: float = RANGE_MAX_M, chunk: int = 1024):
         """First hit distance (inf if none within max_range) for rays with per-ray origins (Unity frame)."""
@@ -140,11 +152,25 @@ def fan_hits(geometry, pos_abs, quat_wb, s_max: float = FAN_MAX_M) -> np.ndarray
     d = contract.fan_directions_world(np.asarray(quat_wb, dtype=np.float64)).reshape(-1, 3)
     if not np.isfinite(d).all():
         return np.full(FAN_SHAPE, np.nan)
+    o = np.asarray(pos_abs, dtype=np.float64)
     offs = _bundle_offsets(d)                                            # (36, n, 3)
-    origins = np.asarray(pos_abs, dtype=np.float64)[None, None] + offs
+    origins = o[None, None] + offs
     dirs = np.broadcast_to(d[:, None, :], offs.shape)
     t = scene.cast(sim_to_unity(origins.reshape(-1, 3)), sim_to_unity(dirs.reshape(-1, 3)), s_max)
-    return t.reshape(offs.shape[:2]).min(axis=1).reshape(FAN_SHAPE)
+    best = t.reshape(offs.shape[:2]).min(axis=1)
+    # box vertices inside a corridor (small boxes wholly inside the cross-section)
+    v = scene.vertices_sim()
+    if len(v):
+        rel = v - o[None]
+        near = np.linalg.norm(rel, axis=1) <= s_max + FAN_CORRIDOR_RADIUS_M
+        rel = rel[near]
+        if len(rel):
+            sv = rel @ d.T                                               # (n_vertices, 36)
+            perp2 = np.maximum((rel ** 2).sum(1)[:, None] - sv ** 2, 0.0)
+            inside = (sv >= 0) & (sv <= s_max) & (perp2 <= FAN_CORRIDOR_RADIUS_M ** 2)
+            vbest = np.where(inside, sv, np.inf).min(axis=0)
+            best = np.minimum(best, vbest)
+    return best.reshape(FAN_SHAPE)
 
 
 def collider_labels(geometry, pos_abs, quat_wb, *, return_subrays: bool = False):

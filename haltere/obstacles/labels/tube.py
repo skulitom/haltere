@@ -34,7 +34,7 @@ TUBE_RADIUS_M = 0.35
 TUBE_STOP_MARGIN_S = 0.15          # stop the swept tube this long before a contact/impact/reset
 TUBE_MIN_LOWER_M = 1.0             # shorter free-space bounds are not written
 TUBE_FAN_AXIS_M = FAN_CORRIDOR_RADIUS_M - TUBE_RADIUS_M     # 0.15 m
-TUBE_SAMPLE_M = 0.08               # trajectory resampling for the sphere union
+TUBE_SAMPLE_M = 0.15               # trajectory resampling for the sphere union (sagitta < 1 cm at 0.35 m)
 FAN_RULE = ('fan corridor free from 0 to s while its axis stays within 0.15 m of the flown centreline '
             '(vehicle envelope 0.35 m certified by the flight; 0.15 m margin assumed); LOWER s if s >= 1 m')
 GRID_RULE = ('sub-ray LOWER s_exit where it leaves the union of 0.35 m spheres on the trajectory over '
@@ -108,7 +108,7 @@ def axis_tube_extent(origin, dirs, centres, axis_tol: float = TUBE_FAN_AXIS_M, s
     if len(c) < 1:
         return np.zeros(len(dirs))
     # Centres are resampled at <= TUBE_SAMPLE_M, so the union of axis_tol spheres approximates
-    # "within axis_tol of the flown centreline" (to within ~5 mm at 0.08 m spacing).
+    # "within axis_tol of the flown centreline" (conservatively: >= 0.13 m of the 0.15 m between samples).
     return ray_tube_exit(origin, dirs, c, radius=axis_tol, s_max=s_max)
 
 

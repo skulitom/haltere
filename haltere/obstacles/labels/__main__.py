@@ -16,6 +16,7 @@ def main(argv=None):
     b.add_argument('--events', type=Path, required=True, help='lateral study manifest.json')
     b.add_argument('--extra-events', type=Path, default=None, help='configs/obstacles/events_f12.json')
     b.add_argument('--stages', nargs='*', default=None)
+    b.add_argument('--runs', nargs='*', default=None, help='restrict to these run ids (development)')
     b.add_argument('--flight-lock', default=None)
     t = sub.add_parser('teacher')
     t.add_argument('--store', type=Path, default=DEFAULT_STORE)

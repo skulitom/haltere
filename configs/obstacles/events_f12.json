@@ -1,7 +1,386 @@
 {
  "schema": "haltere.obstacles.events.v1",
  "fields": "haltere.obstacles.labels.EVENT_FIELDS (validated by labels.load_events)",
- "blind_protocol": "Label every remaining Minus Two and Pine Valley terminal impact and contact (and near passes within 1 m) from video, telemetry and hindsight maps BEFORE any model or baseline output on the event is seen. Record blind=true, labeller and labelled_at. Oracle-route flights get oracle_route=true and are excluded from evaluation sets. The 15 curated lateral-study impacts stay in the lateral manifest and are merged by the label builder.",
+ "blind_protocol": "Label every remaining Minus Two and Pine Valley terminal impact and contact (and near passes within 1 m) from video, telemetry and hindsight maps BEFORE any model or baseline output on the event is seen. Record blind=true, labeller and labelled_at. Oracle-route flights get oracle_route=true and are excluded from evaluation sets. The 15 curated lateral-study impacts stay in the lateral manifest and are merged by the label builder. Near passes are derived by the label builder from these points and the flown paths (geometry only, also blind).",
  "offline_only": true,
- "events": []
+ "note": "Blind labels of the Minus Two and Pine Valley terminal impacts not in the lateral study manifest (F12 held-out environments). Labelled from gameplay frames and 100 Hz telemetry only, before any model or baseline output existed. point_w/normal_w/drone_pos_w are launch-relative simulator FLU (same frame as the store pos). CSV contacts in these environments coincide with terminal impacts or with the lateral-manifest non-fatal contacts, so no extra contacts are labelled here. OFFLINE evaluation data only: never a runtime input.",
+ "created": "2026-09-24T15:06:21+0100",
+ "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+ "tools": [
+  "scratchpad/obstacles/m1/labels_dev/blind_sheets.py",
+  "scratchpad/obstacles/m1/labels_dev/blind_zoom.py"
+ ],
+ "events": [
+  {
+   "event_id": 0,
+   "store_event_id": -1,
+   "run": "assisted-races-20260922/minus-01",
+   "flight": "assisted-races-20260922/minus-01",
+   "env": "Minus Two",
+   "kind": "terminal_impact",
+   "t_phase": 17.36,
+   "t_wall": 1790087078.988,
+   "point_w": [
+    23.335,
+    4.382,
+    1.237
+   ],
+   "normal_w": [
+    -0.638,
+    -0.757,
+    -0.138
+   ],
+   "drone_pos_w": [
+    23.24,
+    4.268,
+    1.216
+   ],
+   "speed_mps": 1.73,
+   "obstacle": "pillar",
+   "unique_obstacle": "minus-two/pillar-23.4-4.4",
+   "obstacle_side": "centre-right",
+   "primary_free_side": "left",
+   "accepted_free_sides": [
+    "left"
+   ],
+   "lateral": true,
+   "in_view_frac_T2_T1": 1.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "Slow (1.7-2.2 m/s) left turn into a square concrete pillar. The pillar fills the right half of the view from T-1.5 s; the travel direction (FOE) sits on its left part at T-0.3..T-0.1 s, so a small shift left (the open lane the turn was heading into) clears it. Contact normal: minus pre-impact velocity (the CSV ends at the impact). | contact mode terminal, normal from minus pre-impact velocity (impulse not in the CSV); alignment good",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/assisted-races-20260922__minus-01_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/assisted-races-20260922__minus-01_traj.png"
+   ]
+  },
+  {
+   "event_id": 1,
+   "store_event_id": -1,
+   "run": "minus-brain06-01",
+   "flight": "fast-stack-20260923/minus-brain06-01",
+   "env": "Minus Two",
+   "kind": "terminal_impact",
+   "t_phase": 13.779,
+   "t_wall": 1790220693.568,
+   "point_w": [
+    54.554,
+    3.639,
+    0.717
+   ],
+   "normal_w": [
+    -0.966,
+    -0.256,
+    -0.038
+   ],
+   "drone_pos_w": [
+    54.409,
+    3.6,
+    0.711
+   ],
+   "speed_mps": 5.1,
+   "obstacle": "pillar",
+   "unique_obstacle": "minus-two/pillar-54.7-3.6",
+   "obstacle_side": "centre-left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right",
+    "left"
+   ],
+   "lateral": true,
+   "in_view_frac_T2_T1": 1.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "Same concrete pillar after the LIFTOFF arch as the curated minus-brain03/04/05 impacts: at T-0.6 s the pillar is centre-left with the FOE on its right part; nearest clearance is right, left/+y is also passable (PD route). 5.1 m/s. Telemetry contact tick found (22 m/s^2). | contact mode contact, normal from minus pre-contact velocity; alignment fair",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__minus-brain06-01_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__minus-brain06-01_traj.png"
+   ]
+  },
+  {
+   "event_id": 2,
+   "store_event_id": -1,
+   "run": "matched-full-races-20260923/03-minus-pd",
+   "flight": "matched-full-races-20260923/03-minus-pd",
+   "env": "Minus Two",
+   "kind": "terminal_impact",
+   "t_phase": 86.605,
+   "t_wall": 1790123692.065,
+   "point_w": [
+    54.475,
+    78.352,
+    0.754
+   ],
+   "normal_w": [
+    -0.144,
+    0.99,
+    0.005
+   ],
+   "drone_pos_w": [
+    54.277,
+    78.323,
+    0.754
+   ],
+   "speed_mps": 2.47,
+   "obstacle": "pillar",
+   "unique_obstacle": "minus-two/pillar-54.5-78.3",
+   "obstacle_side": "left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right"
+   ],
+   "lateral": true,
+   "in_view_frac_T2_T1": 1.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "medium",
+   "notes": "PD at 2.5 m/s heading -y down the lane: a concrete pillar is left of the travel line; the FOE passes ~0.1-0.2 m right of the pillar edge (T-0.4..T-0.1 s zoom), so the drone's left side clips the edge. Same pillar as motor10-transfer minus. Contact point moved 0.2 m to the drone's left (edge), normal from the external force (mostly against the motion). | contact mode contact, normal from minus pre-contact velocity; alignment good",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/matched-full-races-20260923__03-minus-pd_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/matched-full-races-20260923__03-minus-pd_traj.png",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/matched-full-races-20260923__03-minus-pd_zoom.jpg"
+   ]
+  },
+  {
+   "event_id": 3,
+   "store_event_id": -1,
+   "run": "matched-full-races-20260923/04-minus-brain",
+   "flight": "matched-full-races-20260923/04-minus-brain",
+   "env": "Minus Two",
+   "kind": "terminal_impact",
+   "t_phase": 91.464,
+   "t_wall": 1790123883.691,
+   "point_w": [
+    51.525,
+    94.255,
+    0.839
+   ],
+   "normal_w": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "drone_pos_w": [
+    51.675,
+    94.255,
+    0.839
+   ],
+   "speed_mps": 1.12,
+   "obstacle": "wall",
+   "unique_obstacle": "minus-two/wall-51.5-94.2",
+   "obstacle_side": "centre",
+   "primary_free_side": "left",
+   "accepted_free_sides": [
+    "left"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": 1.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "medium (object), low (side)",
+   "notes": "Slow (2.4 -> 0.5 m/s) approach past the right leg of the LIFTOFF arch into the dark concrete wall behind it (heading -x); the drone stalls against the wall from ~T-1 s (range 0.3-0.5 m) and the detected contact is a late bump before the reset. Checkpoint was through the arch (left). Normal set to +x (the wall faces the approach), point = drone - 0.15 m * normal. Not a lateral event (stall). | contact mode contact, normal from frames (override); alignment fair",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/matched-full-races-20260923__04-minus-brain_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/matched-full-races-20260923__04-minus-brain_traj.png",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/matched-full-races-20260923__04-minus-brain_zoom.jpg"
+   ]
+  },
+  {
+   "event_id": 4,
+   "store_event_id": -1,
+   "run": "motor10-transfer-20260922/minus",
+   "flight": "motor10-transfer-20260922/minus",
+   "env": "Minus Two",
+   "kind": "terminal_impact",
+   "t_phase": 75.868,
+   "t_wall": 1790114133.971,
+   "point_w": [
+    54.542,
+    78.309,
+    0.835
+   ],
+   "normal_w": [
+    -0.118,
+    0.992,
+    0.034
+   ],
+   "drone_pos_w": [
+    54.524,
+    78.458,
+    0.841
+   ],
+   "speed_mps": 3.18,
+   "obstacle": "pillar",
+   "unique_obstacle": "minus-two/pillar-54.5-78.3",
+   "obstacle_side": "centre-left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right"
+   ],
+   "lateral": true,
+   "in_view_frac_T2_T1": 1.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "3.2 m/s heading -y: the concrete pillar is centre-left and the FOE on its right part from T-0.6 s; the checkpoint marker is just right of the pillar edge, so a small shift right clears it. Same pillar as 03-minus-pd. CSV ends at the impact (normal = minus velocity). | contact mode terminal, normal from minus pre-impact velocity (impulse not in the CSV); alignment good",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/motor10-transfer-20260922__minus_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/motor10-transfer-20260922__minus_traj.png",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/motor10-transfer-20260922__minus_zoom.jpg"
+   ]
+  },
+  {
+   "event_id": 5,
+   "store_event_id": -1,
+   "run": "motor10-visual-full-20260922/minus",
+   "flight": "motor10-visual-full-20260922/minus",
+   "env": "Minus Two",
+   "kind": "terminal_impact",
+   "t_phase": 90.155,
+   "t_wall": 1790117441.713,
+   "point_w": [
+    51.574,
+    94.194,
+    0.858
+   ],
+   "normal_w": [
+    1.0,
+    0.0,
+    0.0
+   ],
+   "drone_pos_w": [
+    51.724,
+    94.194,
+    0.858
+   ],
+   "speed_mps": 0.99,
+   "obstacle": "wall",
+   "unique_obstacle": "minus-two/wall-51.5-94.2",
+   "obstacle_side": "centre",
+   "primary_free_side": "left",
+   "accepted_free_sides": [
+    "left"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": 1.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "medium (object), low (side)",
+   "notes": "Same place as 04-minus-brain: passes right of the LIFTOFF arch leg at 2.5 m/s heading -x and runs into the dark wall behind it; range 0.4 m at T-1 s, speed 0.4-0.9 m/s over the last second (first touch ~T-1 s, the 23 m/s^2 contact is later). Normal set to +x. Not a lateral event (stall). | contact mode contact, normal from frames (override); alignment good",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/motor10-visual-full-20260922__minus_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/motor10-visual-full-20260922__minus_traj.png",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/motor10-visual-full-20260922__minus_zoom.jpg"
+   ]
+  },
+  {
+   "event_id": 6,
+   "store_event_id": -1,
+   "run": "pine-brain06-01",
+   "flight": "fast-stack-20260923/pine-brain06-01",
+   "env": "Pine Valley",
+   "kind": "terminal_impact",
+   "t_phase": 18.447,
+   "t_wall": 1790220785.548,
+   "point_w": [
+    70.704,
+    -8.768,
+    4.835
+   ],
+   "normal_w": [
+    -0.829,
+    -0.543,
+    -0.136
+   ],
+   "drone_pos_w": [
+    70.58,
+    -8.849,
+    4.815
+   ],
+   "speed_mps": 4.97,
+   "obstacle": "tree",
+   "unique_obstacle": "pine-valley/tree-70.5-8.7",
+   "obstacle_side": "centre-left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right"
+   ],
+   "lateral": true,
+   "in_view_frac_T2_T1": 1.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "Climbing over the needle-covered mound at 5.5 m/s into a pine trunk on the ridge (the same tree as the curated pine-brain03-01). The trunk is at the FOE from T-2 s; at T-0.3..T-0.1 s the FOE is on the trunk's right half, so right is the nearest clearance (the slope rises on the left). CSV ends at the impact. | contact mode terminal, normal from minus pre-impact velocity (impulse not in the CSV); alignment good",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__pine-brain06-01_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__pine-brain06-01_traj.png"
+   ]
+  },
+  {
+   "event_id": 7,
+   "store_event_id": -1,
+   "run": "pine-brain06-ttc-01",
+   "flight": "fast-stack-20260923/pine-brain06-ttc-01",
+   "env": "Pine Valley",
+   "kind": "terminal_impact",
+   "t_phase": 15.73,
+   "t_wall": 1790220920.273,
+   "point_w": [
+    49.138,
+    -19.86,
+    3.324
+   ],
+   "normal_w": [
+    0.997,
+    0.028,
+    0.078
+   ],
+   "drone_pos_w": [
+    49.288,
+    -19.855,
+    3.335
+   ],
+   "speed_mps": 2.77,
+   "obstacle": "gate structure",
+   "unique_obstacle": "pine-valley/gate structure-arch-49-20",
+   "obstacle_side": "centre",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": 0.0,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
+   "labelled_at": "2026-09-24T15:06:21+0100",
+   "confidence": "medium (object), low (side)",
+   "notes": "Video alignment UNRELIABLE (not in the store by default). The drone passes through the LIFTOFF arch, loops back (x~50, y~-21) and hits the arch band/leg at 2.7 m/s. Projected contact on the band at T-0.3/T-0.1 s but the offset is uncertain, so the side is not labelled. | contact mode terminal, normal from minus pre-impact velocity (impulse not in the CSV); alignment unreliable",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__pine-brain06-ttc-01_sheet.jpg",
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__pine-brain06-ttc-01_traj.png"
+   ]
+  }
+ ]
 }
