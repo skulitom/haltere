@@ -277,6 +277,26 @@ def test_support_detection_ignores_a_tracked_descent():
     assert rows[-1][2][2] < -1.
 
 
+def test_descent_path_governor_slows_horizontally_when_the_sink_is_not_achieved():
+    # A vehicle that sinks at a third of the request (e.g. a controller with little
+    # downward authority) gets a slower horizontal request; a tracking one does not.
+    def run(fraction):
+        history = CameraPoseHistory()
+        pilot = FastRaceCue(SENSOR, history, 6.)
+        measured = np.zeros(3)
+        for k in range(150):
+            now = 10.+k*.01
+            s = senses(position=(0., 0., 30.), velocity=tuple(measured.tolist()))
+            history.append(now, [0., 0., 30.], s['quat'][0].numpy())
+            pilot.update(s, [0., 0., 0.], dict(race_cue=dict(BELOW)), now-.05, now)
+            measured = pilot.velocity_command*np.array([1., 1., fraction])
+        return pilot
+    tracked, lagging = run(1.), run(1/3)
+    assert tracked.descent_scale == 1. and lagging.descent_scale < .7
+    assert np.linalg.norm(lagging.velocity_command[:2]) < .8*np.linalg.norm(tracked.velocity_command[:2])
+    assert lagging.velocity_command[2] < -.5  # the descent itself is still requested
+
+
 def closed_loop(target, steps, height, *, floor=None, speed=8.):
     """Pilot + FastMotorPD on the measured surrogate with a synthetic, delayed HUD cue."""
     from haltere.liftoff.fast_rehearsal import hud_marker

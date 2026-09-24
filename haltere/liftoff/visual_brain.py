@@ -297,6 +297,7 @@ class VisualController:
                 motor_controller=motor_controller)
             self.assistance_mode = 'oracle-route'
         self.motor_controller = motor_controller
+        self.scene_blanked = False
         self.motor_baseline = None
         self.guidance_velocity = None
         self.motor_metadata = dict(kind='brain', brain_controls_motors=True)
@@ -318,6 +319,10 @@ class VisualController:
                                        fast_motor_tracking={k: fast_brain[k] for k in
                                                             ('nominal_speed_mps','goal_seconds','velocity_scale',
                                                              'vertical_goal_seconds','teacher')})
+            # A readout fitted without scene currents must not receive them live:
+            # image statistics then act as an unmodelled motor bias.
+            self.scene_blanked = fast_brain.get('recorded_scene_currents') is False
+            self.motor_metadata['scene_currents'] = 'blanked by contract' if self.scene_blanked else 'recorded scene'
         if motor_controller == 'pd':
             from dataclasses import replace
             from ..brain.motor_baseline import MotorPD, MotorPDConfig
@@ -360,6 +365,8 @@ class VisualController:
     @torch.no_grad()
     def step(self,frame,retina,detection=None,capture_time=None,frame_time=None,observation_time=None,clearance=None):
         observation_time = time.monotonic() if observation_time is None else observation_time
+        if self.scene_blanked:
+            retina = torch.zeros_like(retina)  # race cues still come from the camera process
         if self.last_ts is not None and frame.timestamp < self.last_ts-.1:
             raise RuntimeError('Game reset; stop this attempt')
         if self.last_ts != frame.timestamp:
@@ -493,17 +500,18 @@ class VisualController:
 
 def looming_row(sample, now):
     if not sample:
-        return float('nan'),float('nan'),float('nan')
-    return (sample['ttc'] if sample['ttc'] is not None else float('inf'),
-            sample['distance'] if sample['distance'] is not None else float('inf'),now-sample['time'])
+        return (float('nan'),)*5
+    value = lambda key, missing: sample[key] if sample.get(key) is not None else missing
+    return (value('ttc',float('inf')),value('distance',float('inf')),now-sample['time'],
+            value('below_fraction',float('nan')),value('ttc_lower',float('inf')))
 
 
 def clearance_row(assistance):
     governor = getattr(assistance,'clearance',None)
     if governor is None:
-        return '',float('nan')
+        return '',float('nan'),float('nan')
     return ('brake' if assistance.clearance_braking else governor.status,
-            governor.cap if governor.cap is not None else float('nan'))
+            governor.cap if governor.cap is not None else float('nan'),float(getattr(governor,'climb',0.)))
 
 
 def fuse_gate_detection(previous,previous_time,point,stamp,position,rotation):
@@ -568,6 +576,9 @@ def flight_limit_reason(position, velocity, max_height, max_speed, max_distance)
     if np.linalg.norm(position[:2]) > max_distance:
         return 'Flight distance limit exceeded'
     return None
+
+
+TELEMETRY_RECEIPT_LIMIT_S = .25
 
 
 def pause_active_game():
@@ -772,7 +783,8 @@ def run(args):
                                  'nominal_gate_bx','nominal_gate_by','nominal_gate_bz','geometry_control_status',
                                  'rpm_lf','rpm_rf','rpm_lb','rpm_rb',
                                  'cmd_vx','cmd_vy','cmd_vz','pilot_state',
-                                 'looming_ttc','looming_distance','looming_age','clearance_status','clearance_cap'])
+                                 'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
+                                 'clearance_status','clearance_cap','clearance_climb','descent_scale'])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -796,7 +808,9 @@ def run(args):
                     if now-begin>5:
                         raise RuntimeError(f'No fresh live image/telemetry: {camera.error}')
                     continue
-                if now-last_frame>.12 or now-last_progress>.5 or not live_pose(frame):
+                # Normal receipt gaps are <= 70 ms; a single game hitch reached 127 ms
+                # mid-race. A pause stops progress and is caught by the 0.5 s rule.
+                if now-last_frame>TELEMETRY_RECEIPT_LIMIT_S or now-last_progress>.5 or not live_pose(frame):
                     telemetry_failure = dict(receipt_age_ms=1000*(now-last_frame),
                                              progress_age_ms=1000*(now-last_progress),
                                              timestamp=float(frame.timestamp),
@@ -876,11 +890,12 @@ def run(args):
                                    else [float('nan')]*3),
                                  getattr(controller.assistance,'state','') if controller.assistance else '',
                                  *looming_row(camera.clearance if looming else None,now),
-                                 *clearance_row(controller.assistance)])
+                                 *clearance_row(controller.assistance),
+                                 getattr(controller.assistance,'descent_scale',float('nan'))])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
-                    replay.append(controller.last_observation,retina,action,pos,q,
+                    replay.append(controller.last_observation,torch.zeros_like(retina) if controller.scene_blanked else retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
                 loop_phases['replay_ms'] = 1000*(time.monotonic()-loop_mark)
                 if looming:

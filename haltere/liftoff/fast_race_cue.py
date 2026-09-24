@@ -15,12 +15,14 @@ by terrain and answered with a short climb. These are generic heuristics, not
 a completed-lap estimate.
 
 Optionally, `update(..., clearance=...)` accepts a causal forward-clearance
-sample (e.g. fly-style looming time-to-contact from `vision.looming`). A wall
-ahead caps the speed along the looming ray so the drone can still stop before
-it; expansion that lies below the flight path (terrain) adds a bounded climb
-instead. Without that input the behaviour is unchanged. Missing evidence is
-not free space, but it is not an obstacle either: recent evidence is dead-
-reckoned for a short memory and nothing else is inferred.
+sample (e.g. fly-style looming time-to-contact from `vision.looming2`). By
+default (`TtcClearanceConfig`) a sustained short time-to-contact lowers the
+speed along the looming ray in proportion until the measured TTC recovers;
+expansion that lies below the flight path (terrain) requests a bounded climb
+and brakes less. `ClearanceConfig` selects the earlier stopping-distance cap.
+Without that input the behaviour is unchanged. Missing evidence is not free
+space, but it is not an obstacle either: recent evidence is dead-reckoned for
+a short memory and nothing else is inferred.
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -70,12 +72,22 @@ class FastCueConfig:
     support_after_s: float = .4
     support_climb_s: float = .6
     launch_height: float = .6
+    # Descent path angle: while a requested descent (sink > descent_sink) is
+    # not achieved, the filtered shortfall (time constant descent_time_constant)
+    # beyond descent_free scales the horizontal request down, reaching
+    # descent_min_scale at descent_free + descent_span, so the path keeps the
+    # requested slope instead of passing above a lower checkpoint.
+    descent_sink: float = .3
+    descent_time_constant: float = .5
+    descent_free: float = .2
+    descent_span: float = .5
+    descent_min_scale: float = .35
 
     def __post_init__(self):
         values = list(asdict(self).values())
         if not np.isfinite(values).all() or min(values) <= 0:
             raise ValueError('Use finite positive fast cue parameters')
-        if not self.min_speed_fraction < 1 or not self.direction_blend <= 1:
+        if not self.min_speed_fraction < 1 or not self.direction_blend <= 1 or not self.descent_min_scale <= 1:
             raise ValueError('Fractions must stay below one')
         if not self.below_full_deg > self.below_weak_deg:
             raise ValueError('Bottom-edge evidence needs an increasing depression range')
@@ -249,6 +261,226 @@ class ClearanceGovernor:
         return self.cap, self.cap_ray, self.climb
 
 
+@dataclass(frozen=True)
+class TtcClearanceConfig:
+    """Graded pilot response to looming time-to-contact (TTC); no metric stopping distance.
+
+    Looming measures TTC from image expansion. Its metric distance (TTC x speed)
+    read long in the first live test (4-9 m before a mound), so a stopping-
+    distance cap braked 0.3 s before contact although TTC had stayed below 1.5 s
+    for 2 s. This policy acts on TTC alone.
+
+    Slow-down: `confirm` samples with TTC < `ttc_on` within `confirm_window_s`
+    (or one below `urgent_ttc_s`) engage it; while engaged, each new sample
+    with TTC < `ttc_target` lowers the cap on the speed along its ray to
+        v * clip((ttc - ttc_min) / (ttc_target - ttc_min), floor_fraction, 1),
+    never below `min_speed` (unless a wall sample reads TTC < `stop_ttc_s`),
+    where v is the speed along the ray and ttc is aged to the present by
+    odometry. The cap settles where the measured TTC has
+    recovered to `ttc_target` (> ttc_on: hysteresis). It falls at most
+    `brake_rate` m/s^2 and holds its lowest value while wall samples keep TTC
+    below `hold_ttc_s`, and for `hold_s` after the last one; then it rises at
+    `release` m/s^2 (a slower drone reads a longer TTC from the same wall, so
+    recovery alone must not re-accelerate it into the wall).
+    Terrain: a sample whose expansion lies below the path (below_fraction >=
+    `terrain_fraction`, `terrain_confirm` such samples within
+    `confirm_window_s`) requests a climb of
+        vertical_up * clip((climb_on_s - ttc) / (climb_on_s - climb_full_s), 0, 1),
+    held `climb_hold_s`, then released at `climb_release` m/s^2, and at the
+    latest once the drone is `climb_max_m` above where the episode began (it
+    ends `climb_hold_s` after the last terrain request): a bound on false
+    climbs, e.g. under a ceiling. It lowers the cap only `terrain_brake` as
+    much as a wall sample would. ttc is the alarm TTC (`climb_ttc_source`
+    'alarm'), or also the lower surface's TTC: 'either' uses the shorter,
+    'both' the longer (both must be short). While a climb is active, samples
+    without vertical evidence (below_fraction None) count as terrain;
+    otherwise None counts as a wall (braking is the safe default).
+    Stand-off: a wall sample that leaves the cap at `standoff_speed` or less is
+    remembered for `standoff_s`: the cap along that ray does not rise in that
+    time, also without evidence (looming needs forward speed), so the drone
+    does not creep back toward the wall.
+    Missing evidence changes nothing.
+    """
+    # Defaults: selected by a closed-loop replay of recorded looming streams (17 impacts, 9.3 min of clean 6 m/s
+    # flight; declared rule: most impacts avoided, then soft contacts, subject to <= 3 s/min lost and <= 3
+    # climbs/min on the clean flights). climb_max_m is a declared safety bound, not tuned. Not flight evidence.
+    ttc_on: float = .8
+    ttc_target: float = 1.3
+    ttc_min: float = .4
+    floor_fraction: float = .7
+    min_speed: float = 2.
+    stop_ttc_s: float = 1.2
+    confirm: int = 3
+    confirm_window_s: float = .25
+    urgent_ttc_s: float = .4
+    brake_rate: float = 8.
+    hold_s: float = .6
+    hold_ttc_s: float = 1.3
+    release: float = 3.
+    memory_s: float = .3
+    max_age_s: float = .25
+    brake_slew: float = 15.
+    terrain_fraction: float = .7
+    climb_on_s: float = 1.2
+    climb_full_s: float = .8
+    terrain_confirm: int = 1
+    climb_ttc_source: str = 'alarm'
+    climb_hold_s: float = .5
+    climb_release: float = 3.
+    climb_max_m: float = 2.5
+    terrain_brake: float = 0.
+    terrain_climb_acceleration: float = 10.
+    standoff_speed: float = 2.
+    standoff_s: float = 2.
+
+    def __post_init__(self):
+        values = asdict(self)
+        terrain_brake, source = values.pop('terrain_brake'), values.pop('climb_ttc_source')
+        if not np.isfinite(list(values.values())+[terrain_brake]).all() or min(values.values()) <= 0:
+            raise ValueError('Use finite positive TTC clearance parameters')
+        if source not in ('alarm', 'either', 'both'):
+            raise ValueError('climb_ttc_source is alarm, either or both')
+        if not 0 <= terrain_brake <= 1 or not self.floor_fraction <= 1 or not self.terrain_fraction <= 1:
+            raise ValueError('terrain_brake, floor_fraction and terrain_fraction are fractions')
+        if not self.ttc_min < self.ttc_on <= self.ttc_target <= self.hold_ttc_s or not self.climb_full_s < self.climb_on_s:
+            raise ValueError('Use ttc_min < ttc_on <= ttc_target <= hold_ttc_s and climb_full_s < climb_on_s')
+        for name in ('confirm', 'terrain_confirm'):
+            if int(getattr(self, name)) != getattr(self, name):
+                raise ValueError(f'{name} counts samples')
+
+
+class TtcClearanceGovernor:
+    """Graded speed cap along the looming ray and a terrain climb from TTC samples.
+
+    Same interface as `ClearanceGovernor`. Pure and causal: each sample carries
+    its capture time, capture position and ray; it acts once, when it first
+    reaches `limits`, with the TTC aged to that moment by odometry.
+    """
+
+    def __init__(self, config=None):
+        self.config = config or TtcClearanceConfig()
+        self.samples = []
+        self.last_time = self.last_evidence = self.first_input = None
+        self.cap = self.cap_ray = self.target = None
+        self.lowered_at = self.climb_hold_until = self.standoff_until = -np.inf
+        self.climb = 0.
+        self.climb_base, self.terrain_at = None, -np.inf
+        self.status = 'none'
+        self.blind = False
+        self.counts = dict(samples=0, no_evidence=0, brake_engagements=0, climb_engagements=0, blind_engagements=0,
+                           standoff_engagements=0)
+
+    def ingest(self, time, ttc, distance, below_fraction, position, ray, closing_speed, received=None, ttc_lower=None):
+        """Add one fresh sample captured at `time` at `position` and received at `received`
+        (default: `time`); `ray` is the unit travel direction, closing_speed the speed along it.
+        `distance` (TTC x capture speed) only ages the TTC by odometry; `ttc_lower` optionally
+        gives the TTC of the surface below the path for the climb."""
+        self.first_input = time if self.first_input is None else self.first_input
+        self.last_time = time
+        if ttc is None and distance is None:
+            self.counts['no_evidence'] += 1
+            return
+        closing = max(float(closing_speed), 1e-3)
+        ttc = float(distance)/closing if ttc is None else float(ttc)
+        reach = float(distance) if distance is not None else ttc*closing
+        self.samples.append(dict(time=float(time), ttc=ttc, reach=reach,
+                                 below=None if below_fraction is None else float(below_fraction),
+                                 ttc_lower=None if ttc_lower is None else float(ttc_lower),
+                                 position=np.array(position, float), ray=np.array(ray, float),
+                                 received=float(time if received is None else received), new=True))
+        self.last_evidence = time
+        self.counts['samples'] += 1
+
+    @staticmethod
+    def _aged(sample, reach, position, closing):
+        """TTC now: the capture-time reach along the ray minus the odometry travelled along it."""
+        left = reach-float((np.asarray(position, float)-sample['position']) @ sample['ray'])
+        return max(0., left)/max(closing, .3)
+
+    def limits(self, position, velocity, now, dt, vertical_up):
+        """Return (cap or None, ray or None, climb request) for the current tick."""
+        c = self.config
+        position, velocity = np.asarray(position, float), np.asarray(velocity, float)
+        keep = max(c.memory_s, c.confirm_window_s)
+        self.samples = [s for s in self.samples if now-s['received'] <= keep]
+        climbing = self.climb > 0
+        height = float(position[2]) if position.size > 2 else 0.
+        if not climbing and now-self.terrain_at > c.climb_hold_s:
+            self.climb_base = None                  # a new climb episode may start from the present height
+        topped = self.climb_base is not None and height-self.climb_base >= c.climb_max_m
+        for s in self.samples:
+            if not s['new']:
+                continue
+            s['new'] = False
+            if now-s['received'] > c.memory_s:
+                continue
+            closing = float(velocity @ s['ray'])
+            ttc = self._aged(s, s['reach'], position, closing)
+            terrain = s['below'] >= c.terrain_fraction if s['below'] is not None else climbing
+            recent = [r for r in self.samples if s['received']-r['received'] <= c.confirm_window_s
+                      and r['received'] <= s['received']]
+            # climb: expansion below the path
+            if terrain:
+                lower = None if s['ttc_lower'] is None else self._aged(
+                    s, s['ttc_lower']*s['reach']/max(s['ttc'], 1e-3), position, closing)
+                climb_ttc = (ttc if c.climb_ttc_source == 'alarm' or (lower is None and c.climb_ttc_source == 'either')
+                             else np.inf if lower is None else
+                             min(ttc, lower) if c.climb_ttc_source == 'either' else max(ttc, lower))
+                votes = sum(r['below'] is not None and r['below'] >= c.terrain_fraction for r in recent)
+                request = vertical_up*float(np.clip((c.climb_on_s-climb_ttc)/(c.climb_on_s-c.climb_full_s), 0, 1))
+                if request > 0 and (votes >= c.terrain_confirm or climbing):
+                    self.terrain_at = now
+                    self.climb_base = height if self.climb_base is None else self.climb_base
+                if request > 0 and (votes >= c.terrain_confirm or climbing) and not topped:
+                    if self.climb == 0:
+                        self.counts['climb_engagements'] += 1
+                    self.climb = max(self.climb, request)
+                    self.climb_hold_until = now+c.climb_hold_s
+            # graded slow-down
+            active = self.cap is not None and self.cap < max(closing, 0.)+1.
+            if self.target is not None and not terrain and ttc < c.hold_ttc_s:
+                self.lowered_at = now               # a wall still in view: hold the cap
+            threshold = c.ttc_target if active else c.ttc_on
+            votes = sum(r['ttc'] < threshold for r in recent)
+            if not (votes >= c.confirm or ttc < c.urgent_ttc_s) or closing <= 0:
+                continue
+            fraction = float(np.clip((ttc-c.ttc_min)/(c.ttc_target-c.ttc_min), c.floor_fraction, 1.))
+            if terrain:
+                fraction = 1.-c.terrain_brake*(1.-fraction)
+            if fraction >= 1.:
+                continue
+            target = closing*fraction if (ttc < c.stop_ttc_s and not terrain) else max(c.min_speed, closing*fraction)
+            self.lowered_at = now                   # TTC has not recovered to ttc_target: keep holding
+            if self.target is None or target < self.target:
+                if self.cap is None or not active:
+                    self.counts['brake_engagements'] += 1
+                self.target, self.cap_ray = target, s['ray']
+                self.cap = closing if self.cap is None else min(self.cap, max(closing, target))
+            if not terrain and self.target <= c.standoff_speed:
+                if now > self.standoff_until:
+                    self.counts['standoff_engagements'] += 1
+                self.standoff_until = now+c.standoff_s
+        if self.target is not None:
+            standoff = now <= self.standoff_until
+            if now-self.lowered_at > c.hold_s and not standoff:
+                self.target += c.release*dt
+            # the cap follows the target down at brake_rate and up with it
+            self.cap = self.target if self.cap is None or self.target >= self.cap else max(self.target, self.cap-c.brake_rate*dt)
+            if self.target > 25.:
+                self.cap = self.cap_ray = self.target = None
+        if now > self.climb_hold_until or topped:
+            self.climb = max(0., self.climb-c.climb_release*dt)
+        fresh = any(now-s['received'] <= c.memory_s for s in self.samples)
+        self.status = ('climb' if self.climb > 0 else 'standoff' if now <= self.standoff_until and self.cap is not None
+                       else 'armed' if self.cap is not None else 'clear' if fresh else 'no_evidence')
+        return self.cap, self.cap_ray, self.climb
+
+
+def clearance_governor(config):
+    """The governor for a clearance config: TTC-graded (`TtcClearanceConfig`) or stopping-distance."""
+    return TtcClearanceGovernor(config) if isinstance(config, TtcClearanceConfig) else ClearanceGovernor(config)
+
+
 class FastRaceCue:
     """Follow the visible checkpoint bearing with a continuous velocity request."""
 
@@ -292,11 +524,13 @@ class FastRaceCue:
         self.feedforward = np.zeros(3)
         self.support_since = None
         self.climb_until = None
+        self.descent_shortfall = 0.
+        self.descent_scale = 1.
         self.launching = True
         self.state = 'launch'
         self.state_time = {}
         # Created on the first clearance sample: without that input nothing changes.
-        self.clearance_config = clearance_config or ClearanceConfig()
+        self.clearance_config = clearance_config or TtcClearanceConfig()
         self.clearance = None
         self.clearance_braking = False
         self.clearance_time = {}
@@ -307,12 +541,12 @@ class FastRaceCue:
         if stamp is None or not np.isfinite(stamp):
             raise ValueError('A clearance sample needs its capture time')
         if self.clearance is None:
-            self.clearance = ClearanceGovernor(c)
+            self.clearance = clearance_governor(c)
         if not (0 <= now-stamp <= c.max_age_s
                 and (self.clearance.last_time is None or stamp > self.clearance.last_time)):
             return
-        ttc, distance, below = (clearance.get(k) for k in ('ttc', 'distance', 'below_fraction'))
-        for name, value in (('ttc', ttc), ('distance', distance)):
+        ttc, distance, below, lower = (clearance.get(k) for k in ('ttc', 'distance', 'below_fraction', 'ttc_lower'))
+        for name, value in (('ttc', ttc), ('distance', distance), ('ttc_lower', lower)):
             if value is not None and (not np.isfinite(value) or value < 0):
                 raise ValueError(f'Invalid clearance {name}')
         if below is not None and not (np.isfinite(below) and 0 <= below <= 1):
@@ -321,7 +555,8 @@ class FastRaceCue:
         speed = float(np.linalg.norm(velocity))
         # Looming is measured around the focus of expansion: the travel direction.
         ray = velocity/speed if speed > .5 else np.array([np.cos(yaw), np.sin(yaw), 0.])
-        self.clearance.ingest(float(stamp), ttc, distance, below, position, ray, speed, received=now)
+        extra = dict(ttc_lower=lower) if isinstance(self.clearance, TtcClearanceGovernor) else {}
+        self.clearance.ingest(float(stamp), ttc, distance, below, position, ray, speed, received=now, **extra)
 
     def _ingest(self, detection, capture_time, now):
         cue = detection.get('race_cue') if detection else None
@@ -420,9 +655,10 @@ class FastRaceCue:
 
     def update(self, senses, omega, detection, capture_time, now, clearance=None):
         """One control tick. `clearance`, when given, is a causal forward-clearance sample:
-        dict(time=capture time, ttc=s or None, distance=m or None, below_fraction=0..1 or None),
-        where below_fraction is the share of the image expansion below the flight path
-        (about 0.5 for a wall facing the drone, towards 1 for ground under the path).
+        dict(time=capture time, ttc=s or None, distance=m or None, below_fraction=0..1 or None,
+        optional ttc_lower=s or None), where below_fraction is the share of the image expansion
+        below the flight path (about 0.5 for a wall facing the drone, towards 1 for ground under
+        the path) and ttc_lower the TTC of the surface fitted below the path.
         ttc and distance both None means no evidence (e.g. low texture)."""
         c = self.config
         position = senses['pos'][0].cpu().numpy().astype(float)
@@ -444,6 +680,17 @@ class FastRaceCue:
             # or hill. Sink gently near and above that plane; the support rule
             # below still recognises contact because the cap exceeds 0.8 m/s.
             desired[2] = max(desired[2], -min(c.vertical_down, c.surface_sink+c.surface_sink_per_m*max(0., position[2])))
+        # Descent path angle: a vehicle that keeps falling short of the requested
+        # sink rate would pass above a lower checkpoint. Slow horizontally in
+        # proportion so the flight path keeps the requested slope. A vehicle
+        # that tracks its descents is unaffected.
+        shortfall = 0.
+        if self.velocity_command is not None and self.velocity_command[2] < -c.descent_sink and not self.launching:
+            shortfall = max(0., float(velocity[2]-self.velocity_command[2]))
+        self.descent_shortfall += (1-np.exp(-dt/c.descent_time_constant))*(shortfall-self.descent_shortfall)
+        self.descent_scale = float(np.clip(1-(self.descent_shortfall-c.descent_free)/c.descent_span,
+                                           c.descent_min_scale, 1.))
+        desired[:2] *= self.descent_scale
         # Support: a requested descent the vehicle cannot achieve means contact
         # below (terrain or an object), not a controller fault. Climb briefly.
         if self.climb_until is not None and now < self.climb_until:
@@ -550,6 +797,25 @@ class FastRaceCue:
             result[3] = float(np.clip(result[3], -room, room))
         return result
 
+    def _clearance_policy(self):
+        if isinstance(self.clearance_config, TtcClearanceConfig):
+            return dict(policy='ttc-graded',
+                        input='causal looming samples (time, ttc, distance, below_fraction, ttc_lower)',
+                        wall='after confirmation each sample caps the speed along the looming ray at '
+                             'v*clip((ttc-ttc_min)/(ttc_target-ttc_min), floor_fraction, 1) >= min_speed, falling at '
+                             'brake_rate, held while a wall sample has ttc < hold_ttc_s (+hold_s), then released at '
+                             'release; ttc aged by odometry; no metric stopping distance',
+                        terrain='below_fraction >= terrain_fraction requests a climb up to vertical_up and brakes '
+                                'terrain_brake as much as a wall',
+                        standoff='a wall that capped the drone at <= standoff_speed holds the cap for standoff_s',
+                        no_evidence='no constraint beyond the hold and the stand-off memory')
+        return dict(policy='stopping-distance',
+                    input='causal forward clearance samples (time, ttc, distance, below_fraction)',
+                    wall='speed along the looming ray capped at the stopping speed '
+                         '-aL + sqrt((aL)^2 + 2a(d - margin)); sample age removed by odometry dead reckoning',
+                    terrain='below_fraction >= terrain_fraction adds a climb floor instead of braking',
+                    no_evidence='no constraint beyond dead-reckoned memory unless blind_after_s is finite')
+
     def metadata(self):
         return dict(mode='race-cue', profile=self.profile,
                     goal_source='visible next-checkpoint ring with local flag clearance',
@@ -572,12 +838,8 @@ class FastRaceCue:
                     state_seconds={k: round(v, 3) for k, v in self.state_time.items()},
                     estimated_passages=None,
                     clearance_response=None if self.clearance is None else dict(
-                        input='causal forward clearance samples (time, ttc, distance, below_fraction)',
-                        wall='speed along the looming ray capped at the stopping speed '
-                             '-aL + sqrt((aL)^2 + 2a(d - margin)); sample age removed by odometry dead reckoning',
-                        terrain='below_fraction >= terrain_fraction adds a climb floor instead of braking',
-                        no_evidence='no constraint beyond dead-reckoned memory unless blind_after_s is finite',
-                        parameters={k: (v if np.isfinite(v) else None)
+                        self._clearance_policy(),
+                        parameters={k: (None if isinstance(v, float) and not np.isfinite(v) else v)
                                     for k, v in asdict(self.clearance_config).items()},
                         counts=dict(self.clearance.counts),
                         status_seconds={k: round(v, 3) for k, v in self.clearance_time.items()}),

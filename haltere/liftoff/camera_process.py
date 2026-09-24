@@ -24,7 +24,29 @@ def put_latest(queue, packet):
             pass  # the next camera frame will replace it; never block capture
 
 
-LOOMING_SLOTS = slice(732, 736)  # capture time, time-to-contact (s), distance (m), evidence flag
+# capture time, time-to-contact (s), distance (m), evidence flag, below_fraction (0..1), lower-surface TTC (s);
+# NaN = none. below_fraction is the share of the expansion below the flight path (vision.looming2; None unless
+# both the upper and the lower window have evidence).
+LOOMING_FIELDS = ('time', 'ttc', 'distance', 'evidence', 'below_fraction', 'ttc_lower')
+LOOMING_SLOTS = slice(732, 732+len(LOOMING_FIELDS))
+SHARED_SIZE = LOOMING_SLOTS.stop
+
+
+def looming_values(capture_time, result):
+    """Shared-slot values for one looming result (NaN for None)."""
+    value = lambda key: np.nan if result.get(key) is None else float(result[key])
+    return [capture_time, value('ttc'), value('distance'), float(result['evidence']),
+            value('below_fraction'), value('ttc_lower')]
+
+
+def clearance_sample(values):
+    """The FastRaceCue clearance sample from shared-slot values, or None when nothing was published."""
+    stamp, ttc, distance, evidence, below, lower = (float(v) for v in values)
+    if not stamp:
+        return None
+    finite = lambda v: float(v) if np.isfinite(v) else None
+    return dict(time=stamp, ttc=finite(ttc), distance=finite(distance), evidence=bool(evidence),
+                below_fraction=finite(below), ttc_lower=finite(lower))
 
 
 def pose_at(rows, capture_time, now, max_age=.12):
@@ -93,8 +115,7 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
         result = estimator.update(image, capture_time, *sample)
         if result is None:
             return
-        values = [capture_time, result['ttc'] if result['ttc'] is not None else np.nan,
-                  result['distance'] if result['distance'] is not None else np.nan, float(result['evidence'])]
+        values = looming_values(capture_time, result)
         with data.get_lock():
             np.frombuffer(data.get_obj(),dtype=np.float64)[LOOMING_SLOTS] = values
     try:
@@ -121,7 +142,7 @@ class ProcessRetinaCamera:
                  looming=False):
         context = mp.get_context('spawn')
         self.queue = context.Queue(maxsize=2)
-        self.data = context.Array('d',736,lock=True)
+        self.data = context.Array('d',SHARED_SIZE,lock=True)
         self.done = context.Event()
         self.phase = context.Array('d',[0.,time.monotonic()],lock=False)
         self.looming = bool(looming)
@@ -160,13 +181,10 @@ class ProcessRetinaCamera:
                         if len(snapshot) > 731:
                             detection['race_cue']['aim_u'] = snapshot[731]
                     self._latest = snapshot[0],torch.from_numpy(snapshot[7:727].astype(np.float32)[None]),detection
-                if getattr(self,'looming',False):
-                    stamp,ttc,distance,evidence = shared[LOOMING_SLOTS]
-                    if stamp and (self._clearance is None or stamp != self._clearance['time']):
-                        self._clearance = dict(time=float(stamp),
-                                               ttc=None if not np.isfinite(ttc) else float(ttc),
-                                               distance=None if not np.isfinite(distance) else float(distance),
-                                               evidence=bool(evidence),below_fraction=None)
+                if getattr(self,'looming',False) and len(shared) >= SHARED_SIZE:
+                    sample = clearance_sample(shared[LOOMING_SLOTS])
+                    if sample is not None and (self._clearance is None or sample['time'] != self._clearance['time']):
+                        self._clearance = sample
             finally:
                 lock.release()
         while True:
@@ -183,7 +201,7 @@ class ProcessRetinaCamera:
 
     @property
     def clearance(self):
-        """Latest looming sample (capture time, ttc, distance, evidence) or None."""
+        """Latest looming sample (capture time, ttc, distance, evidence, below_fraction, ttc_lower) or None."""
         self._poll()
         return self._clearance
 

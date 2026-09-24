@@ -114,6 +114,8 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
     features, labels, requested = [], [], []
     chatter, speeds, previous = [], [], None
     slow_excess = []  # measured minus requested horizontal speed when the request is below 70% of nominal
+    sink_shortfall, climb_shortfall = [], []  # requested minus achieved vertical speed on descents/climbs
+    tracking_error = []  # |measured - requested| velocity, all three axes
     for k in range(steps):
         now = k*cfg.brain.dt
         positions = state.quad.pos.numpy().astype(float)
@@ -177,6 +179,13 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
         slow = torch.as_tensor(active) & (request[:, :2].norm(dim=-1) < .7*speed) & torch.tensor(now > 3.)
         if slow.any():
             slow_excess.append(float((velocity[slow, :2].norm(dim=-1)-request[slow, :2].norm(dim=-1)).mean()))
+        flying = torch.as_tensor(active) & torch.tensor(now > 3.)
+        if flying.any():
+            tracking_error.append(float((velocity[flying]-request[flying]).norm(dim=-1).mean()))
+        for bucket, mask, sign in ((sink_shortfall, flying & (request[:, 2] < -.3), 1.),
+                                   (climb_shortfall, flying & (request[:, 2] > .3), -1.)):
+            if mask.any():
+                bucket.append(float(sign*(velocity[mask, 2]-request[mask, 2]).mean()))
         if now <= 1.5:
             state.quad.pos[:, 2] = state.quad.pos[:, 2].clamp_min(0.)
             state.quad.vel[:, 2] = state.quad.vel[:, 2].clamp_min(0.)
@@ -189,7 +198,10 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
                   finish_s=[None if not np.isfinite(t) else round(float(t), 2) for t in finish],
                   gates=targets.tolist(), mean_speed=round(float(np.mean(speeds)), 2),
                   stick_chatter=round(float(np.mean(chatter)), 5),
-                  slow_request_excess_mps=round(float(np.mean(slow_excess)), 3) if slow_excess else None)
+                  slow_request_excess_mps=round(float(np.mean(slow_excess)), 3) if slow_excess else None,
+                  sink_shortfall_mps=round(float(np.mean(sink_shortfall)), 3) if sink_shortfall else None,
+                  climb_shortfall_mps=round(float(np.mean(climb_shortfall)), 3) if climb_shortfall else None,
+                  velocity_error_mps=round(float(np.mean(tracking_error)), 3) if tracking_error else None)
     data = (dict(features=torch.cat(features), labels=torch.cat(labels), requested_speed=torch.cat(requested))
             if collect and features else None)
     return result, data

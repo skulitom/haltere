@@ -20,6 +20,17 @@ Changes from haltere/vision/looming.py (v1):
     when a frame has no evidence the last TTC keeps counting down for `hold` s; output is the median of the last
     3 frames (a gap >= 0.3 s restarts the median).
 Offline evaluation (recorded videos, 12 impacts / 10 clean segments) is in the same folder: final_table.md.
+  * where along the vertical (report only; the alarm above is unchanged): two planar windows 0.12 W above ('up')
+    and below ('lo') the FOE (half-size 0.14 W x 0.08 W) with the same model. Each window's c0 is where ITS fitted
+    surface crosses the flight path: ttc_upper / ttc_lower = 1/((c0 - se) * forward), urgency U = 1/ttc (0 when the
+    window has evidence but no crossing). below_fraction = U_lo / (U_lo + U_up) when both windows have evidence and
+    one is urgent (TTC < max_ttc), else None; below_fraction_1side also reads 1.0 (0.0) when only the lower (upper)
+    window has evidence and it is urgent. ~0.5 for a wall facing the drone, -> 1 for terrain rising into the path.
+    The bottom-centre HUD panel covers ~63 % of the lower window when the FOE is low; `vertical_frac_of_usable`
+    counts the evidence fraction over the pixels it leaves visible (more terrain evidence, but more walls and clean
+    flight read as terrain). Offline (17 impacts, last 2 s, TTC < 1.5 s frames), default / usable-only:
+    >= 0.7 on 67 / 92 % of terrain frames (2 Pine mounds), 1 / 7-8 % of wall frames; +0.7 ms/frame. The default
+    was selected by a closed-loop replay of the fast pilot's TTC policy (fewer false climbs).
 It reads only causal frames and telemetry (attitude, velocity), never a course, route or map. No evidence is not
 free space.
 """
@@ -46,6 +57,11 @@ class Looming2Config:
     windows: tuple = (('big', .22, .176, 'planar'), ('c', .11, .088, 'planar'), ('i8', .08, .064, 'fronto'))
     # output TTC = max over groups of (min over the group's windows): every group must alarm
     groups: tuple = (('big', 'c'), ('i8',))
+    # report-only windows (not in any group): where along the vertical the expansion lies; () disables them
+    vertical_windows: tuple = (('up', .14, .08, 'planar', 0., -.12), ('lo', .14, .08, 'planar', 0., .12))
+    vertical_frac_of_usable: bool = False   # True: evidence fraction over the pixels the HUD mask leaves visible
+    vertical_min_usable: float = .2         # ... of which at least this share of the window must be visible
+    vertical_min_count: int = 100           # textured pixels a vertical window needs
     min_texture: float = 4.         # Sobel magnitude/8 (grey levels per pixel) on the image used for evidence
     min_frac: float = .35           # fraction of a window's pixels that must be usable and textured
     min_forward: float = 1.         # m/s along the optical axis
@@ -220,37 +236,12 @@ class LoomingEstimator2:
         Tz = fwd * dt
         windows = {}
         for spec in c.windows:
-            name, hx, hy, model = spec[:4]
-            dx, dy = (spec[4], spec[5]) if len(spec) > 5 else (0., 0.)   # optional offset from the FOE (fraction of width)
-            wx, wy = fx + dx * c.width, fy + dy * c.width
-            x0, x1 = int(max(0, round(wx - hx * c.width))), int(min(c.width, round(wx + hx * c.width)))
-            y0, y1 = int(max(0, round(wy - hy * c.width))), int(min(c.height, round(wy + hy * c.width)))
-            full = 4 * hx * hy * c.width ** 2
-            area = max(0, x1 - x0) * max(0, y1 - y0)
-            if area < .15 * full or x1 - x0 < 6 or y1 - y0 < 4:
-                windows[name] = dict(reason='outside')
-                continue
-            m = base[y0:y1, x0:x1]
-            frac = float(m.sum()) / area
-            if frac < c.min_frac or m.sum() < 25:
-                windows[name] = dict(reason='low_texture', frac=frac)
-                continue
-            a, b = qx[y0:y1, x0:x1][m], qy[y0:y1, x0:x1][m]
-            n = len(a)
-            one, zero = np.ones(n), np.zeros(n)
-            if model == 'planar':
-                A = np.r_[np.stack((one, zero, Tz * a, Tz * a * a / self.f, Tz * a * b / self.f), 1),
-                          np.stack((zero, one, Tz * b, Tz * b * a / self.f, Tz * b * b / self.f), 1)]
-            else:                                   # fronto-parallel: constant inverse depth in the window
-                A = np.r_[np.stack((one, zero, Tz * a), 1), np.stack((zero, one, Tz * b), 1)]
-            x, _, cov = _irls(A, np.r_[u[y0:y1, x0:x1][m], vv[y0:y1, x0:x1][m]])
-            if x is None:
-                windows[name] = dict(reason='singular', frac=frac)
-                continue
-            c0, se = float(x[2]), float(np.sqrt(max(cov[2, 2], 0.)))
-            cc = c0 - c.sig_k * se
-            ttc = min(c.max_ttc, 1. / (cc * fwd)) if cc > 1. / (c.max_ttc * fwd) else np.inf
-            windows[name] = dict(frac=frac, rho_path=c0, rho_se=se, ttc=ttc if np.isfinite(ttc) else None)
+            windows[spec[0]] = self._fit_window(spec, base, u, vv, qx, qy, Tz, fwd, fx, fy)
+        valid = prev[1] & usable if c.vertical_frac_of_usable else None
+        for spec in c.vertical_windows:
+            windows[spec[0]] = self._fit_window(spec, base, u, vv, qx, qy, Tz, fwd, fx, fy, valid)
+        if c.vertical_windows:
+            info.update(self._vertical(windows))
         info['windows'] = windows
         best = -np.inf
         for group in c.groups:
@@ -260,6 +251,61 @@ class LoomingEstimator2:
                 return None, info
             best = max(best, min(vals))
         return best, info
+
+    def _fit_window(self, spec, base, u, vv, qx, qy, Tz, fwd, fx, fy, valid=None):
+        c = self.config
+        name, hx, hy, model = spec[:4]
+        dx, dy = (spec[4], spec[5]) if len(spec) > 5 else (0., 0.)   # optional offset from the FOE (fraction of width)
+        wx, wy = fx + dx * c.width, fy + dy * c.width
+        x0, x1 = int(max(0, round(wx - hx * c.width))), int(min(c.width, round(wx + hx * c.width)))
+        y0, y1 = int(max(0, round(wy - hy * c.width))), int(min(c.height, round(wy + hy * c.width)))
+        full = 4 * hx * hy * c.width ** 2
+        area = max(0, x1 - x0) * max(0, y1 - y0)
+        if area < .15 * full or x1 - x0 < 6 or y1 - y0 < 4:
+            return dict(reason='outside')
+        m = base[y0:y1, x0:x1]
+        frac = float(m.sum()) / area
+        if valid is not None:                   # vertical windows: fraction of the pixels the HUD leaves visible
+            visible = float(valid[y0:y1, x0:x1].sum())
+            if visible < c.vertical_min_usable * area:
+                return dict(reason='hud_masked', frac=frac)
+            frac = float(m.sum()) / visible
+            if frac < c.min_frac or m.sum() < c.vertical_min_count:
+                return dict(reason='low_texture', frac=frac)
+        elif frac < c.min_frac or m.sum() < 25:
+            return dict(reason='low_texture', frac=frac)
+        a, b = qx[y0:y1, x0:x1][m], qy[y0:y1, x0:x1][m]
+        n = len(a)
+        one, zero = np.ones(n), np.zeros(n)
+        if model == 'planar':
+            A = np.r_[np.stack((one, zero, Tz * a, Tz * a * a / self.f, Tz * a * b / self.f), 1),
+                      np.stack((zero, one, Tz * b, Tz * b * a / self.f, Tz * b * b / self.f), 1)]
+        else:                                   # fronto-parallel: constant inverse depth in the window
+            A = np.r_[np.stack((one, zero, Tz * a), 1), np.stack((zero, one, Tz * b), 1)]
+        x, _, cov = _irls(A, np.r_[u[y0:y1, x0:x1][m], vv[y0:y1, x0:x1][m]])
+        if x is None:
+            return dict(reason='singular', frac=frac)
+        c0, se = float(x[2]), float(np.sqrt(max(cov[2, 2], 0.)))
+        cc = c0 - c.sig_k * se
+        ttc = min(c.max_ttc, 1. / (cc * fwd)) if cc > 1. / (c.max_ttc * fwd) else np.inf
+        return dict(frac=frac, rho_path=c0, rho_se=se, ttc=ttc if np.isfinite(ttc) else None, urgency=max(0., cc) * fwd)
+
+    def _vertical(self, windows):
+        """Where the expansion lies: TTC of the surfaces fitted above/below the path and their urgency share."""
+        up, lo = windows.get('up', {}), windows.get('lo', {})
+        eu, el = 'rho_path' in up, 'rho_path' in lo
+        urgent = 1. / self.config.max_ttc
+        uu, ul = (up['urgency'] if eu else 0.), (lo['urgency'] if el else 0.)
+        strict = one_side = None
+        if eu and el and max(uu, ul) > urgent:
+            strict = one_side = ul / (ul + uu)
+        elif el and not eu and ul > urgent:
+            one_side = 1.
+        elif eu and not el and uu > urgent:
+            one_side = 0.
+        return dict(ttc_upper=up.get('ttc') if eu else None, ttc_lower=lo.get('ttc') if el else None,
+                    evidence_upper=eu, evidence_lower=el, urgency_upper=uu if eu else None,
+                    urgency_lower=ul if el else None, below_fraction=strict, below_fraction_1side=one_side)
 
     def _rotation_correction(self, u, v, m, qx, qy):
         r = np.hypot(qx, qy)
@@ -276,5 +322,8 @@ class LoomingEstimator2:
         return dict(cue='time-to-contact along the velocity ray from a planar inverse-depth fit of de-rotated flow '
                         'around the focus of expansion (looming v2)',
                     parameters=asdict(self.config), establishes_free_space=False,
+                    below_fraction='U_lo/(U_lo+U_up), U = max(0, c0 - se) * forward from planar windows 0.12 W '
+                                   'above/below the FOE; None unless both have evidence and one is urgent '
+                                   '(report only: the alarm TTC does not use it)',
                     limitations='Needs texture; no evidence is not free space; planar fit per window; attitude and '
                                 'velocity from telemetry; HUD mask tuned to the Liftoff HUD')

@@ -22,7 +22,7 @@ def load_log(path: str) -> dict[str, np.ndarray]:
         return {}
     out = {}
     for k in rows[0].keys():
-        if k in ('status', 'motor_controller', 'geometry_control_status', 'pilot_state'):
+        if k in ('status', 'motor_controller', 'geometry_control_status', 'pilot_state', 'clearance_status'):
             out[k] = np.array([r[k] for r in rows], dtype=object)
             continue
         out[k] = np.array([{'True': 1., 'False': 0.}.get(r[k], r[k])

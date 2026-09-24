@@ -80,3 +80,83 @@ and time-to-contact stayed below ~1.5 s for over 2 s before impact, but its
 distance estimate read 4-9 m, so the distance-based cap braked only ~0.3 s before
 contact. A time-to-contact-driven slow-down with a terrain climb is being
 developed offline next. The looming brake remains off by default.
+
+## 2026-09-24: brain-05 on the three races, terrain climb, and why the brain descends badly
+
+Same hidden Anode seat after a PC restart (Liftoff relaunched in the seat, original
+`[Copy] New Drone`, processed-control ground check before each pad session).
+
+| Run | Stack | Result |
+|---|---|---|
+| `straw-brain05-01` | fast-brain-05 (speed-balanced), fast pilot, 6 m/s | Hill descent: sank 0.4 m/s where 0.9 was requested, passed ~4 m above the lower checkpoint, turned back, hit a tree at race 1:34.5 (lap 1) |
+| `minus-brain05-01` | same | Pillar on the line to the ring at race 0:07.6 (same place as brain-03/04) |
+| `pine-brain05-01` | same | Stopped before takeoff: one camera frame 490 ms old (camera inference had slowed from 32 to 47 ms per frame); not a flight |
+| `pine-brain05-02` | same, unchanged retry | Slid up the rising mound and hit it at ~0:15 |
+| `pine-fast6-ttc-01` | fast PD, `--looming-brake` with the time-to-contact policy | **Climbed over the mound** (twice, up to 8 m) and reached (79, -2); hit a boulder beside the line to the next checkpoint at race 0:13.7 (earlier PD attempts ended at 0:09.5 on the mound) |
+| `straw-brain05-trim-01/-02` | brain-05 + vertical integral trim (diagnostic, removed) | Same overshoot and crash (race ~1:30) |
+| `straw-brain05-gov-01` | brain-05 + descent path governor | Governor cut the horizontal request to 1.1-1.4 m/s; the brain kept flying 3.2-4.2 m/s and overshot again |
+
+brain-05 is 0/3 on the main races. Diagnosis from exact open-loop replays of the
+recorded brain inputs (`--replay-out`):
+
+- The brain's throttle hardly responds to a more negative vertical goal (encoded
+  goal -0.4 -> -0.9 changed throttle by -0.014, while -0.4 -> +0.1 changed it by
+  +0.25), so live it cannot command the below-hover throttle a fast descent
+  needs; its noisier throttle and higher forward speed give ~6% more rotor thrust
+  than the PD at the same mean stick. A vertical integral on the goal cannot help
+  (the goal saturates at its 3 m clamp) and was removed.
+- The recorded scene currents (retina) move the brain's mean throttle by up to
+  0.2 and pitch by 0.1 depending only on which images are shown: live Straw images
+  bias it toward less braking and more thrust than the random training footage.
+  Under the fast pilot the goal comes from the pilot, so the scene input is not
+  needed for motor control. fast-brain-06 is trained with scene currents blanked,
+  and the runtime blanks them whenever the checkpoint says it was trained that way.
+
+The time-to-contact policy (`TtcClearanceGovernor`, previously reviewed offline,
+now merged behind `--looming-brake`) is the first thing that got the PD over the
+Pine Valley mound.
+
+### fast-brain-06: scene currents blanked — first brain finishes at race speed
+
+Same recipe as brain-05 (DAgger distillation of the fast PD into readout rows 0-2,
+6 m/s nominal, scaled speed 2.4, steep legs, speed-balanced weights) but trained
+and flown with the recorded scene currents blanked (`recorded_scene_currents:
+false` in the checkpoint; the runtime then zeroes the retina input to the brain;
+checkpoint-ring detection still uses the camera). Weight audit: only
+`readout.weight`/`readout.bias` rows 0-2 changed (max |change| 0.0061 / 0.0005);
+yaw readout, wiring, transmitter signs and all other tensors are identical to
+motor10 candidate05. One declared configuration on all three races: fast pilot,
+6 m/s, brain motors, no looming.
+
+| Run | Course | Result |
+|---|---|---|
+| `straw-brain06-01` | Straw Bale | Clean through lap 1 and into lap 2; stopped at 129 s by the 120 ms telemetry-gap guard (a single 127 ms game hitch; other flights show <= 70 ms). Not a finish. The guard is now 250 ms; the 0.5 s no-progress pause check is unchanged |
+| `straw-brain06-02` | Straw Bale | **Finish 5:50.489** (1:56.209, 1:56.246, 1:56.418), no detected contact |
+| `straw-brain06-03` | Straw Bale | **Finish 5:50.204** (1:56.531, 1:55.813, 1:56.252), no detected contact |
+| `minus-brain06-01` | Minus Two | Pillar on the line to the ring at 0:07, 5.5 m/s (lateral response still ~0.3 s behind the request) |
+| `pine-brain06-01` | Pine Valley | Climbed along the mound surface, then a tree trunk at 0:11.6 |
+| `pine-brain06-ttc-01` | Pine Valley, `--looming-brake` (diagnostic) | Overshot a low checkpoint, turned back and crashed at 0:03 race clock; the looming policy had no evidence there |
+| `straw-fast6-03` | Straw Bale, fast PD (matched baseline, current code) | **Finish 5:02.933** (1:40.734, 1:40.396, 1:40.275) |
+
+The brain-06 Straw finishes are 2.4x faster than the previous brain best
+(14:05.703) and 16% slower than the matched fast PD. Median speed 4.87 m/s
+(PD 5.89); roll/pitch command change per tick 0.0050 (PD 0.0055); body-rate RMS
+0.66-0.69 rad/s (PD 1.04-1.09). On the replayed Straw descent brain-06 sits at a
+lower throttle than brain-05 and its pitch response to a slow-down request is five
+times larger. The main-race batch is **1/3** (Straw Bale); Minus Two and Pine
+Valley also defeat the fast PD (obstacles on or beside the line to the ring).
+These are previously flown development courses, not unseen tracks.
+
+### Lateral obstacle cue: negative offline result, not merged
+
+A workflow labelled all 15 recorded impacts and compared three causal side cues
+on aligned frames (split-field looming, lateral optic-flow balance, monocular
+metric depth). None warned about the Minus Two pillar or the Pine boulder: 1/11,
+0/11 and 1/10 lateral impacts with a correct-side lead of at least 1 s, the one
+split-field "success" being an arch trigger 13 m before the pillar. Two independent
+reviewers found that the same trigger would push the PD's clean Minus Two pass into
+the pillar. The monocular depth network's metric scale is compressed 2.6-5x in
+Liftoff. With the camera tilted 30 degrees up, level or descending flight at 3-6 m/s
+often projects the flight path below the image, so an obstacle on the path is not
+visible to any image cue. The patch stays out of the codebase; the study is kept
+for reference.

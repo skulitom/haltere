@@ -1,6 +1,7 @@
 """FastRaceCue clearance response: an optional forward time-to-contact / clearance input.
 
-These tests pin the declared pilot-side policy (stopping-speed cap along the looming
+These tests pin the declared stopping-distance policy (`ClearanceConfig`; the fast
+pilot's default is the TTC-graded policy, tests/test_fast_race_cue_ttc.py): stopping-speed cap along the looming
 ray, confirmation, hold and release, dead reckoning of sample age, terrain climb,
 no-evidence handling) and check in the measured surrogate that a perfect but delayed
 clearance stops the drone before a wall. None of this is flight evidence.
@@ -32,7 +33,7 @@ def step(pilot, history, now, *, clearance=None, velocity=(6., 0., 0.), position
 def cruising(speed=6., steps=300):
     """A pilot that already flies straight ahead at `speed` (perfect plant)."""
     history = CameraPoseHistory()
-    pilot = FastRaceCue(SENSOR, history, speed, reference_speed=speed)
+    pilot = FastRaceCue(SENSOR, history, speed, reference_speed=speed, clearance_config=ClearanceConfig())
     drive(pilot, history, AHEAD, steps, velocity=(speed, 0., 0.), height=5.)
     return pilot, history, 10.+steps*.01
 
@@ -93,7 +94,7 @@ def test_one_distant_sample_waits_for_confirmation_but_an_urgent_one_brakes():
 
 def test_cap_bounds_the_speed_along_the_ray_and_keeps_the_lateral_request():
     history = CameraPoseHistory()
-    pilot = FastRaceCue(SENSOR, history, 6.)
+    pilot = FastRaceCue(SENSOR, history, 6., clearance_config=ClearanceConfig())
     side = dict(u=.005, v=.5, edge=True)                                 # side state: 75 deg left of the heading
     drive(pilot, history, side, 200, plant='static', velocity=(6., 0., 0.))
     lateral_before = pilot.velocity_command[1]
@@ -243,8 +244,10 @@ def test_metadata_declares_the_clearance_response():
     assert response['counts']['brake_engagements'] == 1 and 'brake' in response['status_seconds']
 
 
-def surrogate_wall(distance, *, delay, clearance=True, speed=6., start_speed=3.25, seconds=4., side_at=None):
-    """Measured surrogate + FastMotorPD; a wall `distance` ahead; perfect TTC at 18 Hz, `delay` late."""
+def surrogate_wall(distance, *, delay, clearance=True, speed=6., start_speed=3.25, seconds=4., side_at=None,
+                   clearance_config=None):
+    """Measured surrogate + FastMotorPD; a wall `distance` ahead; perfect TTC at 18 Hz, `delay` late.
+    `clearance_config` defaults to the stopping-distance policy (`ClearanceConfig`)."""
     from haltere.brain.motor_baseline import FastMotorPD
     from haltere.liftoff.fast_rehearsal import hud_marker
     from haltere.sim.identified import IdentifiedSim
@@ -256,7 +259,8 @@ def surrogate_wall(distance, *, delay, clearance=True, speed=6., start_speed=3.2
     state.quad.vel[0] = torch.tensor([start_speed, 0., 0.])
     camera = Camera(320, 180, SENSOR['focal_320'], SENSOR['tilt_deg'])
     history = CameraPoseHistory()
-    pilot = FastRaceCue(SENSOR, history, speed, reference_speed=speed)
+    pilot = FastRaceCue(SENSOR, history, speed, reference_speed=speed,
+                        clearance_config=clearance_config or ClearanceConfig())
     pilot.launching = False
     motor = FastMotorPD(profile, CAL)
     queue = deque(motor.command(sim.sensors(state), torch.zeros(1, 3)).clone() for _ in range(3))
