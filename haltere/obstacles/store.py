@@ -113,7 +113,8 @@ class Grade(IntEnum):
     CAPTURE = 1       # capture dataset
     GOOD = 2          # video alignment graded good
     FAIR = 3          # video alignment graded fair
-    UNRELIABLE = 4    # video alignment failed; not used for geometry labels
+    UNRELIABLE = 4    # video alignment failed, or the run failed the timing pose-consistency gate (store repose);
+                      # not used for geometry labels
 
 
 class PoseMethod(IntEnum):
@@ -534,6 +535,8 @@ def main(argv=None):
     r = sub.add_parser('repose', help='apply timing refinement to pose fields (implemented in store_build.py)')
     r.add_argument('--store', type=Path, default=DEFAULT_STORE)
     r.add_argument('--timing', type=Path, default=None)
+    r.add_argument('--pose-gate-px', type=float, default=2.0,
+                   help='regrade runs whose timing residual stays above this (px at 640) as UNRELIABLE')
     r.add_argument('--flight-lock', default=None)
     i = sub.add_parser('info', help='summarise a finished store')
     i.add_argument('--store', type=Path, default=DEFAULT_STORE)

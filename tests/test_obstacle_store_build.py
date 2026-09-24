@@ -353,3 +353,24 @@ def test_end_to_end_build_on_synthetic_sources(tmp_path):
     gc.collect()
     store.main(argv)
     assert FrameStore(out).manifest['index_sha256'] == before
+    gc.collect()
+
+    # --- repose: an accepted video delta shifts the clock; a run above the pose gate becomes UNRELIABLE
+    vid_before = np.load(out / 'index.npy')
+    vid_before = vid_before[vid_before['run_id'] == 1]
+    (out / 'timing').mkdir()
+    refined = dict(schema='haltere.obstacles.timing.v1', store_index_sha256=before,
+                   runs={'1': dict(source_id='rv/flight', delta_s=0.02, accepted=True, residual_px_after=0.5)},
+                   controls={'0': dict(source_id='vision:cap1', delta_s=0.0, accepted=False, residual_px_after=3.0)})
+    (out / 'timing' / 'refined.json').write_text(json.dumps(refined), encoding='utf-8')
+    store.main(['repose', '--store', str(out), '--flight-lock', str(lock)])
+    s = FrameStore(out)
+    assert s.manifest['index_sha256'] != before and (out / 'index.v1.npy').exists()
+    v = s.index[s.index['run_id'] == 1]
+    assert np.allclose(v['t_wall'], vid_before['t_wall'] + 0.02) and np.allclose(v['timing_delta_s'], 0.02)
+    assert np.allclose(v['pos'][:, 0], np.maximum(2.0 * (v['t_wall'] - (W0 + 0.003) - 1.0), 0), atol=1e-3)
+    assert (v['flags'] & int(Flag.TIMING_REFINED)).all() and (v['grade'] == Grade.GOOD).all()
+    assert (s.index['grade'][s.index['run_id'] == 0] == Grade.UNRELIABLE).all()
+    assert len(s.rows()) == len(v)                                     # UNRELIABLE rows are excluded by default
+    assert s.runs[0]['pose_check']['status'] == 'failed' and s.runs[1]['pose_check']['status'] == 'passed'
+    assert s.runs[1]['alignment']['refine_delta_s'] == 0.02

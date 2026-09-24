@@ -78,7 +78,9 @@ repose(args) applies timing/refined.json (per-run delta_s from timing.py, accept
 videos: t_wall += delta, pose, vel, omega, t_phase, t_game and cue_uv re-interpolated from the run CSV
 at the corrected time, tti_s and the PRE_EVENT / IN_CLEAN / HIGH_YAW_RATE flags recomputed,
 Flag.TIMING_REFINED and timing_delta_s set. Older recorder capture sets (``pose_lag``): pos/quat from
-the logged pose series at t_wall + delta, pose_method SOURCE_COMPENSATED (repose_capture_rows). The previous index is kept as index.v<k>.npy,
+the logged pose series at t_wall + delta, pose_method SOURCE_COMPENSATED (repose_capture_rows). Pose
+gate: every run whose timing residual after the applied delta exceeds ``--pose-gate-px`` (2 px at
+640, twice the K0a threshold) is regraded UNRELIABLE (runs.json pose_check records every scored run). The previous index is kept as index.v<k>.npy,
 runs.json records alignment.refine_delta_s, manifest.json gets the new index_sha256. Labels
 built on an older index become invalid (LabelSet checks the hash).
 """
@@ -1528,6 +1530,21 @@ def repose_capture_rows(rows, index_tel: Telemetry, delta):
     return rows
 
 
+POSE_GATE_PX = 2.0     # twice the K0a threshold, ~4x the exact-time floor (~0.45 px at 640)
+
+
+def pose_checks(refined, gate_px=POSE_GATE_PX):
+    """{run_id: pose_check} for every run scored by timing refine (videos, exact-time controls, pose-lag sets)."""
+    out = {}
+    for section in ('runs', 'controls', 'pose_lag'):
+        for rid_s, r in (refined.get(section) or {}).items():
+            res = r.get('residual_px_after')
+            status = 'unscored' if res is None else ('failed' if res > gate_px else 'passed')
+            out[int(rid_s)] = dict(section=section, residual_px=res, gate_px=gate_px, status=status,
+                                   delta_s=r.get('delta_s'), accepted=bool(r.get('accepted')), reason=r.get('reason'))
+    return out
+
+
 def repose(args):
     """Apply timing/refined.json: shift t_wall by delta, re-interpolate pose fields from the run CSV
     (run videos, ``runs``); older recorder capture sets (``pose_lag``) get compensated logged poses."""
@@ -1581,6 +1598,17 @@ def repose(args):
         new[m] = repose_capture_rows(new[m], index_tel, delta)
         rec.setdefault('alignment', {})['pose_lag_compensation_s'] = delta
         compensated[rid] = delta
+    gate = float(getattr(args, 'pose_gate_px', None) or POSE_GATE_PX)
+    checks = pose_checks(refined, gate)
+    regraded = {}
+    for rid, chk in checks.items():
+        runs[rid]['pose_check'] = chk
+        if chk['status'] == 'failed':
+            m = new['run_id'] == rid
+            new['grade'][m] = int(Grade.UNRELIABLE)
+            runs[rid]['alignment']['grade_before_pose_gate'] = runs[rid]['alignment'].get('grade')
+            runs[rid]['alignment']['grade'] = 'unreliable'
+            regraded[rid] = int(m.sum())
     k = 1
     while (root / f'index.v{k}.npy').exists():
         k += 1
@@ -1590,9 +1618,14 @@ def repose(args):
     manifest.update(index_sha256=index_sha256(new), n_frames=int(len(new)),
                     timing=dict(refined=_posix(timing), applied_runs=len(applied),
                                 compensated_capture_sets=len(compensated), previous_index=f'index.v{k}.npy',
+                                pose_gate=dict(gate_px=gate, failed_runs=len(regraded),
+                                               regraded_frames=int(sum(regraded.values())),
+                                               rule='timing residual after the applied delta (px at 640) > gate: grade '
+                                                    'UNRELIABLE (excluded by default, no geometry labels)'),
                                 previous_index_sha256=index_sha256(index),
                                 refined_sha256=_sha256(timing)))
     _json_dump(root / 'manifest.json', manifest)
-    _log(f'repose: {len(applied)} run videos re-posed, {len(compensated)} capture sets pose-compensated; previous '
-         f'index kept as index.v{k}.npy; new index sha256 {manifest["index_sha256"][:16]}')
-    return dict(applied=applied, compensated=compensated)
+    _log(f'repose: {len(applied)} run videos re-posed, {len(compensated)} capture sets pose-compensated, '
+         f'{len(regraded)} runs ({sum(regraded.values())} frames) regraded UNRELIABLE by the {gate:g} px pose gate; '
+         f'previous index kept as index.v{k}.npy; new index sha256 {manifest["index_sha256"][:16]}')
+    return dict(applied=applied, compensated=compensated, regraded=regraded)
