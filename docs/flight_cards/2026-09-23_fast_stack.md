@@ -199,6 +199,7 @@ audit: only `readout.weight`/`readout.bias` rows 0-2 changed (max 0.0060 / 0.000
 | Run | Result |
 |---|---|
 | `straw-brain07-02` | **Finish 5:46.846** (1:55.128, 1:54.764, 1:55.355), no detected contact |
+| `straw-brain07-03` | **Finish 5:45.792** (1:55.194, 1:54.719, 1:54.307), no detected contact |
 
 Live against `straw-brain06-02` (same course, pilot differences as described):
 
