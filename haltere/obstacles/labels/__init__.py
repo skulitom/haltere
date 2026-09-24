@@ -57,7 +57,7 @@ from pathlib import Path
 import numpy as np
 
 from .. import RUNTIME_ENV_FLAG
-from ..contract import FAN_MAX_M, FAN_SHAPE, GRID_SHAPE, RANGE_MAX_M, RANGE_MIN_M
+from ..contract import BLOCKED_WITHIN_M, FAN_MAX_M, FAN_SHAPE, GRID_SHAPE, RANGE_MAX_M, RANGE_MIN_M
 
 if os.environ.get(RUNTIME_ENV_FLAG) == '1':
     raise ImportError('haltere.obstacles.labels holds offline hindsight labels and must not be imported '
@@ -219,11 +219,38 @@ def _from_interval(lo, hi, tol, wide: str = 'lower'):
     return value, kind
 
 
-def min_over(values, kinds, axis: int = -1, *, tol: float = EXACT_TOL, min_known_frac: float = 1.0):
+WIDE_UPPER_MAX_M = max(BLOCKED_WITHIN_M)   # 8 m: see resolve_interval
+
+
+def resolve_interval(lo, hi, tol: float = EXACT_TOL, wide_upper_max_m: float | None = None):
+    """Two-sided interval [lo, hi] on a range -> one stored (value, kind), plus the wide-interval mask.
+
+    As ``_from_interval`` (EXACT when hi <= lo (1 + tol), one-sided bounds keep their side), except that a
+    wide finite interval (free-space evidence lo AND occupied evidence hi) keeps UPPER hi when
+    hi <= ``wide_upper_max_m`` and LOWER lo otherwise. Rationale: in the near field, where the clearance
+    questions P(blocked <= 4 / 8 m) live, the occupied bound decides them and the free bound does not (a flown
+    tube or a carving that stops short of a surface says nothing about that surface); far hits bound little, so
+    there the free extent is the useful part. ``wide_upper_max_m=None`` always keeps LOWER lo.
+    Returns (value, kind, wide mask, wide-kept-as-UPPER mask).
+    """
+    lo = np.asarray(lo, np.float64)
+    hi = np.asarray(hi, np.float64)
+    wide = (lo > 0) & np.isfinite(hi) & (hi > lo * (1 + tol))
+    v, k = _from_interval(lo, hi, tol, wide='lower')
+    near = wide & (hi <= wide_upper_max_m) if wide_upper_max_m is not None else np.zeros(np.shape(lo), bool)
+    v = np.where(near, hi, v)
+    k = np.where(near, LabelKind.UPPER, k).astype(np.uint8)
+    return v, k, wide, near
+
+
+def min_over(values, kinds, axis: int = -1, *, tol: float = EXACT_TOL, min_known_frac: float = 1.0,
+             wide_upper_max_m: float | None = None):
     """Constraint on min_k(y_k) from constraints on each y_k (sub-rays of a cell, points of a corridor).
 
     Sub-constraints that are UNKNOWN are ignored when at least ``min_known_frac`` of them are known;
-    otherwise the minimum is at most the smallest upper value (UPPER) or UNKNOWN.
+    otherwise the minimum is at most the smallest upper value (UPPER) or UNKNOWN. The minimum lies in
+    [min lower, min upper]; a wide interval is resolved with ``resolve_interval(wide_upper_max_m)``
+    (default: LOWER, the free-space end).
     Returns (value float64, kind uint8) with ``axis`` removed.
     """
     v = np.moveaxis(np.asarray(values, dtype=np.float64), axis, -1)
@@ -239,7 +266,8 @@ def min_over(values, kinds, axis: int = -1, *, tol: float = EXACT_TOL, min_known
     considered = known | ~ignore_unknown[..., None]
     lb = np.where(considered, lo, np.inf).min(axis=-1)
     lb = np.where(np.isinf(lb), 0.0, lb)
-    return _from_interval(lb, ub, tol)
+    v, k, _, _ = resolve_interval(lb, ub, tol, wide_upper_max_m)
+    return v, k
 
 
 def intersect(v1, k1, v2, k2, *, tol: float = EXACT_TOL, wide: str = 'lower'):

@@ -47,7 +47,9 @@ and at position jumps > MAX_JUMP_M, i.e. resets):
      point is clearly nearer; other hits UPPER s; no hit and e >= MIN_LOWER_M -> LOWER e; else UNKNOWN.
 
    Cells take labels.min_over of their sub-rays (strict: a cell with some UNKNOWN sub-rays gets at
-   most UPPER). Fan corridors: occupied voxel means (and own-frame points) within
+   most UPPER); a cell whose minimum is only bracketed (a hit on some sub-rays, a shorter carved extent
+   on others) keeps UPPER hit within WIDE_UPPER_MAX_M (8 m) and LOWER extent beyond
+   (labels.resolve_interval). Fan corridors: occupied voxel means (and own-frame points) within
    FAN_CORRIDOR_RADIUS_M of the axis give the hit distance; the corridor is observed free to e when,
    at every MARCH_STEP_M slice, the axis sample and at least FAN_FREE_FRACTION of the cross-section
    samples (axis, 8 at 0.25 m, 8 at 0.5 m) are carved free; then corridors.fan_constraints.
@@ -70,7 +72,7 @@ import numpy as np
 
 from .. import contract
 from ..contract import FAN_CORRIDOR_RADIUS_M, FAN_MAX_M, FAN_SHAPE, IMAGE_H, IMAGE_W
-from . import EXACT_TOL, LabelKind, clip_fan
+from . import EXACT_TOL, WIDE_UPPER_MAX_M, LabelKind, clip_fan
 from .corridors import (SUB, SUB_SHAPE, fan_constraints, grid_from_subrays, subray_dirs_world, unknown_fan,
                         unknown_grid, unknown_subrays)
 
@@ -127,7 +129,8 @@ RULES = dict(
             f'{"supported" if CARVE_SUPPORTED_ONLY else "all"} estimates carved free up to point - max(2 sigma, 2 voxels)'),
     grid=('sub-ray march; first occupied voxel or own-frame point = hit; EXACT if carved free to within '
           'max(10 %, 2 voxels) of the hit or an own-frame observation, else UPPER; no hit: LOWER carved extent '
-          f'if >= {MIN_LOWER_M} m'),
+          f'if >= {MIN_LOWER_M} m; cells = strict min over 3 x 3 sub-rays, a bracketed cell minimum keeps UPPER '
+          f'hit when <= {WIDE_UPPER_MAX_M} m, else LOWER extent'),
     fan=(f'occupied points within {FAN_CORRIDOR_RADIUS_M} m of the axis = hit; observed free while the axis and '
          f'>= {FAN_FREE_FRACTION:.0%} of 17 cross-section samples are carved free (approximation)'),
 )
@@ -794,7 +797,9 @@ def hindsight_labels(voxel_map: VoxelMap, pos, quat_wb, *, own_uv=None, own_rang
         sv, sk = unknown_subrays()
         return (gv, gk, fv, fk, sv, sk) if return_subrays else (gv, gk, fv, fk)
     sv, sk = subray_constraints(voxel_map, pos, q, own_uv=own_uv, own_range=own_range)
-    gv, gk = grid_from_subrays(sv, sk)
+    # a cell with a triangulated surface on some sub-rays and a carving that stops short on others keeps the
+    # surface (UPPER) within 8 m, the free extent (LOWER) beyond (labels.resolve_interval)
+    gv, gk = grid_from_subrays(sv, sk, wide_upper_max_m=WIDE_UPPER_MAX_M)
     fv, fk = fan_labels(voxel_map, pos, q, own_points=own_points)
     return (gv, gk, fv, fk, sv, sk) if return_subrays else (gv, gk, fv, fk)
 

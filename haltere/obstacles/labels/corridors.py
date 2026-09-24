@@ -71,8 +71,10 @@ def world_to_pixels(points_w, origin_w, quat_wb):
     return uv, np.linalg.norm(rel, axis=-1), ok
 
 
-def reduce_subrays(values, kinds, *, min_known_frac: float = 1.0, sub: int = SUB):
-    """Sub-ray constraints (..., 18 * sub, 32 * sub) -> cell constraints (..., 18, 32) via labels.min_over."""
+def reduce_subrays(values, kinds, *, min_known_frac: float = 1.0, sub: int = SUB,
+                   wide_upper_max_m: float | None = None):
+    """Sub-ray constraints (..., 18 * sub, 32 * sub) -> cell constraints (..., 18, 32) via labels.min_over
+    (``wide_upper_max_m``: see labels.resolve_interval)."""
     v = np.asarray(values, dtype=np.float64)
     k = np.asarray(kinds)
     lead = v.shape[:-2]
@@ -82,12 +84,12 @@ def reduce_subrays(values, kinds, *, min_known_frac: float = 1.0, sub: int = SUB
     order = tuple(range(n)) + (n, n + 2, n + 1, n + 3)
     v = v.transpose(order).reshape(lead + (GRID_H, GRID_W, sub * sub))
     k = k.transpose(order).reshape(lead + (GRID_H, GRID_W, sub * sub))
-    return min_over(v, k, axis=-1, min_known_frac=min_known_frac)
+    return min_over(v, k, axis=-1, min_known_frac=min_known_frac, wide_upper_max_m=wide_upper_max_m)
 
 
-def grid_from_subrays(values, kinds, *, min_known_frac: float = 1.0):
+def grid_from_subrays(values, kinds, *, min_known_frac: float = 1.0, wide_upper_max_m: float | None = None):
     """Sub-ray constraints -> clipped grid (value float64 with NaN, kind uint8), each (18, 32)."""
-    v, k = reduce_subrays(values, kinds, min_known_frac=min_known_frac)
+    v, k = reduce_subrays(values, kinds, min_known_frac=min_known_frac, wide_upper_max_m=wide_upper_max_m)
     return clip_grid(v, k)
 
 

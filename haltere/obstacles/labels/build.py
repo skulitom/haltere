@@ -36,8 +36,8 @@ from pathlib import Path
 import numpy as np
 
 from .. import contract, thermal
-from . import (COMBINE_ORDER, EXACT_TOL, LabelKind, LabelSource, LabelWriter, clip_fan, clip_grid,
-               fan_blocked_targets, intersect, labels_root, load_events, validate_event)
+from . import (COMBINE_ORDER, EXACT_TOL, WIDE_UPPER_MAX_M, LabelKind, LabelSource, LabelWriter, clip_fan,
+               clip_grid, fan_blocked_targets, intersect, labels_root, load_events, validate_event)
 
 STAGES = ('events', 'colliders', 'tube', 'impacts', 'hindsight', 'combine', 'quality')
 SOURCE_STAGES = {'colliders': LabelSource.COLLIDER, 'impacts': LabelSource.IMPACT,
@@ -213,7 +213,10 @@ def build_events(store, store_root, lateral_path, extra_path, log=_log) -> list[
             rec = store.runs[rid]
             e['flight'] = e.get('flight') or rec.get('flight')
             tel = tel_of(rid)
-            if tel is not None and e['kind'] != 'near_pass':
+            if (tel is not None and tel.get('coarse') and e['kind'] != 'near_pass' and e.get('point_w') is None
+                    and e.get('drone_pos_w') is not None and e.get('t_wall') is not None):
+                e = I.contact_point_from_position(e, e['drone_pos_w'], tel['wall'], tel['vel'])
+            elif tel is not None and e['kind'] != 'near_pass':
                 e = I.attach_contact_geometry(e, tel['wall'], tel['phase'], tel['pos'], tel['vel'], tel['quat'])
             elif tel is not None and e.get('t_wall') is None:
                 ok = np.isfinite(tel['phase'])
@@ -245,7 +248,11 @@ def build_events(store, store_root, lateral_path, extra_path, log=_log) -> list[
                  labeller='store builder (telemetry)', labelled_at=None, confidence='low',
                  notes=f"unlabelled store event ({s.get('source')}); obstacle not identified", evidence=[], _run_id=rid)
         tel = tel_of(rid)
-        if tel is not None:
+        if tel is not None and tel.get('coarse') and s.get('drone_pos_w') is not None:
+            # no flight CSV: the store poses (frame rate) cannot time the contact; the store event's position comes
+            # from the ~35 Hz UDP log. Point = that position - CONTACT_OFFSET_M * (minus the pre-contact velocity).
+            e = I.contact_point_from_position(e, s['drone_pos_w'], tel['wall'], tel['vel'])
+        elif tel is not None:
             e['drone_pos_w'] = None
             e = I.attach_contact_geometry(e, tel['wall'], tel['phase'], tel['pos'], tel['vel'], tel['quat'])
         out.append(e)
@@ -437,14 +444,25 @@ def stage_hindsight(rd: RunData, store, guard, parts_dir: Path) -> dict | None:
     from . import hindsight as H
     if len(rd.rows) < 3:
         return None
-    rows, vmap, est, tracks = H.build_flight_map(store, rd.run_id, guard, rows=rd.rows)
-    assert np.array_equal(rows, rd.rows)
-    stops = [s for s in rd.stops]
-    vmap = H.clear_flown_path(vmap, rd.path_t, rd.path_pos, stops)
     mp = parts_dir / 'hindsight_map' / f'r{rd.run_id:05d}.npz'
-    vmap.save(mp)
-    np.savez_compressed(parts_dir / 'hindsight_map' / f'r{rd.run_id:05d}.est.npz',
-                        **{k: getattr(est, k) for k in ('frame', 'track', 'uv', 'point', 'range_m', 'sigma_m', 'offset_s')})
+    ep = parts_dir / 'hindsight_map' / f'r{rd.run_id:05d}.est.npz'
+    mi = stage_inputs(rd, 'hindsight_map')
+    vmap = est = None
+    if mp.exists() and ep.exists():
+        # the flight map (tracking, triangulation, fusion, path clearing: ~70 % of the stage) is reused when only
+        # the projection into frames changed
+        old = H.VoxelMap.load(mp)
+        if old.meta.get('map_inputs') == mi:
+            d = np.load(ep)
+            vmap, est = old, H.Estimates(**{k: d[k] for k in d.files})
+    if vmap is None:
+        rows, vmap, est, tracks = H.build_flight_map(store, rd.run_id, guard, rows=rd.rows)
+        assert np.array_equal(rows, rd.rows)
+        vmap = H.clear_flown_path(vmap, rd.path_t, rd.path_pos, list(rd.stops))
+        vmap.meta['map_inputs'] = mi
+        vmap.save(mp)
+        np.savez_compressed(ep, **{k: getattr(est, k) for k in ('frame', 'track', 'uv', 'point', 'range_m', 'sigma_m',
+                                                                 'offset_s')})
     gv, gk, fv, fk = _alloc(len(rd.rows))
     for i in range(len(rd.rows)):
         if guard is not None and i and i % H.CHUNK_FRAMES == 0:
@@ -482,9 +500,6 @@ def load_part(path: Path) -> dict | None:
 
 # ----------------------------------------------------------------------------- combination
 
-WIDE_UPPER_MAX_M = max(contract.BLOCKED_WITHIN_M)   # 8 m: see combine_sources
-
-
 def combine_sources(parts: dict) -> tuple:
     """{LabelSource: (value, kind) arrays} -> (value, kind, src, conflict).
 
@@ -498,7 +513,7 @@ def combine_sources(parts: dict) -> tuple:
     not) and LOWER lo otherwise (far hits bound little; the free extent is the useful part).
     ``src`` holds the bits of every source that constrains a non-conflicting cell.
     """
-    from . import _from_interval, _intervals
+    from . import _intervals, resolve_interval
     shape = next(iter(parts.values()))[0].shape
     lo = np.zeros(shape)
     hi = np.full(shape, np.inf)
@@ -513,11 +528,7 @@ def combine_sources(parts: dict) -> tuple:
     conflict = lo > hi * (1 + EXACT_TOL)
     lo = np.where(conflict, 0.0, np.minimum(lo, hi))
     hi = np.where(conflict, np.inf, hi)
-    wide = ~conflict & (lo > 0) & np.isfinite(hi) & (hi > lo * (1 + EXACT_TOL))
-    near = wide & (hi <= WIDE_UPPER_MAX_M)
-    v, k = _from_interval(lo, hi, EXACT_TOL, wide='lower')
-    v = np.where(near, hi, v)
-    k = np.where(near, LabelKind.UPPER, k).astype(np.uint8)
+    v, k, wide, near = resolve_interval(lo, hi, EXACT_TOL, WIDE_UPPER_MAX_M)
     src = np.where(conflict | (k == LabelKind.UNKNOWN), 0, src).astype(np.uint8)
     combine_sources.last_wide = dict(to_upper=int(near.sum()), to_lower=int((wide & ~near).sum()))
     return v, k, src, conflict
@@ -570,43 +581,78 @@ def _cell_of(uv):
             np.clip((uv[..., 0] // contract.PATCH_PX).astype(int), 0, contract.GRID_W - 1))
 
 
+L23_LEVELS = ('point', 'cell', 'disc')
+
+
+def _l23_level(value, kind, true, visible, tol) -> dict:
+    """One comparison of an L2 constraint (value, kind) with the true range of the contact point."""
+    both = kind in (LabelKind.EXACT, LabelKind.UPPER) and np.isfinite(value)
+    ratio = float(value / true) if both else None
+    # free space claimed beyond a visible contact point (LOWER or EXACT more than tol behind it)
+    beyond = bool(visible and kind in (LabelKind.LOWER, LabelKind.EXACT) and value > true * (1 + tol))
+    return dict(kind=int(kind), ratio=ratio, beyond=beyond)
+
+
 def l2_vs_l3_frames(store, parts_dir: Path, e: dict, store_root, window=(2.0, 0.5)) -> list[dict] | None:
-    """Per frame in [T - window[0], T - window[1]] with the contact point in view: the L2 sub-ray constraints on
-    the L3 disc sub-rays (recomputed from the saved flight map). None when the run has no L2 map."""
+    """Per frame in [T - window[0], T - window[1]] where the contact point projects into the image: the L2
+    constraint at the contact point against its true range |point - camera|, at three levels.
+
+    point  the L2 sub-ray nearest to the projected point (recomputed from the saved flight map): the triangulated
+           range at the point itself (the K0b definition used for pass/fail)
+    cell   the L2 grid cell holding the projected point (the E1 cell definition; its value is the minimum over the
+           cell's 14 x 14 px frustum, below the point's range on grazing surfaces and at nearer occluders)
+    disc   median over the L3 disc sub-rays (labels.impacts: disc on the point) with L2 EXACT or UPPER
+    Each level gives ``ratio`` (L2 value / true when EXACT or UPPER) and ``beyond`` (a VISIBLE point, i.e. the L3
+    disc is EXACT because the camera-to-point segment was flown, with L2 LOWER or EXACT more than 15 % behind it:
+    free space claimed through the obstacle). None when the run has no L2 map.
+    """
     from . import hindsight as H
+    from .corridors import subray_pixels
     from .impacts import impact_labels
     rid = int(e['_run_id'])
     mp = parts_dir / 'hindsight_map' / f'r{rid:05d}.npz'
     ep = parts_dir / 'hindsight_map' / f'r{rid:05d}.est.npz'
-    if not mp.exists() or not ep.exists():
+    part = load_part(parts_dir / 'hindsight' / f'r{rid:05d}.npz')
+    if not mp.exists() or not ep.exists() or part is None or part['empty']:
         return None
     vmap = H.VoxelMap.load(mp)
     d = np.load(ep)
     est = H.Estimates(**{k: d[k] for k in d.files})
     rd = RunData(store, rid, [], store_root)
+    if not np.array_equal(part['rows'], rd.rows):
+        return None
     T = float(e['t_wall'])
     p = np.asarray(e['point_w'], float)
+    tol = K0B['l2_vs_l3_within']
+    px = subray_pixels().reshape(-1, 2)
     out = []
     for i in np.flatnonzero((rd.t >= T - window[0]) & (rd.t <= T - window[1])):
         q = rd.quat[i] / np.linalg.norm(rd.quat[i])
-        uv, _, ok = contract.project_camera(((p - rd.pos[i]) @ contract.camera_to_world(q))[None])
+        uv, ok = contract.project_camera(((p - rd.pos[i]) @ contract.camera_to_world(q))[None])
         if not contract.in_image(uv, ok)[0]:
             continue
+        true = float(np.linalg.norm(p - rd.pos[i]))
         m = (rd.path_t >= rd.t[i]) & (rd.path_t <= T)
         res = impact_labels(e, rd.pos[i], q, flown_path=np.vstack([rd.pos[i][None], rd.path_pos[m]]),
                             return_subrays=True)
-        s3v, s3k = res[4], res[5]
+        s3v, s3k = res[4].reshape(-1), res[5].reshape(-1)
         disc = s3k != LabelKind.UNKNOWN
-        if not disc.any():
-            continue
+        visible = bool(disc.any() and (s3k[disc] == LabelKind.EXACT).all())
         uvo, rro, ppo = H.own_frame_points(est, vmap, int(i))
         s2v, s2k = H.hindsight_labels(vmap, rd.pos[i], q, own_uv=uvo, own_range=rro, own_points=ppo,
                                       return_subrays=True)[4:]
-        visible = bool((s3k[disc] == LabelKind.EXACT).all())
+        s2v, s2k = s2v.reshape(-1), s2k.reshape(-1)
+        j = int(np.argmin(np.linalg.norm(px - uv[0][None], axis=1)))
+        r, c = _cell_of(uv[0])
+        rec = dict(i=int(i), true_m=true, visible=visible,
+                   point=_l23_level(float(s2v[j]), int(s2k[j]), true, visible, tol),
+                   cell=_l23_level(float(part['grid_v'][i, r, c]), int(part['grid_k'][i, r, c]), true, visible, tol))
         both = disc & np.isin(s2k, (LabelKind.EXACT, LabelKind.UPPER))
-        beyond = disc & (s3k == LabelKind.EXACT) & (s2k == LabelKind.LOWER) & (s2v > s3v * (1 + K0B['l2_vs_l3_within']))
-        out.append(dict(i=int(i), visible=visible, l2_lower_beyond=bool(beyond.any()),
-                        ratio=float(np.median(s2v[both] / s3v[both])) if both.any() else None))
+        beyond = disc & (s3k == LabelKind.EXACT) & np.isin(s2k, (LabelKind.LOWER, LabelKind.EXACT)) & (
+            s2v > s3v * (1 + tol))
+        rec['disc'] = dict(kind=-1, ratio=float(np.median(s2v[both] / s3v[both])) if both.any() else None,
+                           beyond=bool(beyond.any()))
+        out.append(rec)
     return out
 
 
@@ -659,51 +705,68 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
                     'FAN_MAX_M) by more than 10 %'))
     # (b) L2 vs L3 at the contact point, sub-ray level, in [T - 2.0, T - 0.5] s
     store_root = Path(parts_dir).resolve().parents[1]
-    per_env, per_event = {}, []
-    keys = ('frames_in_view', 'frames_both', 'frames_within_15pct', 'frames_l2_lower_beyond',
-            'frames_visible', 'frames_visible_both', 'frames_visible_within_15pct')
+    tol = K0B['l2_vs_l3_within']
+    in_scope = {int(r) for r in run_ids}
+    cnt_keys = ('both', 'within', 'exact', 'exact_within', 'beyond')
+
+    def counts(recs, level):
+        c = dict.fromkeys(cnt_keys, 0)
+        for r in recs:
+            x = r[level]
+            c['beyond'] += x['beyond']
+            if x['ratio'] is None:
+                continue
+            ok = abs(x['ratio'] - 1) <= tol
+            c['both'] += 1
+            c['within'] += ok
+            c['exact'] += x['kind'] == LabelKind.EXACT
+            c['exact_within'] += ok and x['kind'] == LabelKind.EXACT
+        return c
+
+    def summary(recs):
+        s = dict(frames_in_view=len(recs), frames_visible=int(sum(r['visible'] for r in recs)))
+        for level in L23_LEVELS:
+            c = counts(recs, level)
+            s[level] = dict(c, frac_within_15pct=c['within'] / c['both'] if c['both'] else None,
+                            coverage=c['both'] / len(recs) if recs else None,
+                            median_ratio=(float(np.median([r[level]['ratio'] for r in recs
+                                                           if r[level]['ratio'] is not None])) if c['both'] else None))
+        return s
+
+    groups = {}          # 'all', 'labelled' (curated + blind), per environment -> frame records
+    per_event = []
     for e in events:
-        if (e.get('_run_id') is None or e.get('point_w') is None or e['kind'] not in ('terminal_impact', 'contact')
-                or not e.get('t_wall')):
+        if (e.get('_run_id') is None or e['_run_id'] not in in_scope or e.get('point_w') is None
+                or e['kind'] not in ('terminal_impact', 'contact') or not e.get('t_wall')):
             continue
         recs = l2_vs_l3_frames(store, parts_dir, e, store_root)
-        if recs is None:
+        if not recs:
             continue
-        c = {k: 0 for k in keys}
-        ratios = []
-        for r in recs:
-            c['frames_in_view'] += 1
-            c['frames_visible'] += r['visible']
-            c['frames_l2_lower_beyond'] += r['l2_lower_beyond']
-            if r['ratio'] is None:
-                continue
-            ok = abs(r['ratio'] - 1) <= K0B['l2_vs_l3_within']
-            ratios.append(r['ratio'])
-            c['frames_both'] += 1
-            c['frames_within_15pct'] += ok
-            c['frames_visible_both'] += r['visible']
-            c['frames_visible_within_15pct'] += ok and r['visible']
+        ranges = [r['true_m'] for r in recs]
         per_event.append(dict(event_id=e['event_id'], run=e['run'], env=e['env'], kind=e['kind'], source=e['source'],
-                              blind=e.get('blind'), median_ratio=float(np.median(ratios)) if ratios else None, **c))
-        d = per_env.setdefault(e['env'], {k: 0 for k in keys})
-        for k in keys:
-            d[k] += c[k]
-    for d in list(per_env.values()):
-        d['frac_within_15pct'] = d['frames_within_15pct'] / d['frames_both'] if d['frames_both'] else None
-        d['coverage'] = d['frames_both'] / d['frames_in_view'] if d['frames_in_view'] else None
-    tot = {k: sum(d[k] for d in per_env.values()) for k in keys}
-    frac = tot['frames_within_15pct'] / tot['frames_both'] if tot['frames_both'] else None
+                              blind=e.get('blind'), obstacle=e.get('obstacle'),
+                              range_m=[round(float(min(ranges)), 2), round(float(max(ranges)), 2)], **summary(recs)))
+        keys = ['all', f'env:{e["env"]}'] + (['labelled'] if e['source'] in ('lateral_manifest', 'blind_label') else [])
+        for g in keys:
+            groups.setdefault(g, []).extend(recs)
+    groups = {g: summary(recs) for g, recs in groups.items()}
+    head = groups.get('all', {}).get('cell', {})
+    frac = head.get('frac_within_15pct')
     q['l2_vs_l3'] = dict(
-        per_env=per_env, per_event=per_event, total=tot, frac_within_15pct=frac,
-        frac_visible_within_15pct=(tot['frames_visible_within_15pct'] / tot['frames_visible_both']
-                                   if tot['frames_visible_both'] else None),
+        groups=groups, per_event=per_event, frac_within_15pct=frac, coverage=head.get('coverage'),
         passed=bool(frac is not None and frac >= K0B['l2_vs_l3_frac']),
-        definition=('frames in [T-2.0, T-0.5] s where the contact point projects into the image ("in view"); the L3 '
-                    'disc sub-rays (0.2 m disc on the contact point, labels.impacts) are compared with the L2 '
-                    'sub-ray constraints on the same sub-rays; "both" = L2 EXACT or UPPER on at least one of them; '
-                    'ratio = median L2 / L3 range over those sub-rays; within = |ratio - 1| <= 0.15. "visible" = the '
-                    'L3 disc is EXACT (camera-to-point segment inside the flown tube). l2_lower_beyond = L2 claims '
-                    'free space > 15 % beyond a visible contact point on some disc sub-ray (a free-space violation)'))
+        definition=('frames in [T-2.0, T-0.5] s before located terminal impacts and contacts where the contact point '
+                    'projects into the image. Pass/fail on level "cell" over all such events (the E1 definition of '
+                    'haltere.obstacles.evaluate, i.e. the target the model is trained and scored on): the L2 grid cell '
+                    'holding the projected point; "both" = that cell is EXACT or UPPER; ratio = cell value / |point - '
+                    'camera|; within = |ratio - 1| <= 0.15; frac_within_15pct = within / both; coverage = both / in '
+                    'view. The cell value is the minimum over its 14 x 14 px frustum, so it sits below the point range '
+                    'on grazing surfaces (terrain) and with nearer occluders in the cell. Also reported: level "point" '
+                    '(the L2 sub-ray nearest to the projected point) and "disc" (median over the L3 disc sub-rays); '
+                    '"exact" counts EXACT only; '
+                    '"beyond" = frames where a VISIBLE point (L3 disc EXACT: the camera-to-point segment was flown) '
+                    'has L2 LOWER or EXACT more than 15 % behind it (free space claimed through the obstacle). Groups: '
+                    'all events, curated + blind labelled events, per environment'))
     # (c) near-travel fan density on Minus Two and Pine Valley (combined labels)
     q['fan_near_travel'] = {}
     if writer is not None:
@@ -738,8 +801,10 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
 
 LABEL_CODE_VERSION = 'labels-m1-1'     # bump when every stage's output for the same inputs changes
 # per-stage versions: bump one when that stage's output for the same inputs changes
-STAGE_CODE_VERSION = dict(colliders='1', tube='1', impacts='1',
-                          hindsight='2')   # 2: adjacent partners, epipolar check, track support, per-stage hash
+STAGE_CODE_VERSION = dict(colliders='1', tube='1', impacts='2',   # impacts 2: 0.1 m disc
+                          hindsight='3',       # 2: adjacent partners, epipolar check, track support, per-stage hash;
+                                               # 3: bracketed cell minima keep UPPER hit <= 8 m
+                          hindsight_map='2')   # the flight map alone (tracking, triangulation, fusion, path clearing)
 
 
 def _hash(*arrays, stage: str = '') -> str:
@@ -759,7 +824,7 @@ def stage_inputs(rd: 'RunData', stage: str) -> str:
         return _hash(*base, np.asarray(rd.rec.get('origin_sim') or [np.nan] * 3, float), stage=stage)
     if stage == 'tube':
         return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)], stage=stage)
-    if stage == 'hindsight':
+    if stage in ('hindsight', 'hindsight_map'):
         from .hindsight import mask_provenance
         mask = np.frombuffer(mask_provenance().encode(), np.uint8)
         return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)], mask, stage=stage)
@@ -939,7 +1004,7 @@ def build(args):
                         quality=q, runs=len(run_ids),
                         build_scope='all runs' if complete else f'partial: runs {sorted(run_ids)[:50]}')
     (root / 'quality.json').write_text(json.dumps(q, indent=1, default=str) + '\n', encoding='utf-8')
-    _log(json.dumps({k: v for k, v in q.items() if k != 'l2_vs_l3'} | {'l2_vs_l3_total': q.get('l2_vs_l3', {}).get('total')},
+    _log(json.dumps({k: v for k, v in q.items() if k != 'l2_vs_l3'} | {'l2_vs_l3_all': q.get('l2_vs_l3', {}).get('groups', {}).get('all')},
                     indent=1, default=str)[:4000])
     return m
 

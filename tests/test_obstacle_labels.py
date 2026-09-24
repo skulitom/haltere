@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from haltere.obstacles import contract, store as S
-from haltere.obstacles.labels import LabelKind as K, LabelSource, load_events, validate_event
+from haltere.obstacles.labels import LabelKind as K, LabelSource, load_events, min_over, validate_event
 from haltere.obstacles.labels import build as B
 from haltere.obstacles.labels import colliders as C
 from haltere.obstacles.labels import corridors as R
@@ -169,26 +169,38 @@ def test_contact_from_telemetry_contact_and_terminal_modes():
 def test_impact_labels_exact_when_the_line_of_sight_was_flown():
     q = _quat_axis([0, 1, 0], 30.0)                      # level optical axis
     ev = dict(point_w=[6.0, 0.0, 1.0], normal_w=[-1.0, 0.0, 0.0])
-    cam = np.array([1.0, 0.0, 1.0])
-    path = np.c_[np.linspace(1, 5.9, 50), np.zeros(50), np.ones(50)]
+    cam = np.array([4.0, 0.0, 1.0])                      # 2 m out: the 0.1 m disc covers a few sub-rays
+    path = np.c_[np.linspace(4, 5.9, 50), np.zeros(50), np.ones(50)]
     gv, gk, fv, fk, sv, sk = I.impact_labels(ev, cam, q, flown_path=path, return_subrays=True)
-    assert (sk == K.EXACT).any() and np.nanmin(sv[sk == K.EXACT]) == pytest.approx(5.0, rel=0.02)
-    assert (gk == K.UPPER).any() and np.nanmin(gv[gk == K.UPPER]) == pytest.approx(5.0, rel=0.02)   # cell = min
-    assert fk[1, 4] == K.UPPER and fv[1, 4] == pytest.approx(5.0, abs=0.05)
+    assert (sk == K.EXACT).any() and np.nanmin(sv[sk == K.EXACT]) == pytest.approx(2.0, rel=0.02)
+    assert (gk == K.UPPER).any() and np.nanmin(gv[gk == K.UPPER]) == pytest.approx(2.0, rel=0.02)   # cell = min
+    assert fk[1, 4] == K.UPPER and fv[1, 4] == pytest.approx(2.0, abs=0.05)
     *_, sv, sk = I.impact_labels(ev, cam, q, flown_path=path + [0, 1.0, 0], return_subrays=True)   # flown 1 m aside
     assert (sk == K.UPPER).any() and not (sk == K.EXACT).any()
+    # 5 m out the disc falls between sub-rays: only the nearest sub-ray is constrained, as UPPER
+    far = np.array([1.0, 0.0, 1.0])
+    *_, sv, sk = I.impact_labels(ev, far, q, flown_path=np.c_[np.linspace(1, 5.9, 50), np.zeros(50), np.ones(50)],
+                                 return_subrays=True)
+    assert (sk != K.UNKNOWN).sum() == 1 and sv[sk == K.UPPER][0] == pytest.approx(5.0, rel=0.02)
     behind = I.impact_labels(dict(point_w=[-3.0, 0.0, 1.0], normal_w=None), cam, q)
     assert (behind[1] == K.UNKNOWN).all()                # out of view: no grid label
 
 
 def test_events_f12_blind_labels_validate():
     evs = load_events(REPO / 'configs' / 'obstacles' / 'events_f12.json')
-    assert len(evs) == 8
     assert {e['env'] for e in evs} == {'Minus Two', 'Pine Valley'}
-    assert sum(e['env'] == 'Minus Two' for e in evs) == 6
     for e in evs:
         assert e['blind'] and e['source'] == 'blind_label' and e['labelled_at'] and e['labeller']
-        assert e['point_w'] is not None and e['unique_obstacle'] and not e['oracle_route']
+        assert e['unique_obstacle']
+    impacts = [e for e in evs if e['kind'] == 'terminal_impact']        # the 6 + 2 remaining terminal impacts
+    assert len(impacts) == 8 and sum(e['env'] == 'Minus Two' for e in impacts) == 6
+    assert all(e['point_w'] is not None and not e['oracle_route'] for e in impacts)
+    contacts = [e for e in evs if e['kind'] == 'contact']               # the capture-set contacts of the store
+    assert len(contacts) == 13 and all(e['store_event_id'] >= 0 for e in contacts)
+    located = [e for e in contacts if e['point_w'] is not None]
+    assert len(located) == 9 and all(e['normal_w'] is not None for e in located)
+    trees = {e['unique_obstacle'] for e in contacts if e['store_event_id'] in (60, 61, 62)}
+    assert len(trees) == 1                                              # one trunk hit three times (E7 grouping)
 
 
 def test_lateral_manifest_events_and_unique_obstacles():
@@ -207,6 +219,19 @@ def test_lateral_manifest_events_and_unique_obstacles():
     out = I.assign_unique_obstacles([other, evs[0], dict(evs[0], point_w=[80.0, 3.6, 0.6], event_id=10)])
     assert out[1]['unique_obstacle'] == 'minus-two/pillar-A'
     assert out[2]['unique_obstacle'] != 'minus-two/pillar-A'
+
+
+def test_contact_point_from_store_position():
+    """Capture sets without a flight CSV: the contact point comes from the store event's position, not from
+    frame-rate poses (which put the contact a whole frame interval early)."""
+    wall = np.array([10.0, 10.1, 10.2, 10.3])
+    vel = np.array([[5.0, 0.0, 0.0]] * 3 + [[-1.0, 0.0, 0.0]])
+    e = dict(t_wall=10.25, notes=None)
+    out = I.contact_point_from_position(e, [7.0, 1.0, 2.0], wall, vel)
+    assert out['normal_w'] == [-1.0, 0.0, 0.0] and out['point_w'] == pytest.approx([7.0 + I.CONTACT_OFFSET_M, 1.0, 2.0])
+    assert out['drone_pos_w'] == [7.0, 1.0, 2.0] and 'store event position' in out['notes']
+    slow = I.contact_point_from_position(e, [7.0, 1.0, 2.0], wall, vel * 0.01)
+    assert 'point_w' not in slow                                        # no direction: left unlocated
 
 
 # ----------------------------------------------------------------------------- corridors
@@ -450,8 +475,10 @@ def test_rundata_stops_at_store_path_jumps(tmp_path):
 def test_label_build_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(H, 'feature_mask', _no_mask)
     _synthetic_store(tmp_path)
+    # The contact point sits ~20 deg off the direction of travel: motion stereo cannot range points at the focus
+    # of expansion (no parallax), so a point dead ahead would get no L2 value to compare with.
     ev = dict(event_id=0, store_event_id=-1, run='run', flight='synthetic/run', env='Straw Bale', kind='contact',
-              t_phase=2.9, t_wall=None, point_w=[WALL_X, 0.0, 1.8], normal_w=[-1.0, 0.0, 0.0], drone_pos_w=None,
+              t_phase=2.9, t_wall=None, point_w=[WALL_X, -2.5, 1.8], normal_w=[-1.0, 0.0, 0.0], drone_pos_w=None,
               speed_mps=3.0, obstacle='wall', unique_obstacle='synthetic/wall', obstacle_side='centre',
               primary_free_side='either', accepted_free_sides=['left', 'right'], lateral=False, in_view_frac_T2_T1=None,
               oracle_route=False, source='blind_label', blind=True, labeller='test', labelled_at='2026-09-24',
@@ -462,8 +489,12 @@ def test_label_build_end_to_end(tmp_path, monkeypatch):
     m = B.build(args)
     assert m['status'] == 'complete' and m['n_frames'] == 30
     l23 = m['quality']['l2_vs_l3']
-    assert l23['total']['frames_in_view'] >= 10 and l23['total']['frames_both'] >= 5
-    assert abs(l23['per_event'][0]['median_ratio'] - 1) < 0.15 and l23['total']['frames_l2_lower_beyond'] == 0
+    g = l23['groups']['all']
+    assert g['frames_in_view'] >= 10
+    assert g['cell']['both'] >= 3 and abs(g['cell']['median_ratio'] - 1) < 0.15
+    assert g['cell']['frac_within_15pct'] >= 0.8 and l23['passed']
+    assert g['point']['beyond'] == 0 and g['cell']['beyond'] == 0 and g['disc']['beyond'] == 0
+    assert l23['groups']['labelled']['frames_in_view'] == g['frames_in_view']       # a blind-labelled event
     from haltere.obstacles.labels import LabelSet
     ls = LabelSet(tmp_path, S.FrameStore(tmp_path).index_sha256())
     gv, gk, gs = ls.grid(np.arange(30))
@@ -478,6 +509,25 @@ def test_label_build_end_to_end(tmp_path, monkeypatch):
     B.build(args)
     after = LabelSet(tmp_path, S.FrameStore(tmp_path).index_sha256()).arrays['grid_value']
     assert np.array_equal(np.nan_to_num(before, nan=-1), np.nan_to_num(np.array(after), nan=-1))
+    # a projection-only change (hindsight stage version) reprojects the saved flight map without re-tracking
+    monkeypatch.setitem(B.STAGE_CODE_VERSION, 'hindsight', 'test-bump')
+    monkeypatch.setattr(H, 'build_flight_map', lambda *a, **k: (_ for _ in ()).throw(AssertionError('map rebuilt')))
+    B.build(args)
+    again = LabelSet(tmp_path, S.FrameStore(tmp_path).index_sha256()).arrays['grid_value']
+    assert np.array_equal(np.nan_to_num(before, nan=-1), np.nan_to_num(np.array(again), nan=-1))
+
+
+def test_min_over_bracketed_cells_keep_near_hits():
+    """A cell with a surface on one sub-ray and shorter carved extents on the others: UPPER hit within 8 m (the
+    clearance questions), LOWER extent beyond; the default reduction keeps the free extent."""
+    v = np.array([[6.0, 3.0, 3.5], [12.0, 3.0, 3.5]])
+    k = np.array([[K.EXACT, K.LOWER, K.LOWER]] * 2, np.uint8)
+    val, kind = min_over(v, k)
+    assert kind.tolist() == [K.LOWER, K.LOWER] and val.tolist() == [3.0, 3.0]
+    val, kind = min_over(v, k, wide_upper_max_m=8.0)
+    assert kind.tolist() == [K.UPPER, K.LOWER] and val.tolist() == [6.0, 3.0]
+    val, kind = min_over(np.array([6.0, 5.8]), np.array([K.EXACT, K.LOWER], np.uint8), wide_upper_max_m=8.0)
+    assert kind == K.EXACT and val == pytest.approx(5.8)                # narrow interval: still EXACT
 
 
 def test_teacher_cache_survives_a_repose(tmp_path, monkeypatch):

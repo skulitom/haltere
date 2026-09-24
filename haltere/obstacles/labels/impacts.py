@@ -1,8 +1,9 @@
 """L3: impact/contact points as exact occupied points, and the labelled event list. OFFLINE ONLY.
 
 Events: the 15 curated lateral-manifest impacts (plus its non-fatal contacts and near pass), and the
-blind-labelled remaining Minus Two (6) and Pine Valley (2) terminal impacts
-(configs/obstacles/events_f12.json), schema labels.EVENT_FIELDS. Blind protocol: every event in
+blind-labelled remaining Minus Two (6) and Pine Valley (2) terminal impacts plus the 13 Minus Two / Pine
+Valley capture-set contacts of the store events (configs/obstacles/events_f12.json), schema
+labels.EVENT_FIELDS. Blind protocol: every event in
 events_f12.json is labelled (point_w, normal_w, obstacle, unique_obstacle, free sides) from frames and
 telemetry BEFORE any model or baseline output on it is seen; blind=true, labeller and labelled_at
 are set. Curated lateral-manifest events are not claimed blind (blind=false). Oracle-route flights are
@@ -18,10 +19,14 @@ reaches the surface ~0.15 m from its centre; +-0.1 m uncertainty). Launch-relati
 the same frame as the store's ``pos``.
 
 Per frame in [T - 3 s, T - 0.15 s] where point_w projects into the 448 x 252 image: sub-rays that hit
-a 0.2 m disc around point_w (normal normal_w, or facing the camera when unknown) are EXACT at their
+a 0.1 m disc around point_w (normal normal_w, or facing the camera when unknown) are EXACT at their
 range when the straight segment from the camera to the point stays within VISIBLE_TUBE_M (= the
 0.35 m flown-tube radius) of the flown path (that segment is certified free, so nothing hides the
-point), otherwise UPPER. Other sub-rays are untouched. The same disc points constrain fan corridors
+point), otherwise UPPER; when the disc covers no sub-ray, the nearest sub-ray gets UPPER. Other
+sub-rays are untouched. The disc radius equals the point's ~0.1 m position uncertainty: most impacts
+are edge clips (the drone's side meets a pillar edge or trunk), where a wider disc would overhang the
+edge and label free space beside the obstacle as occupied (the 0.2 m disc of the first build did so on
+the Minus Two pillar clips, where L2 carved free space behind half the disc). The same disc points constrain fan corridors
 (UPPER: the corridor before them is not observed by this source), also when the point is outside the
 image. Writes <store>/labels/events.json (superset of <store>/events.json; keeps
 store_event_id).
@@ -40,7 +45,7 @@ from .corridors import (SUB_SHAPE, corridor_hits, grid_from_subrays, subray_dirs
                         world_to_pixels)
 
 IMPACT_WINDOW_S = (0.15, 3.0)
-IMPACT_DISC_RADIUS_M = 0.2
+IMPACT_DISC_RADIUS_M = 0.1            # = the point's position uncertainty; wider discs overhang clipped edges
 CONTACT_ACCEL_MPS2 = 20.0
 CONTACT_UNEXPLAINED_MPS2 = 6.0
 CONTACT_OFFSET_M = 0.15
@@ -281,6 +286,27 @@ def attach_contact_geometry(event: dict, wall, phase, pos, vel, quat, *, search_
     note = (f"contact geometry from telemetry ({c['mode']} mode): normal from {c['normal_source']}, point = drone "
             f"centre - {CONTACT_OFFSET_M} m * normal")
     e['notes'] = (e.get('notes') or '') + (' | ' if e.get('notes') else '') + note
+    return e
+
+
+def contact_point_from_position(event: dict, drone_pos_w, wall, vel) -> dict:
+    """point_w/normal_w from a known drone position at contact (e.g. a store event from a ~35 Hz UDP log) and the
+    velocity of the last telemetry row before the event's t_wall: normal = minus that velocity direction (a
+    frontal-contact assumption), point = drone - CONTACT_OFFSET_M * normal."""
+    e = dict(event)
+    wall = np.asarray(wall, np.float64)
+    vel = np.asarray(vel, np.float64)
+    before = np.flatnonzero(wall < float(e['t_wall']))
+    D = np.asarray(drone_pos_w, np.float64)
+    e['drone_pos_w'] = [round(float(x), 3) for x in D]
+    if not len(before) or np.linalg.norm(vel[before[-1]]) < 0.3:
+        return e
+    n = -vel[before[-1]] / np.linalg.norm(vel[before[-1]])
+    e['normal_w'] = [round(float(x), 3) for x in n]
+    e['point_w'] = [round(float(x), 3) for x in D - CONTACT_OFFSET_M * n]
+    e['notes'] = (e.get('notes') or '') + (' | ' if e.get('notes') else '') + (
+        f'contact geometry from the store event position (no flight CSV): normal = minus the pre-contact velocity, '
+        f'point = drone centre - {CONTACT_OFFSET_M} m * normal')
     return e
 
 

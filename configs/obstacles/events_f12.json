@@ -3,7 +3,7 @@
  "fields": "haltere.obstacles.labels.EVENT_FIELDS (validated by labels.load_events)",
  "blind_protocol": "Label every remaining Minus Two and Pine Valley terminal impact and contact (and near passes within 1 m) from video, telemetry and hindsight maps BEFORE any model or baseline output on the event is seen. Record blind=true, labeller and labelled_at. Oracle-route flights get oracle_route=true and are excluded from evaluation sets. The 15 curated lateral-study impacts stay in the lateral manifest and are merged by the label builder. Near passes are derived by the label builder from these points and the flown paths (geometry only, also blind).",
  "offline_only": true,
- "note": "Blind labels of the Minus Two and Pine Valley terminal impacts not in the lateral study manifest (F12 held-out environments). Labelled from gameplay frames and 100 Hz telemetry only, before any model or baseline output existed. point_w/normal_w/drone_pos_w are launch-relative simulator FLU (same frame as the store pos). CSV contacts in these environments coincide with terminal impacts or with the lateral-manifest non-fatal contacts, so no extra contacts are labelled here. OFFLINE evaluation data only: never a runtime input.",
+ "note": "Blind labels of the Minus Two and Pine Valley terminal impacts not in the lateral study manifest (F12 held-out environments). Labelled from gameplay frames and 100 Hz telemetry only, before any model or baseline output existed. point_w/normal_w/drone_pos_w are launch-relative simulator FLU (same frame as the store pos). CSV contacts in these environments coincide with terminal impacts or with the lateral-manifest non-fatal contacts, so no extra contacts are labelled here. OFFLINE evaluation data only: never a runtime input. Second batch (2026-09-24, resumed session): blind labels of the Minus Two / Pine Valley capture-set contacts in the store events (manual sessions, vehicle probe and oracle-route teacher captures; oracle-route ones carry oracle_route=true).",
  "created": "2026-09-24T15:06:21+0100",
  "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree) - blind: no model/baseline output existed",
  "tools": [
@@ -380,6 +380,545 @@
    "evidence": [
     "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__pine-brain06-ttc-01_sheet.jpg",
     "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev/blind/fast-stack-20260923__pine-brain06-ttc-01_traj.png"
+   ]
+  },
+  {
+   "event_id": 8,
+   "store_event_id": 45,
+   "run": "vision:manual_sessions/minus_two_race/20260920-194011-245500",
+   "flight": "vision:manual_sessions/minus_two_race/20260920-194011-245500",
+   "env": "Minus Two",
+   "kind": "contact",
+   "t_phase": 87.186,
+   "t_wall": 1789929698.7056842,
+   "point_w": [
+    55.543,
+    23.287,
+    0.486
+   ],
+   "normal_w": [
+    0.536,
+    0.842,
+    -0.053
+   ],
+   "drone_pos_w": [
+    55.623,
+    23.413,
+    0.478
+   ],
+   "speed_mps": 12.19,
+   "obstacle": "gate structure",
+   "unique_obstacle": "minus-two/gate structure@55.5,23.3",
+   "obstacle_side": "unknown",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "medium (object), low (side)",
+   "notes": "Human manual Minus Two race, 12 m/s at 0.2-0.5 m altitude through the grey LIFTOFF arch: the arch band and its leg fill the lower view from T-0.1 s and the drone clips the arch structure while turning (376 m/s^2, non-fatal). Exact touching part not identifiable from the frames. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e045_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 9,
+   "store_event_id": 56,
+   "run": "vision:manual_sessions/pine_valley_race/20260920-193159-569500",
+   "flight": "vision:manual_sessions/pine_valley_race/20260920-193159-569500",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 54.345,
+   "t_wall": 1789929173.9324875,
+   "point_w": [
+    30.719,
+    -11.462,
+    1.306
+   ],
+   "normal_w": [
+    -0.89,
+    0.455,
+    0.009
+   ],
+   "drone_pos_w": [
+    30.585,
+    -11.394,
+    1.307
+   ],
+   "speed_mps": 18.16,
+   "obstacle": "unknown",
+   "unique_obstacle": "pine-valley/unknown/store-event-56",
+   "obstacle_side": "unknown",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "low",
+   "notes": "Human manual Pine race, 18 m/s heavily rolled low over the ground past the start area; hard non-fatal contact (113 m/s^2). A dark bar enters the upper left of the view at T-0.05 s (structure or branch); the struck object is not identifiable from the frames. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e056_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 10,
+   "store_event_id": 57,
+   "run": "vision:manual_sessions/pine_valley_race/20260920-193159-569500",
+   "flight": "vision:manual_sessions/pine_valley_race/20260920-193159-569500",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 55.383,
+   "t_wall": 1789929174.9706612,
+   "point_w": null,
+   "normal_w": null,
+   "drone_pos_w": [
+    29.037,
+    -19.337,
+    2.026
+   ],
+   "speed_mps": 9.3,
+   "obstacle": "unknown",
+   "unique_obstacle": "pine-valley/unknown/store-event-57",
+   "obstacle_side": "unknown",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "low",
+   "notes": "Second contact 1.0 s after store event 56 (same flight); no store frames between (1 s post-contact drop). | not located (no pre-contact store frames)",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e057_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 11,
+   "store_event_id": 58,
+   "run": "vision:manual_sessions/pine_valley_race/20260920-193159-569500",
+   "flight": "vision:manual_sessions/pine_valley_race/20260920-193159-569500",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 109.797,
+   "t_wall": 1789929229.3841116,
+   "point_w": [
+    106.483,
+    54.705,
+    5.12
+   ],
+   "normal_w": [
+    -0.439,
+    -0.896,
+    -0.06
+   ],
+   "drone_pos_w": [
+    106.417,
+    54.571,
+    5.111
+   ],
+   "speed_mps": 23.7,
+   "obstacle": "boulder",
+   "unique_obstacle": "pine-valley/boulder@106.5,54.7",
+   "obstacle_side": "right",
+   "primary_free_side": "left",
+   "accepted_free_sides": [
+    "left"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "low",
+   "notes": "Human manual Pine race, 23 m/s past a large boulder on the right (fills the right half from T-0.3 s); weak signal (25 m/s^2, 6.6 m/s^2 unexplained): a glancing touch of the boulder edge, or possibly only a hard manoeuvre. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e058_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 12,
+   "store_event_id": 59,
+   "run": "vision:manual_sessions/pine_valley_race/20260920-193537-458900",
+   "flight": "vision:manual_sessions/pine_valley_race/20260920-193537-458900",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 49.55,
+   "t_wall": 1789929387.1093965,
+   "point_w": [
+    52.187,
+    -22.335,
+    2.685
+   ],
+   "normal_w": [
+    -0.955,
+    0.293,
+    -0.04
+   ],
+   "drone_pos_w": [
+    52.044,
+    -22.291,
+    2.679
+   ],
+   "speed_mps": 24.09,
+   "obstacle": "unknown",
+   "unique_obstacle": "pine-valley/unknown/store-event-59",
+   "obstacle_side": "unknown",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "low",
+   "notes": "Human manual Pine race, 24 m/s through the LIFTOFF arch then rolling toward the rising slope on the left; weak signal (23 m/s^2, 6.0 m/s^2 unexplained, at the detector threshold): possibly grazing the arch or terrain, or only a hard manoeuvre. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e059_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 13,
+   "store_event_id": 60,
+   "run": "vision:pine_teacher_02",
+   "flight": "vision:pine_teacher_02",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 19.969,
+   "t_wall": 1789924825.8957477,
+   "point_w": [
+    31.332,
+    -11.667,
+    2.293
+   ],
+   "normal_w": [
+    -0.892,
+    0.447,
+    -0.058
+   ],
+   "drone_pos_w": [
+    31.198,
+    -11.6,
+    2.284
+   ],
+   "speed_mps": 2.01,
+   "obstacle": "tree",
+   "unique_obstacle": "pine-valley/tree@31.3,-11.7",
+   "obstacle_side": "centre-left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": true,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "Oracle-route teacher capture: 2 m/s drift straight into a pine trunk; the trunk fills the left of the view from T-0.25 s with the travel direction on its right edge, so right clears it. Same trunk as events 61, 62. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e060_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 14,
+   "store_event_id": 61,
+   "run": "vision:pine_teacher_03",
+   "flight": "vision:pine_teacher_03",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 19.584,
+   "t_wall": 1789924969.8773978,
+   "point_w": [
+    31.409,
+    -11.965,
+    2.406
+   ],
+   "normal_w": [
+    -0.982,
+    0.029,
+    0.188
+   ],
+   "drone_pos_w": [
+    31.262,
+    -11.961,
+    2.434
+   ],
+   "speed_mps": 2.52,
+   "obstacle": "tree",
+   "unique_obstacle": "pine-valley/tree@31.3,-11.7",
+   "obstacle_side": "centre-left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": true,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "Oracle-route teacher capture: same pine trunk as event 60 at 2.5 m/s. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e061_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 15,
+   "store_event_id": 62,
+   "run": "vision:pine_teacher_04",
+   "flight": "vision:pine_teacher_04",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 20.202,
+   "t_wall": 1789925095.8549848,
+   "point_w": [
+    31.333,
+    -11.924,
+    2.305
+   ],
+   "normal_w": [
+    -0.892,
+    0.449,
+    -0.059
+   ],
+   "drone_pos_w": [
+    31.199,
+    -11.857,
+    2.296
+   ],
+   "speed_mps": 2.0,
+   "obstacle": "tree",
+   "unique_obstacle": "pine-valley/tree@31.3,-11.7",
+   "obstacle_side": "centre-left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": true,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "Oracle-route teacher capture: same pine trunk as event 60 at 2 m/s. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e062_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 16,
+   "store_event_id": 63,
+   "run": "vision:pine_teacher_04",
+   "flight": "vision:pine_teacher_04",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 23.368,
+   "t_wall": 1789925099.0213208,
+   "point_w": null,
+   "normal_w": null,
+   "drone_pos_w": [
+    37.202,
+    -7.096,
+    1.526
+   ],
+   "speed_mps": 5.01,
+   "obstacle": "unknown",
+   "unique_obstacle": "pine-valley/unknown/store-event-63",
+   "obstacle_side": "unknown",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": true,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "low",
+   "notes": "Second contact 3.2 s after store event 62 (same flight); no store frames in between (post-contact drop). | not located (no pre-contact store frames)",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e063_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 17,
+   "store_event_id": 64,
+   "run": "vision:pine_three_laps_01",
+   "flight": "vision:pine_three_laps_01",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 1192.234,
+   "t_wall": 1789927908.6669917,
+   "point_w": [
+    127.998,
+    -12.074,
+    7.502
+   ],
+   "normal_w": [
+    0.288,
+    -0.877,
+    -0.384
+   ],
+   "drone_pos_w": [
+    128.041,
+    -12.206,
+    7.444
+   ],
+   "speed_mps": 2.03,
+   "obstacle": "tree",
+   "unique_obstacle": "pine-valley/tree@128.0,-12.1",
+   "obstacle_side": "centre-left",
+   "primary_free_side": "right",
+   "accepted_free_sides": [
+    "right"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": true,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "high (object), medium (side)",
+   "notes": "Oracle-route three-lap capture: 2 m/s into a pine trunk that fills the left of the view from T-0.5 s with the travel direction on its right edge; right clears it. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e064_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 18,
+   "store_event_id": 65,
+   "run": "vision:pine_vehicle_probe_01",
+   "flight": "vision:pine_vehicle_probe_01",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 21.021,
+   "t_wall": 1789924026.573691,
+   "point_w": [
+    -23.804,
+    -53.779,
+    2.765
+   ],
+   "normal_w": [
+    0.396,
+    0.918,
+    0.005
+   ],
+   "drone_pos_w": [
+    -23.745,
+    -53.641,
+    2.766
+   ],
+   "speed_mps": 7.29,
+   "obstacle": "tree",
+   "unique_obstacle": "pine-valley/tree@-23.8,-53.8",
+   "obstacle_side": "unknown",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "medium (object), low (side)",
+   "notes": "Vehicle probe capture, 7 m/s at 2.8 m among pines with the camera pitched up; hard contact (99 m/s^2) with a trunk or branches passing beside/above the drone; exact part not identifiable. | point = store drone_pos_w (35 Hz UDP log) - 0.15 m * normal, normal = minus the pre-contact velocity",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e065_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 19,
+   "store_event_id": 66,
+   "run": "vision:pine_vehicle_probe_01",
+   "flight": "vision:pine_vehicle_probe_01",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 23.136,
+   "t_wall": 1789924028.688443,
+   "point_w": null,
+   "normal_w": null,
+   "drone_pos_w": [
+    -20.541,
+    -66.415,
+    2.003
+   ],
+   "speed_mps": 9.65,
+   "obstacle": "unknown",
+   "unique_obstacle": "pine-valley/unknown/store-event-66",
+   "obstacle_side": "unknown",
+   "primary_free_side": "unknown",
+   "accepted_free_sides": [],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "low",
+   "notes": "Second contact 2.1 s after store event 65 (same flight); no store frames in between (post-contact drop). | not located (no pre-contact store frames)",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e066_sheet.jpg"
+   ]
+  },
+  {
+   "event_id": 20,
+   "store_event_id": 67,
+   "run": "vision:pine_vehicle_probe_01",
+   "flight": "vision:pine_vehicle_probe_01",
+   "env": "Pine Valley",
+   "kind": "contact",
+   "t_phase": 24.318,
+   "t_wall": 1789924029.8706286,
+   "point_w": null,
+   "normal_w": null,
+   "drone_pos_w": [
+    -28.506,
+    -72.887,
+    -2.193
+   ],
+   "speed_mps": 14.33,
+   "obstacle": "terrain",
+   "unique_obstacle": "pine-valley/terrain/store-event-67",
+   "obstacle_side": "below",
+   "primary_free_side": "up",
+   "accepted_free_sides": [
+    "up"
+   ],
+   "lateral": false,
+   "in_view_frac_T2_T1": null,
+   "oracle_route": false,
+   "source": "blind_label",
+   "blind": true,
+   "labeller": "M1 labels agent (Claude, workflow wf_20f4b63b, labels worktree, resumed session) - blind: no model/baseline output read",
+   "labelled_at": "2026-09-24T19:40:25+0100",
+   "confidence": "low",
+   "notes": "Third contact 3.3 s after store event 65; logged altitude -2.2 m (below the launch height): the drone fell onto the ground after the earlier contacts. No store frames in between. | not located (no pre-contact store frames)",
+   "evidence": [
+    "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/m1/labels_dev2/blind2/e067_sheet.jpg"
    ]
   }
  ]
