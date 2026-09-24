@@ -247,18 +247,49 @@ def test_raw_decisions_nearest_clear_side_centre_and_none():
     fan[3, 1, :] = np.nan                                     # level row unknown -> blocked; rows +-10 still clear?
     speed = np.full(4, 6.0)
     zero = np.zeros(4)
+    assert p.unseen == 'unknown'                              # thresholds v2
     codes, dl, dr = ev.raw_side_decisions(fan, inview, speed, zero, zero, p, 0.065)
     assert codes[0] == ev.Side.RIGHT and dr[0] == 20 and dl[0] == 30
     assert codes[1] == ev.Side.CENTRE and codes[2] == ev.Side.NONE
-    assert codes[3] == ev.Side.CENTRE                         # a NaN level row blocks every column (min over rows)
-    # out of view = no evidence = blocked
+    assert codes[3] == ev.Side.NONE                           # v2: a NaN level row is no evidence -> no action
+    # v2: an unseen column is never a candidate side ...
     iv = inview.copy()
     iv[0, :, :4] = False
     c2, _, _ = ev.raw_side_decisions(fan, iv, speed, zero, zero, p, 0.065)
     assert c2[0] == ev.Side.LEFT
+    # ... and an unseen reference column gives no decision at all (the field of view alone never triggers)
+    iv = inview.copy()
+    iv[:, 1, :] = False
+    c4, _, _ = ev.raw_side_decisions(fan, iv, speed, zero, zero, p, 0.065)
+    assert (c4 == ev.Side.NONE).all()
+    # v1 ('blocked'): unseen rows block their column, so the same frames decide
+    import dataclasses
+    p1 = dataclasses.replace(p, unseen='blocked')
+    c1, _, _ = ev.raw_side_decisions(fan, inview, speed, zero, zero, p1, 0.065)
+    assert c1[3] == ev.Side.CENTRE                            # a NaN level row blocks every column
+    c5, _, _ = ev.raw_side_decisions(fan, iv, speed, zero, zero, p1, 0.065)
+    assert (c5 == ev.Side.CENTRE).all()
     # slow: no decision
     c3, _, _ = ev.raw_side_decisions(fan, inview, np.full(4, 0.5), zero, zero, p, 0.065)
     assert (c3 == ev.Side.NONE).all()
+
+
+def test_thresholds_v1_is_kept_verbatim_and_v2_only_changes_unseen():
+    root = Path(ev.THRESHOLDS_PATH).parent
+    v1, sha1 = ev.load_thresholds(root / 'thresholds_v1.json', require_frozen=True)
+    assert v1['version'] == 1 and sha1.startswith('daed6d8e6b36')
+    assert ev.DecisionParams.from_thresholds(v1).unseen == 'blocked'
+    v2, _ = ev.load_thresholds(require_frozen=False)
+    assert v2['version'] == 2 and v2['previous_versions'][0]['sha256'] == sha1
+    strip = lambda o: {k: v for k, v in o.items() if k not in ('version', 'frozen', 'frozen_at', 'sha256', 'note',
+                                                                'previous_versions', 'decision', 'E4')}
+    assert strip(v1) == strip(v2)
+    d1, d2 = dict(v1['decision']), dict(v2['decision'])
+    assert d2.pop('unseen') == 'unknown' and {k: v for k, v in d1.items() if k != 'note'} == \
+        {k: v for k, v in d2.items() if k != 'note'}
+    e4a, e4b = json.loads(json.dumps(v1['E4'])), json.loads(json.dumps(v2['E4']))
+    e4b['m3_pass'].pop('note')
+    assert e4a == e4b
 
 
 def test_hysteresis_onset_hold_switch_and_release():
@@ -612,8 +643,93 @@ def test_score_orchestrates_and_flags_held_out(scene):
     assert metrics >= {'E1', 'E4', 'E5', 'E6', 'E7'}
     lat = {r['latency_s'] for r in recs if r['metric'] == 'E4'}
     assert lat == {0.065, 0.1, 0.15}
+    assert {r['rule_latency_s'] for r in recs if r['metric'] in ('E4', 'E5', 'E6') and 'rule_latency_s' in r} \
+        == {0.065}
     assert ev.any_held_out(recs)
     json.dumps(recs, default=ev._json_default)
+
+
+def _late_block_pred(s, t_block=2.5):
+    """Run 0 (Minus impact at T = 5 s): clear fan until t_block, then blocked ahead and on the left -> RIGHT."""
+    rows = s.rows()
+    c = ev.store_cache(s)
+    clear = np.full((4, 9), 20.0)
+    blocked = clear.copy()
+    blocked[:, 3:7] = 3.0
+    late = (c.run_id[rows] == 0) & (c.t_phase[rows] >= t_block)
+    fan = np.where(late[:, None, None], blocked[None], clear[None])
+    return fan_pred(s, rows, fan)
+
+
+def test_stress_latency_delays_the_same_decisions(scene):
+    s, events = scene
+    th = _thresholds()
+    pred = _late_block_pred(s)
+    codes = ev.decide_side(pred, s, th)
+    # by default the rule is the frozen deployed one (configured for thresholds timing.latency_s)
+    assert (ev.decide_side(pred, s, th, latency_s=th['timing']['latency_s']) == codes).all()
+    assert ev.rule_latency(th) == 0.065
+    leads = {}
+    for lat in (0.065, 0.15):
+        res = ev.e4_event_results(pred, s, events, th, latency_s=lat, codes=codes)
+        leads[lat] = res[0]['correct_lead']
+        assert res[0]['success']
+    c = ev.store_cache(s)
+    t_on = c.t_phase[pred.rows][np.flatnonzero(codes == ev.Side.RIGHT)[0]]
+    assert abs(leads[0.065] - (5.0 - t_on - 0.065)) < 1e-9
+    assert abs((leads[0.065] - leads[0.15]) - 0.085) < 1e-9
+
+
+def test_uncovered_events_and_gaps_are_reported_not_scored(scene):
+    s, events = scene
+    th = _thresholds()
+    c = ev.store_cache(s)
+    rows = s.rows()
+    missing = dict(events[0], event_id=7, run='not-in-store', flight='not-in-store', unique_obstacle='minus/other')
+    # no predictions on run 0 at all -> the Minus event is uncovered, not a failure
+    other = rows[c.run_id[rows] != 0]
+    right = ev.baseline_b0(s, other, ev.Side.RIGHT)
+    recs = ev.e4_lateral_replay(right, s, events + [missing], th, fold='F12')
+    minus = next(r for r in recs if r['variant'].startswith('env Minus Two'))
+    assert minus['value']['n'] == 0 and minus['value']['correct'] == 0
+    reasons = {u['event_id']: u['reason'] for u in minus['value']['uncovered']}
+    assert reasons == {0: 'no prediction usable inside the window', 7: 'run not in the store'}
+    # a 1.1 s hole inside the scored window (store rows dropped after a contact) is flagged
+    t = c.t_phase[rows]
+    hole = (c.run_id[rows] == 0) & (t > 5.0 - 2.5) & (t < 5.0 - 1.4)
+    right = ev.baseline_b0(s, rows[~hole], ev.Side.RIGHT)
+    recs = ev.e4_lateral_replay(right, s, events, th, fold='F12')
+    minus = next(r for r in recs if r['variant'].startswith('env Minus Two'))
+    assert minus['value']['n'] == 1 and minus['value']['events_with_gap'] == ['0']
+    assert 1.0 < minus['value']['events']['0']['max_gap_s'] < 1.3
+    no_pine = rows[c.run_id[rows] != 2]
+    e5 = ev.e5_out_of_view(ev.baseline_b0(s, no_pine, ev.Side.RIGHT), s, events, th, fold='F12')
+    pine = next(r for r in e5 if r['env'] == 'Pine Valley')
+    assert pine['value']['n'] == 0 and [u['event_id'] for u in pine['value']['uncovered']] == [1]
+
+
+def test_geometry_metrics_skip_unreliable_rows(scene):
+    s, events = scene
+    th = _thresholds()
+    rows = s.rows()
+    grid = np.full((len(rows), 18, 32), 10.0, np.float32)
+    pred = ev.PredictionSet('F12-g', 'model', True, rows, fold='F12', sha256='g', arrays=dict(grid_q50=grid))
+    assert any(x['event_id'] == 0 for x in ev.e1_samples(pred, s, events, th))
+    from haltere.obstacles.store import Flag, Grade
+    run0 = s.index['run_id'] == 0
+    s.index['grade'][run0] = Grade.UNRELIABLE
+    s._eval_cache = None
+    assert not any(x['event_id'] == 0 for x in ev.e1_samples(pred, s, events, th))
+    s.index['grade'][run0] = Grade.GOOD
+    s.index['flags'][run0] = int(Flag.POST_EVENT)
+    s._eval_cache = None
+    assert not any(x['event_id'] == 0 for x in ev.e1_samples(pred, s, events, th))
+    # decision replays still use those rows
+    s.index['flags'][run0] = 0
+    s.index['grade'][run0] = Grade.UNRELIABLE
+    s._eval_cache = None
+    res = ev.e4_event_results(ev.baseline_b0(s, rows, ev.Side.RIGHT), s, events, th)
+    assert len(res) == 1 and res[0]['success']
 
 
 def test_offline_evaluation_modules_stay_out_of_runtime_imports():
@@ -688,10 +804,33 @@ def test_cli_scores_a_prediction_set_once_on_a_frame_store(tmp_path, monkeypatch
     assert e1['thresholds_sha256'] == ev.load_thresholds(th)[1] and e1['store_index_sha256'] == man['index_sha256']
     assert e1['labels_manifest_sha256'] is not None
     assert any(r['metric'] == 'E6' and r['env'] == 'Straw Bale' and r['seen_environment'] for r in recs)
+    reports = sorted((tmp_path / 'out').glob('*.json'))
+    before = [p.read_bytes() for p in reports]
     with pytest.raises(RuntimeError):
         ev.main(args)                                   # --once: the same frozen version is scored once
+    no_once = [a for a in args if a != '--once']
+    with pytest.raises(RuntimeError):
+        ev.main(no_once)                                # ... and that is the default policy
+    # refused before scoring: no report was rewritten, no ledger entry added
+    assert [p.read_bytes() for p in sorted((tmp_path / 'out').glob('*.json'))] == before
+    assert len(ev.Ledger(tmp_path / 'ledger.jsonl').entries()) == 1
+    with pytest.raises(SystemExit):
+        ev.main(args + ['--allow-rescore'])             # contradictory flags
+    ev.main(no_once + ['--allow-rescore'])              # explicit re-score: recorded as such, new report file
+    entries = ev.Ledger(tmp_path / 'ledger.jsonl').entries()
+    assert len(entries) == 2 and entries[1]['rescore'] is True and 're-score' in entries[1]['note']
+    assert len(list((tmp_path / 'out').glob('*_rescore_*.json'))) == 1
     with pytest.raises(SystemExit):
         ev.main([a for a in args if a not in ('--flight-lock', str(tmp_path / 'FLIGHT_LOCK'))])
+    # baselines: B0 right/left are scored once; a second request skips them before running
+    base = ['baselines', '--set', 'B0'] + args[2:]
+    ev.main(base)
+    entries = ev.Ledger(tmp_path / 'ledger.jsonl').entries()
+    assert [e['note'] for e in entries[2:]] == ['baseline B0-right', 'baseline B0-left']
+    b0 = next(r for r in entries[2]['records'] if r['metric'] == 'E4' and r['env'] == 'Minus Two')
+    assert b0['value']['correct'] == 1 and b0['predictor']['sha256'] == ev.b0_sha256(ev.Side.RIGHT)
+    ev.main(base)
+    assert len(ev.Ledger(tmp_path / 'ledger.jsonl').entries()) == 4
 
 
 # ----------------------------------------------------------------------------- reproduction (session data)

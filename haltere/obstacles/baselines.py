@@ -2,8 +2,11 @@
 
 B2  Depth-Anything-V2 Metric-Indoor-Small (runs/dense-depth-probe-20260923/metric-indoor, revision
     8078d68a, the weights behind metric-indoor-336.ts) run at the store's native 252 x 448 (18 x 32
-    patches), fp16, unmasked frames. Output = optical z-depth (m); range = depth x |ray| / z for the
-    store camera; grid value = minimum range over each 14 x 14 cell, clipped to [0.3, 60] m.
+    patches), fp16. Output = optical z-depth (m); range = depth x |ray| / z for the store camera; grid
+    value = minimum range over each 14 x 14 cell, clipped to [0.3, 60] m. The ``baselines`` CLI masks
+    overlays (HUD, ring stroke, ghost trails) exactly as the model input does once overlays.overlay_masks
+    is delivered, and excludes masked pixels from the cell minimum; without it (and in the lateral-cache
+    reproduction) raw frames are used. The PredictionSet sha256 records which (``overlay_masked``).
     (The fixed-shape TorchScript export only accepts 336 x 602, so the HF weights are used directly.)
 B3  Relative DA-V2-Small disparity per grid cell (maximum over the cell = its nearest surface) from the
     labels teacher cache (36 x 64 -> 2 x 2 max -> 18 x 32; the teacher is the same pretrained model and
@@ -104,8 +107,8 @@ class PretrainedDepth:
     def config(self) -> dict:
         return dict(kind=self.kind, model=MODEL_IDS[self.kind], weights_sha256=self.weights_sha256,
                     input=[IMAGE_H, IMAGE_W], precision='fp16' if self.fp16 else 'fp32',
-                    preprocessing='store frame uint8 RGB (INTER_AREA 448x252), ImageNet mean/std, no resize, '
-                                  'no overlay masking',
+                    preprocessing='store frame uint8 RGB (INTER_AREA 448x252), ImageNet mean/std, no resize '
+                                  '(overlay masking, when used, is applied by run_grid and recorded there)',
                     output='metric optical z-depth (m)' if self.kind == 'metric' else 'relative disparity')
 
     def predict(self, frames) -> np.ndarray:

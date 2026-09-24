@@ -5,14 +5,24 @@ probabilities 0..1, float32. A frame's output becomes usable at ``t_wall + laten
 at ~16 Hz; stress 100 and 150 ms). Decisions at time t use the latest prediction with
 t_available <= t (``latest_available``); nothing may use a frame captured after t. Frames denser than
 the deployed rate are thinned with ``deployed_schedule`` (a skipped frame produces no new output, so the
-previous decision stays in force).
+previous decision stays in force). The frozen side rule is configured for the deployed latency
+(``rule_latency``); the stress latencies delay when the same decisions become usable, they do not retune
+the rule.
+
+Rows: geometry metrics (E1-E3) use the store's default row filter (grades exact..fair; no post-event or
+secondary-source rows; the timing pose gate regrades mis-timed runs UNRELIABLE). Decision replays (E4-E6)
+use every row the predictor ran on. Events the harness cannot replay (run missing from the store, or no
+usable prediction in the window) are listed as ``uncovered`` and are not counted as failures; windows
+with a stretch > 0.4 s without a new decision (e.g. frames the store dropped after a contact) are listed
+in ``events_with_gap``.
 
 Records: every metric value is one JSON record (``make_record``) carrying the metric, fold,
 environment, held_out / seen_environment / sealed flags, predictor name/kind/causal/sha256,
 thresholds sha256, store index sha256, labels manifest sha256, latency and counts. Records of a held-out
-score are appended to ``runs/obstacle-train/eval_ledger.jsonl``; ``--once`` refuses a second held-out
-score for the same (predictor sha256, fold, thresholds sha256). Every version is reported; no silent
-best-of.
+score are appended to ``runs/obstacle-train/eval_ledger.jsonl``. The CLI checks the ledger BEFORE
+computing any held-out metric and refuses a second score of the same (predictor sha256, fold,
+thresholds sha256) unless ``--allow-rescore`` is given, which is recorded as a re-score. Every version
+is reported; no silent best-of.
 
 Thresholds: ``configs/obstacles/thresholds.json`` is frozen (``freeze``) before any held-out score.
 The hash covers everything except the meta keys (frozen, frozen_at, sha256). Decision parameters are
@@ -89,6 +99,7 @@ import numpy as np
 from . import contract
 from .contract import FAN_ELEV_DEG, FAN_MAX_M, FAN_SHAPE, FAN_YAW_DEG, GRID_H, GRID_SHAPE, GRID_W, PATCH_PX
 from .splits import ENV_BY_CODE, FOLDS, SEALED_ENVS, env_side
+from .store import DEFAULT_EXCLUDE, DEFAULT_GRADES
 
 EVAL_SCHEMA = 'haltere.obstacles.eval.v1'
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -477,6 +488,14 @@ class _StoreCache:
         self.vel = np.asarray(ix['vel'], np.float64)
         self.cue_uv = np.asarray(ix['cue_uv'], np.float64)
         self.cue_src = np.asarray(ix['cue_src'], np.int64)
+        # geometry metrics (E1-E3) use the store's default row filter: grades exact..fair (the timing pose gate
+        # regrades mis-timed runs UNRELIABLE), no post-event or secondary-source rows
+        names = ix.dtype.names or ()
+        self.reliable = np.ones(self.n, bool)
+        if 'grade' in names:
+            self.reliable &= np.isin(np.asarray(ix['grade']), [int(g) for g in DEFAULT_GRADES])
+        if 'flags' in names:
+            self.reliable &= (np.asarray(ix['flags']).astype(np.int64) & int(DEFAULT_EXCLUDE)) == 0
         self.rows_by_run: dict[int, np.ndarray] = {}
         self.axis_by_run: dict[int, str] = {}
         order = np.lexsort((np.nan_to_num(self.t_wall, nan=np.inf), self.run_id))
@@ -693,6 +712,7 @@ class DecisionParams:
     min_speed_mps: float = 1.0
     in_view_margin_px: float = 0.0
     max_gap_s: float = 0.4
+    unseen: str = 'blocked'          # v1: out-of-view / NaN fan cells are blocked; v2 'unknown': no evidence
 
     @classmethod
     def from_thresholds(cls, thresholds: dict) -> 'DecisionParams':
@@ -701,13 +721,16 @@ class DecisionParams:
         if missing:
             raise ValueError(f'decision parameters not set: {missing}')
         rd, hy = d['required_distance'], d['hysteresis']
+        unseen = d.get('unseen', 'blocked')
+        if unseen not in ('blocked', 'unknown'):
+            raise ValueError(f"decision.unseen must be 'blocked' or 'unknown', not {unseen!r}")
         return cls(quantile=d['quantile'], reaction_s=float(rd['reaction_s']), margin_m=float(rd['margin_m']),
                    brake_mps2=float(rd['brake_mps2']), hold_s=float(hy['hold_s']), release_s=float(hy['release_s']),
                    switch_margin_deg=float(hy['switch_margin_deg']), on_frames=int(d['on_frames']),
                    off_frames=int(d['off_frames']), elev_window_deg=float(d.get('elev_window_deg', 5.0)),
                    min_speed_mps=float(d.get('min_speed_mps', 1.0)),
                    in_view_margin_px=float(d.get('in_view_margin_px', 0.0)),
-                   max_gap_s=float(d.get('max_gap_s', 0.4)))
+                   max_gap_s=float(d.get('max_gap_s', 0.4)), unseen=unseen)
 
     def required_distance(self, speed, latency_s: float) -> np.ndarray:
         v = np.asarray(speed, np.float64)
@@ -719,9 +742,13 @@ def raw_side_decisions(fan, in_view, speed, ref_yaw, travel_elev, params: Decisi
     """Per-frame raw decisions before hysteresis.
 
     Per yaw column the free distance is the minimum fan value over the elevation rows within
-    ``elev_window_deg`` of the travel elevation (at least the nearest row); a row out of view or a NaN
-    value counts as blocked (no evidence is not free space). Column clear = free distance >= D(v).
-    Reference column clear -> NONE; else the nearest clear column left (positive yaw) or right of the
+    ``elev_window_deg`` of the travel elevation (at least the nearest row). Column clear = free distance
+    >= D(v). Unseen cells (out of view, or NaN) depend on ``params.unseen``:
+    'blocked' (thresholds v1): an unseen row makes its column blocked, so the field of view alone can
+    trigger decisions (e.g. descending with the nose up puts the travel row below the image);
+    'unknown' (v2): unseen rows are ignored; a column with no seen row is unknown -- never a candidate
+    side, and an unknown reference column gives NONE (no evidence, no action). Reference column clear (or
+    unknown under 'unknown') -> NONE; else the nearest clear column left (positive yaw) or right of the
     reference -> LEFT / RIGHT (ties: larger free distance, then the travel side, then RIGHT); nothing
     clear -> CENTRE. Below ``min_speed_mps`` -> NONE. Returns (codes int8, dist_left, dist_right).
     """
@@ -733,10 +760,16 @@ def raw_side_decisions(fan, in_view, speed, ref_yaw, travel_elev, params: Decisi
     rows = np.abs(FAN_ELEV_DEG[None, :] - te[:, None]) <= params.elev_window_deg + 1e-9
     nearest = np.argmin(np.abs(FAN_ELEV_DEG[None, :] - te[:, None]), axis=1)
     rows[np.arange(n), nearest] = True
-    val = np.where(np.isfinite(fan) & np.asarray(in_view, bool), fan, -np.inf)
-    val = np.where(rows[:, :, None], val, np.inf)
-    free = val.min(axis=1)                                       # (n, 9)
-    clear = free >= D[:, None]
+    seen = np.isfinite(fan) & np.asarray(in_view, bool)
+    if params.unseen == 'unknown':
+        use = rows[:, :, None] & seen
+        free = np.where(use, fan, np.inf).min(axis=1)            # (n, 9)
+        known = use.any(axis=1)
+    else:
+        val = np.where(seen, fan, -np.inf)
+        free = np.where(rows[:, :, None], val, np.inf).min(axis=1)
+        known = np.ones(free.shape, bool)
+    clear = known & (free >= D[:, None])
     ry = np.clip(np.asarray(ref_yaw, np.float64), FAN_YAW_DEG[0], FAN_YAW_DEG[-1])
     j_ref = np.argmin(np.abs(FAN_YAW_DEG[None, :] - ry[:, None]), axis=1)
     ang = FAN_YAW_DEG[None, :] - ry[:, None]                     # positive = left of the reference
@@ -758,7 +791,8 @@ def raw_side_decisions(fan, in_view, speed, ref_yaw, travel_elev, params: Decisi
     codes[even] = np.where(ty[even] > ry[even], int(Side.LEFT), int(Side.RIGHT))
     codes[tie & (fl > fr)] = Side.LEFT
     codes[tie & (fr > fl)] = Side.RIGHT
-    codes[clear[np.arange(n), j_ref]] = Side.NONE
+    ref_blocked = known[np.arange(n), j_ref] & ~clear[np.arange(n), j_ref]
+    codes[~ref_blocked] = Side.NONE
     codes[speed < params.min_speed_mps] = Side.NONE
     return codes, dl, dr
 
@@ -833,6 +867,11 @@ def segments(t, max_gap_s: float) -> list[tuple[int, int]]:
     return list(zip(starts.tolist(), ends.tolist()))
 
 
+def rule_latency(thresholds) -> float:
+    """The latency the frozen decision rule is configured for (thresholds timing.latency_s, deployed 65 ms)."""
+    return float(thresholds.get('timing', {}).get('latency_s', DEPLOYED_LATENCY_S))
+
+
 def decide_side(pred: PredictionSet, store, thresholds, *, latency_s: float | None = None,
                 rate_hz: float | None = DEPLOYED_RATE_HZ, return_raw: bool = False):
     """Frozen decision rule (thresholds.json 'decision') mapping fan/grid outputs to Side codes per row.
@@ -841,9 +880,14 @@ def decide_side(pred: PredictionSet, store, thresholds, *, latency_s: float | No
     rate: frames the rate schedule skips carry the previous decision (no new output). A predictor with
     its own ``side`` output (B0, B1) is only rate-scheduled. Returns int8 codes aligned with
     ``pred.rows`` (and the raw per-frame codes with ``return_raw``).
+
+    ``latency_s`` is the latency the RULE assumes in its required distance D(v); default = the frozen
+    thresholds' deployed latency (``rule_latency``). Latency stress tests keep this rule and only delay
+    when its outputs become usable (``_timeline``): a runtime that is slower than planned does not know it.
+    Pass ``latency_s`` only to study a rule retuned for another latency.
     """
     params = DecisionParams.from_thresholds(thresholds) if 'side' not in pred.arrays else None
-    latency = pred.latency_s if latency_s is None else float(latency_s)
+    latency = rule_latency(thresholds) if latency_s is None else float(latency_s)
     c = store_cache(store)
     rows = np.asarray(pred.rows, np.int64)
     out = np.zeros(len(rows), np.int8)
@@ -940,7 +984,13 @@ def lateral_event_metrics(t_usable, codes, T: float, *, strict, permissive, wind
                 cur = 0.0
         return float(best)
 
-    out = dict(frac_last3=frac, frac_last1=frac1, n_decisions=int(m.sum()))
+    # coverage diagnostics: the largest stretch of the scored window [T - window_s, T - end_grace_s] without a
+    # new usable decision (a store gap, e.g. frames dropped after a contact, makes the last decision persist)
+    tg = t[t >= end_grace_s]
+    pts = np.r_[window_s, tg, end_grace_s]
+    out = dict(frac_last3=frac, frac_last1=frac1, n_decisions=int(m.sum()),
+               max_gap_s=float(np.max(pts[:-1] - pts[1:])) if len(pts) > 1 else float(window_s - end_grace_s),
+               last_decision_tti_s=float(t.min()) if len(t) else None)
     for nm, code in (('left', Side.LEFT), ('right', Side.RIGHT)):
         out[f'sustained_{nm}'] = sustained(int(code), end_grace_s)
         out[f'sustained_{nm}_nograce'] = sustained(int(code), 0.0)
@@ -981,7 +1031,9 @@ def warning_lead(t_usable, codes, T: float, *, window_s: float = 3.0, end_grace_
             j -= 1
         lead = float(tt[j])
     first = float(t[a].max()) if a.any() else 0.0
-    return dict(warning_lead=lead, first_warning_lead=first, n_decisions=int(m.sum()))
+    pts = np.r_[window_s, tt, end_grace_s]
+    return dict(warning_lead=lead, first_warning_lead=first, n_decisions=int(m.sum()),
+                max_gap_s=float(np.max(pts[:-1] - pts[1:])))
 
 
 def clean_window_metrics(t_usable, codes, start: float, end: float, *, min_episode_s: float = 0.2,
@@ -1044,7 +1096,7 @@ def _ctx(pred, store, labels, thresholds, fold) -> _Ctx:
 
 def _scopes(fold: str, envs) -> list[tuple[str, list[str], str]]:
     """(env or 'pooled', pooled envs, variant) scopes: every environment, pooled test envs, pooled all."""
-    envs = sorted(set(envs))
+    envs = sorted({e for e in envs if e})
     test = [e for e in envs if e in FOLDS[fold].test]
     out = [(e, [e], f'env {e}') for e in envs]
     if test:
@@ -1101,6 +1153,7 @@ def e1_samples(pred, store, events, thresholds, *, point: str = 'point_w', kinds
             continue
         tti = T - c.times(rows, axis)
         rows = rows[(tti >= lo) & (tti <= hi)]
+        rows = rows[c.reliable[rows]]
         pos = pred.positions(rows)
         rows, pos = rows[pos >= 0], pos[pos >= 0]
         if not len(rows):
@@ -1203,7 +1256,8 @@ def e1_range_at_impacts(pred, store, labels, events, thresholds, *, fold: str | 
     samples = e1_samples(pred, store, events, thresholds, point=point, kinds=kinds, prior_filter=prior_filter)
     opts = dict(point=point, kinds=list(kinds), prior_filter=prior_filter,
                 prediction=thresholds['E1'].get('prediction', 'grid_q50'),
-                neighbourhood_cells=thresholds['E1'].get('neighbourhood_cells', 1))
+                neighbourhood_cells=thresholds['E1'].get('neighbourhood_cells', 1),
+                rows='store default filter: grades exact..fair, no post-event / secondary-source rows')
     recs = []
     per_env = {}
     for env, envs, variant in _scopes(ctx.fold, {s['env'] for s in samples}):
@@ -1238,6 +1292,7 @@ def e2_collider_cells(pred, store, labels, thresholds, *, fold: str | None = Non
     field = th.get('prediction', 'grid_q50')
     acc: dict[str, dict] = {}
     for part in _iter_chunks(rows, chunk):
+        part = part[c.reliable[part]]
         pos = pred.positions(part)
         part, pos = part[pos >= 0], pos[pos >= 0]
         if not len(part):
@@ -1344,6 +1399,7 @@ def e3_fan_quality(pred, store, labels, thresholds, *, fold: str | None = None, 
     tol = float(th.get('tube_tolerance', 0.1))
     acc: dict[str, dict] = {}
     for part in _iter_chunks(rows, chunk):
+        part = part[c.reliable[part]]
         pos = pred.positions(part)
         part, pos = part[pos >= 0], pos[pos >= 0]
         if not len(part):
@@ -1445,7 +1501,7 @@ def _gate_opening(pred, store, th, gate_passes, rows) -> dict:
                 continue
             w = (tp - t[j - 1]) / max(t[j] - t[j - 1], 1e-9)
             P = (1 - w) * c.pos[rr[j - 1]] + w * c.pos[rr[j]]
-            sel = np.flatnonzero((tp - t >= before[0]) & (tp - t <= before[1]) & (pos_all >= 0))
+            sel = np.flatnonzero((tp - t >= before[0]) & (tp - t <= before[1]) & (pos_all >= 0) & c.reliable[rr])
             if not len(sel):
                 continue
             r = rr[sel]
@@ -1470,37 +1526,57 @@ def _side_codes(pred, store, thresholds, latency_s, rate_hz):
     return decide_side(pred, store, thresholds, latency_s=latency_s, rate_hz=rate_hz)
 
 
+def _uncovered(ev: dict, reason: str) -> dict:
+    return dict(event_id=ev['event_id'], run=ev.get('run'), env=ev.get('env'), kind=ev.get('kind'),
+                obstacle=ev.get('obstacle'), reason=reason)
+
+
 def e4_event_results(pred, store, events, thresholds, *, latency_s: float = DEPLOYED_LATENCY_S,
-                     rate_hz: float | None = DEPLOYED_RATE_HZ, codes=None, kinds=None) -> list[dict]:
-    """Per-event lateral results (dicts with event metadata and lateral_event_metrics)."""
+                     rate_hz: float | None = DEPLOYED_RATE_HZ, codes=None, kinds=None,
+                     uncovered: list | None = None) -> list[dict]:
+    """Per-event lateral results (dicts with event metadata and lateral_event_metrics).
+
+    Scored events the harness cannot replay (run not in the store, no event time on the run's clock, or no
+    decision of this predictor usable inside the window) are not scored as failures: they are appended to
+    ``uncovered`` (when given) with the reason, and E4 records list them.
+    """
     th = thresholds['E4']
     kinds = tuple(th.get('event_kinds', ['terminal_impact'])) if kinds is None else tuple(kinds)
-    codes = _side_codes(pred, store, thresholds, latency_s, rate_hz) if codes is None else codes
+    codes = _side_codes(pred, store, thresholds, None, rate_hz) if codes is None else codes
+    unc = uncovered if uncovered is not None else []
     out = []
     for ev in events:
         if not ev.get('lateral') or ev.get('kind') not in kinds or not _is_scored_event(ev):
             continue
         sides = _free_sides(ev)
-        rid = resolve_event_run(store, ev)
-        if sides is None or rid is None:
+        if sides is None:
             continue
-        tl = _timeline(pred, store, codes, rid, latency_s)
+        rid = resolve_event_run(store, ev)
+        tl = None if rid is None else _timeline(pred, store, codes, rid, latency_s)
         if tl is None:
+            unc.append(_uncovered(ev, 'run not in the store'))
             continue
         t_u, cd, axis = tl
         T = _event_time(ev, axis)
         if T is None:
+            unc.append(_uncovered(ev, f'no event time on the run clock ({axis})'))
             continue
         m = lateral_event_metrics(t_u, cd, T, strict=sides[0], permissive=sides[1], window_s=th['window_s'],
                                   end_grace_s=th['end_grace_s'], correct_hold_s=th['correct_hold_s'],
                                   wrong_hold_s=th['wrong_hold_s'])
+        if m['n_decisions'] == 0:
+            unc.append(_uncovered(ev, 'no prediction usable inside the window'))
+            continue
         out.append(dict(event_id=ev['event_id'], run=ev.get('run'), env=ev.get('env'), obstacle=ev.get('obstacle'),
                         unique_obstacle=ev.get('unique_obstacle'), primary_free_side=ev.get('primary_free_side'),
                         blind=ev.get('blind'), **m))
     return out
 
 
-def _e4_summary(res: list[dict]) -> dict:
+GAP_FLAG_S = 0.4      # E4/E5 events whose scored window has a longer stretch without a new decision are flagged
+
+
+def _e4_summary(res: list[dict], uncovered=()) -> dict:
     n = len(res)
     k = sum(r['success'] for r in res)
     kp = sum(r['success_permissive'] for r in res)
@@ -1510,28 +1586,37 @@ def _e4_summary(res: list[dict]) -> dict:
                 wrong_held=sum(r['wrong'] for r in res), wrong_any=sum(r['wrong_any'] for r in res),
                 pillars=dict(n=len(pill), correct=sum(r['success'] for r in pill),
                              wrong_held=sum(r['wrong'] for r in pill)),
+                events_with_gap=sorted(str(r['event_id']) for r in res if r['max_gap_s'] > GAP_FLAG_S),
+                uncovered=list(uncovered),
                 events={str(r['event_id']): dict(run=r['run'], lead=round(r['correct_lead'], 3),
                                                  lead_permissive=round(r['correct_lead_permissive'], 3),
                                                  first_wrong=round(r['first_wrong_lead'], 3),
                                                  wrong_hold=round(r['wrong_hold_max_s'], 3),
-                                                 success=r['success'], frac_last3=r['frac_last3'])
+                                                 success=r['success'], frac_last3=r['frac_last3'],
+                                                 max_gap_s=round(r['max_gap_s'], 3))
                         for r in res})
 
 
 def e4_lateral_replay(pred, store, events, thresholds, *, latency_s: float = DEPLOYED_LATENCY_S,
                       fold: str | None = None, rate_hz: float | None = DEPLOYED_RATE_HZ, labels=None,
                       codes=None) -> list[dict]:
-    """E4 records: per environment and pooled (counts, Wilson CI, pillars, per-event leads)."""
+    """E4 records: per environment and pooled (counts, Wilson CI, pillars, per-event leads, uncovered events).
+
+    ``latency_s`` = when outputs become usable (capture + latency); the rule itself keeps its frozen
+    configuration (``rule_latency``), so the stress latencies test late outputs, not a retuned rule.
+    """
     ctx = _ctx(pred, store, labels, thresholds, fold)
-    res = e4_event_results(pred, store, events, thresholds, latency_s=latency_s, rate_hz=rate_hz, codes=codes)
+    unc: list[dict] = []
+    res = e4_event_results(pred, store, events, thresholds, latency_s=latency_s, rate_hz=rate_hz, codes=codes,
+                           uncovered=unc)
     recs = []
-    for env, envs, variant in _scopes(ctx.fold, {r['env'] for r in res}):
+    for env, envs, variant in _scopes(ctx.fold, {r['env'] for r in res} | {u['env'] for u in unc}):
         sub = [r for r in res if r['env'] in envs]
-        v = _e4_summary(sub)
+        v = _e4_summary(sub, [u for u in unc if u['env'] in envs])
         recs.append(ctx.record('E4', env, v, v['n'], variant=f'{variant} @ {latency_s * 1e3:.0f} ms',
                                n_events=v['n'], latency_s=latency_s, ci95=v['correct_ci95'],
                                envs=envs if env == 'pooled' else None,
-                               extra=dict(per_event=[dict(r) for r in sub])))
+                               extra=dict(per_event=[dict(r) for r in sub], rule_latency_s=rule_latency(thresholds))))
     return recs
 
 
@@ -1542,20 +1627,22 @@ def e5_out_of_view(pred, store, events, thresholds, *, latency_s: float = DEPLOY
     th = thresholds['E5']
     ctx = _ctx(pred, store, labels, thresholds, fold)
     c = store_cache(store)
-    codes = _side_codes(pred, store, thresholds, latency_s, rate_hz) if codes is None else codes
+    codes = _side_codes(pred, store, thresholds, None, rate_hz) if codes is None else codes
     w0, w1 = th['window_s_before_event']
     lead_need = thresholds['E4']['correct_hold_s']
-    res = []
+    res, unc = [], []
     for ev in events:
         if ev.get('kind') not in ('terminal_impact', 'contact') or not _is_scored_event(ev):
             continue
         rid = resolve_event_run(store, ev)
         if rid is None or rid not in c.rows_by_run:
+            unc.append(_uncovered(ev, 'run not in the store'))
             continue
         rows = c.rows_by_run[rid]
         axis = c.axis_by_run[rid]
         T = _event_time(ev, axis)
         if T is None:
+            unc.append(_uncovered(ev, f'no event time on the run clock ({axis})'))
             continue
         tti = T - c.times(rows, axis)
         P = _event_point(ev, point)
@@ -1572,20 +1659,27 @@ def e5_out_of_view(pred, store, events, thresholds, *, latency_s: float = DEPLOY
         tl = _timeline(pred, store, codes, rid, latency_s)
         wl = warning_lead(tl[0], tl[1], T, window_s=thresholds['E4']['window_s'],
                           end_grace_s=thresholds['E4']['end_grace_s']) if tl is not None else {}
+        if not wl.get('n_decisions'):
+            unc.append(_uncovered(ev, 'no prediction usable inside the window'))
+            continue
         res.append(dict(event_id=ev['event_id'], run=ev.get('run'), env=ev.get('env'), kind=ev.get('kind'),
                         obstacle=ev.get('obstacle'), unique_obstacle=ev.get('unique_obstacle'),
                         primary_free_side=ev.get('primary_free_side'), in_view_frac_T2_T1=inview,
                         reason='out of view' if out_of_view else 'vertical/unknown side', **wl))
     recs = []
-    for env, envs, variant in _scopes(ctx.fold, {r['env'] for r in res}):
+    for env, envs, variant in _scopes(ctx.fold, {r['env'] for r in res} | {u['env'] for u in unc}):
         sub = [r for r in res if r['env'] in envs]
         v = dict(n=len(sub), warned_ge_lead=sum(r.get('warning_lead', 0) >= lead_need for r in sub),
                  lead_required_s=lead_need,
+                 events_with_gap=sorted(str(r['event_id']) for r in sub if r['max_gap_s'] > GAP_FLAG_S),
+                 uncovered=[u for u in unc if u['env'] in envs],
                  events={str(r['event_id']): {k: r[k] for k in ('run', 'kind', 'obstacle', 'primary_free_side',
                                                                 'in_view_frac_T2_T1', 'reason', 'warning_lead',
-                                                                'first_warning_lead') if k in r} for r in sub})
+                                                                'first_warning_lead', 'max_gap_s') if k in r}
+                         for r in sub})
         recs.append(ctx.record('E5', env, v, v['n'], variant=f'{variant} @ {latency_s * 1e3:.0f} ms',
-                               n_events=v['n'], latency_s=latency_s, envs=envs if env == 'pooled' else None))
+                               n_events=v['n'], latency_s=latency_s, envs=envs if env == 'pooled' else None,
+                               extra=dict(rule_latency_s=rule_latency(thresholds))))
     return recs
 
 
@@ -1597,7 +1691,7 @@ def e6_clean_windows(pred, store, thresholds, *, latency_s: float = DEPLOYED_LAT
     th = thresholds['E6']
     ctx = _ctx(pred, store, labels, thresholds, fold)
     c = store_cache(store)
-    codes = _side_codes(pred, store, thresholds, latency_s, rate_hz) if codes is None else codes
+    codes = _side_codes(pred, store, thresholds, None, rate_hz) if codes is None else codes
     windows = clean_windows(store) if windows is None else windows
     per = []
     for w in windows:
@@ -1639,35 +1733,39 @@ def e6_clean_windows(pred, store, thresholds, *, latency_s: float = DEPLOYED_LAT
                 'any episodes/min <= limit': bool(v['any_episodes_per_min'] <= lim) if lim is not None else None,
                 'any active fraction <= max': bool(v['any_active_fraction'] <= mp.get('max_active_fraction', 1.0))}
         recs.append(ctx.record('E6', env, v, len(sub), variant=f'{variant} @ {latency_s * 1e3:.0f} ms',
-                               latency_s=latency_s, envs=envs if env == 'pooled' else None))
+                               latency_s=latency_s, envs=envs if env == 'pooled' else None,
+                               extra=dict(rule_latency_s=rule_latency(thresholds))))
     recs += _near_passes(ctx, pred, store, thresholds, codes, latency_s, events or [])
     return recs
 
 
 def _near_passes(ctx, pred, store, thresholds, codes, latency_s, events) -> list[dict]:
     th = thresholds['E6']
+    c = store_cache(store)
     items = []
     for ev in events:
         if ev.get('kind') == 'near_pass' and _is_scored_event(ev):
             side = str(ev.get('obstacle_side') or '').lower()
             toward = 'right' if side.startswith('right') else 'left' if side.startswith('left') else None
             rid = resolve_event_run(store, ev)
-            if toward and rid is not None:
-                t0 = float(ev['t_phase'])
+            if toward and rid is not None and rid in c.rows_by_run:
+                t0 = _event_time(ev, c.axis_by_run[rid])
+                if t0 is None:
+                    continue
                 pre, post = th.get('near_pass_window_s', [1.4, 0.4])
                 items.append((f"event {ev['event_id']}", ev.get('env'), rid, toward, [t0 - pre, t0 + post]))
     pp = th.get('pd_pillar_near_pass')
     if pp:
         rid = resolve_event_run(store, dict(run=pp['run'], flight=pp.get('flight')))
-        if rid is not None:
+        if rid is not None and rid in c.rows_by_run and c.axis_by_run[rid] == 'phase':
             toward = 'right' if 'right' in pp.get('must_not', '') else 'left'
             a, b = pp['phase_s']
-            items.append((f"pd_pillar_near_pass {pp['run']}", store_cache(store).env_name(
-                store_cache(store).rows_by_run[rid][0]), rid, toward, [a - float(pp.get('pre_s', 1.0)), b]))
+            items.append((f"pd_pillar_near_pass {pp['run']}", c.env_name(c.rows_by_run[rid][0]), rid, toward,
+                          [a - float(pp.get('pre_s', 1.0)), b]))
     recs = []
     for name, env, rid, toward, (a, b) in items:
         tl = _timeline(pred, store, codes, rid, latency_s)
-        if tl is None:
+        if tl is None or not len(tl[0]):
             continue
         m = clean_window_metrics(tl[0], tl[1], a, b, min_episode_s=th['min_episode_s'])
         code = int(SIDE_OF_NAME[toward])
@@ -1790,11 +1888,13 @@ def score(pred: PredictionSet, store, labels, events, thresholds, *, fold: str |
     if 'E3' in metrics and has_grid and labels is not None:
         say('E3')
         recs += e3_fan_quality(pred, store, labels, thresholds, fold=fold, gate_passes=gate_passes)
+    codes = None
+    if any(m in metrics for m in ('E4', 'E5', 'E6')):
+        # one decision timeline per predictor: the frozen rule (configured for the deployed latency) at the
+        # deployed rate; each latency below only shifts when those decisions become usable
+        say(f'decisions (rule latency {rule_latency(thresholds) * 1e3:.0f} ms, {rate_hz} Hz)')
+        codes = decide_side(pred, store, thresholds, rate_hz=rate_hz)
     for lat in latencies:
-        codes = None
-        if any(m in metrics for m in ('E4', 'E5', 'E6')):
-            say(f'decisions @ {lat * 1e3:.0f} ms')
-            codes = decide_side(pred, store, thresholds, latency_s=lat, rate_hz=rate_hz)
         if 'E4' in metrics:
             e4 = e4_lateral_replay(pred, store, events, thresholds, latency_s=lat, fold=fold, rate_hz=rate_hz,
                                    labels=labels, codes=codes)
@@ -1822,13 +1922,42 @@ def baseline_sha256(baseline_id: str, config: dict, files=()) -> str:
     return hashlib.sha256(canonical_json(body)).hexdigest()
 
 
+# Identities of the baselines (the ledger key), computable before the baseline runs so the CLI can refuse a
+# second held-out score before spending GPU time.
+
+def b0_sha256(side) -> str:
+    return baseline_sha256('B0', dict(side=Side(side).name))
+
+
+def b1_sha256(config: dict | None = None) -> str:
+    from . import split_looming as S
+    cfg = dict(S.SELECTED_CONFIG if config is None else config)
+    return baseline_sha256('B1', cfg, [Path(S.__file__)])
+
+
+def b2_sha256(runner, masked: bool) -> str:
+    return baseline_sha256('B2', dict(runner.config(), overlay_masked=bool(masked)))
+
+
+def b3_sha256(calibration) -> str:
+    from . import baselines as BL
+    return baseline_sha256('B3', dict(calibration=calibration.sha256(), disparity=BL.DISPARITY_SOURCE))
+
+
+def b4_sha256(min_anchors: int, labels_sha: str | None) -> str:
+    """B4 is a function of the labels it is fitted to, so their manifest hash is part of its identity."""
+    from . import baselines as BL
+    return baseline_sha256('B4', dict(min_anchors=int(min_anchors), disparity=BL.DISPARITY_SOURCE,
+                                      labels_manifest_sha256=labels_sha))
+
+
 def baseline_b0(store, rows, side: Side) -> PredictionSet:
     side = Side(side)
     if side not in (Side.LEFT, Side.RIGHT):
         raise ValueError('B0 is constant LEFT or constant RIGHT')
     rows = np.asarray(rows, np.int64)
     return PredictionSet(f'B0-{side.name.lower()}', 'baseline', True, rows, baseline_id='B0',
-                         sha256=baseline_sha256('B0', dict(side=side.name)),
+                         sha256=b0_sha256(side),
                          arrays=dict(side=np.full(len(rows), int(side), np.int8))).validate()
 
 
@@ -1869,10 +1998,8 @@ def baseline_b1(store, rows, *, guard=None, config: dict | None = None, frame_so
                         side[j] = S.SIDE_CODE[o['side']]
         if log:
             log(f'B1 run {int(rid)}: {len(sel)} frames')
-    src = Path(S.__file__)
     return PredictionSet('B1-split-looming', 'baseline', True, rows, baseline_id='B1',
-                         sha256=baseline_sha256('B1', cfg, [src]), latency_s=latency_s,
-                         arrays=dict(side=side)).validate()
+                         sha256=b1_sha256(cfg), latency_s=latency_s, arrays=dict(side=side)).validate()
 
 
 def baseline_b2(store, rows, guard, *, runner=None, batch: int = 16, cache_dir=None, mask_fn=None,
@@ -1884,7 +2011,7 @@ def baseline_b2(store, rows, guard, *, runner=None, batch: int = 16, cache_dir=N
                        reduce='min_range')
     rows = np.unique(np.asarray(rows, np.int64))
     return PredictionSet('B2-dav2-metric-indoor-252x448', 'baseline', True, rows, baseline_id='B2',
-                         sha256=baseline_sha256('B2', dict(runner.config(), overlay_masked=mask_fn is not None)),
+                         sha256=b2_sha256(runner, mask_fn is not None),
                          arrays=dict(grid_q50=grid, grid_q20=grid.copy())).validate()
 
 
@@ -1902,8 +2029,7 @@ def baseline_b3(store, rows, fold: str, guard, *, labels, calibration=None, disp
                              cache_dir=cache_dir, log=log) if disparity is None else disparity
     grid = calibration(disp).astype(np.float32)
     return PredictionSet(f'B3-relative-monotone-{fold}', 'baseline', True, rows, fold=fold, baseline_id='B3',
-                         sha256=baseline_sha256('B3', dict(calibration=calibration.sha256(),
-                                                           disparity=BL.DISPARITY_SOURCE)),
+                         sha256=b3_sha256(calibration),
                          arrays=dict(grid_q50=grid, grid_q20=grid.copy())).validate()
 
 
@@ -1918,7 +2044,7 @@ def baseline_b4(store, rows, labels, guard, *, disparity=None, runner=None, batc
     gv, gk, _ = labels.grid(rows)
     grid = BL.per_frame_affine(disp, gv, gk, min_anchors=min_anchors).astype(np.float32)
     return PredictionSet('B4-per-frame-affine-ceiling', 'baseline', False, rows, baseline_id='B4',
-                         sha256=baseline_sha256('B4', dict(min_anchors=min_anchors, disparity=BL.DISPARITY_SOURCE)),
+                         sha256=b4_sha256(min_anchors, labels_manifest_sha(labels)),
                          arrays=dict(grid_q50=grid, grid_q20=grid.copy())).validate()
 
 
@@ -1942,11 +2068,18 @@ def _evaluation_rows(store, events, fold: str, *, windows=None, pre_s: float = 6
         tti = T - c.times(rr, axis)
         keep[rr[(tti >= -0.2) & (tti <= pre_s)]] = True
     for w in (clean_windows(store) if windows is None else windows):
-        rr = c.rows_by_run.get(int(w['run_id']))
+        rid = int(w['run_id'])
+        rr = c.rows_by_run.get(rid)
         if rr is None:
             continue
-        t = c.times(rr, 'phase')
-        keep[rr[(t >= float(w['start_phase_s']) - 1.5) & (t <= float(w['end_phase_s']))]] = True
+        if c.axis_by_run[rid] == 'phase':
+            a, b = float(w['start_phase_s']), float(w['end_phase_s'])
+        elif w.get('start_wall_s') is not None:
+            a, b = float(w['start_wall_s']), float(w['end_wall_s'])
+        else:
+            continue
+        t = c.times(rr, c.axis_by_run[rid])
+        keep[rr[(t >= a - 1.5) & (t <= b)]] = True
     if include_test and hasattr(store, 'rows'):
         keep[store.rows(fold=fold, side='test')] = True
     return np.flatnonzero(keep).astype(np.int64)
@@ -1978,14 +2111,30 @@ def _load_eval_inputs(args):
     return store, labels, events
 
 
-def _finish(args, pred, recs, thresholds_sha, out_dir: Path):
+def _check_not_scored(args, pred_sha256: str | None, thresholds_sha: str, what: str) -> bool:
+    """Score-once gate, checked BEFORE any held-out metric is computed. Returns True for an explicit re-score
+    (``--allow-rescore``, recorded as such in the ledger); raises when the version was scored already."""
+    if not pred_sha256:
+        raise SystemExit(f'{what}: a held-out score needs the predictor sha256')
+    if Ledger(args.ledger).scored(pred_sha256, args.fold, thresholds_sha):
+        if not args.allow_rescore:
+            raise RuntimeError(f'{what} ({pred_sha256[:12]}) was already scored on {args.fold} with thresholds '
+                               f'{thresholds_sha[:12]}: report the ledgered result (or pass --allow-rescore, '
+                               'which is recorded as a re-score)')
+        return True
+    return False
+
+
+def _finish(args, pred, recs, thresholds_sha, out_dir: Path, *, rescore: bool = False):
+    commit = _code_commit()
     for r in recs:
-        r['code_commit'] = r.get('code_commit') or _code_commit()
-    _write_report(out_dir / f'{pred.name}_{args.fold}_{thresholds_sha[:12]}.json', dict(records=recs))
+        r['code_commit'] = r.get('code_commit') or commit
     held = any_held_out(recs)
+    stamp = '_rescore_' + _dt.datetime.now().strftime('%Y%m%dT%H%M%S') if rescore else ''
+    _write_report(out_dir / f'{pred.name}_{args.fold}_{thresholds_sha[:12]}{stamp}.json', dict(records=recs))
     if held:
-        Ledger(args.ledger).append(pred.sha256, args.fold, thresholds_sha, recs, once=args.once,
-                                   note=f'{pred.kind} {pred.name}')
+        Ledger(args.ledger).append(pred.sha256, args.fold, thresholds_sha, recs, once=not args.allow_rescore,
+                                   note=f'{pred.kind} {pred.name}' + (' (explicit re-score)' if rescore else ''))
     print(f'{pred.name}: {len(recs)} records ({"held-out, ledgered" if held else "no held-out records"})')
 
 
@@ -2001,7 +2150,11 @@ def main(argv=None):
     common.add_argument('--ledger', type=Path, default=LEDGER_PATH)
     common.add_argument('--out', type=Path, default=REPO_ROOT / 'runs' / 'obstacle-train' / 'eval')
     common.add_argument('--fold', default='F12')
-    common.add_argument('--once', action='store_true', help='refuse a second held-out score (default policy)')
+    common.add_argument('--once', action='store_true',
+                        help='refuse a second held-out score (the default; kept for the plan commands)')
+    common.add_argument('--allow-rescore', action='store_true',
+                        help='explicitly re-score a (predictor, fold, thresholds) already in the ledger; the entry is '
+                             'marked as a re-score and both results must be reported')
     common.add_argument('--flight-lock', default=None)
     common.add_argument('--metrics', default='E1,E2,E3,E4,E5,E6,E7')
     common.add_argument('--leaks', type=int, default=0, help='E8 on this many held-out frames (model and B2)')
@@ -2042,10 +2195,13 @@ def main(argv=None):
     store, labels, events = _load_eval_inputs(args)
     metrics = tuple(x.strip() for x in args.metrics.split(',') if x.strip())
     out_dir = Path(args.out)
+    if args.once and args.allow_rescore:
+        raise SystemExit('--once and --allow-rescore contradict each other')
     if args.cmd == 'score':
         pred = PredictionSet.load(args.pred).validate(len(store))
+        rescore = _check_not_scored(args, pred.sha256, tsha, pred.name)
         recs = score(pred, store, labels, events, thresholds, fold=args.fold, metrics=metrics, log=print)
-        _finish(args, pred, recs, tsha, out_dir)
+        _finish(args, pred, recs, tsha, out_dir, rescore=rescore)
         return
     rows = _evaluation_rows(store, events, args.fold)
     from . import baselines as BL
@@ -2053,57 +2209,82 @@ def main(argv=None):
         cpu = thermal.ChunkGuard(lock)
         gpu = thermal.ChunkGuard(lock, gpu=True)
         dense = _evaluation_rows(store, events, args.fold, include_test=False)   # side-only baselines
+        rescored: dict[str, bool] = {}
+
+        def wanted(sha: str, name: str) -> bool:
+            """Score-once gate before the baseline runs: an already-scored baseline is skipped, not re-run."""
+            try:
+                rescored[sha] = _check_not_scored(args, sha, tsha, name)
+                return True
+            except RuntimeError as e:
+                print(f'skipped: {e}')
+                return False
+
         for bid in [x.strip() for x in args.set.split(',') if x.strip()]:
             leak_fn = None
             if bid == 'B0':
-                preds = [baseline_b0(store, dense, Side.RIGHT), baseline_b0(store, dense, Side.LEFT)]
+                preds = [baseline_b0(store, dense, sd) for sd in (Side.RIGHT, Side.LEFT)
+                         if wanted(b0_sha256(sd), f'B0-{sd.name.lower()}')]
             elif bid == 'B1':
-                preds = [baseline_b1(store, dense, guard=cpu, log=print)]
+                preds = [baseline_b1(store, dense, guard=cpu, log=print)] if wanted(b1_sha256(), 'B1') else []
             elif bid == 'B2':
                 gpu.before_chunk()
                 runner = BL.PretrainedDepth('metric')
                 masks = BL.overlay_mask_fn()          # ghost trails / HUD / ring stroke never reach the input
-                preds = [baseline_b2(store, rows, gpu, runner=runner, batch=args.gpu_batch, mask_fn=masks,
-                                     cache_dir=out_dir / 'cache' / 'B2', log=print)]
+                preds = []
+                if wanted(b2_sha256(runner, masks is not None), 'B2'):
+                    preds = [baseline_b2(store, rows, gpu, runner=runner, batch=args.gpu_batch, mask_fn=masks,
+                                         cache_dir=out_dir / 'cache' / 'B2', log=print)]
                 leak_fn = BL.depth_predict_fn(runner, masks)
             elif bid == 'B3':
+                # the calibration is fitted on the fold's TRAINING environments only (not a held-out score)
                 cal = BL.fit_b3_calibration(store, labels, args.fold, guard=gpu, log=print,
                                             cache_dir=out_dir / 'cache' / 'B3',
                                             out_path=out_dir / f'B3_calibration_{args.fold}.json')
-                preds = [baseline_b3(store, rows, args.fold, gpu, labels=labels, calibration=cal,
-                                     batch=args.gpu_batch, cache_dir=out_dir / 'cache' / 'B3', log=print)]
+                preds = []
+                if wanted(b3_sha256(cal), 'B3'):
+                    preds = [baseline_b3(store, rows, args.fold, gpu, labels=labels, calibration=cal,
+                                         batch=args.gpu_batch, cache_dir=out_dir / 'cache' / 'B3', log=print)]
             elif bid == 'B4':
-                preds = [baseline_b4(store, rows, labels, gpu, batch=args.gpu_batch,
-                                     cache_dir=out_dir / 'cache' / 'B3', log=print)]
+                preds = []
+                if wanted(b4_sha256(8, labels_manifest_sha(labels)), 'B4'):
+                    preds = [baseline_b4(store, rows, labels, gpu, batch=args.gpu_batch, min_anchors=8,
+                                         cache_dir=out_dir / 'cache' / 'B3', log=print)]
             else:
                 raise SystemExit(f'unknown baseline {bid}')
             for pred in preds:
                 pred.fold = pred.fold or args.fold
                 pred.save(out_dir / f'{pred.name}_{args.fold}.npz')
+                rescore = rescored.get(pred.sha256)
+                if rescore is None:                   # identity differs from the pre-check: check again
+                    rescore = _check_not_scored(args, pred.sha256, tsha, pred.name)
                 recs = score(pred, store, labels, events, thresholds, fold=args.fold, metrics=metrics, log=print)
                 if leak_fn is not None and args.leaks > 0:
                     recs += e8_leak_tests(leak_fn, store, _leak_rows(store, args.fold, args.leaks), thresholds,
                                           labels=labels, pred=pred, fold=args.fold, guard=gpu,
                                           ring_mask_fn=BL.ring_mask_fn())
-                _finish(args, pred, recs, tsha, out_dir)
+                _finish(args, pred, recs, tsha, out_dir, rescore=rescore)
         return
     if args.cmd == 'model':
         if args.sealed_final:
             raise SystemExit('--sealed-final scoring is M7 only: load the sealed store part explicitly there')
+        from .model import read_model_card
+        card = read_model_card(Path(args.model_dir) / 'model.pt')
+        if card['fold'] != args.fold:
+            raise SystemExit(f"model fold {card['fold']} != --fold {args.fold}")
+        rescore = _check_not_scored(args, card['model_sha256'], tsha, str(args.model_dir))
         gpu = thermal.ChunkGuard(lock, gpu=True)
         gpu.before_chunk()
         net, card = BL.load_model(args.model_dir)
         pred = BL.model_predictions(args.model_dir, store, rows, gpu, batch=args.gpu_batch, net=net, card=card,
                                     log=print)
-        if pred.fold != args.fold:
-            raise SystemExit(f'model fold {pred.fold} != --fold {args.fold}')
         pred.save(out_dir / f'{pred.name}_{args.fold}.npz')
         recs = score(pred, store, labels, events, thresholds, fold=args.fold, metrics=metrics, log=print)
         if args.leaks > 0:
             recs += e8_leak_tests(BL.model_predict_fn(net), store, _leak_rows(store, args.fold, args.leaks),
                                   thresholds, labels=labels, pred=pred, fold=args.fold, guard=gpu,
                                   ring_mask_fn=BL.ring_mask_fn())
-        _finish(args, pred, recs, tsha, out_dir)
+        _finish(args, pred, recs, tsha, out_dir, rescore=rescore)
         return
 
 
