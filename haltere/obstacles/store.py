@@ -37,7 +37,10 @@ pose_method         u1          PoseMethod (how pos/quat/vel were obtained at t_
 flags               <u2         Flag bits (see Flag)
 cue_src             u1          CueSource of cue_uv
 luma                u1          mean grey level 0-255 of the stored frame
-t_wall              <f8         image capture time, UNIX epoch seconds (time.time() domain)
+t_wall              <f8         image capture time, UNIX epoch seconds (time.time() domain; the
+                                per-source clock is defined in store_build: video = aligned CSV row
+                                clock, PNG/DatasetWriter capture = grab start, older recorder sets =
+                                the logged index wall_time)
 t_phase             <f8         run control clock: the CSV ``phase`` column at t_wall (fallback
                                 t_wall - csv.wall[0]); the manifests' impact_phase_s and clean
                                 windows use this clock. NaN without telemetry CSV
@@ -110,13 +113,15 @@ class Grade(IntEnum):
     CAPTURE = 1       # capture dataset
     GOOD = 2          # video alignment graded good
     FAIR = 3          # video alignment graded fair
-    UNRELIABLE = 4    # video alignment failed; not used for geometry labels
+    UNRELIABLE = 4    # video alignment failed, or the run failed the timing pose-consistency gate (store repose);
+                      # not used for geometry labels
 
 
 class PoseMethod(IntEnum):
     WORKER_INTERP = 0       # geometry worker pose at capture time
     TELEMETRY_INTERP = 1    # 100 Hz CSV interpolated at t_wall (quaternion slerp/nlerp)
-    SOURCE_COMPENSATED = 2  # latest-prior source pose, position advanced by vel * pose_lag_s
+    SOURCE_COMPENSATED = 2  # source pose corrected for its lag pose_lag_s (store repose: the logged pose series
+                            # of an older recorder capture set interpolated at t_wall + pose_lag_s)
     SOURCE_RAW = 3          # latest-prior source pose, uncompensated
 
 
@@ -530,6 +535,8 @@ def main(argv=None):
     r = sub.add_parser('repose', help='apply timing refinement to pose fields (implemented in store_build.py)')
     r.add_argument('--store', type=Path, default=DEFAULT_STORE)
     r.add_argument('--timing', type=Path, default=None)
+    r.add_argument('--pose-gate-px', type=float, default=2.0,
+                   help='regrade runs whose timing residual stays above this (px at 640) as UNRELIABLE')
     r.add_argument('--flight-lock', default=None)
     i = sub.add_parser('info', help='summarise a finished store')
     i.add_argument('--store', type=Path, default=DEFAULT_STORE)
