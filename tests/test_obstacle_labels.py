@@ -346,6 +346,22 @@ def test_epipolar_distance_static_and_moving_points():
     assert np.median(H.epipolar_distance(uv0[ok], moved[ok], p0, p1, R0, R1)) > 3.0
 
 
+def test_camera_fixed_tracks_are_detected():
+    """A feature that stays put in the image while the camera turns (HUD halo, lens flare) is camera-fixed; a world
+    point at infinity moves with the turn; without a turn nothing can be decided."""
+    q0, q1 = _quat_axis([0, 1, 0], 20.0), (np.array([np.cos(np.deg2rad(2.5)), 0, 0, np.sin(np.deg2rad(2.5))]))
+    R0 = contract.camera_to_world(q0)
+    R1 = contract.camera_to_world(np.r_[q1[0] * q0[0] - q1[3] * q0[3], q1[0] * q0[1] - q1[3] * q0[2],
+                                         q1[0] * q0[2] + q1[3] * q0[1], q1[0] * q0[3] + q1[3] * q0[0]])   # 5 deg yaw
+    uv0 = np.array([[100.0, 60.0], [300.0, 180.0]])
+    d_w = (H._unproject_c(uv0) @ R0.T)
+    moved, _ = contract.project_camera(d_w @ R1)
+    R0s = np.stack([R0, R0])
+    assert H.camera_fixed(uv0, R0s, uv0 + 0.3, R1).all()              # stayed put through a 5 deg turn
+    assert not H.camera_fixed(uv0, R0s, moved, R1).any()              # moved like the world
+    assert not H.camera_fixed(uv0, R0s, uv0, R0).any()                # no turn: undecided, kept
+
+
 def test_adjacent_pairs_triangulate_two_frame_tracks():
     """Tracks seen in two consecutive frames only (fast flight, low frame rate) still give estimates."""
     t = np.array([0.0, 0.16, 0.32, 0.48])

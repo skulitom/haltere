@@ -13,7 +13,9 @@ and at position jumps > MAX_JUMP_M, i.e. resets):
    5 px, block 5) so that dark or low-contrast regions also get features. Features are detected and
    kept only on scene pixels: ``feature_mask`` removes HUD glyphs, the checkpoint ring and cyan
    volumes, ghost trails (haltere.obstacles.overlays) and the propeller zone, dilated by
-   MASK_DILATE_PX; a point that lands on a masked pixel ends its track.
+   MASK_DILATE_PX; a point that lands on a masked pixel ends its track. Tracks that stay put in the image
+   while the camera turns (``camera_fixed``: HUD glyph halos the mask misses, lens flare, vignetting) are
+   dropped with all their observations.
 2. Multi-baseline triangulation, forward AND backward. For every observation of a track in
    frame a and every keyframe offset in KEYFRAME_OFFSETS_S (-2, -1, -0.5, +0.5, +1, +2 s),
    the track's observation in the frame b nearest t_a + offset is intersected with the one
@@ -93,6 +95,10 @@ FB_MAX_PX = 1.0
 SEED_DEPTHS_M = (np.inf,)     # LK seeds: static point at these depths (inf = rotation only); finite-depth seeds
                               # were tried (24, 10, 5, 2.5 m) and added no tracks at the store frame rate
 EPIPOLAR_PX = 6.0             # a tracked point must stay this close to its epipolar line (logged poses)
+CAM_FIXED_PX = 1.0            # a track that stays this close to its start ...
+CAM_FIXED_MIN_ROT_PX = 3.0    # ... while the camera turned enough to move a point at infinity this far is camera-fixed
+                              # (a static pixel under a 3 px / 1.2 deg turn triangulates to baseline / 0.021 m: 4 m
+                              # at the box course's 0.1-0.2 m frame baselines)
 THIRD_VIEW_PX = 2.0          # TemporalDepth's third-view limit (2 px); here at 448 px
 PIXEL_SIGMA = 1.0
 MIN_PARALLAX_DEG = 0.5
@@ -120,7 +126,8 @@ _KEY_OFF = 1 << 20
 
 RULES = dict(
     tracks=('chained pyramidal LK (TemporalDepth parameters), rotation-seeded, fwd-bwd < 1 px, '
-            f'epipolar distance <= {EPIPOLAR_PX} px (logged poses), overlay-masked'),
+            f'epipolar distance <= {EPIPOLAR_PX} px (logged poses), overlay-masked; camera-fixed tracks (within '
+            f'{CAM_FIXED_PX} px of their start after a turn that moves infinity by > {CAM_FIXED_MIN_ROT_PX} px) dropped'),
     triangulation=('triangulate_motion (unchanged) against partner frames at t +- 0.5/1/2 s and the neighbouring '
                    f'store frames, third-view reprojection <= {THIRD_VIEW_PX} px (adjacent pairs: when the track has a '
                    f'third view), lowest sigma per (track, frame), sigma < {MAX_SIGMA_FRACTION} r'),
@@ -132,7 +139,8 @@ RULES = dict(
           f'if >= {MIN_LOWER_M} m; cells = strict min over 3 x 3 sub-rays, a bracketed cell minimum keeps UPPER '
           f'hit when <= {WIDE_UPPER_MAX_M} m, else LOWER extent'),
     fan=(f'occupied points within {FAN_CORRIDOR_RADIUS_M} m of the axis = hit; observed free while the axis and '
-         f'>= {FAN_FREE_FRACTION:.0%} of 17 cross-section samples are carved free (approximation)'),
+         f'>= {FAN_FREE_FRACTION:.0%} of 17 cross-section samples are carved free (approximation); free extents '
+         f'< {MIN_LOWER_M} m dropped'),
 )
 
 
@@ -323,14 +331,31 @@ class Tracks:
         return order, starts
 
 
+def camera_fixed(uv0, R0, uv, R) -> np.ndarray:
+    """(n,) bool: tracks that stayed within CAM_FIXED_PX of where they started although the camera turned enough to
+    move a world point at infinity by more than CAM_FIXED_MIN_ROT_PX: features fixed to the camera (HUD glyph halos
+    the overlay mask misses, lens flare, vignetting), not to the world. Such tracks triangulate to spurious surfaces a
+    few metres from the camera (box course: collider-free sky cells at 3-5 m next to the HUD)."""
+    uv0 = np.asarray(uv0, np.float64)
+    if len(uv0) == 0:
+        return np.zeros(0, bool)
+    d_w = np.einsum('nij,nj->ni', R0, _unproject_c(uv0))        # camera -> world ray at the track's first frame
+    pred, ok = contract.project_camera(d_w @ R)                 # the same (infinitely far) ray seen now
+    turned = ~ok | (np.linalg.norm(pred - uv0, axis=1) > CAM_FIXED_MIN_ROT_PX)
+    return turned & (np.linalg.norm(np.asarray(uv, np.float64) - uv0, axis=1) < CAM_FIXED_PX)
+
+
 def track_run(frames, t, pos, quat, *, mask_fn=None, guard=None, log=None) -> Tracks:
-    """Chained LK tracks over a time-ordered frame sequence (n, 252, 448, 3) RGB with poses."""
+    """Chained LK tracks over a time-ordered frame sequence (n, 252, 448, 3) RGB with poses. Tracks found fixed to
+    the camera (``camera_fixed``) are dropped with all their observations."""
     import cv2
     n = len(frames)
     breaks = segment_breaks(t, pos)
     R_wc = contract.camera_to_world(np.asarray(quat, np.float64))
     tr_ids, tr_frames, tr_uv = [], [], []
     prev_grey, pts, ids = None, np.zeros((0, 2), np.float32), np.zeros(0, np.int64)
+    first_uv, first_k = np.zeros((0, 2), np.float32), np.zeros(0, np.int64)     # where/when each live track began
+    fixed_ids = []
     next_id = 0
     src = ''
     clahe = cv2.createCLAHE(clipLimit=CLAHE_CLIP, tileGridSize=(8, 8)) if CLAHE_CLIP else None
@@ -346,9 +371,16 @@ def track_run(frames, t, pos, quat, *, mask_fn=None, guard=None, log=None) -> Tr
             bad = cv2.dilate(bad.astype(np.uint8), np.ones((2 * MASK_DILATE_PX + 1,) * 2, np.uint8)) > 0
         if breaks[k] or prev_grey is None or len(pts) == 0:
             pts, ids = np.zeros((0, 2), np.float32), np.zeros(0, np.int64)
+            first_uv, first_k = np.zeros((0, 2), np.float32), np.zeros(0, np.int64)
         else:
             p1, good = _track_step(cv2, prev_grey, grey, pts, pos[k - 1], pos[k], R_wc[k - 1], R_wc[k], bad)
             pts, ids = p1[good].astype(np.float32), ids[good]
+            first_uv, first_k = first_uv[good], first_k[good]
+            fixed = camera_fixed(first_uv, R_wc[first_k], pts, R_wc[k])
+            if fixed.any():
+                fixed_ids.append(ids[fixed])
+                keep = ~fixed
+                pts, ids, first_uv, first_k = pts[keep], ids[keep], first_uv[keep], first_k[keep]
         # replenish features on scene pixels away from live tracks, tile by tile (uniform coverage)
         room = MAX_CORNERS - len(pts)
         if room > 20:
@@ -374,6 +406,8 @@ def track_run(frames, t, pos, quat, *, mask_fn=None, guard=None, log=None) -> Tr
                 new = np.concatenate(found).astype(np.float32)
                 pts = np.vstack([pts, new])
                 ids = np.r_[ids, np.arange(next_id, next_id + len(new))]
+                first_uv = np.vstack([first_uv, new])
+                first_k = np.r_[first_k, np.full(len(new), k, np.int64)]
                 next_id += len(new)
         tr_ids.append(ids.copy())
         tr_frames.append(np.full(len(ids), k, np.int32))
@@ -381,7 +415,11 @@ def track_run(frames, t, pos, quat, *, mask_fn=None, guard=None, log=None) -> Tr
         prev_grey = grey
     if not tr_ids:
         return Tracks(np.zeros(0, np.int64), np.zeros(0, np.int32), np.zeros((0, 2), np.float32), breaks, src)
-    return Tracks(np.concatenate(tr_ids), np.concatenate(tr_frames), np.concatenate(tr_uv), breaks, src)
+    ids, frames_, uv = np.concatenate(tr_ids), np.concatenate(tr_frames), np.concatenate(tr_uv)
+    if fixed_ids:
+        keep = ~np.isin(ids, np.concatenate(fixed_ids))
+        ids, frames_, uv = ids[keep], frames_[keep], uv[keep]
+    return Tracks(ids, frames_, uv, breaks, src)
 
 
 # ----------------------------------------------------------------------------- triangulation
@@ -511,10 +549,15 @@ class VoxelMap:
     _blocks: tuple | None = None
 
     def save(self, path) -> None:
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(path, occ_key=self.occ_key, occ_pos=self.occ_pos.astype(np.float32), occ_n=self.occ_n,
+        """Atomic write (a killed job never leaves a half-written map behind)."""
+        import os
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix('.tmp.npz')
+        np.savez_compressed(tmp, occ_key=self.occ_key, occ_pos=self.occ_pos.astype(np.float32), occ_n=self.occ_n,
                             occ_frames=self.occ_frames, occ_sigma=self.occ_sigma.astype(np.float32),
                             free_key=self.free_key, meta=np.array(repr(self.meta)))
+        os.replace(tmp, path)
 
     @staticmethod
     def load(path) -> 'VoxelMap':
@@ -784,6 +827,10 @@ def fan_labels(vmap: VoxelMap, pos, quat_wb, *, own_points=None):
     hit = corridor_hits(pts, origin, dirs, FAN_CORRIDOR_RADIUS_M, FAN_MAX_M)
     free = fan_free_extent(vmap, origin, dirs, FAN_MAX_M)
     v, k = fan_constraints(hit, free, s_max=FAN_MAX_M)
+    # free extents shorter than MIN_LOWER_M are the forced drone-own region of the march, not observations (and
+    # wrong when the drone flies within 0.5 m of the ground or a wall): dropped, as for the grid and the tube
+    short = (k == LabelKind.LOWER) & (v < MIN_LOWER_M)
+    v, k = np.where(short, np.nan, v), np.where(short, LabelKind.UNKNOWN, k).astype(np.uint8)
     return clip_fan(v.reshape(FAN_SHAPE), k.reshape(FAN_SHAPE))
 
 

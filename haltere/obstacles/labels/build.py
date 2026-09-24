@@ -451,18 +451,25 @@ def stage_hindsight(rd: RunData, store, guard, parts_dir: Path) -> dict | None:
     if mp.exists() and ep.exists():
         # the flight map (tracking, triangulation, fusion, path clearing: ~70 % of the stage) is reused when only
         # the projection into frames changed
-        old = H.VoxelMap.load(mp)
-        if old.meta.get('map_inputs') == mi:
-            d = np.load(ep)
-            vmap, est = old, H.Estimates(**{k: d[k] for k in d.files})
+        try:
+            old = H.VoxelMap.load(mp)
+            if old.meta.get('map_inputs') == mi:
+                d = np.load(ep)
+                vmap, est = old, H.Estimates(**{k: d[k] for k in d.files})
+        except Exception:          # unreadable (e.g. written by an older, non-atomic build that was killed): rebuild
+            vmap = est = None
     if vmap is None:
         rows, vmap, est, tracks = H.build_flight_map(store, rd.run_id, guard, rows=rd.rows)
         assert np.array_equal(rows, rd.rows)
         vmap = H.clear_flown_path(vmap, rd.path_t, rd.path_pos, list(rd.stops))
         vmap.meta['map_inputs'] = mi
+        # estimates first, map last: the map's input hash marks the pair complete
+        tmp = ep.with_suffix('.tmp.npz')
+        tmp.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(tmp, **{k: getattr(est, k) for k in ('frame', 'track', 'uv', 'point', 'range_m', 'sigma_m',
+                                                                  'offset_s')})
+        os.replace(tmp, ep)
         vmap.save(mp)
-        np.savez_compressed(ep, **{k: getattr(est, k) for k in ('frame', 'track', 'uv', 'point', 'range_m', 'sigma_m',
-                                                                 'offset_s')})
     gv, gk, fv, fk = _alloc(len(rd.rows))
     for i in range(len(rd.rows)):
         if guard is not None and i and i % H.CHUNK_FRAMES == 0:
@@ -747,6 +754,8 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
                               blind=e.get('blind'), obstacle=e.get('obstacle'),
                               range_m=[round(float(min(ranges)), 2), round(float(max(ranges)), 2)], **summary(recs)))
         keys = ['all', f'env:{e["env"]}'] + (['labelled'] if e['source'] in ('lateral_manifest', 'blind_label') else [])
+        word = ((e.get('obstacle') or 'unknown').split('(')[0].strip().split() or ['unknown'])[0].lower()
+        keys.append(f'obstacle:{word}')
         for g in keys:
             groups.setdefault(g, []).extend(recs)
     groups = {g: summary(recs) for g, recs in groups.items()}
@@ -766,7 +775,7 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
                     '"exact" counts EXACT only; '
                     '"beyond" = frames where a VISIBLE point (L3 disc EXACT: the camera-to-point segment was flown) '
                     'has L2 LOWER or EXACT more than 15 % behind it (free space claimed through the obstacle). Groups: '
-                    'all events, curated + blind labelled events, per environment'))
+                    'all events, curated + blind labelled events, per environment, per obstacle class (first word)'))
     # (c) near-travel fan density on Minus Two and Pine Valley (combined labels)
     q['fan_near_travel'] = {}
     if writer is not None:
@@ -802,9 +811,11 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
 LABEL_CODE_VERSION = 'labels-m1-1'     # bump when every stage's output for the same inputs changes
 # per-stage versions: bump one when that stage's output for the same inputs changes
 STAGE_CODE_VERSION = dict(colliders='1', tube='1', impacts='2',   # impacts 2: 0.1 m disc
-                          hindsight='3',       # 2: adjacent partners, epipolar check, track support, per-stage hash;
-                                               # 3: bracketed cell minima keep UPPER hit <= 8 m
-                          hindsight_map='2')   # the flight map alone (tracking, triangulation, fusion, path clearing)
+                          hindsight='4',       # 2: adjacent partners, epipolar check, track support, per-stage hash;
+                                               # 3: bracketed cell minima keep UPPER hit <= 8 m;
+                                               # 4: fan free extents < 1 m dropped
+                          hindsight_map='3')   # the flight map alone (tracking, triangulation, fusion, path clearing);
+                                               # 3: camera-fixed tracks dropped
 
 
 def _hash(*arrays, stage: str = '') -> str:
