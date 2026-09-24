@@ -194,12 +194,21 @@ def _intervals(values, kinds):
     return np.nan_to_num(lo, nan=0.0), np.where(np.isnan(hi), np.inf, hi)
 
 
-def _from_interval(lo, hi, tol):
+WIDE_POLICIES = ('lower', 'upper')
+
+
+def _from_interval(lo, hi, tol, wide: str = 'lower'):
     """Interval [lo, hi] -> (value, kind): exact when hi <= lo * (1 + tol) (value = lo, the nearer end);
-    upper when lo == 0; lower when hi is infinite or the interval is wide (the free-space bound is kept)."""
+    upper when lo == 0; lower when hi is infinite. A wide finite interval keeps the free-space bound
+    (LOWER lo) with ``wide='lower'`` (default) or the occupied-evidence bound (UPPER hi) with
+    ``wide='upper'``."""
+    if wide not in WIDE_POLICIES:
+        raise ValueError(f'wide must be one of {WIDE_POLICIES}')
     exact = np.isfinite(hi) & (lo > 0) & (hi <= lo * (1 + tol))
     upper = np.isfinite(hi) & (lo <= 0)
-    lower = (lo > 0) & ~exact
+    if wide == 'upper':
+        upper = upper | (np.isfinite(hi) & (lo > 0) & ~exact)
+    lower = (lo > 0) & ~exact & ~upper
     kind = np.full(np.shape(lo), LabelKind.UNKNOWN, np.uint8)
     kind[lower] = LabelKind.LOWER
     kind[upper] = LabelKind.UPPER
@@ -231,10 +240,11 @@ def min_over(values, kinds, axis: int = -1, *, tol: float = EXACT_TOL, min_known
     return _from_interval(lb, ub, tol)
 
 
-def intersect(v1, k1, v2, k2, *, tol: float = EXACT_TOL):
+def intersect(v1, k1, v2, k2, *, tol: float = EXACT_TOL, wide: str = 'lower'):
     """Combine two constraints on the SAME quantity. Returns (value, kind, conflict bool).
 
     Intervals are intersected; a contradiction beyond ``tol`` gives UNKNOWN and conflict=True.
+    ``wide`` chooses which end of a wide finite interval is kept (see ``_from_interval``).
     """
     lo1, hi1 = _intervals(v1, k1)
     lo2, hi2 = _intervals(v2, k2)
@@ -243,7 +253,7 @@ def intersect(v1, k1, v2, k2, *, tol: float = EXACT_TOL):
     # Overlap within tolerance collapses to the nearer value (conservative).
     lo = np.where(conflict, 0.0, np.minimum(lo, hi))
     hi = np.where(conflict, np.inf, hi)
-    value, kind = _from_interval(lo, hi, tol)
+    value, kind = _from_interval(lo, hi, tol, wide)
     return value, kind, conflict
 
 
