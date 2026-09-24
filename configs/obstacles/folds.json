@@ -1,0 +1,2969 @@
+{
+ "schema": "haltere.obstacles.folds.v1",
+ "principle": "Leave-environment-out by environment asset; sealed set in no fold; selection on training environments of the fold only (F12 recipe choices on its inner validation).",
+ "environments": [
+  {
+   "name": "Straw Bale",
+   "code": 0,
+   "asset": "Straw Bale",
+   "domain": "outdoor farm",
+   "sealed": false
+  },
+  {
+   "name": "Drawing Board box course",
+   "code": 1,
+   "asset": "Drawing Board",
+   "domain": "generated grid arena",
+   "sealed": false
+  },
+  {
+   "name": "Drawing Board loop v2",
+   "code": 2,
+   "asset": "Drawing Board",
+   "domain": "generated grid arena",
+   "sealed": false
+  },
+  {
+   "name": "Drawing Board empty arena",
+   "code": 3,
+   "asset": "Drawing Board",
+   "domain": "generated grid arena",
+   "sealed": false
+  },
+  {
+   "name": "Minus Two",
+   "code": 4,
+   "asset": "Minus Two",
+   "domain": "dark indoor garage",
+   "sealed": false
+  },
+  {
+   "name": "Pine Valley",
+   "code": 5,
+   "asset": "Pine Valley",
+   "domain": "forest",
+   "sealed": false
+  },
+  {
+   "name": "Autumn Fields",
+   "code": 6,
+   "asset": "Autumn Fields",
+   "domain": "forest",
+   "sealed": false
+  },
+  {
+   "name": "Hangar C03",
+   "code": 7,
+   "asset": "Hangar C03",
+   "domain": "night hangar",
+   "sealed": false
+  },
+  {
+   "name": "Hannover",
+   "code": 8,
+   "asset": "Hannover",
+   "domain": "stadium",
+   "sealed": false
+  },
+  {
+   "name": "Paris",
+   "code": 9,
+   "asset": "Paris",
+   "domain": "neon night city",
+   "sealed": false
+  },
+  {
+   "name": "The Pit",
+   "code": 10,
+   "asset": "The Pit",
+   "domain": "canyon",
+   "sealed": false
+  },
+  {
+   "name": "The Green",
+   "code": 11,
+   "asset": "The Green",
+   "domain": "outdoor",
+   "sealed": true
+  },
+  {
+   "name": "Hall 26",
+   "code": 12,
+   "asset": "Hall 26",
+   "domain": "indoor hall",
+   "sealed": true
+  }
+ ],
+ "unknown_env_code": 255,
+ "sealed": {
+  "environments": [
+   "The Green",
+   "Hall 26"
+  ],
+  "guard": "haltere.obstacles.splits.SealedAccessError unless sealed_final=True (--sealed-final); the store builder skips sealed sources unless --sealed-final and then writes them only to runs/obstacle-store-v1/sealed/"
+ },
+ "folds": {
+  "F12": {
+   "test": [
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields"
+   ],
+   "inner_val": [
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "train": [
+    "Straw Bale",
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena",
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "inner_train": [
+    "Straw Bale",
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena"
+   ],
+   "flight_heldback": false,
+   "purpose": "Primary. Dark indoor pillars/walls and forest boulder/trees/mounds unseen; the frozen F12 model can also fly Minus Two and Pine Valley live as unseen environments."
+  },
+  "F3": {
+   "test": [
+    "Straw Bale"
+   ],
+   "inner_val": [
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "train": [
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena",
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields",
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "inner_train": [
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena",
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields"
+   ],
+   "flight_heldback": false,
+   "purpose": "Straw Bale held out: arches, flags, bales, fences; how far the smaller domains carry."
+  },
+  "F4": {
+   "test": [
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena"
+   ],
+   "inner_val": [
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "train": [
+    "Straw Bale",
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields",
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "inner_train": [
+    "Straw Bale",
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields"
+   ],
+   "flight_heldback": false,
+   "purpose": "All Drawing Board layouts held out: exact box-collider depth (E2)."
+  },
+  "F5": {
+   "test": [
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "inner_val": [
+    "Pine Valley",
+    "Autumn Fields"
+   ],
+   "train": [
+    "Straw Bale",
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena",
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields"
+   ],
+   "inner_train": [
+    "Straw Bale",
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena",
+    "Minus Two"
+   ],
+   "flight_heldback": false,
+   "purpose": "Rare domains held out: night hangar trusses, stadium, neon city, canyon."
+  },
+  "ALL": {
+   "test": [],
+   "inner_val": [],
+   "train": [
+    "Straw Bale",
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena",
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields",
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "inner_train": [
+    "Straw Bale",
+    "Drawing Board box course",
+    "Drawing Board loop v2",
+    "Drawing Board empty arena",
+    "Minus Two",
+    "Pine Valley",
+    "Autumn Fields",
+    "Hangar C03",
+    "Hannover",
+    "Paris",
+    "The Pit"
+   ],
+   "flight_heldback": true,
+   "purpose": "Product candidate trained on every open environment; results on them are seen-environment. Inner validation = held-back flights. Sealed set scored once with --sealed-final (M7)."
+  }
+ },
+ "primary_fold": "F12",
+ "loeo_folds": [
+  "F12",
+  "F3",
+  "F4",
+  "F5"
+ ],
+ "epoch_caps_by_asset": {
+  "Straw Bale": 0.3,
+  "Drawing Board": 0.2
+ },
+ "sampling": "per-environment share proportional to sqrt(trainable frames), asset caps applied with proportional redistribution (splits.sampling_weights)",
+ "heldback": {
+  "fraction": 0.1,
+  "rule": "int(sha1(flight_key)[:8], 16) / 2**32 < fraction"
+ },
+ "inventory": {
+  "path": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/obstacles/survey-data/inventory.json",
+  "sha256": "c1489b904fcfdec97ba70ca5c8d7cd2c9e1f4d645dc976edca375fba22122266",
+  "created": "2026-09-24",
+  "note": "survey inventory (scratchpad, not tracked)"
+ },
+ "flights": {
+  "assisted-races-20260922/hangar-01": "Hangar C03",
+  "assisted-races-20260922/hangar-02": "Hangar C03",
+  "assisted-races-20260922/hangar-03": "Hangar C03",
+  "assisted-races-20260922/minus-01": "Minus Two",
+  "assisted-races-20260922/straw-01": "Straw Bale",
+  "assisted-races-20260922/straw-preflight": "Straw Bale",
+  "autumn-transfer-20260920/autumn-01": "Autumn Fields",
+  "autumn-transfer-20260920/autumn-02": "Autumn Fields",
+  "autumn-transfer-20260920/autumn-03": "Autumn Fields",
+  "brain-flight-20260920/straw-brain-01": "Straw Bale",
+  "camera-profile-01/flight": "Straw Bale",
+  "camera-profile-01/occlusion": "Straw Bale",
+  "challenge-box-geometry-shadow-20260923/flight": "Drawing Board box course",
+  "challenge-box-pd-20260923/flight": "Drawing Board box course",
+  "challenge-box-qualification-16fps-20260923/flight": "Drawing Board box course",
+  "challenge-box-qualification-20260923/flight": "Drawing Board box course",
+  "challenge-box-qualification-20260923/ground-shadow": "Drawing Board box course",
+  "challenge-box-qualification-20260923/ground-shadow-16fps": "Drawing Board box course",
+  "challenge-box-qualification-repeat-20260923/flight": "Drawing Board box course",
+  "dense-geometry-comparison-20260923/01-sparse-pd/flight": "Drawing Board box course",
+  "dense-geometry-comparison-20260923/02-dense-pd/flight": "Drawing Board box course",
+  "dense-geometry-comparison-20260923/03-dense-brain/flight": "Drawing Board box course",
+  "dense-geometry-comparison-20260923/ground/flight": "Drawing Board box course",
+  "dynamics-calibration-20260923/hover/flight": "Drawing Board empty arena",
+  "dynamics-calibration-20260923/roll/flight": "Drawing Board empty arena",
+  "dynamics-calibration-20260923/throttle/flight": "Drawing Board empty arena",
+  "dynamics-independent-20260923/pitch/flight": "Drawing Board empty arena",
+  "dynamics-independent-20260923/roll/flight": "Drawing Board empty arena",
+  "dynamics-independent-20260923/yaw/flight": "Drawing Board empty arena",
+  "dynamics-rate-calibration-20260923/pitch/flight": "Drawing Board empty arena",
+  "dynamics-rate-calibration-20260923/roll/flight": "Drawing Board empty arena",
+  "dynamics-rate-calibration-20260923/yaw/flight": "Drawing Board empty arena",
+  "fast-stack-20260923/loop-fast5-02": "Drawing Board loop v2",
+  "fast-stack-20260923/minus-brain03-01": "Minus Two",
+  "fast-stack-20260923/minus-brain04-02": "Minus Two",
+  "fast-stack-20260923/minus-brain05-01": "Minus Two",
+  "fast-stack-20260923/minus-brain06-01": "Minus Two",
+  "fast-stack-20260923/minus-fast6-01": "Minus Two",
+  "fast-stack-20260923/pine-brain03-01": "Pine Valley",
+  "fast-stack-20260923/pine-brain04-01": "Pine Valley",
+  "fast-stack-20260923/pine-brain05-01": "Pine Valley",
+  "fast-stack-20260923/pine-brain05-02": "Pine Valley",
+  "fast-stack-20260923/pine-brain06-01": "Pine Valley",
+  "fast-stack-20260923/pine-brain06-ttc-01": "Pine Valley",
+  "fast-stack-20260923/pine-fast6-01": "Pine Valley",
+  "fast-stack-20260923/pine-fast6-loom-01": "Pine Valley",
+  "fast-stack-20260923/pine-fast6-ttc-01": "Pine Valley",
+  "fast-stack-20260923/straw-brain03-01": "Straw Bale",
+  "fast-stack-20260923/straw-brain04-01": "Straw Bale",
+  "fast-stack-20260923/straw-brain05-01": "Straw Bale",
+  "fast-stack-20260923/straw-brain05-gov-01": "Straw Bale",
+  "fast-stack-20260923/straw-brain05-trim-01": "Straw Bale",
+  "fast-stack-20260923/straw-brain05-trim-02": "Straw Bale",
+  "fast-stack-20260923/straw-brain06-01": "Straw Bale",
+  "fast-stack-20260923/straw-brain06-02": "Straw Bale",
+  "fast-stack-20260923/straw-brain06-03": "Straw Bale",
+  "fast-stack-20260923/straw-brain6-02": "Straw Bale",
+  "fast-stack-20260923/straw-fast6-01": "Straw Bale",
+  "fast-stack-20260923/straw-fast6-02": "Straw Bale",
+  "fast-stack-20260923/straw-fast6-03": "Straw Bale",
+  "gate-brain-live-01/blank": "Straw Bale",
+  "gate-brain-live-01/extended": "Straw Bale",
+  "gate-brain-live-01/flight": "Straw Bale",
+  "gate-brain-live-01/gpu-camera": "Straw Bale",
+  "gate-brain-live-01/repeat": "Straw Bale",
+  "gate-brain-live-01/retrained": "Straw Bale",
+  "gate-brain-live-02/calibrated": "Straw Bale",
+  "gate-brain-live-02/dxgi": "Straw Bale",
+  "gate-brain-live-02/turns": "Straw Bale",
+  "gate-brain-live-03/search": "Straw Bale",
+  "gate-brain-live-03/search-cpu": "Straw Bale",
+  "gate-brain-live-03/search-isolated": "Straw Bale",
+  "gate-brain-live-03/search-ready": "Straw Bale",
+  "gate-brain-live-03/search-shared": "Straw Bale",
+  "gate-brain-live-04/full-course-vision": "Straw Bale",
+  "gate-brain-live-04/opening": "Straw Bale",
+  "gate-brain-live-04/opening-repeat": "Straw Bale",
+  "gate-brain-live-05/elevation": "Straw Bale",
+  "gate-brain-live-06/vision": "Straw Bale",
+  "gate-brain-live-07/climb": "Straw Bale",
+  "gate-brain-live-08/search": "Straw Bale",
+  "gate-brain-live-09/readout": "Straw Bale",
+  "gate-brain-live-10/hilltop": "Straw Bale",
+  "gate-brain-live-11/hard-views": "Straw Bale",
+  "gate-brain-live-12/scene": "Straw Bale",
+  "gate-brain-live-13/spatial": "Straw Bale",
+  "gate-brain-live-14/spatial-memory": "Straw Bale",
+  "gate-brain-live-15/causal": "Straw Bale",
+  "gate-brain-live-16/causal": "Straw Bale",
+  "gate-brain-live-17/scene": "Straw Bale",
+  "geometry-consistent-depth-20260923/01-on/flight": "Drawing Board box course",
+  "geometry-consistent-depth-20260923/02-on/flight": "Drawing Board box course",
+  "geometry-consistent-depth-20260923/03-on/flight": "Drawing Board box course",
+  "geometry-control-ground-20260923/flight": "Drawing Board box course",
+  "geometry-escape-20260923/01-on/flight": "Drawing Board box course",
+  "geometry-escape-20260923/02-on/flight": "Drawing Board box course",
+  "geometry-escape-20260923/03-on/flight": "Drawing Board box course",
+  "geometry-motion-floor-20260923/01-on/flight": "Drawing Board box course",
+  "geometry-motion-floor-20260923/02-on/flight": "Drawing Board box course",
+  "geometry-motion-floor-20260923/03-on/flight": "Drawing Board box course",
+  "geometry-on-off-20260923/01-off/flight": "Drawing Board box course",
+  "geometry-on-off-20260923/02-on/flight": "Drawing Board box course",
+  "geometry-repeat-20260923/01-on/flight": "Drawing Board box course",
+  "geometry-repeat-20260923/02-on/flight": "Drawing Board box course",
+  "geometry-shadow-ground-repeat-20260923/flight": "Drawing Board box course",
+  "geometry-static-memory-20260923/01-on/flight": "Drawing Board box course",
+  "geometry-static-memory-20260923/02-on/flight": "Drawing Board box course",
+  "geometry-static-memory-20260923/03-on/flight": "Drawing Board box course",
+  "geometry-two-tier-20260923/01-on/flight": "Drawing Board box course",
+  "geometry-two-tier-20260923/02-on/flight": "Drawing Board box course",
+  "geometry-two-tier-20260923/03-on/flight": "Drawing Board box course",
+  "human-brain-01/live-01": "Straw Bale",
+  "human-brain-damping-01/live-01": "Straw Bale",
+  "human-brain-damping-01/live-blank-01": "Straw Bale",
+  "human-brain-onpolicy-01/live-01": "Straw Bale",
+  "human-brain-onpolicy-01/live-blank-01": "Straw Bale",
+  "matched-full-races-20260923/01-straw-brain": "Straw Bale",
+  "matched-full-races-20260923/02-straw-pd": "Straw Bale",
+  "matched-full-races-20260923/03-minus-pd": "Minus Two",
+  "matched-full-races-20260923/04-minus-brain": "Minus Two",
+  "motor-comparison-20260922/loop-brain": "Drawing Board loop v2",
+  "motor-comparison-20260922/loop-pd": "Drawing Board loop v2",
+  "motor-comparison-20260922/minus-brain": "Minus Two",
+  "motor-comparison-20260922/minus-pd": "Minus Two",
+  "motor-comparison-20260922/straw-brain": "Straw Bale",
+  "motor-comparison-20260922/straw-pd": "Straw Bale",
+  "motor-tracking-flightcost03-20260923/01-pd/flight": "Drawing Board empty arena",
+  "motor-tracking-flightcost03-20260923/02-parent/flight": "Drawing Board empty arena",
+  "motor-tracking-flightcost03-20260923/03-candidate/flight": "Drawing Board empty arena",
+  "motor-tracking-live-20260923/01-pd/flight": "Drawing Board empty arena",
+  "motor-tracking-live-20260923/02-parent/flight": "Drawing Board empty arena",
+  "motor-tracking-live-20260923/03-candidate/flight": "Drawing Board empty arena",
+  "motor-tracking-stable-guidance-20260923/01-pd/flight": "Drawing Board empty arena",
+  "motor-tracking-stable-guidance-20260923/02-parent/flight": "Drawing Board empty arena",
+  "motor-tracking-stable-guidance-20260923/03-candidate/flight": "Drawing Board empty arena",
+  "motor10-full-25-20260922/straw": "Straw Bale",
+  "motor10-loop-repeat-20260923/loop": "Drawing Board loop v2",
+  "motor10-transfer-20260922/loop": "Drawing Board loop v2",
+  "motor10-transfer-20260922/minus": "Minus Two",
+  "motor10-transfer-20260922/straw": "Straw Bale",
+  "motor10-visual-full-20260922/loop": "Drawing Board loop v2",
+  "motor10-visual-full-20260922/minus": "Minus Two",
+  "motor10-visual-full-20260922/straw": "Straw Bale",
+  "navigation-motor-brain-01/live-01": "Straw Bale",
+  "navigation-motor-brain-01/live-60s": "Straw Bale",
+  "navigation-motor-brain-01/live-60s-02": "Straw Bale",
+  "race-completion-20260922/green-cue-01": "The Green",
+  "race-completion-20260922/green-cue-02": "The Green",
+  "race-completion-20260922/hall26-cue-01": "Hall 26",
+  "race-completion-20260922/hannover-cue-01": "Hannover",
+  "race-completion-20260922/hannover-cue-02": "Hannover",
+  "race-completion-20260922/minus-cue-01": "Minus Two",
+  "race-completion-20260922/paris-cue-01": "Paris",
+  "race-completion-20260922/paris-cue-02": "Paris",
+  "race-completion-20260922/paris-cue-03": "Paris",
+  "race-completion-20260922/pit-cue-01": "The Pit",
+  "race-completion-20260922/pit-cue-02": "The Pit",
+  "race-completion-20260922/straw-cue-01": "Straw Bale",
+  "race-completion-20260922/straw-cue-02": "Straw Bale",
+  "race-completion-20260922/straw-cue-03": "Straw Bale",
+  "race-completion-20260922/straw-cue-04": "Straw Bale",
+  "runtime-headroom-20260923/02-libx264": "Straw Bale",
+  "runtime-headroom-20260923/03-h264_nvenc": "Straw Bale",
+  "runtime-headroom-20260923/04-h264_nvenc": "Straw Bale",
+  "runtime-headroom-20260923/05-libx264": "Straw Bale",
+  "straw-slow-teacher-01/teacher-brain": "Straw Bale",
+  "vision:challenge_boxes_oracle_20260923": "Drawing Board box course",
+  "vision:manual_sessions/minus_two_race/20260920-194011-245500": "Minus Two",
+  "vision:manual_sessions/minus_two_race/20260920-194207-748300": "Minus Two",
+  "vision:manual_sessions/pine_valley_race/20260920-193159-569500": "Pine Valley",
+  "vision:manual_sessions/pine_valley_race/20260920-193537-458900": "Pine Valley",
+  "vision:manual_sessions/straw_bale_fence/20260920-194609-171000": "Straw Bale",
+  "vision:manual_sessions/straw_bale_fence/20260920-200203-640500": "Straw Bale",
+  "vision:manual_sessions/straw_bale_fence/20260920-200449-822300": "Straw Bale",
+  "vision:manual_sessions/straw_bale_race/20260920-192735-941600": "Straw Bale",
+  "vision:pine1": "Pine Valley",
+  "vision:pine2": "Pine Valley",
+  "vision:pine_lap_01": "Pine Valley",
+  "vision:pine_lap_02": "Pine Valley",
+  "vision:pine_original_hover_01": "Pine Valley",
+  "vision:pine_teacher_01": "Pine Valley",
+  "vision:pine_teacher_02": "Pine Valley",
+  "vision:pine_teacher_03": "Pine Valley",
+  "vision:pine_teacher_04": "Pine Valley",
+  "vision:pine_teacher_05": "Pine Valley",
+  "vision:pine_teacher_06": "Pine Valley",
+  "vision:pine_three_laps_01": "Pine Valley",
+  "vision:pine_vehicle_probe_01": "Pine Valley",
+  "vision:run10": "Straw Bale",
+  "vision:run11": "Straw Bale",
+  "vision:run12": "Straw Bale",
+  "vision:run13": "Straw Bale",
+  "vision:run14": "Straw Bale",
+  "vision:run15": "Straw Bale",
+  "vision:run17": "Straw Bale",
+  "vision:run18": "Straw Bale",
+  "vision:run19": "Straw Bale",
+  "vision:run2": "Straw Bale",
+  "vision:run20": "Straw Bale",
+  "vision:run21": "Straw Bale",
+  "vision:run22": "Straw Bale",
+  "vision:run23": "Straw Bale",
+  "vision:run24": "Straw Bale",
+  "vision:run25": "Straw Bale",
+  "vision:run26": "Straw Bale",
+  "vision:run27": "Straw Bale",
+  "vision:run28": "Straw Bale",
+  "vision:run29": "Straw Bale",
+  "vision:run3": "Straw Bale",
+  "vision:run30": "Straw Bale",
+  "vision:run31": "Straw Bale",
+  "vision:run4": "Straw Bale",
+  "vision:run5": "Straw Bale",
+  "vision:run6": "Straw Bale",
+  "vision:run7": "Straw Bale",
+  "vision:run8": "Straw Bale",
+  "vision:run9": "Straw Bale",
+  "vision:speed20": "Straw Bale",
+  "vision:speed25": "Straw Bale",
+  "vision:speed30": "Straw Bale",
+  "vision:speed40": "Straw Bale",
+  "vision:speed40_ft": "Straw Bale",
+  "vision:speed40_ft2": "Straw Bale",
+  "vision:speed40_gain13": "Straw Bale",
+  "vision:speed40_gain16": "Straw Bale",
+  "vision:speed40_gain20": "Straw Bale",
+  "vision:speed50_gain16": "Straw Bale",
+  "vision:speed60": "Straw Bale",
+  "vision:straw_slow_route_02": "Straw Bale"
+ },
+ "sources": {
+  "assisted-races-20260922/hangar-01": {
+   "kind": "run_video",
+   "env": "Hangar C03",
+   "flight": "assisted-races-20260922/hangar-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "assisted-races-20260922/hangar-02": {
+   "kind": "run_video",
+   "env": "Hangar C03",
+   "flight": "assisted-races-20260922/hangar-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "assisted-races-20260922/hangar-03": {
+   "kind": "run_video",
+   "env": "Hangar C03",
+   "flight": "assisted-races-20260922/hangar-03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "assisted-races-20260922/minus-01": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "assisted-races-20260922/minus-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "assisted-races-20260922/straw-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "assisted-races-20260922/straw-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "assisted-races-20260922/straw-preflight": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "assisted-races-20260922/straw-preflight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "autumn-transfer-20260920/autumn-01": {
+   "kind": "run_video",
+   "env": "Autumn Fields",
+   "flight": "autumn-transfer-20260920/autumn-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "autumn-transfer-20260920/autumn-02": {
+   "kind": "run_video",
+   "env": "Autumn Fields",
+   "flight": "autumn-transfer-20260920/autumn-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "autumn-transfer-20260920/autumn-03": {
+   "kind": "run_video",
+   "env": "Autumn Fields",
+   "flight": "autumn-transfer-20260920/autumn-03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "brain-flight-20260920/straw-brain-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "brain-flight-20260920/straw-brain-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "brain-flight-20260920/straw_bale_connectome_figure8": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "camera-profile-01/flight": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "camera-profile-01/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "camera-profile-01/occlusion": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "camera-profile-01/occlusion",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "camera-profile-01/priority-recorded": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "camera-profile-01/profile": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-geometry-shadow-20260923/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-geometry-shadow-20260923/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-geometry-shadow-20260923/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-geometry-shadow-20260923/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-pd-20260923/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-pd-20260923/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-qualification-16fps-20260923/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-qualification-16fps-20260923/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-qualification-20260923/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-qualification-20260923/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-qualification-20260923/ground-shadow": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-qualification-20260923/ground-shadow",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-qualification-20260923/ground-shadow-16fps": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-qualification-20260923/ground-shadow-16fps",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "challenge-box-qualification-repeat-20260923/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-qualification-repeat-20260923/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/01-sparse-pd/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/01-sparse-pd/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/01-sparse-pd/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/01-sparse-pd/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/02-dense-pd/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/02-dense-pd/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/02-dense-pd/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/02-dense-pd/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/03-dense-brain/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/03-dense-brain/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/03-dense-brain/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/03-dense-brain/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/ground/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/ground/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "dense-geometry-comparison-20260923/ground/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "dense-geometry-comparison-20260923/ground/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-calibration-20260923/hover/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-calibration-20260923/hover/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-calibration-20260923/roll/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-calibration-20260923/roll/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-calibration-20260923/throttle/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-calibration-20260923/throttle/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-independent-20260923/pitch/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-independent-20260923/pitch/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-independent-20260923/roll/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-independent-20260923/roll/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-independent-20260923/yaw/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-independent-20260923/yaw/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-rate-calibration-20260923/pitch/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-rate-calibration-20260923/pitch/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-rate-calibration-20260923/roll/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-rate-calibration-20260923/roll/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "dynamics-rate-calibration-20260923/yaw/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "dynamics-rate-calibration-20260923/yaw/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-brain06-release-20260924/fast-brain06-minus-two-pillar": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-brain06-release-20260924/fast-brain06-pine-valley-mound": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-brain06-release-20260924/fast-brain06-straw-bale-finish-4x": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-brain06-release-20260924/fast-brain06-straw-bale-finish-5m50": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/loop-fast5-02": {
+   "kind": "run_video",
+   "env": "Drawing Board loop v2",
+   "flight": "fast-stack-20260923/loop-fast5-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/minus-brain03-01": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "fast-stack-20260923/minus-brain03-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/minus-brain04-02": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "fast-stack-20260923/minus-brain04-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/minus-brain05-01": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "fast-stack-20260923/minus-brain05-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/minus-brain06-01": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "fast-stack-20260923/minus-brain06-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/minus-fast6-01": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "fast-stack-20260923/minus-fast6-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-brain03-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-brain03-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-brain04-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-brain04-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-brain05-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-brain05-01",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-brain05-02": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-brain05-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-brain06-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-brain06-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-brain06-ttc-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-brain06-ttc-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-fast6-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-fast6-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-fast6-loom-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-fast6-loom-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/pine-fast6-ttc-01": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": "fast-stack-20260923/pine-fast6-ttc-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain03-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain03-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain04-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain04-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain05-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain05-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain05-gov-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain05-gov-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain05-trim-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain05-trim-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain05-trim-02": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain05-trim-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain06-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain06-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain06-02": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain06-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain06-03": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain06-03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-brain6-02": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-brain6-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-fast6-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-fast6-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-fast6-02": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-fast6-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "fast-stack-20260923/straw-fast6-03": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "fast-stack-20260923/straw-fast6-03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-01/blank": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-01/blank",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-01/extended": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-01/extended",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-01/flight": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-01/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-01/gate-crossings": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-01/gpu-camera": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-01/gpu-camera",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-01/repeat": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-01/repeat",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-01/retrained": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-01/retrained",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-02/calibrated": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-02/calibrated",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-02/dxgi": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-02/dxgi",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-02/first-turn": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-02/turns": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-02/turns",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-03/search": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-03/search",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-03/search-and-fifth-arch": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-03/search-cpu": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-03/search-cpu",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-03/search-isolated": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-03/search-isolated",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-03/search-ready": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-03/search-ready",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-03/search-shared": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-03/search-shared",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-03/search-timing": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-04/fifth-and-sixth-arches": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-04/full-course-vision": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-04/full-course-vision",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-04/opening": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-04/opening",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-04/opening-repeat": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-04/opening-repeat",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-05/elevation": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-05/elevation",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-05/hillside-progress": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-06/flag-and-hilltop-gate": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-06/vision": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-06/vision",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-07/climb": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-07/climb",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-08/search": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-08/search",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-09/clean-hillside": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-09/readout": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-09/readout",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-10/hilltop": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-10/hilltop",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-11/hard-views": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-11/hard-views",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-12/scene": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-12/scene",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-13/spatial": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-13/spatial",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-14/spatial-memory": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-14/spatial-memory",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-15/causal": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-15/causal",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-16/causal": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-16/causal",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "gate-brain-live-17/scene": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "gate-brain-live-17/scene",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-consistent-depth-20260923/01-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-consistent-depth-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-consistent-depth-20260923/01-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-consistent-depth-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-consistent-depth-20260923/02-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-consistent-depth-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-consistent-depth-20260923/02-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-consistent-depth-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-consistent-depth-20260923/03-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-consistent-depth-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-consistent-depth-20260923/03-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-consistent-depth-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-control-ground-20260923/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-control-ground-20260923/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-control-ground-20260923/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-control-ground-20260923/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-escape-20260923/01-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-escape-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-escape-20260923/01-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-escape-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-escape-20260923/02-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-escape-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-escape-20260923/02-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-escape-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-escape-20260923/03-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-escape-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-escape-20260923/03-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-escape-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-motion-floor-20260923/01-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-motion-floor-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-motion-floor-20260923/01-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-motion-floor-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-motion-floor-20260923/02-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-motion-floor-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-motion-floor-20260923/02-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-motion-floor-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-motion-floor-20260923/03-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-motion-floor-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-motion-floor-20260923/03-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-motion-floor-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-on-off-20260923/01-off/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-on-off-20260923/01-off/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-on-off-20260923/01-off/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-on-off-20260923/01-off/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-on-off-20260923/02-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-on-off-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-on-off-20260923/02-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-on-off-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-repeat-20260923/01-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-repeat-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-repeat-20260923/01-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-repeat-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-repeat-20260923/02-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-repeat-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-repeat-20260923/02-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-repeat-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-shadow-ground-repeat-20260923/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-shadow-ground-repeat-20260923/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-shadow-ground-repeat-20260923/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-shadow-ground-repeat-20260923/flight",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-static-memory-20260923/01-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-static-memory-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-static-memory-20260923/01-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-static-memory-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-static-memory-20260923/02-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-static-memory-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-static-memory-20260923/02-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-static-memory-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-static-memory-20260923/03-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-static-memory-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-static-memory-20260923/03-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-static-memory-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-two-tier-20260923/01-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-two-tier-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-two-tier-20260923/01-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-two-tier-20260923/01-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-two-tier-20260923/02-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-two-tier-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-two-tier-20260923/02-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-two-tier-20260923/02-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-two-tier-20260923/03-on/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board box course",
+   "flight": "geometry-two-tier-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "geometry-two-tier-20260923/03-on/flight:geometry": {
+   "kind": "geometry_png",
+   "env": "Drawing Board box course",
+   "flight": "geometry-two-tier-20260923/03-on/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "human-brain-01/live-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "human-brain-01/live-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "human-brain-damping-01/live-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "human-brain-damping-01/live-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "human-brain-damping-01/live-blank-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "human-brain-damping-01/live-blank-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "human-brain-onpolicy-01/live-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "human-brain-onpolicy-01/live-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "human-brain-onpolicy-01/live-blank-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "human-brain-onpolicy-01/live-blank-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "matched-full-races-20260923/01-straw-brain": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "matched-full-races-20260923/01-straw-brain",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "matched-full-races-20260923/02-straw-pd": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "matched-full-races-20260923/02-straw-pd",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "matched-full-races-20260923/03-minus-pd": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "matched-full-races-20260923/03-minus-pd",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "matched-full-races-20260923/04-minus-brain": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "matched-full-races-20260923/04-minus-brain",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-comparison-20260922/loop-brain": {
+   "kind": "run_video",
+   "env": "Drawing Board loop v2",
+   "flight": "motor-comparison-20260922/loop-brain",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-comparison-20260922/loop-pd": {
+   "kind": "run_video",
+   "env": "Drawing Board loop v2",
+   "flight": "motor-comparison-20260922/loop-pd",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-comparison-20260922/minus-brain": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "motor-comparison-20260922/minus-brain",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-comparison-20260922/minus-pd": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "motor-comparison-20260922/minus-pd",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-comparison-20260922/straw-brain": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "motor-comparison-20260922/straw-brain",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-comparison-20260922/straw-pd": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "motor-comparison-20260922/straw-pd",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-flightcost03-20260923/01-pd/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-flightcost03-20260923/01-pd/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-flightcost03-20260923/02-parent/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-flightcost03-20260923/02-parent/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-flightcost03-20260923/03-candidate/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-flightcost03-20260923/03-candidate/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-live-20260923/01-pd/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-live-20260923/01-pd/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-live-20260923/02-parent/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-live-20260923/02-parent/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-live-20260923/03-candidate/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-live-20260923/03-candidate/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-stable-guidance-20260923/01-pd/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-stable-guidance-20260923/01-pd/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-stable-guidance-20260923/02-parent/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-stable-guidance-20260923/02-parent/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor-tracking-stable-guidance-20260923/03-candidate/flight": {
+   "kind": "run_video",
+   "env": "Drawing Board empty arena",
+   "flight": "motor-tracking-stable-guidance-20260923/03-candidate/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-full-25-20260922/straw": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "motor10-full-25-20260922/straw",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-loop-repeat-20260923/loop": {
+   "kind": "run_video",
+   "env": "Drawing Board loop v2",
+   "flight": "motor10-loop-repeat-20260923/loop",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-transfer-20260922/loop": {
+   "kind": "run_video",
+   "env": "Drawing Board loop v2",
+   "flight": "motor10-transfer-20260922/loop",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-transfer-20260922/minus": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "motor10-transfer-20260922/minus",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-transfer-20260922/straw": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "motor10-transfer-20260922/straw",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-visual-full-20260922/loop": {
+   "kind": "run_video",
+   "env": "Drawing Board loop v2",
+   "flight": "motor10-visual-full-20260922/loop",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-visual-full-20260922/minus": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "motor10-visual-full-20260922/minus",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "motor10-visual-full-20260922/straw": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "motor10-visual-full-20260922/straw",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "navigation-human-02/fence_forecasts_v2": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "navigation-human-02/minus_two_forecasts_v2": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "navigation-motor-brain-01/live-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "navigation-motor-brain-01/live-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "navigation-motor-brain-01/live-60s": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "navigation-motor-brain-01/live-60s",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "navigation-motor-brain-01/live-60s-02": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "navigation-motor-brain-01/live-60s-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "pine-route-collection-01/live-flight": {
+   "kind": "run_video",
+   "env": "Pine Valley",
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/green-cue-01": {
+   "kind": "run_video",
+   "env": "The Green",
+   "flight": "race-completion-20260922/green-cue-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/green-cue-02": {
+   "kind": "run_video",
+   "env": "The Green",
+   "flight": "race-completion-20260922/green-cue-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/hall26-cue-01": {
+   "kind": "run_video",
+   "env": "Hall 26",
+   "flight": "race-completion-20260922/hall26-cue-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/hannover-cue-01": {
+   "kind": "run_video",
+   "env": "Hannover",
+   "flight": "race-completion-20260922/hannover-cue-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/hannover-cue-02": {
+   "kind": "run_video",
+   "env": "Hannover",
+   "flight": "race-completion-20260922/hannover-cue-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/minus-cue-01": {
+   "kind": "run_video",
+   "env": "Minus Two",
+   "flight": "race-completion-20260922/minus-cue-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/paris-cue-01": {
+   "kind": "run_video",
+   "env": "Paris",
+   "flight": "race-completion-20260922/paris-cue-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/paris-cue-02": {
+   "kind": "run_video",
+   "env": "Paris",
+   "flight": "race-completion-20260922/paris-cue-02",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/paris-cue-03": {
+   "kind": "run_video",
+   "env": "Paris",
+   "flight": "race-completion-20260922/paris-cue-03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/pit-cue-01": {
+   "kind": "run_video",
+   "env": "The Pit",
+   "flight": "race-completion-20260922/pit-cue-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/pit-cue-02": {
+   "kind": "run_video",
+   "env": "The Pit",
+   "flight": "race-completion-20260922/pit-cue-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/straw-cue-01": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "race-completion-20260922/straw-cue-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/straw-cue-02": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "race-completion-20260922/straw-cue-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/straw-cue-03": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "race-completion-20260922/straw-cue-03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "race-completion-20260922/straw-cue-04": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "race-completion-20260922/straw-cue-04",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "runtime-headroom-20260923/02-libx264": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "runtime-headroom-20260923/02-libx264",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "runtime-headroom-20260923/03-h264_nvenc": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "runtime-headroom-20260923/03-h264_nvenc",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "runtime-headroom-20260923/04-h264_nvenc": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "runtime-headroom-20260923/04-h264_nvenc",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "runtime-headroom-20260923/05-libx264": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "runtime-headroom-20260923/05-libx264",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "straw-slow-teacher-01/teacher-brain": {
+   "kind": "run_video",
+   "env": "Straw Bale",
+   "flight": "straw-slow-teacher-01/teacher-brain",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "test_race": {
+   "kind": "run_video",
+   "env": null,
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "video/flight": {
+   "kind": "run_video",
+   "env": null,
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "video_test/flight": {
+   "kind": "run_video",
+   "env": null,
+   "flight": null,
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:autumn_transfer_01": {
+   "kind": "capture_dataset",
+   "env": "Autumn Fields",
+   "flight": "autumn-transfer-20260920/autumn-01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:autumn_transfer_02": {
+   "kind": "capture_dataset",
+   "env": "Autumn Fields",
+   "flight": "autumn-transfer-20260920/autumn-02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:autumn_transfer_03": {
+   "kind": "capture_dataset",
+   "env": "Autumn Fields",
+   "flight": "autumn-transfer-20260920/autumn-03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:challenge_boxes_oracle_16fps_20260923": {
+   "kind": "capture_dataset",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-qualification-16fps-20260923/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:challenge_boxes_oracle_20260923": {
+   "kind": "capture_dataset",
+   "env": "Drawing Board box course",
+   "flight": "vision:challenge_boxes_oracle_20260923",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:challenge_boxes_oracle_repeat_20260923": {
+   "kind": "capture_dataset",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-qualification-repeat-20260923/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:challenge_boxes_pd_20260923": {
+   "kind": "capture_dataset",
+   "env": "Drawing Board box course",
+   "flight": "challenge-box-pd-20260923/flight",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/minus_two_race/20260920-194011-245500": {
+   "kind": "capture_dataset",
+   "env": "Minus Two",
+   "flight": "vision:manual_sessions/minus_two_race/20260920-194011-245500",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/minus_two_race/20260920-194207-748300": {
+   "kind": "capture_dataset",
+   "env": "Minus Two",
+   "flight": "vision:manual_sessions/minus_two_race/20260920-194207-748300",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/pine_valley_race/20260920-193159-569500": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:manual_sessions/pine_valley_race/20260920-193159-569500",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/pine_valley_race/20260920-193537-458900": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:manual_sessions/pine_valley_race/20260920-193537-458900",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/straw_bale_fence/20260920-194609-171000": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:manual_sessions/straw_bale_fence/20260920-194609-171000",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/straw_bale_fence/20260920-200203-640500": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:manual_sessions/straw_bale_fence/20260920-200203-640500",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/straw_bale_fence/20260920-200449-822300": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:manual_sessions/straw_bale_fence/20260920-200449-822300",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:manual_sessions/straw_bale_race/20260920-192735-941600": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:manual_sessions/straw_bale_race/20260920-192735-941600",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:opening_holdout_clearance_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-09\\readout.csv",
+    "runs\\gate-brain-live-09\\readout.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_holdout_climb_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-07\\climb.csv",
+    "runs\\gate-brain-live-07\\climb.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_holdout_dxgi_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-02\\dxgi.csv",
+    "runs\\gate-brain-live-02\\dxgi.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_holdout_hillside_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-06\\vision.csv",
+    "runs\\gate-brain-live-06\\vision.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_human_straw_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "data\\vision\\manual_sessions\\straw_bale_race\\20260920-192735-941600\\index.csv",
+    "data\\vision\\manual_sessions\\straw_bale_race\\20260920-192735-941600\\capture.json",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_negative_fence_holdout_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "data\\vision\\manual_sessions\\straw_bale_fence\\20260920-194609-171000\\index.csv"
+   ]
+  },
+  "vision:opening_negative_fence_train_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "data\\vision\\manual_sessions\\straw_bale_fence\\20260920-200449-822300\\index.csv"
+   ]
+  },
+  "vision:opening_review_hilltop_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-11\\hard-views.csv",
+    "runs\\gate-brain-live-11\\hard-views.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_slow_turn_train_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "data\\vision\\straw_slow_route_01\\index.csv",
+    "data\\vision\\straw_slow_route_01\\capture.json"
+   ]
+  },
+  "vision:opening_slow_turn_validation_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "data\\vision\\straw_slow_route_02\\index.csv",
+    "data\\vision\\straw_slow_route_02\\capture.json"
+   ]
+  },
+  "vision:opening_train_elevation_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-05\\elevation.csv",
+    "runs\\gate-brain-live-05\\elevation.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_train_false_targets_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-11\\hard-views.csv",
+    "runs\\gate-brain-live-11\\hard-views.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_train_hillside_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-06\\vision.csv",
+    "runs\\gate-brain-live-06\\vision.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_train_hilltop_turn_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-08\\search.csv",
+    "runs\\gate-brain-live-08\\search.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_train_occlusion_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\camera-profile-01\\occlusion.csv",
+    "runs\\camera-profile-01\\occlusion.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:opening_train_search_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": null,
+   "usable": false,
+   "counted": false,
+   "derived_from": [
+    "runs\\gate-brain-live-03\\search-shared.csv",
+    "runs\\gate-brain-live-03\\search-shared.mp4",
+    "runs\\straw-three-laps-01\\track.xml"
+   ]
+  },
+  "vision:pine1": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine1",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine2": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine2",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_lap_01": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_lap_01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_lap_02": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_lap_02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_original_hover_01": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_original_hover_01",
+   "usable": false,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_teacher_01": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_teacher_01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_teacher_02": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_teacher_02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_teacher_03": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_teacher_03",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_teacher_04": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_teacher_04",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_teacher_05": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_teacher_05",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_teacher_06": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_teacher_06",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_three_laps_01": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_three_laps_01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:pine_vehicle_probe_01": {
+   "kind": "capture_dataset",
+   "env": "Pine Valley",
+   "flight": "vision:pine_vehicle_probe_01",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run10": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run10",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run11": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run11",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run12": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run12",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run13": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run13",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run14": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run14",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run15": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run15",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run17": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run17",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run18": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run18",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run19": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run19",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run2": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run2",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run20": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run20",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run21": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run21",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run22": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run22",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run23": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run23",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run24": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run24",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run25": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run25",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run26": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run26",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run27": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run27",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run28": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run28",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run29": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run29",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run3": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run3",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run30": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run30",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run31": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run31",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run4": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run4",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run5": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run5",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run6": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run6",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run7": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run7",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run8": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run8",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:run9": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:run9",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed20": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed20",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed25": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed25",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed30": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed30",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed40": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed40",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed40_ft": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed40_ft",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed40_ft2": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed40_ft2",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed40_gain13": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed40_gain13",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed40_gain16": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed40_gain16",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed40_gain20": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed40_gain20",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed50_gain16": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed50_gain16",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:speed60": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:speed60",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:straw_slow_route_01": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "straw-slow-teacher-01/teacher-brain",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  },
+  "vision:straw_slow_route_02": {
+   "kind": "capture_dataset",
+   "env": "Straw Bale",
+   "flight": "vision:straw_slow_route_02",
+   "usable": true,
+   "counted": true,
+   "derived_from": null
+  }
+ }
+}

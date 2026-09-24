@@ -1,0 +1,7 @@
+{
+ "schema": "haltere.obstacles.events.v1",
+ "fields": "haltere.obstacles.labels.EVENT_FIELDS (validated by labels.load_events)",
+ "blind_protocol": "Label every remaining Minus Two and Pine Valley terminal impact and contact (and near passes within 1 m) from video, telemetry and hindsight maps BEFORE any model or baseline output on the event is seen. Record blind=true, labeller and labelled_at. Oracle-route flights get oracle_route=true and are excluded from evaluation sets. The 15 curated lateral-study impacts stay in the lateral manifest and are merged by the label builder.",
+ "offline_only": true,
+ "events": []
+}

@@ -1,0 +1,83 @@
+{
+ "schema": "haltere.obstacles.thresholds.v1",
+ "version": 1,
+ "frozen": false,
+ "frozen_at": null,
+ "sha256": null,
+ "note": "DRAFT. The evaluation agent fills every null decision parameter using fold TRAINING environments only, then runs `python -m haltere.obstacles.evaluate freeze`. The hash covers everything except frozen/frozen_at/sha256. A changed file needs a new version and a new freeze; each frozen version is scored once per (predictor, fold) and every version is reported.",
+ "timing": {
+  "latency_s": 0.065,
+  "stress_latency_s": [0.1, 0.15],
+  "rate_hz": 16.0,
+  "rule": "a frame's output is usable at t_wall + latency_s; decisions use the latest usable output"
+ },
+ "E1": {
+  "window_s_before_event": [0.15, 3.0],
+  "bins_m": [[0.5, 2.0], [2.0, 4.0], [4.0, 7.0], [7.0, 16.0]],
+  "prediction": "grid_q50",
+  "neighbourhood_cells": 3,
+  "overshoot_ratio": 1.5,
+  "overshoot_true_below_m": 6.0,
+  "m2_pass": {
+   "median_ratio_bins": {"2-4": [0.8, 1.25], "4-7": [0.8, 1.25]},
+   "per_env_median_ratio": [0.75, 1.33],
+   "max_overshoot_fraction": 0.15,
+   "pillar_approaches": {"min_approaches": 2, "of": 3, "max_ratio": 1.3, "range_m": [1.5, 6.0]}
+  }
+ },
+ "E2": {
+  "near_m": 6.0,
+  "overshoot_ratio": 1.5,
+  "fan_blocked_within_m": 6.0,
+  "fan_quantile": "fan_q20",
+  "fan_max_abs_yaw_deg": 20.0,
+  "m2_pass": {"max_near_overshoot_fraction": 0.1, "min_recall": 0.9, "min_precision": 0.8}
+ },
+ "E3": {
+  "probability": "fan_p8",
+  "ece_bins": 10,
+  "blocked_within_m": 6.0,
+  "fan_quantile": "fan_q20",
+  "max_abs_yaw_from_bearing_deg": 20.0,
+  "tube_false_block_quantile": "grid_q20",
+  "m2_pass": {"min_auroc": 0.85, "max_ece": 0.1, "max_tube_false_block_fraction": 0.02,
+              "max_gate_opening_blocked_fraction": 0.05}
+ },
+ "E4": {
+  "window_s": 3.0,
+  "warmup_s": 3.0,
+  "end_grace_s": 0.15,
+  "correct_hold_s": 1.0,
+  "wrong_hold_s": 0.3,
+  "m3_pass": {"minus_pine_correct": [5, 8], "pillars_correct": [2, 3], "max_wrong_overall": 1}
+ },
+ "E5": {"out_of_view_fraction": 0.3333, "window_s_before_event": [1.0, 2.0]},
+ "E6": {
+  "min_episode_s": 0.2,
+  "m3_pass": {"max_per_min_overall": 1.0, "max_per_min_env": 2.0, "max_active_fraction": 0.03},
+  "pd_pillar_near_pass": {"run": "minus-fast6-01", "phase_s": [12.2, 13.0], "must_not": "swerve toward the pillar (right)"}
+ },
+ "E7": {"z": 1.96},
+ "E8": {"max_median_relative_change": 0.05,
+        "perturbations": ["ring_on_obstacle", "ring_on_free_space", "ring_removed", "hud_glyph_scramble",
+                          "ghost_trails_inserted", "translation_scale_0.5_1.5 (temporal variant only)"]},
+ "decision": {
+  "note": "frozen rule mapping fan/grid outputs to a Side; chosen on training environments only",
+  "quantile": null,
+  "required_distance": {"reaction_s": null, "margin_m": null, "brake_mps2": null},
+  "hysteresis": {"hold_s": null, "release_s": null, "switch_margin_deg": null},
+  "on_frames": null,
+  "off_frames": null
+ },
+ "baselines": {
+  "B2": {"model": "Depth-Anything-V2-Metric-Indoor-Small", "input": [252, 448], "precision": "fp16"},
+  "B3": {"model": "Depth-Anything-V2-Small (relative)", "calibration": "one monotone (isotonic) map relative disparity -> ln range, fitted on fold training environments"},
+  "B4": {"causal": false, "note": "per-frame affine fit to the evaluated frame's labels: ceiling only"}
+ },
+ "reproduce_prior": {
+  "B1_lateral_correct": [1, 11],
+  "B0_right_correct": [7, 10],
+  "B2_E1_median_ratio": {"2-4": 2.62, "4-7": 1.72},
+  "tolerance": 0.15
+ }
+}
