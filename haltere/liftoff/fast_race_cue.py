@@ -8,11 +8,13 @@ no route, course file, checkpoint list or per-course parameter.
 The ring is a fixed-size HUD marker, so it provides a bearing and no range.
 Rather than chase a short goal point, this profile requests a world velocity
 along the filtered bearing. Speed falls continuously with the turn still
-required, commands are acceleration-limited, and a brief cue dropout coasts on
-the previous request instead of stopping. Clipped markers set bounded climb or
-descent, and a descent that the vehicle cannot achieve is treated as support
-by terrain and answered with a short climb. These are generic heuristics, not
-a completed-lap estimate.
+required, commands are acceleration-limited and change direction as a
+coordinated turn (an arc, not a chord through low speeds), a ring clamped
+at a side edge is followed just beyond that edge at a moderate speed, and a
+brief cue dropout coasts on the previous request instead of stopping. Clipped
+markers set bounded climb or descent, and a descent that the vehicle cannot
+achieve is treated as support by terrain and answered with a short climb.
+These are generic heuristics, not a completed-lap estimate.
 
 Optionally, `update(..., clearance=...)` accepts a causal forward-clearance
 sample (e.g. fly-style looming time-to-contact from `vision.looming2`). By
@@ -57,8 +59,23 @@ class FastCueConfig:
     surface_sink: float = 1.
     surface_sink_per_m: float = .5
     surface_release_m: float = .5
-    side_speed_fraction: float = .3
-    side_turn_deg: float = 75.
+    # Coordinated turn: the horizontal request changes as a heading rotation
+    # (centripetal share at most turn_acceleration, i.e. turn_acceleration/max(|v|, 1)
+    # rad/s) plus a speed change that uses the rest of command_acceleration, so a
+    # new bearing is flown as an arc instead of a chord through low speeds.
+    # turn_acceleration < command_acceleration keeps sqrt(10^2-8^2) = 6 m/s^2 for
+    # speed changes while turning: with no such room a turn that never converges
+    # (a close checkpoint off to the side) cannot slow down and circles it.
+    # Below turn_min_speed (request or goal) the heading is undefined and the
+    # request slews along the straight line as before.
+    turn_acceleration: float = 8.
+    turn_min_speed: float = .5
+    # A ring clamped at the left/right edge lies beyond the field of view: request
+    # side_speed_fraction of the nominal speed toward side_margin_deg beyond the
+    # clamped edge ray's bearing, level: the clamped marker's height on the edge
+    # is not reliable vertical evidence in Liftoff.
+    side_speed_fraction: float = .65
+    side_margin_deg: float = 10.
     coast_s: float = .6
     coast_distance_m: float = 4.
     search_yaw_rate: float = 1.2
@@ -91,6 +108,10 @@ class FastCueConfig:
             raise ValueError('Fractions must stay below one')
         if not self.below_full_deg > self.below_weak_deg:
             raise ValueError('Bottom-edge evidence needs an increasing depression range')
+        if not self.turn_acceleration <= self.command_acceleration:
+            raise ValueError('The turn share must fit within command_acceleration')
+        if not self.side_speed_fraction <= 1 or not self.side_margin_deg < 90:
+            raise ValueError('Use a side speed fraction <= 1 and a side margin below 90 degrees')
 
 
 def stopping_speed(distance, deceleration, latency, margin):
@@ -622,11 +643,16 @@ class FastRaceCue:
         heading = np.array([np.cos(yaw), np.sin(yaw)])
         dh = d[:2]/max(np.linalg.norm(d[:2]), 1e-9)
         if self.edge and not (self.below or self.above):
-            # Beyond the horizontal field of view: turn toward that side.
+            # Beyond the horizontal field of view: keep a moderate speed and head
+            # just beyond the clamped edge ray, which turns with the camera.
             angle = np.arctan2(heading[0]*dh[1]-heading[1]*dh[0], heading @ dh)
             self.side = np.sign(angle) if abs(angle) > .02 else self.side
-            turn = yaw+self.side*np.radians(c.side_turn_deg)
-            return np.r_[np.array([np.cos(turn), np.sin(turn)])*self.speed*c.side_speed_fraction, 0.], 'side'
+            turn = np.arctan2(dh[1], dh[0])+self.side*np.radians(c.side_margin_deg)
+            # Height is left to the in-view states: Liftoff places side-clamped
+            # markers near the lower corners even for rings that turn out to be
+            # above, so the clamped ray's elevation is not vertical evidence.
+            horizontal = self.speed*c.side_speed_fraction
+            return np.r_[np.array([np.cos(turn), np.sin(turn)])*horizontal, 0.], 'side'
         reference = velocity[:2]/horizontal_speed if horizontal_speed > 1. else heading
         alignment = max(0., float(reference @ dh))
         fraction = c.min_speed_fraction+(1-c.min_speed_fraction)*alignment**2
@@ -652,6 +678,39 @@ class FastRaceCue:
             speed *= limit/abs(vertical)
             vertical = np.sign(vertical)*limit
         return np.r_[dh*speed, vertical], 'cue'
+
+    def _horizontal_step(self, current, goal, dt):
+        """Change of the horizontal request this tick: a coordinated turn.
+
+        The heading rotates toward the goal's at most turn_acceleration/max(|v|, 1)
+        rad/s (centripetal share <= turn_acceleration) and the speed changes with the
+        rest of the command_acceleration budget, so a new bearing is flown as an arc
+        at nearly constant speed instead of a chord through lower speeds. Both parts
+        taper with command_time_constant near the goal, which to first order equals
+        the straight-line taper for small corrections. Without a defined heading
+        (request or goal slower than turn_min_speed) the straight-line slew applies.
+        """
+        c = self.config
+        chord = goal-current
+        norm = float(np.linalg.norm(chord))
+        top = c.command_acceleration*dt
+        # Taper the requested acceleration near the goal, so feedforward ends
+        # smoothly instead of overshooting into a nose-up brake.
+        limit = min(top, norm*dt/c.command_time_constant)
+        speed, target = float(np.linalg.norm(current)), float(np.linalg.norm(goal))
+        if min(speed, target) < c.turn_min_speed:
+            return chord*(limit/norm) if norm > limit else chord
+        angle = float(np.arctan2(current[0]*goal[1]-current[1]*goal[0], current @ goal))
+        rotation = np.sign(angle)*min(abs(angle)*dt/c.command_time_constant,
+                                      c.turn_acceleration/max(speed, 1.)*dt)
+        normal = speed*abs(rotation)/max(dt, 1e-9)
+        room = float(np.sqrt(max(c.command_acceleration**2-normal**2, 0.)))*dt
+        change = target-speed
+        change = np.sign(change)*min(abs(change)*dt/c.command_time_constant, room)
+        heading = float(np.arctan2(current[1], current[0]))+rotation
+        step = (speed+change)*np.array([np.cos(heading), np.sin(heading)])-current
+        size = float(np.linalg.norm(step))
+        return step*(top/size) if size > top else step
 
     def update(self, senses, omega, detection, capture_time, now, clearance=None):
         """One control tick. `clearance`, when given, is a causal forward-clearance sample:
@@ -724,12 +783,7 @@ class FastRaceCue:
         if self.velocity_command is None:
             self.velocity_command = velocity.copy()
         step = desired-self.velocity_command
-        norm = np.linalg.norm(step[:2])
-        # Taper the requested acceleration near the goal, so feedforward ends
-        # smoothly instead of overshooting into a nose-up brake.
-        limit = min(c.command_acceleration*dt, norm*dt/c.command_time_constant)
-        if norm > limit:
-            step[:2] *= limit/norm
+        step[:2] = self._horizontal_step(self.velocity_command[:2], desired[:2], dt)
         up = max(c.vertical_command_acceleration, self.clearance_config.terrain_climb_acceleration if climb > 0 else 0.)
         step[2] = np.clip(step[2], -c.vertical_command_acceleration*dt, up*dt)
         previous = self.velocity_command.copy()
@@ -823,6 +877,11 @@ class FastRaceCue:
                     local_flag_clearance=True, visible_route_arrows_for_clearance_side=True,
                     guidance='world velocity along the filtered cue bearing, acceleration-limited with feedforward',
                     speed_schedule='min_speed_fraction + (1-min)*cos^2(angle between velocity and bearing)',
+                    turn='coordinated: heading rotation with centripetal share <= turn_acceleration '
+                         '(turn_acceleration/max(|v|, 1) rad/s), speed change within the rest of '
+                         'command_acceleration; straight-line slew below turn_min_speed',
+                    side_edge='side_speed_fraction of nominal speed toward side_margin_deg beyond the '
+                              'clamped edge ray bearing, level (edge height is not used)',
                     bottom_edge='shallow descent bounded by the clamped edge ray depression plus a margin, '
                                 'weighted by that depression and latched per clip',
                     top_edge='climb while preserving the clipped slope bound',

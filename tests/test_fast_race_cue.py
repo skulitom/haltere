@@ -193,12 +193,17 @@ def test_side_edge_cue_turns_toward_that_side(u, side):
     speed = 10.
     history = CameraPoseHistory()
     pilot = FastRaceCue(SENSOR, history, speed)
-    rows = drive(pilot, history, dict(u=u, v=.5, edge=True), 150, plant='static')
+    rows = drive(pilot, history, dict(u=u, v=.5, edge=True), 200, plant='static')
     _, state, command, sight_yaw, _ = rows[-1]
     assert state == 'side' and pilot.pilot.mode == 5 and pilot.side == side
     assert side * command[1] > 0 and abs(command[2]) < 1e-9
+    # A moderate speed toward side_margin_deg beyond the clamped edge ray (about 61 deg for this camera).
     assert np.linalg.norm(command[:2]) == pytest.approx(speed * CONFIG.side_speed_fraction, abs=2e-2)
-    assert np.degrees(np.arctan2(command[1], command[0])) == pytest.approx(side * CONFIG.side_turn_deg, abs=.5)
+    camera = Camera(320, 180, SENSOR['focal_320'], SENSOR['tilt_deg'])
+    edge = camera.unproject_body(np.array([[u * 320, 90.]]))[0]
+    expected = np.degrees(np.arctan2(edge[1], edge[0])) + side * CONFIG.side_margin_deg
+    assert 55. < abs(expected) - CONFIG.side_margin_deg < 65.
+    assert np.degrees(np.arctan2(command[1], command[0])) == pytest.approx(expected, abs=.5)
     assert side * sight_yaw < 0
     assert side * yaw_rate_in_surrogate(pilot.command(hover_action())) > .5
 

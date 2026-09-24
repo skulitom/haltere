@@ -160,3 +160,31 @@ Liftoff. With the camera tilted 30 degrees up, level or descending flight at 3-6
 often projects the flight path below the image, so an obstacle on the path is not
 visible to any image cue. The patch stays out of the codebase; the study is kept
 for reference.
+
+### Arc turns after a checkpoint (2026-09-24)
+
+After a checkpoint the ring jumps to the next one; when it was clamped at a
+side edge the pilot asked for 30% speed and slewed the request along a straight
+line through low speeds, so the drone braked hard, yawed, then re-accelerated
+(pitch -0.64 -> +0.61 -> -0.44, ~1.5 s lost per wide switch). The fast pilot now
+changes direction as a coordinated turn (heading rotation with at most 8 m/s^2
+centripetal, speed change within the rest of the 10 m/s^2 budget) and follows a
+side-clamped ring at 65% speed, level, 10 degrees beyond the clamped edge ray.
+Three turn strategies were compared in the surrogate on 16 synthetic courses with
+the PD and brain-06; the arc variant was the only one with no added crashes and
+a lower time loss. A proposed rule that read a low side-clamped marker as a gate
+below was dropped: live Liftoff places side markers near the lower corners even
+for rings above.
+
+| Run | Result |
+|---|---|
+| `straw-fast6-arc-01` (fast PD, arc turns) | Laps 1-2 clean and ~2 s ahead of `straw-fast6-03`; **impact on the descending ImmersionRC arch's top beam in lap 3** (race 4:27.9) |
+
+Live, 45-75 degree switches kept 3.55 m/s minimum speed (baseline 3.03) and side
+time fell from 4.2 to 2.7 s; the fast part of the post-switch stick change is
+unchanged (it is not caused by the slew). The arch crash exposes a margin that
+was already thin: across all fast PD laps the drone crosses that arch at
+12.9-13.3 m, near the top of the opening (13.32 m on the impact lap), because the
+bottom-edge descent aims just steeper than the clipped ray and approaches the
+ring from above; brain-06 crosses at 12.4 m. brain-06 itself learned the old
+braking during distillation, so it needs re-distillation under the new pilot.
