@@ -102,6 +102,25 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def frame_rows_sha256(index) -> str:
+    """sha256 of the store rows' frame identities (run_id, slot). The teacher reads only frame pixels, so a
+    timing re-pose that rewrites poses/grades (and hence the index sha256) but keeps these rows keeps the cache."""
+    ix = np.asarray(index)
+    h = hashlib.sha256()
+    h.update(np.ascontiguousarray(ix['run_id'].astype('<i4')).tobytes())
+    h.update(np.ascontiguousarray(ix['slot'].astype('<i4')).tobytes())
+    return h.hexdigest()
+
+
+def teacher_valid_for(manifest: dict, store) -> bool:
+    """A complete teacher cache matches this store when its frame-row identity (or index sha256) matches."""
+    if manifest.get('status') != 'complete':
+        return False
+    if manifest.get('frame_rows_sha256'):
+        return manifest['frame_rows_sha256'] == frame_rows_sha256(store.index) and manifest.get('frames') == len(store)
+    return manifest.get('store_index_sha256') == store.manifest.get('index_sha256')
+
+
 def preprocess(frames_u8, device):
     """(B, 252, 448, 3) uint8 RGB -> (B, 3, 336, 602) normalised float tensor on ``device``."""
     import torch
@@ -118,6 +137,15 @@ def build_teacher_cache(store, labels_root, guard, *, batch: int = 32, device: s
     root = Path(labels_root) / 'teacher'
     root.mkdir(parents=True, exist_ok=True)
     mpath = root / 'manifest.json'
+    if mpath.exists():
+        old = json.loads(mpath.read_text(encoding='utf-8'))
+        if teacher_valid_for(old, store):
+            if old.get('store_index_sha256') != store.manifest.get('index_sha256') or not old.get('frame_rows_sha256'):
+                old.update(store_index_sha256=store.manifest.get('index_sha256'),
+                           frame_rows_sha256=frame_rows_sha256(store.index))
+                mpath.write_text(json.dumps(old, indent=1) + '\n', encoding='utf-8')
+            log('teacher cache complete for these frame rows: nothing to do')
+            return old
     model_dir = find_model_dir()
     lic = model_licence(model_dir) if model_dir else None
     reason = None
@@ -132,16 +160,23 @@ def build_teacher_cache(store, labels_root, guard, *, batch: int = 32, device: s
         mpath.write_text(json.dumps(m, indent=1) + '\n', encoding='utf-8')
         log(f'teacher cache skipped: {reason}')
         return m
+    n = len(store)
+    rows_sha = frame_rows_sha256(store.index)
     import torch
     from transformers import AutoModelForDepthEstimation
-    n = len(store)
     path = root / Path(TEACHER.file).name
+    ppath = root / 'progress.json'
+    prog = json.loads(ppath.read_text()) if ppath.exists() else {}
+    if prog and prog.get('frame_rows_sha256') != rows_sha:
+        log('teacher progress belongs to other frame rows: starting over')
+        prog = {}
+        if path.exists():
+            path.unlink()
     arr = (np.load(path, mmap_mode='r+') if path.exists() else
            np.lib.format.open_memmap(path, mode='w+', dtype=TEACHER.dtype, shape=(n,) + TEACHER_SHAPE))
     if arr.shape != (n,) + TEACHER_SHAPE:
         raise ValueError(f'{path}: shape {arr.shape} does not match the store ({n} rows)')
-    ppath = root / 'progress.json'
-    done = set(json.loads(ppath.read_text())['blocks']) if ppath.exists() else set()
+    done = set(prog.get('blocks', []))
     weights_sha = _sha256(model_dir / 'model.safetensors')
     model = AutoModelForDepthEstimation.from_pretrained(model_dir, local_files_only=True).eval().to(device).half()
     blocks = [(a, min(a + ROWS_PER_BLOCK, n)) for a in range(0, n, ROWS_PER_BLOCK)]
@@ -167,10 +202,10 @@ def build_teacher_cache(store, labels_root, guard, *, batch: int = 32, device: s
                 arr[rr] = d.astype(np.float16)
             arr.flush()
             done.add(a)
-            ppath.write_text(json.dumps(dict(blocks=sorted(done))), encoding='utf-8')
+            ppath.write_text(json.dumps(dict(blocks=sorted(done), frame_rows_sha256=rows_sha)), encoding='utf-8')
             log(f'teacher rows {a}-{b} done ({time.monotonic() - t0:.0f} s)')
     m = dict(status='complete' if len(done) == len(blocks) else 'partial', model=TEACHER_MODEL,
-             store_index_sha256=store.manifest.get('index_sha256'),
+             store_index_sha256=store.manifest.get('index_sha256'), frame_rows_sha256=rows_sha,
              revision=TEACHER_REVISION, model_dir=str(model_dir).replace('\\', '/'), weights_sha256=weights_sha,
              licence=lic, input_hw=list(TEACHER_INPUT), resize='bicubic 448x252 -> 602x336, ImageNet normalisation',
              output='relative inverse depth, bilinear to 448x252, 7x7 block mean -> (36, 64) float16',

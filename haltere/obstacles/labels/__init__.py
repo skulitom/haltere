@@ -40,8 +40,10 @@ TEACHER relative depth affine-fitted to L1-L3 anchors (M2); L5 COLLIDER box-coll
 (Drawing Board box course only, absolute simulator positions).
 
 Combination: each source first reduces its sub-rays/points to one constraint per cell or fan
-direction (``min_over``), then sources are folded with ``intersect`` in COMBINE_ORDER. Per-source
-raw outputs stay in parts/ so the combination can be recomputed.
+direction (``min_over``), then the sources' intervals are intersected (``intersect`` semantics on the
+full intervals, so the result does not depend on COMBINE_ORDER; build.combine_sources): conflicts
+beyond EXACT_TOL become UNKNOWN and are counted; a wide finite interval keeps UPPER hi when
+hi <= 8 m, else LOWER lo. Per-source raw outputs stay in parts/ so the combination can be recomputed.
 """
 from __future__ import annotations
 
@@ -113,7 +115,7 @@ LABEL_MANIFEST_KEYS = {
     'n_frames': 'rows (== store rows)',
     'arrays': '{name: {file, dtype, shape, sha256}}',
     'sources': '{TUBE|HINDSIGHT|IMPACT|TEACHER|COLLIDER: {parameters, frames_labelled, cells_by_kind}}',
-    'combine': '{order, exact_tol, min_known_frac, conflicts, interval_to_lower}',
+    'combine': '{order, rule, exact_tol, min_known_frac, wide_interval, conflicts_*, wide_to_*, cells_*}',
     'inputs': '{colliders, lateral_manifest, events_f12, folds, inventory: {path, sha256}}',
     'quality': 'K0b results: L2 vs colliders, L2 vs L3, uncensored near-travel fan share per environment',
     'offline_only': 'true: hindsight labels, never runtime inputs',
@@ -144,7 +146,7 @@ EVENT_FIELDS = {
     'lateral': 'bool: scored by E4',
     'in_view_frac_T2_T1': 'fraction of frames in [T-2, T-1] s where point_w projects into the image, or null',
     'oracle_route': 'bool: privileged oracle-route flight (excluded from evaluation sets)',
-    'source': 'lateral_manifest | blind_label | csv_contact | sidecar',
+    'source': 'lateral_manifest | blind_label | near_pass_geometry (builder) | csv_contact | capture_contact | sidecar (unlabelled store events)',
     'blind': 'bool: labelled before any model or baseline output on this event was seen',
     'labeller': 'who labelled it (agent/session id or person)',
     'labelled_at': 'ISO time',
@@ -361,12 +363,17 @@ class LabelWriter:
     def mark_done(self, stage: str, run_id: int) -> None:
         for a in self.arrays.values():
             a.flush()
-        self.progress.setdefault(stage, []).append(int(run_id))
+        done = self.progress.setdefault(stage, [])
+        if int(run_id) not in done:
+            done.append(int(run_id))
         tmp = self.root / 'progress.json.tmp'
         tmp.write_text(json.dumps(self.progress), encoding='utf-8')
         os.replace(tmp, self.root / 'progress.json')
 
-    def finalize(self, **manifest) -> dict:
+    def finalize(self, status: str = 'complete', **manifest) -> dict:
+        """Write array hashes and ``manifest`` entries; ``status`` stays 'building' for a partial build."""
+        if status not in ('building', 'complete'):
+            raise ValueError(f'status {status!r}')
         for a in self.arrays.values():
             a.flush()
         arrays = {}
@@ -375,7 +382,7 @@ class LabelWriter:
             arrays[name] = dict(file=spec.file, dtype=spec.dtype, shape=list(a.shape),
                                 sha256=_sha256_file(self.root / spec.file))
         m = json.loads((self.root / 'manifest.json').read_text(encoding='utf-8'))
-        m.update(manifest, arrays=arrays, status='complete', schema=LABELS_SCHEMA,
+        m.update(manifest, arrays=arrays, status=status, schema=LABELS_SCHEMA,
                  store_index_sha256=self.index_sha256, n_frames=self.n, offline_only=True)
         self._write_manifest(m)
         return m
@@ -423,6 +430,10 @@ class LabelSet:
         path = self.root / TEACHER.file
         if not path.exists():
             raise FileNotFoundError(f'{path}: teacher cache not built')
+        tm = json.loads((path.parent / 'manifest.json').read_text(encoding='utf-8'))
+        if tm.get('status') != 'complete' or tm.get('store_index_sha256') != self.manifest['store_index_sha256']:
+            raise ValueError(f'{path}: teacher cache is incomplete or belongs to another store index '
+                             f'(rerun "python -m haltere.obstacles.labels teacher" to revalidate it)')
         return np.load(path, mmap_mode='r')[np.asarray(rows, dtype=np.int64)].astype(np.float32)
 
     def events(self) -> list[dict]:

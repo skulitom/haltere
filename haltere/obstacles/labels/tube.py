@@ -71,32 +71,45 @@ def trajectory_window(telemetry_t, telemetry_pos, t_frame: float, stop_time: flo
     return np.stack([np.interp(a, arc, ps[:, k]) for k in range(3)], axis=1)
 
 
-def ray_tube_exit(origin, dirs, centres, radius: float = TUBE_RADIUS_M, s_max: float = RANGE_MAX_M) -> np.ndarray:
+def ray_tube_exit(origin, dirs, centres, radius: float = TUBE_RADIUS_M, s_max: float = RANGE_MAX_M,
+                  min_reach: float = 0.0) -> np.ndarray:
     """Distance at which rays from ``origin`` leave the connected union of spheres (0 if they start outside).
 
-    origin (3,), dirs (m, 3) unit, centres (k, 3) -> (m,) in [0, s_max].
+    origin (3,), dirs (m, 3) unit, centres (k, 3) -> (m,) in [0, s_max]. With ``min_reach`` > 0, rays that
+    leave the union before min_reach get some value < min_reach (not necessarily their exact exit): a first
+    pass uses only the spheres that can meet the segment [0, min_reach] (centre within min_reach + radius),
+    which decides exactly whether the exit is >= min_reach; only those rays get the full computation.
     """
     dirs = np.asarray(dirs, dtype=np.float64).reshape(-1, 3)
     c = np.asarray(centres, dtype=np.float64).reshape(-1, 3)
     out = np.zeros(len(dirs))
     if len(c) == 0 or len(dirs) == 0:
         return out
+    if min_reach > 0:
+        near = np.linalg.norm(c - np.asarray(origin, dtype=np.float64), axis=1) <= min_reach + radius
+        first = ray_tube_exit(origin, dirs, c[near], radius, s_max)
+        far = np.flatnonzero(first >= min_reach)
+        out = np.minimum(first, np.nextafter(min_reach, 0.0))
+        if len(far):
+            out[far] = ray_tube_exit(origin, dirs[far], c, radius, s_max)
+        return out
     rel = c - np.asarray(origin, dtype=np.float64)                  # (k, 3)
     proj = dirs @ rel.T                                             # (m, k) along-ray position of each centre
     d2 = np.sum(rel * rel, axis=1)[None, :] - proj ** 2             # squared perpendicular distance
     half = np.sqrt(np.maximum(radius ** 2 - d2, 0.0))
     hit = d2 <= radius ** 2
+    hit &= proj + half >= 0                                         # spheres wholly behind the origin do not count
     s_in = np.where(hit, proj - half, np.inf)
     s_out = np.where(hit, proj + half, -np.inf)
-    # Start: spheres that contain the origin (s_in <= 0 <= s_out).
-    reach = np.where((s_in <= 0) & (s_out >= 0), s_out, -np.inf).max(axis=1)
-    active = np.flatnonzero(reach > 0)
-    while len(active):
-        r = reach[active]
-        cand = np.where(s_in[active] <= r[:, None] + 1e-9, s_out[active], -np.inf).max(axis=1)
-        grew = cand > r + 1e-9
-        reach[active[grew]] = cand[grew]
-        active = active[grew]
+    # Union of the intervals [s_in, s_out] connected to s = 0: sort by entry, chain while the next entry
+    # lies within the running maximum exit (a gap ends the connected union).
+    o = np.argsort(s_in, axis=1, kind='stable')
+    si = np.take_along_axis(s_in, o, axis=1)
+    cm = np.maximum.accumulate(np.take_along_axis(s_out, o, axis=1), axis=1)
+    gap = np.c_[si[:, 1:] > cm[:, :-1] + 1e-9, np.ones((len(si), 1), bool)]    # sentinel gap after the last
+    last = gap.argmax(axis=1)
+    reach = cm[np.arange(len(dirs)), last]
+    reach = np.where(si[:, 0] <= 0, reach, 0.0)                     # no sphere holds the origin: nothing free
     return np.clip(np.maximum(reach, 0.0), 0.0, s_max)
 
 
@@ -129,7 +142,7 @@ def tube_labels(telemetry_t, telemetry_pos, t_frame: float, pos, quat_wb, stop_t
     # The camera sits on the trajectory at t_frame; make sure the first sphere is centred on it.
     centres = np.vstack([origin[None], centres])
     dirs = subray_dirs_world(quat_wb).reshape(-1, 3)
-    s = ray_tube_exit(origin, dirs, centres, TUBE_RADIUS_M, RANGE_MAX_M).reshape(SUB_SHAPE)
+    s = ray_tube_exit(origin, dirs, centres, TUBE_RADIUS_M, RANGE_MAX_M, TUBE_MIN_LOWER_M).reshape(SUB_SHAPE)
     ok = s >= TUBE_MIN_LOWER_M
     sub_v[ok] = s[ok]
     sub_k[ok] = LabelKind.LOWER

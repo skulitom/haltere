@@ -64,6 +64,31 @@ def test_collider_labels_wall_ahead_and_fan_bundle():
         assert np.isfinite(h[1, 4]) == hit
 
 
+def test_collider_culling_is_exact():
+    """Per-chunk range and cone culling must not change any hit (bundles from offset origins included)."""
+    from haltere.liftoff.section_geometry import collision_depth
+    rng = np.random.default_rng(5)
+    geo = _geometry([([rng.uniform(-20, 20), rng.uniform(0.3, 5), rng.uniform(-20, 40)], list(rng.uniform(0.2, 4, 3)),
+                      float(rng.uniform(-90, 90))) for _ in range(120)])
+    scene = C.BoxScene(geo)
+    origin = np.array([0.5, 1.5, 2.0])
+    for spread in (0.0, 0.5):
+        d = rng.normal(size=(600, 3)) * [0.4, 0.3, 1.0]
+        d[:, 2] = np.abs(d[:, 2])
+        d /= np.linalg.norm(d, axis=1, keepdims=True)
+        o = origin + rng.uniform(-spread, spread, size=(600, 3))
+        got = scene.cast(o, d, 60.0, chunk=37)
+        ref = np.array([collision_depth(geo, oi, di[None], max_range=60.0)['range_m'][0] for oi, di in zip(o, d)])
+        assert np.array_equal(np.isfinite(ref), np.isfinite(got))
+        assert np.allclose(ref[np.isfinite(ref)], got[np.isfinite(got)], atol=1e-9)
+    # the tiled sub-ray cast equals a plain cast
+    q = _quat_axis([0, 0, 1], 25.0)
+    tiled = C.subray_ranges(scene, np.array([0.0, 0.0, 1.5]), q)
+    plain = scene.cast(C.sim_to_unity(np.array([0.0, 0.0, 1.5])), C.sim_to_unity(R.subray_dirs_world(q).reshape(-1, 3)),
+                       60.0, chunk=100000).reshape(R.SUB_SHAPE)
+    assert np.array_equal(np.nan_to_num(tiled, posinf=-1), np.nan_to_num(plain, posinf=-1))
+
+
 def test_collider_scene_refuses_unknown_geometry():
     geo = _geometry([([0, 1, 5], [1, 1, 1], 0.0)])
     geo['unknown_geometry'] = [dict(item='flag')]
@@ -80,6 +105,23 @@ def test_ray_tube_exit_straight_path():
     assert s[0] == pytest.approx(10.35, abs=1e-6)
     assert s[1] == pytest.approx(0.35, abs=1e-6)
     assert s[2] == pytest.approx(0.35 / np.sin(0.1), rel=0.02)
+
+
+def test_ray_tube_exit_two_pass_matches_full():
+    rng = np.random.default_rng(1)
+    for _ in range(20):
+        steps = rng.normal(size=(rng.integers(1, 200), 3)) * 0.1 + [0.15, 0, 0]
+        c = np.vstack([np.zeros((1, 3)), np.cumsum(steps, axis=0)])
+        d = rng.normal(size=(400, 3)) + [2.0, 0, 0]
+        d /= np.linalg.norm(d, axis=1, keepdims=True)
+        full = U.ray_tube_exit(np.zeros(3), d, c, 0.35, 60.0)
+        fast = U.ray_tube_exit(np.zeros(3), d, c, 0.35, 60.0, min_reach=1.0)
+        assert np.array_equal(full >= 1.0, fast >= 1.0)
+        assert np.array_equal(full[full >= 1.0], fast[full >= 1.0])
+    # a gap in the union ends the reach; spheres behind the origin do not count
+    c = np.array([[0.0, 0, 0], [0.5, 0, 0], [2.0, 0, 0], [-0.6, 0, 0]])
+    assert U.ray_tube_exit(np.zeros(3), np.array([[1.0, 0, 0]]), c, 0.35)[0] == pytest.approx(0.85)
+    assert U.ray_tube_exit(np.zeros(3), np.array([[-1.0, 0, 0]]), c, 0.35)[0] == pytest.approx(0.95)
 
 
 def test_tube_labels_are_lower_bounds_and_stop_before_contacts():
@@ -263,6 +305,64 @@ def test_hindsight_triangulates_a_wall_and_labels_frames():
     del step
 
 
+def test_epipolar_distance_static_and_moving_points():
+    q0 = _quat_axis([0, 1, 0], 20.0)
+    q1 = _quat_axis([0, 0, 1], 3.0)
+    p0, p1 = np.array([0.0, 0.0, 1.5]), np.array([2.0, 0.3, 1.6])
+    R0, R1 = contract.camera_to_world(q0), contract.camera_to_world(q1)
+    rng = np.random.default_rng(4)
+    P = np.c_[rng.uniform(6, 25, 50), rng.uniform(-6, 6, 50), rng.uniform(0, 5, 50)]
+    uv0, ok0 = contract.project_camera((P - p0) @ R0)
+    uv1, ok1 = contract.project_camera((P - p1) @ R1)
+    ok = ok0 & ok1
+    d = H.epipolar_distance(uv0[ok], uv1[ok], p0, p1, R0, R1)
+    assert d.max() < 1e-6                                           # static points lie on their epipolar lines
+    moved, _ = contract.project_camera((P + [0.0, 0.0, 1.0] - p1) @ R1)   # the point moved 1 m up
+    assert np.median(H.epipolar_distance(uv0[ok], moved[ok], p0, p1, R0, R1)) > 3.0
+
+
+def test_adjacent_pairs_triangulate_two_frame_tracks():
+    """Tracks seen in two consecutive frames only (fast flight, low frame rate) still give estimates."""
+    t = np.array([0.0, 0.16, 0.32, 0.48])
+    pos = np.c_[3.0 * np.arange(4), np.zeros(4), np.full(4, 1.5)]
+    quat = np.tile(_quat_axis([0, 1, 0], 20.0), (4, 1))
+    R_wc = contract.camera_to_world(quat)
+    rng = np.random.default_rng(6)
+    P = np.c_[rng.uniform(12, 22, 60), rng.uniform(-10, 10, 60), rng.uniform(0, 5, 60)]
+    ids, frames, uvs = [], [], []
+    for k in range(4):
+        uv, ok = contract.project_camera((P - pos[k]) @ R_wc[k])
+        ok &= contract.in_image(uv)
+        for j in np.flatnonzero(ok):
+            ids.append(j + 100 * (k // 2)); frames.append(k); uvs.append(uv[j])   # tracks live for 2 frames only
+    tracks = H.Tracks(np.array(ids, np.int64), np.array(frames, np.int32), np.array(uvs, np.float32),
+                      np.r_[True, False, False, False])
+    est = H.triangulate(tracks, t, pos, quat, offsets=())
+    assert len(est.frame) > 20 and set(np.unique(est.frame)) == {0, 1, 2, 3}
+    truth = P[est.track % 100]
+    assert np.max(np.linalg.norm(est.point - truth, axis=1) / est.range_m) < 1e-3
+    assert (est.sigma_m < H.MAX_SIGMA_FRACTION * est.range_m).all()
+    # without adjacent partners the same tracks give nothing (the +-0.5 s keyframes are 3 frames away)
+    old = H.ADJACENT_STEPS
+    try:
+        H.ADJACENT_STEPS = ()
+        assert len(H.triangulate(tracks, t, pos, quat).frame) == 0
+    finally:
+        H.ADJACENT_STEPS = old
+
+
+def test_fuse_support_rule():
+    pts = np.array([[10.05, 0.05, 1.05]] * 2 + [[20.05, 3.05, 1.05]])
+    mk = lambda frame, track: H.Estimates(np.array(frame, np.int32), np.array(track, np.int64), np.zeros((3, 2), np.float32),
+                                          pts, np.full(3, 10.0), np.full(3, 0.2), np.zeros(3, np.float32))
+    cams = np.zeros((3, 3))
+    vm = H.fuse(mk([0, 1, 2], [7, 7, 8]), cams)          # voxel A: one track, two frames; voxel B: single estimate
+    assert len(vm.occ_key) == 1 and np.allclose(vm.occ_pos[0], pts[0])
+    assert vm.meta['rejected_unsupported'] == 1
+    vm = H.fuse(mk([0, 0, 2], [7, 9, 8]), cams)          # voxel A: two tracks in one frame
+    assert len(vm.occ_key) == 1
+
+
 def test_voxel_map_lookup_and_save(tmp_path):
     rng = np.random.default_rng(2)
     est = H.Estimates(np.repeat(np.arange(4, dtype=np.int32), 10), np.arange(40, dtype=np.int64),
@@ -285,13 +385,19 @@ def test_voxel_map_lookup_and_save(tmp_path):
 def test_combine_sources_order_and_conflicts():
     v = lambda *a: np.array(a, float)
     k = lambda *a: np.array(a, np.uint8)
-    parts = {LabelSource.COLLIDER: (v(5, 5, np.nan), k(K.EXACT, K.EXACT, K.UNKNOWN)),
-             LabelSource.HINDSIGHT: (v(5.2, 2.0, 7.0), k(K.UPPER, K.UPPER, K.UPPER)),
-             LabelSource.TUBE: (v(1.5, 1.0, 3.0), k(K.LOWER, K.LOWER, K.LOWER))}
+    parts = {LabelSource.COLLIDER: (v(5, 5, np.nan, np.nan), k(K.EXACT, K.EXACT, K.UNKNOWN, K.UNKNOWN)),
+             LabelSource.HINDSIGHT: (v(5.2, 2.0, 7.0, 15.0), k(K.UPPER, K.UPPER, K.UPPER, K.UPPER)),
+             LabelSource.TUBE: (v(1.5, 1.0, 3.0, 3.0), k(K.LOWER, K.LOWER, K.LOWER, K.LOWER))}
     val, kind, src, conflict = B.combine_sources(parts)
-    assert kind.tolist() == [K.EXACT, K.UNKNOWN, K.LOWER] and conflict.tolist() == [False, True, False]
+    # wide intervals: [3, 7] keeps the near occupied bound (UPPER 7), [3, 15] the free bound (LOWER 3)
+    assert kind.tolist() == [K.EXACT, K.UNKNOWN, K.UPPER, K.LOWER] and conflict.tolist() == [False, True, False, False]
     assert src[0] & int(LabelSource.COLLIDER) and src[0] & int(LabelSource.TUBE) and src[1] == 0
-    assert val[0] == pytest.approx(5.0) and val[2] == pytest.approx(3.0)
+    assert val[0] == pytest.approx(5.0) and val[2] == pytest.approx(7.0) and val[3] == pytest.approx(3.0)
+    # order independence: a contradiction between the first and the last source is still a conflict
+    parts = {LabelSource.IMPACT: (v(5.0), k(K.UPPER)), LabelSource.HINDSIGHT: (v(3.0), k(K.LOWER)),
+             LabelSource.TUBE: (v(7.0), k(K.LOWER))}
+    val, kind, src, conflict = B.combine_sources(parts)
+    assert conflict.tolist() == [True] and kind.tolist() == [K.UNKNOWN]
 
 
 def _synthetic_store(root):
@@ -314,26 +420,86 @@ def _synthetic_store(root):
     return w.finalize()
 
 
+def test_rundata_stops_at_store_path_jumps(tmp_path):
+    """A respawn between attempts (store-pose path, no CSV) is a stop: the tube never bridges it."""
+    t = 1000.0 + np.arange(40) * 0.16
+    pos = np.c_[15.0 * (t - t[0]), np.zeros(40), np.full(40, 2.0)]
+    pos[20:] -= [60.0, 0.0, 0.0]                         # reset to the start line
+    w = S.StoreWriter(tmp_path)
+    w.write_plan([dict(source_id='synthetic/jump', flight='synthetic/jump', aliases=[], source='capture_dataset',
+                       env='Straw Bale', origin_sim=None, telemetry_csv=None)], {})
+    rows = S.empty_index(len(t))
+    rows['grade'] = int(S.Grade.CAPTURE)
+    rows['t_wall'] = t
+    rows['pos'] = pos
+    rows['vel'] = [15.0, 0.0, 0.0]
+    rows['quat'] = _quat_axis([0, 1, 0], 30.0)
+    with w.begin_run(0) as rw:
+        rw.append(np.zeros((len(t),) + contract.FRAME_SHAPE, np.uint8), rows)
+        rw.close()
+    w.write_json('events.json', dict(events=[]))
+    w.finalize()
+    store = S.FrameStore(tmp_path)
+    rd = B.RunData(store, 0, [], tmp_path)
+    assert rd.path_source == 'store index poses'
+    assert rd.stops.tolist() == [pytest.approx(t[20])]
+    gv, gk, fv, fk = U.tube_labels(rd.path_t, rd.path_pos, t[18], pos[18], rows['quat'][18], rd.stop_after(t[18]))
+    assert np.nanmax(fv) < 2 * 15.0 * 0.16 + 0.5         # stops before the jump, not 3 s of path
+
+
 def test_label_build_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setattr(H, 'feature_mask', _no_mask)
     _synthetic_store(tmp_path)
-    args = argparse.Namespace(store=tmp_path, colliders=None, events=None, extra_events=None, stages=None,
-                              flight_lock=str(tmp_path / 'NO_FLIGHT_LOCK'), runs=None)
+    ev = dict(event_id=0, store_event_id=-1, run='run', flight='synthetic/run', env='Straw Bale', kind='contact',
+              t_phase=2.9, t_wall=None, point_w=[WALL_X, 0.0, 1.8], normal_w=[-1.0, 0.0, 0.0], drone_pos_w=None,
+              speed_mps=3.0, obstacle='wall', unique_obstacle='synthetic/wall', obstacle_side='centre',
+              primary_free_side='either', accepted_free_sides=['left', 'right'], lateral=False, in_view_frac_T2_T1=None,
+              oracle_route=False, source='blind_label', blind=True, labeller='test', labelled_at='2026-09-24',
+              confidence='high', notes='', evidence=[])
+    (tmp_path / 'extra_events.json').write_text(json.dumps(dict(events=[ev])))
+    args = argparse.Namespace(store=tmp_path, colliders=None, events=None, extra_events=tmp_path / 'extra_events.json',
+                              stages=None, flight_lock=str(tmp_path / 'NO_FLIGHT_LOCK'), runs=None)
     m = B.build(args)
     assert m['status'] == 'complete' and m['n_frames'] == 30
+    l23 = m['quality']['l2_vs_l3']
+    assert l23['total']['frames_in_view'] >= 10 and l23['total']['frames_both'] >= 5
+    assert abs(l23['per_event'][0]['median_ratio'] - 1) < 0.15 and l23['total']['frames_l2_lower_beyond'] == 0
     from haltere.obstacles.labels import LabelSet
     ls = LabelSet(tmp_path, S.FrameStore(tmp_path).index_sha256())
     gv, gk, gs = ls.grid(np.arange(30))
     assert (gk != K.UNKNOWN).mean() > 0.05
     assert (gs[gk != K.UNKNOWN] != 0).all()
-    assert set(np.unique(gs[gk != K.UNKNOWN])) <= {int(LabelSource.HINDSIGHT), int(LabelSource.TUBE),
-                                                   int(LabelSource.HINDSIGHT | LabelSource.TUBE)}
+    allowed = int(LabelSource.HINDSIGHT | LabelSource.TUBE | LabelSource.IMPACT)
+    assert (gs[gk != K.UNKNOWN] & ~np.uint8(allowed)).max() == 0
+    assert (gs & int(LabelSource.IMPACT)).any()                  # the contact point labels some cells
     assert 'l2_vs_colliders' in m['quality'] and (tmp_path / 'labels' / 'events.json').exists()
     # resumable: a second run does no per-run work and yields identical arrays
     before = np.array(ls.arrays['grid_value'])
     B.build(args)
     after = LabelSet(tmp_path, S.FrameStore(tmp_path).index_sha256()).arrays['grid_value']
     assert np.array_equal(np.nan_to_num(before, nan=-1), np.nan_to_num(np.array(after), nan=-1))
+
+
+def test_teacher_cache_survives_a_repose(tmp_path, monkeypatch):
+    """A complete teacher cache stays valid when a re-pose changes the index hash but keeps the frame rows."""
+    class FakeStore:
+        def __init__(self, sha, slots):
+            self.index = S.empty_index(len(slots))
+            self.index['slot'] = slots
+            self.manifest = dict(index_sha256=sha)
+
+        def __len__(self):
+            return len(self.index)
+
+    a, b, c = FakeStore('old', np.arange(5)), FakeStore('new', np.arange(5)), FakeStore('other', np.arange(5)[::-1])
+    root = tmp_path / 'teacher'
+    root.mkdir()
+    (root / 'manifest.json').write_text(json.dumps(dict(status='complete', frames=5, store_index_sha256='old',
+                                                        frame_rows_sha256=T.frame_rows_sha256(a.index))))
+    monkeypatch.setattr(T, 'find_model_dir', lambda: None)       # a valid cache needs no model
+    m = T.build_teacher_cache(b, tmp_path, guard=None, log=lambda *x: None)
+    assert m['status'] == 'complete' and m['store_index_sha256'] == 'new'
+    assert not T.teacher_valid_for(m, c)                         # reordered rows: the cache does not apply
 
 
 def test_teacher_block_average_and_skip(tmp_path, monkeypatch):

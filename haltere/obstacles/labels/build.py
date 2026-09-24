@@ -12,12 +12,18 @@ Stages (each resumable per run with LabelWriter.is_done/mark_done; ChunkGuard.be
   tube       L1 flown tube (next 3 s, 0.35 m radius, stopping before contacts/impacts/resets)
   impacts    L3 contact points in frames [T - 3 s, T - 0.15 s]
   hindsight  L2 per-flight triangulation, voxel fusion, projection (maps kept in parts/hindsight_map)
-  combine    labels.intersect in COMBINE_ORDER; conflicts -> UNKNOWN (counted); clip; write arrays
-  quality    K0b checks (label manifest 'quality')
+  combine    interval intersection of the sources (combine_sources); conflicts -> UNKNOWN (counted);
+             clip; write arrays
+  quality    K0b checks (label manifest 'quality' and labels/quality.json)
 
 Per-source outputs are kept in ``labels/parts/<stage>/rNNNNN.npz`` (rows, grid/fan value+kind) so the
-combination can be recomputed. Data paths in runs.json are repo-relative; they are resolved against
-$HALTERE_DATA_ROOT, then the repository root, then the store's grandparent directory.
+combination can be recomputed. Every part records a hash of its inputs (stage code version, rows, poses,
+stops, event geometry, feature-mask provenance); a rerun rebuilds exactly the parts whose inputs changed
+(a timing re-pose, new events, a new overlay mask) and recombines everything. Stops (the tube and the
+flown-path clearing end before them) are contact/impact times, telemetry resets and, for store-pose
+paths, jumps the logged velocity cannot explain. Data paths in runs.json are repo-relative; they are
+resolved against $HALTERE_DATA_ROOT, then the repository root, then the store's grandparent directory.
+Only grade <= FAIR rows get labels (UNRELIABLE alignments stay UNKNOWN).
 """
 from __future__ import annotations
 
@@ -133,7 +139,19 @@ class RunData:
         self.tel = load_telemetry(data_path(self.rec.get('telemetry_csv'), store_root))
         self.path_t, self.path_pos, self.path_source = self._path()
         stops = [e['t_wall'] for e in self.events if e['kind'] in ('terminal_impact', 'contact') and e.get('t_wall')]
-        self.stops = np.sort(np.r_[np.asarray(stops, float), reset_times(self.tel)])
+        self.stops = np.sort(np.r_[np.asarray(stops, float), reset_times(self.tel), self._path_jumps()])
+
+    def _path_jumps(self) -> np.ndarray:
+        """Times of path samples reached by a jump the logged velocity cannot explain (respawn/reset between
+        attempts of a capture set; the store-pose path has no CSV reset detection). The tube stops before them."""
+        if self.path_source != 'store index poses' or len(self.t) < 2:
+            return np.zeros(0)
+        dt = np.diff(self.t)
+        v = self.ix['vel'].astype(np.float64)
+        pred = 0.5 * (v[1:] + v[:-1]) * dt[:, None]
+        err = np.linalg.norm(np.diff(self.pos, axis=0) - pred, axis=1)
+        jump = err > RESET_JUMP_M + 0.25 * np.linalg.norm(pred, axis=1)
+        return self.t[1:][jump]
 
     def _path(self):
         if self.tel is not None and len(self.t):
@@ -464,36 +482,53 @@ def load_part(path: Path) -> dict | None:
 
 # ----------------------------------------------------------------------------- combination
 
+WIDE_UPPER_MAX_M = max(contract.BLOCKED_WITHIN_M)   # 8 m: see combine_sources
+
+
 def combine_sources(parts: dict) -> tuple:
-    """{LabelSource: (value, kind) arrays} -> (value, kind, src, conflict) folded in COMBINE_ORDER."""
+    """{LabelSource: (value, kind) arrays} -> (value, kind, src, conflict).
+
+    Every source's constraint is an interval [lo, hi] on the true value; the sources are intersected
+    (labels.intersect semantics, applied to the full intervals so the result does not depend on the order
+    COMBINE_ORDER in which they are listed): lo = max lo_s, hi = min hi_s. lo > hi (1 + EXACT_TOL) is a
+    conflict -> UNKNOWN (counted). hi <= lo (1 + EXACT_TOL) -> EXACT lo. A one-sided result keeps its side.
+    A wide finite interval (free-space evidence lo AND occupied evidence hi, e.g. flown tube and a hit
+    beyond it) keeps UPPER hi when hi <= WIDE_UPPER_MAX_M (the near field where the clearance questions
+    P(blocked <= 4 / 8 m) and avoidance decisions live: the occupied bound decides them, the free one does
+    not) and LOWER lo otherwise (far hits bound little; the free extent is the useful part).
+    ``src`` holds the bits of every source that constrains a non-conflicting cell.
+    """
+    from . import _from_interval, _intervals
     shape = next(iter(parts.values()))[0].shape
-    v = np.full(shape, np.nan)
-    k = np.zeros(shape, np.uint8)
+    lo = np.zeros(shape)
+    hi = np.full(shape, np.inf)
     src = np.zeros(shape, np.uint8)
-    conflict = np.zeros(shape, bool)
-    lo_all = np.zeros(shape)
-    hi_all = np.full(shape, np.inf)
     for s in COMBINE_ORDER:
         if s not in parts:
             continue
         sv, sk = parts[s]
-        v, k, c = intersect(v, k, sv, sk, tol=EXACT_TOL)
-        conflict |= c
-        src |= np.where((sk != LabelKind.UNKNOWN) & ~c, np.uint8(int(s)), np.uint8(0))
-        from . import _intervals
         lo_s, hi_s = _intervals(sv, sk)
-        lo_all, hi_all = np.maximum(lo_all, lo_s), np.minimum(hi_all, hi_s)
-    k = np.where(conflict, LabelKind.UNKNOWN, k).astype(np.uint8)
-    v = np.where(conflict, np.nan, v)
+        lo, hi = np.maximum(lo, lo_s), np.minimum(hi, hi_s)
+        src |= np.where(np.asarray(sk) != LabelKind.UNKNOWN, np.uint8(int(s)), np.uint8(0))
+    conflict = lo > hi * (1 + EXACT_TOL)
+    lo = np.where(conflict, 0.0, np.minimum(lo, hi))
+    hi = np.where(conflict, np.inf, hi)
+    wide = ~conflict & (lo > 0) & np.isfinite(hi) & (hi > lo * (1 + EXACT_TOL))
+    near = wide & (hi <= WIDE_UPPER_MAX_M)
+    v, k = _from_interval(lo, hi, EXACT_TOL, wide='lower')
+    v = np.where(near, hi, v)
+    k = np.where(near, LabelKind.UPPER, k).astype(np.uint8)
     src = np.where(conflict | (k == LabelKind.UNKNOWN), 0, src).astype(np.uint8)
-    # wide finite intervals resolved to their free-space (LOWER) end by labels.intersect's default
-    wide = ~conflict & (lo_all > 0) & np.isfinite(hi_all) & (hi_all > lo_all * (1 + EXACT_TOL))
-    combine_sources.last_wide = int(wide.sum())
+    combine_sources.last_wide = dict(to_upper=int(near.sum()), to_lower=int((wide & ~near).sum()))
     return v, k, src, conflict
 
 
+COMBINE_STATS = dict(conflicts_grid=0, conflicts_fan=0, wide_to_upper_grid=0, wide_to_lower_grid=0,
+                     wide_to_upper_fan=0, wide_to_lower_fan=0, cells_grid=0, cells_fan=0)
+
+
 def combine_run(writer: LabelWriter, parts_dir: Path, run_id: int) -> dict:
-    stats = dict(conflicts_grid=0, conflicts_fan=0, interval_to_lower_grid=0, interval_to_lower_fan=0)
+    stats = dict(COMBINE_STATS)
     loaded = {}
     rows = None
     for stage, s in SOURCE_STAGES.items():
@@ -510,7 +545,10 @@ def combine_run(writer: LabelWriter, parts_dir: Path, run_id: int) -> dict:
     gv, gk, gs, gc = combine_sources({s: (p['grid_v'], p['grid_k']) for s, p in loaded.items()})
     wide_g = combine_sources.last_wide
     fv, fk, fs, fc = combine_sources({s: (p['fan_v'], p['fan_k']) for s, p in loaded.items()})
-    stats.update(interval_to_lower_grid=wide_g, interval_to_lower_fan=combine_sources.last_wide)
+    wide_f = combine_sources.last_wide
+    stats.update(wide_to_upper_grid=wide_g['to_upper'], wide_to_lower_grid=wide_g['to_lower'],
+                 wide_to_upper_fan=wide_f['to_upper'], wide_to_lower_fan=wide_f['to_lower'],
+                 cells_grid=int(gk.size), cells_fan=int(fk.size))
     gv, gk2 = clip_grid(gv, gk)
     fv, fk2 = clip_fan(fv, fk)
     gs = np.where(gk2 == LabelKind.UNKNOWN, 0, gs).astype(np.uint8)
@@ -532,12 +570,53 @@ def _cell_of(uv):
             np.clip((uv[..., 0] // contract.PATCH_PX).astype(int), 0, contract.GRID_W - 1))
 
 
+def l2_vs_l3_frames(store, parts_dir: Path, e: dict, store_root, window=(2.0, 0.5)) -> list[dict] | None:
+    """Per frame in [T - window[0], T - window[1]] with the contact point in view: the L2 sub-ray constraints on
+    the L3 disc sub-rays (recomputed from the saved flight map). None when the run has no L2 map."""
+    from . import hindsight as H
+    from .impacts import impact_labels
+    rid = int(e['_run_id'])
+    mp = parts_dir / 'hindsight_map' / f'r{rid:05d}.npz'
+    ep = parts_dir / 'hindsight_map' / f'r{rid:05d}.est.npz'
+    if not mp.exists() or not ep.exists():
+        return None
+    vmap = H.VoxelMap.load(mp)
+    d = np.load(ep)
+    est = H.Estimates(**{k: d[k] for k in d.files})
+    rd = RunData(store, rid, [], store_root)
+    T = float(e['t_wall'])
+    p = np.asarray(e['point_w'], float)
+    out = []
+    for i in np.flatnonzero((rd.t >= T - window[0]) & (rd.t <= T - window[1])):
+        q = rd.quat[i] / np.linalg.norm(rd.quat[i])
+        uv, _, ok = contract.project_camera(((p - rd.pos[i]) @ contract.camera_to_world(q))[None])
+        if not contract.in_image(uv, ok)[0]:
+            continue
+        m = (rd.path_t >= rd.t[i]) & (rd.path_t <= T)
+        res = impact_labels(e, rd.pos[i], q, flown_path=np.vstack([rd.pos[i][None], rd.path_pos[m]]),
+                            return_subrays=True)
+        s3v, s3k = res[4], res[5]
+        disc = s3k != LabelKind.UNKNOWN
+        if not disc.any():
+            continue
+        uvo, rro, ppo = H.own_frame_points(est, vmap, int(i))
+        s2v, s2k = H.hindsight_labels(vmap, rd.pos[i], q, own_uv=uvo, own_range=rro, own_points=ppo,
+                                      return_subrays=True)[4:]
+        visible = bool((s3k[disc] == LabelKind.EXACT).all())
+        both = disc & np.isin(s2k, (LabelKind.EXACT, LabelKind.UPPER))
+        beyond = disc & (s3k == LabelKind.EXACT) & (s2k == LabelKind.LOWER) & (s2v > s3v * (1 + K0B['l2_vs_l3_within']))
+        out.append(dict(i=int(i), visible=visible, l2_lower_beyond=bool(beyond.any()),
+                        ratio=float(np.median(s2v[both] / s3v[both])) if both.any() else None))
+    return out
+
+
 def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWriter | None = None) -> dict:
     """K0b: L2 vs colliders, L2 vs L3, near-travel fan density (Minus Two / Pine Valley)."""
-    from .corridors import world_to_pixels
     q = dict(thresholds=K0B)
     # (a) L2 vs colliders on the box course
     rel = {1: [], 3: []}
+    ratio_all, low = [], [0, 0, 0, 0]          # LOWER cells vs collider EXACT: n, violations; fan LOWER: n, violations
+    fan_rel = []
     for rid in run_ids:
         if store.runs[rid]['env'] != BOX_ENV:
             continue
@@ -549,75 +628,94 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
         for kind in (LabelKind.EXACT, LabelKind.UPPER):
             mm = m & (a['grid_k'] == kind)
             rel[int(kind)].append(np.abs(a['grid_v'][mm] - b['grid_v'][mm]) / b['grid_v'][mm])
+            ratio_all.append(a['grid_v'][mm] / b['grid_v'][mm])
+        mm = (a['grid_k'] == LabelKind.LOWER) & (b['grid_k'] == LabelKind.EXACT)
+        low[0] += int(mm.sum())
+        low[1] += int((a['grid_v'][mm] > b['grid_v'][mm] * (1 + EXACT_TOL)).sum())
+        truth = np.where(b['fan_k'] == LabelKind.EXACT, b['fan_v'], contract.FAN_MAX_M)
+        mm = a['fan_k'] == LabelKind.LOWER
+        low[2] += int(mm.sum())
+        low[3] += int((a['fan_v'][mm] > truth[mm] * (1 + EXACT_TOL)).sum())
+        mm = np.isin(a['fan_k'], (LabelKind.EXACT, LabelKind.UPPER)) & (b['fan_k'] == LabelKind.EXACT)
+        fan_rel.append(np.abs(a['fan_v'][mm] - b['fan_v'][mm]) / b['fan_v'][mm])
     r1 = np.concatenate(rel[1]) if rel[1] else np.zeros(0)
     r3 = np.concatenate(rel[3]) if rel[3] else np.zeros(0)
     rall = np.r_[r1, r3]
+    ratio_all = np.concatenate(ratio_all) if ratio_all else np.zeros(0)
+    fan_rel = np.concatenate(fan_rel) if fan_rel else np.zeros(0)
     q['l2_vs_colliders'] = dict(
         cells_exact=int(len(r1)), cells_upper=int(len(r3)),
         median_rel_err_exact=float(np.median(r1)) if len(r1) else None,
         median_rel_err_upper=float(np.median(r3)) if len(r3) else None,
         median_rel_err_all=float(np.median(rall)) if len(rall) else None,
+        median_ratio_all=float(np.median(ratio_all)) if len(ratio_all) else None,
         frac_within_10pct=float(np.mean(rall <= 0.10)) if len(rall) else None,
+        grid_lower_cells=low[0], grid_lower_violation_frac=low[1] / low[0] if low[0] else None,
+        fan_lower_cells=low[2], fan_lower_violation_frac=low[3] / low[2] if low[2] else None,
+        fan_hit_cells=int(len(fan_rel)), fan_hit_median_rel_err=float(np.median(fan_rel)) if len(fan_rel) else None,
         passed=bool(len(rall) and np.median(rall) <= K0B['l2_vs_colliders_median_rel']),
-        definition='box-course grid cells with collider EXACT range in [2, 10] m and an L2 EXACT or UPPER value')
-    # (b) L2 vs L3 in [T - 2.0, T - 0.5] s where the impact point projects into the image and L2 labels its cell
+        definition=('box-course grid cells with collider EXACT range in [2, 10] m and an L2 EXACT or UPPER value; '
+                    'violations: L2 LOWER beyond the collider range (grid: collider EXACT; fan: collider hit or '
+                    'FAN_MAX_M) by more than 10 %'))
+    # (b) L2 vs L3 at the contact point, sub-ray level, in [T - 2.0, T - 0.5] s
+    store_root = Path(parts_dir).resolve().parents[1]
     per_env, per_event = {}, []
+    keys = ('frames_in_view', 'frames_both', 'frames_within_15pct', 'frames_l2_lower_beyond',
+            'frames_visible', 'frames_visible_both', 'frames_visible_within_15pct')
     for e in events:
-        rid = e.get('_run_id')
-        if rid is None or e.get('point_w') is None or e['kind'] not in ('terminal_impact', 'contact') or not e.get('t_wall'):
+        if (e.get('_run_id') is None or e.get('point_w') is None or e['kind'] not in ('terminal_impact', 'contact')
+                or not e.get('t_wall')):
             continue
-        a = load_part(parts_dir / 'hindsight' / f'r{rid:05d}.npz')
-        if a is None or a['empty']:
+        recs = l2_vs_l3_frames(store, parts_dir, e, store_root)
+        if recs is None:
             continue
-        rows = a['rows']
-        ix = store.index[rows]
-        T = float(e['t_wall'])
-        sel = np.flatnonzero((ix['t_wall'] >= T - 2.0) & (ix['t_wall'] <= T - 0.5))
-        n_view, n_both, n_ok, n_cons = 0, 0, 0, 0
+        c = {k: 0 for k in keys}
         ratios = []
-        for i in sel:
-            p = np.asarray(e['point_w'], float)
-            uv, rng, ok = world_to_pixels(p[None], ix['pos'][i].astype(float), ix['quat'][i].astype(float))
-            if not contract.in_image(uv, ok)[0]:
+        for r in recs:
+            c['frames_in_view'] += 1
+            c['frames_visible'] += r['visible']
+            c['frames_l2_lower_beyond'] += r['l2_lower_beyond']
+            if r['ratio'] is None:
                 continue
-            n_view += 1
-            r, c = _cell_of(uv[0])
-            kind = a['grid_k'][i, r, c]
-            if kind in (LabelKind.EXACT, LabelKind.UPPER):
-                n_both += 1
-                ratio = float(a['grid_v'][i, r, c]) / float(rng[0])
-                ratios.append(ratio)
-                within = abs(ratio - 1) <= K0B['l2_vs_l3_within']
-                n_ok += within
-                # consistent: EXACT within 15 %; UPPER (true <= v) not contradicted beyond 15 %
-                n_cons += within if kind == LabelKind.EXACT else ratio >= 1 / (1 + K0B['l2_vs_l3_within'])
+            ok = abs(r['ratio'] - 1) <= K0B['l2_vs_l3_within']
+            ratios.append(r['ratio'])
+            c['frames_both'] += 1
+            c['frames_within_15pct'] += ok
+            c['frames_visible_both'] += r['visible']
+            c['frames_visible_within_15pct'] += ok and r['visible']
         per_event.append(dict(event_id=e['event_id'], run=e['run'], env=e['env'], kind=e['kind'], source=e['source'],
-                              frames_in_view=n_view, frames_both=n_both, frames_within_15pct=n_ok,
-                              frames_consistent=n_cons, median_ratio=float(np.median(ratios)) if ratios else None))
-        d = per_env.setdefault(e['env'], dict(frames_in_view=0, frames_both=0, frames_within_15pct=0,
-                                              frames_consistent=0))
-        d['frames_in_view'] += n_view
-        d['frames_both'] += n_both
-        d['frames_within_15pct'] += n_ok
-        d['frames_consistent'] += n_cons
-    for d in per_env.values():
+                              blind=e.get('blind'), median_ratio=float(np.median(ratios)) if ratios else None, **c))
+        d = per_env.setdefault(e['env'], {k: 0 for k in keys})
+        for k in keys:
+            d[k] += c[k]
+    for d in list(per_env.values()):
         d['frac_within_15pct'] = d['frames_within_15pct'] / d['frames_both'] if d['frames_both'] else None
-        d['frac_consistent'] = d['frames_consistent'] / d['frames_both'] if d['frames_both'] else None
         d['coverage'] = d['frames_both'] / d['frames_in_view'] if d['frames_in_view'] else None
-    tot = {k: sum(d[k] for d in per_env.values()) for k in ('frames_in_view', 'frames_both', 'frames_within_15pct',
-                                                             'frames_consistent')}
+    tot = {k: sum(d[k] for d in per_env.values()) for k in keys}
     frac = tot['frames_within_15pct'] / tot['frames_both'] if tot['frames_both'] else None
-    q['l2_vs_l3'] = dict(per_env=per_env, per_event=per_event, total=tot, frac_within_15pct=frac,
-                         passed=bool(frac is not None and frac >= K0B['l2_vs_l3_frac']),
-                         definition=('frames in [T-2.0, T-0.5] s where the contact point projects into the image; '
-                                     '"both" = the L2 cell holding it is EXACT/UPPER; ratio = L2 value / true range'))
+    q['l2_vs_l3'] = dict(
+        per_env=per_env, per_event=per_event, total=tot, frac_within_15pct=frac,
+        frac_visible_within_15pct=(tot['frames_visible_within_15pct'] / tot['frames_visible_both']
+                                   if tot['frames_visible_both'] else None),
+        passed=bool(frac is not None and frac >= K0B['l2_vs_l3_frac']),
+        definition=('frames in [T-2.0, T-0.5] s where the contact point projects into the image ("in view"); the L3 '
+                    'disc sub-rays (0.2 m disc on the contact point, labels.impacts) are compared with the L2 '
+                    'sub-ray constraints on the same sub-rays; "both" = L2 EXACT or UPPER on at least one of them; '
+                    'ratio = median L2 / L3 range over those sub-rays; within = |ratio - 1| <= 0.15. "visible" = the '
+                    'L3 disc is EXACT (camera-to-point segment inside the flown tube). l2_lower_beyond = L2 claims '
+                    'free space > 15 % beyond a visible contact point on some disc sub-ray (a free-space violation)'))
     # (c) near-travel fan density on Minus Two and Pine Valley (combined labels)
     q['fan_near_travel'] = {}
     if writer is not None:
         yaw_ok = np.abs(contract.FAN_YAW_DEG) <= NEAR_TRAVEL_YAW
         from ..splits import ENV_CODE
-        for env in ('Minus Two', 'Pine Valley', 'Autumn Fields', 'Straw Bale', BOX_ENV):
-            rows = np.flatnonzero(store.index['env'] == ENV_CODE[env])
+        from ..store import Grade
+        # rows the builder labels (grade <= FAIR) of the runs in this build
+        in_build = np.isin(store.index['run_id'], np.asarray(list(run_ids), np.int64)) & (
+            store.index['grade'] <= int(Grade.FAIR))
+        for env in ('Minus Two', 'Pine Valley', 'Autumn Fields', 'Straw Bale', BOX_ENV, 'Hangar C03', 'Hannover',
+                    'Paris', 'The Pit', 'Drawing Board loop v2'):
+            rows = np.flatnonzero((store.index['env'] == ENV_CODE[env]) & in_build)
             if not len(rows):
                 continue
             fv = writer.arrays['fan_value'][rows][..., yaw_ok].astype(np.float32)
@@ -638,31 +736,36 @@ def quality(store, parts_dir: Path, events: list[dict], run_ids, writer: LabelWr
 
 # ----------------------------------------------------------------------------- resumability
 
-LABEL_CODE_VERSION = 'labels-m1-1'     # bump when a stage's output for the same inputs changes
+LABEL_CODE_VERSION = 'labels-m1-1'     # bump when every stage's output for the same inputs changes
+# per-stage versions: bump one when that stage's output for the same inputs changes
+STAGE_CODE_VERSION = dict(colliders='1', tube='1', impacts='1',
+                          hindsight='2')   # 2: adjacent partners, epipolar check, track support, per-stage hash
 
 
-def _hash(*arrays) -> str:
+def _hash(*arrays, stage: str = '') -> str:
     import hashlib
     h = hashlib.sha256(LABEL_CODE_VERSION.encode())
+    if STAGE_CODE_VERSION.get(stage, '1') != '1':
+        h.update(f'{stage}:{STAGE_CODE_VERSION[stage]}'.encode())
     for a in arrays:
         h.update(np.ascontiguousarray(np.asarray(a, dtype=np.float64)).tobytes())
     return h.hexdigest()[:24]
 
 
 def stage_inputs(rd: 'RunData', stage: str) -> str:
-    """Hash of everything a stage's output for one run depends on (poses, rows, stops, event points)."""
+    """Hash of everything a stage's output for one run depends on (code version, poses, rows, stops, events)."""
     base = [rd.rows, rd.t, rd.pos, rd.quat]
     if stage == 'colliders':
-        return _hash(*base, np.asarray(rd.rec.get('origin_sim') or [np.nan] * 3, float))
+        return _hash(*base, np.asarray(rd.rec.get('origin_sim') or [np.nan] * 3, float), stage=stage)
     if stage == 'tube':
-        return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)])
+        return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)], stage=stage)
     if stage == 'hindsight':
         from .hindsight import mask_provenance
         mask = np.frombuffer(mask_provenance().encode(), np.uint8)
-        return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)], mask)
+        return _hash(*base, rd.stops, rd.path_t[:: max(1, len(rd.path_t) // 500)], mask, stage=stage)
     ev = [np.r_[e.get('t_wall') or np.nan, e.get('point_w') or [np.nan] * 3, e.get('normal_w') or [np.nan] * 3]
           for e in rd.events if e['kind'] in ('terminal_impact', 'contact')]
-    return _hash(*base, np.asarray(ev, float).reshape(-1, 7), rd.path_t[:: max(1, len(rd.path_t) // 500)])
+    return _hash(*base, np.asarray(ev, float).reshape(-1, 7), rd.path_t[:: max(1, len(rd.path_t) // 500)], stage=stage)
 
 
 def part_current(parts_dir: Path, stage: str, run_id: int, inputs: str | None) -> bool:
@@ -740,6 +843,9 @@ def build(args):
     lock = thermal.require_flight_lock_path(args.flight_lock)
     thermal.limit_threads(2, cv2=True)
     guard = thermal.ChunkGuard(lock)
+    if getattr(args, 'overlays', None):
+        from .hindsight import use_overlays_file
+        _log('feature mask:', use_overlays_file(args.overlays), 'from', args.overlays)
     store_root = Path(args.store)
     store = FrameStore(store_root)
     # Hold the index in memory, not memory-mapped: a timing re-pose must be able to replace index.npy
@@ -773,16 +879,12 @@ def build(args):
     order = sorted(run_ids, key=lambda r: (store.runs[r].get('source') == 'run_video', r)) \
         if getattr(args, 'videos_last', True) else run_ids
     for rid in order:
-        rd = None
-        todo = []
-        for s in (s for s in SOURCE_STAGES if s in stages):
-            if not writer.is_done(s, rid) or not part_current(parts_dir, s, rid, None):
-                todo.append(s)
-        if not todo:
-            continue
         guard.before_chunk()
+        # every stage part is checked against its inputs (code version, poses, stops, events, feature mask):
+        # a part built from other inputs is rebuilt even when progress.json lists the run as done
         rd = RunData(store, rid, events, store_root)
-        todo = [s for s in todo if not part_current(parts_dir, s, rid, stage_inputs(rd, s))]
+        todo = [s for s in SOURCE_STAGES if s in stages
+                and not part_current(parts_dir, s, rid, stage_inputs(rd, s))]
         for s in todo:
             t1 = time.monotonic()
             if s == 'colliders':
@@ -802,7 +904,7 @@ def build(args):
         if todo:
             _log(f'run {rid:4d} {rd.env[:22]:22s} {rd.rec["source_id"][:50]:50s} rows {len(rd.rows):6d} '
                  f'stages {",".join(todo)} ({time.monotonic() - t0:.0f} s)')
-    combine_stats = dict(conflicts_grid=0, conflicts_fan=0, interval_to_lower_grid=0, interval_to_lower_fan=0)
+    combine_stats = dict(COMBINE_STATS)
     if 'combine' in stages:
         for rid in run_ids:
             st = combine_run(writer, parts_dir, rid)
@@ -816,18 +918,26 @@ def build(args):
                                   fan_rule=Tm.FAN_RULE)),
         HINDSIGHT=dict(parameters=dict(voxel_m=Hm.VOXEL_M, keyframe_offsets_s=Hm.KEYFRAME_OFFSETS_S,
                                        max_sigma_fraction=Hm.MAX_SIGMA_FRACTION, rules=Hm.RULES,
-                                       feature_mask=Hm.mask_provenance())),
+                                       feature_mask=Hm.mask_provenance(),
+                                       feature_mask_file=Hm._OVERLAYS_FILE or 'haltere/obstacles/overlays.py')),
         IMPACT=dict(parameters=dict(window_s=Im.IMPACT_WINDOW_S, disc_radius_m=Im.IMPACT_DISC_RADIUS_M,
                                     visible_tube_m=Im.VISIBLE_TUBE_M, contact_offset_m=Im.CONTACT_OFFSET_M)),
         COLLIDER=dict(parameters=dict(assumption=Cm.ASSUMPTION, bundle_rings=Cm.BUNDLE_RINGS)),
         TEACHER=dict(parameters='M2: affine fit to L1-L3 anchors; not a label source in M1'))
-    m = writer.finalize(created=time.strftime('%Y-%m-%dT%H:%M:%S%z'), code_commit=_git_commit(), sources=sources,
+    all_runs = [r['run_id'] for r in store.runs if r.get('n_frames')]
+    complete = (not getattr(args, 'runs', None) and set(STAGES) <= set(stages)
+                and all(writer.is_done(s, r) for s in SOURCE_STAGES for r in all_runs))
+    m = writer.finalize(status='complete' if complete else 'building',
+                        created=time.strftime('%Y-%m-%dT%H:%M:%S%z'), code_commit=_git_commit(), sources=sources,
                         combine=dict(order=[s.name for s in COMBINE_ORDER], exact_tol=EXACT_TOL, min_known_frac=1.0,
-                                     wide_interval='lower (labels.intersect default)', **combine_stats),
+                                     rule='interval intersection over all sources (order-independent)',
+                                     wide_interval=f'UPPER hi if hi <= {WIDE_UPPER_MAX_M} m else LOWER lo',
+                                     **combine_stats),
                         inputs=dict(colliders=dict(path=str(args.colliders), sha256=_sha(args.colliders)),
                                     lateral_manifest=dict(path=str(args.events), sha256=_sha(args.events)),
                                     events_f12=dict(path=str(args.extra_events), sha256=_sha(args.extra_events))),
-                        quality=q, runs=len(run_ids))
+                        quality=q, runs=len(run_ids),
+                        build_scope='all runs' if complete else f'partial: runs {sorted(run_ids)[:50]}')
     (root / 'quality.json').write_text(json.dumps(q, indent=1, default=str) + '\n', encoding='utf-8')
     _log(json.dumps({k: v for k, v in q.items() if k != 'l2_vs_l3'} | {'l2_vs_l3_total': q.get('l2_vs_l3', {}).get('total')},
                     indent=1, default=str)[:4000])

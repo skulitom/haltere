@@ -6,7 +6,9 @@ and at position jumps > MAX_JUMP_M, i.e. resets):
 1. Tracks. Chained pyramidal Lucas-Kanade tracks over consecutive store frames with the LK
    parameters of haltere.vision.temporal_depth.TemporalDepth (21 x 21, 3 levels, forward-backward
    error < 1 px), seeded with the rotation-only prediction from the logged attitudes, on a
-   CLAHE-equalised grey image (dark scenes). Up to MAX_CORNERS corners are kept alive; new ones are
+   CLAHE-equalised grey image (dark scenes); a step is kept only within EPIPOLAR_PX of the
+   epipolar line given by the logged poses (static-scene check that also drops ghost racers and
+   other moving objects the overlay mask misses). Up to MAX_CORNERS corners are kept alive; new ones are
    detected per image tile (goodFeaturesToTrack, quality QUALITY relative to the tile, min distance
    5 px, block 5) so that dark or low-contrast regions also get features. Features are detected and
    kept only on scene pixels: ``feature_mask`` removes HUD glyphs, the checkpoint ring and cyan
@@ -20,12 +22,16 @@ and at position jumps > MAX_JUMP_M, i.e. resets):
    sigma with 1 px at 448 px) and must reproject within THIRD_VIEW_PX into the frame midway
    between a and b (the third-view check of TemporalDepth). The lowest-sigma estimate with
    sigma < MAX_SIGMA_FRACTION * range (the precise-keyframe rule of MultiBaselineDepth) is
-   kept per (track, frame).
+   kept per (track, frame). The neighbouring store frames (ADJACENT_STEPS) are partners too:
+   at the store's ~6 Hz and 10-20 m/s, LK tracks rarely survive the three frames to the
+   +-0.5 s keyframe (mean track length 1.1 frames on fast Pine/Minus captures), while one step
+   already gives metres of baseline. An adjacent-pair estimate must pass the third-view check on
+   the other neighbour when the track reaches it; otherwise it is kept as a two-view estimate.
 3. Fusion into VOXEL_M voxels, one frame (launch-relative FLU) per flight. Occupied: voxels
-   holding estimates from >= MIN_OCC_FRAMES reference frames. Visibility carving: every kept
-   estimate marks the voxels along its line of sight free up to the point minus
-   max(2 sigma, 2 voxels). A voxel carved more than FREE_OVER_OCC times its occupied count
-   is not occupied (moving/ghost objects and outliers are carved away).
+   holding estimates of >= MIN_OCC_TRACKS tracks or from >= MIN_OCC_FRAMES reference frames.
+   Visibility carving: every kept estimate marks the voxels along its line of sight free up to
+   the point minus max(2 sigma, 2 voxels). A voxel carved more than FREE_OVER_OCC times its
+   occupied count is not occupied (moving/ghost objects and outliers are carved away).
 4. The flown path is free: occupied voxels within PATH_CLEAR_M of it are removed and voxels within
    PATH_FREE_M are marked free (except near contacts), which also removes ghost-trail points that
    lie on the racing line (``clear_flown_path``).
@@ -70,6 +76,7 @@ from .corridors import (SUB, SUB_SHAPE, fan_constraints, grid_from_subrays, subr
 
 VOXEL_M = 0.2
 KEYFRAME_OFFSETS_S = (-2.0, -1.0, -0.5, 0.5, 1.0, 2.0)
+ADJACENT_STEPS = (-1, 1)      # also the neighbouring store frames (short baselines; see module doc)
 MAX_SIGMA_FRACTION = 0.1
 PARTNER_TOL = 0.35            # partner frame within 0.35 |offset| of t_a + offset
 MAX_GAP_S = 0.45              # tracks break at larger frame gaps
@@ -81,11 +88,18 @@ DETECT_TILES = (3, 6)         # detection tiles (rows, cols): corners spread ove
 CLAHE_CLIP = 2.0              # contrast-limited equalisation of the grey image before tracking (dark scenes)
 MASK_DILATE_PX = 2            # features keep this distance from masked overlay pixels
 FB_MAX_PX = 1.0
-THIRD_VIEW_PX = 2.0           # TemporalDepth's third-view limit (2 px); here at 448 px
+SEED_DEPTHS_M = (np.inf,)     # LK seeds: static point at these depths (inf = rotation only); finite-depth seeds
+                              # were tried (24, 10, 5, 2.5 m) and added no tracks at the store frame rate
+EPIPOLAR_PX = 6.0             # a tracked point must stay this close to its epipolar line (logged poses)
+THIRD_VIEW_PX = 2.0          # TemporalDepth's third-view limit (2 px); here at 448 px
 PIXEL_SIGMA = 1.0
 MIN_PARALLAX_DEG = 0.5
 MAX_RANGE_M = 30.0
-MIN_OCC_FRAMES = 2
+MIN_OCC_TRACKS = 2            # occupied voxel: estimates of >= 2 distinct tracks ...
+MIN_OCC_FRAMES = 2            # ... or in >= 2 reference frames (3 frames: 40-60 % fewer occupied voxels on
+                              # the box course and Straw for UPPER error 5.7 % instead of 6.6 %; not worth it)
+CARVE_SUPPORTED_ONLY = False  # carve along lines of sight to every estimate (supported-only halves free space
+                              # on the box course for no measurable gain: LOWER violations 0.0000 vs 0.0002)
 FREE_OVER_OCC = 2.0
 MARCH_STEP_M = 0.2           # free-space march step (= voxel size)
 FREE_MAX_M = 20.0             # free extents are marched to this distance (LOWER bounds beyond are not claimed)
@@ -103,11 +117,14 @@ LK = dict(winSize=(21, 21), maxLevel=3)
 _KEY_OFF = 1 << 20
 
 RULES = dict(
-    tracks='chained pyramidal LK (TemporalDepth parameters), rotation-seeded, fwd-bwd < 1 px, overlay-masked',
-    triangulation=('triangulate_motion (unchanged) against partner frames at t +- 0.5/1/2 s, third-view '
-                   f'reprojection <= {THIRD_VIEW_PX} px, lowest sigma per (track, frame), sigma < {MAX_SIGMA_FRACTION} r'),
-    fusion=(f'{VOXEL_M} m voxels; occupied with estimates from >= {MIN_OCC_FRAMES} reference frames and carved '
-            f'<= {FREE_OVER_OCC} x occupied count; lines of sight carved free up to point - max(2 sigma, 2 voxels)'),
+    tracks=('chained pyramidal LK (TemporalDepth parameters), rotation-seeded, fwd-bwd < 1 px, '
+            f'epipolar distance <= {EPIPOLAR_PX} px (logged poses), overlay-masked'),
+    triangulation=('triangulate_motion (unchanged) against partner frames at t +- 0.5/1/2 s and the neighbouring '
+                   f'store frames, third-view reprojection <= {THIRD_VIEW_PX} px (adjacent pairs: when the track has a '
+                   f'third view), lowest sigma per (track, frame), sigma < {MAX_SIGMA_FRACTION} r'),
+    fusion=(f'{VOXEL_M} m voxels; occupied with estimates of >= {MIN_OCC_TRACKS} tracks or from >= {MIN_OCC_FRAMES} '
+            f'reference frames and carved <= {FREE_OVER_OCC} x occupied count; lines of sight of '
+            f'{"supported" if CARVE_SUPPORTED_ONLY else "all"} estimates carved free up to point - max(2 sigma, 2 voxels)'),
     grid=('sub-ray march; first occupied voxel or own-frame point = hit; EXACT if carved free to within '
           'max(10 %, 2 voxels) of the hit or an own-frame observation, else UPPER; no hit: LOWER carved extent '
           f'if >= {MIN_LOWER_M} m'),
@@ -133,6 +150,26 @@ def _box_mask_448() -> np.ndarray:
 
 _FALLBACK = None
 _PROVENANCE = None
+_OVERLAYS_FILE = None
+
+
+def use_overlays_file(path) -> str:
+    """Offline builds only: take the overlay masks from ``path`` (an overlays.py whose assets sit in
+    ``<path>/../../../configs/obstacles``, e.g. a pinned snapshot of the overlays branch) instead of the
+    package module, so the label feature mask does not change while that module is still being developed.
+    Returns the new mask provenance (module + asset hashes; it enters the hindsight stage input hash)."""
+    import importlib.util
+    import sys
+    global _PROVENANCE, _OVERLAYS_FILE
+    path = Path(path).resolve()
+    spec = importlib.util.spec_from_file_location('haltere.obstacles.overlays', path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules['haltere.obstacles.overlays'] = mod
+    spec.loader.exec_module(mod)
+    from ... import obstacles as _pkg
+    _pkg.overlays = mod
+    _PROVENANCE, _OVERLAYS_FILE = None, str(path).replace('\\', '/')
+    return mask_provenance()
 
 
 def mask_provenance() -> str:
@@ -197,6 +234,76 @@ def segment_breaks(t, pos) -> np.ndarray:
     return b
 
 
+def _predict(pts, p0, p1, R0, R1, depth: float):
+    """Pixel in the next frame of a static point seen at ``pts`` in the previous one at ``depth`` m (inf = rotation only)."""
+    d_w = _unproject_c(pts) @ R0.T
+    d_c = d_w @ R1 if np.isinf(depth) else (p0[None] + d_w * depth - p1[None]) @ R1
+    return contract.project_camera(d_c)
+
+
+def epipolar_distance(pts0, pts1, p0, p1, R0, R1) -> np.ndarray:
+    """Pixel distance of ``pts1`` (next frame) from the epipolar lines of ``pts0`` (previous frame), known poses.
+
+    The line joins the epipole (previous camera centre seen from the next one) and the vanishing point of the
+    previous ray, both as homogeneous image points (valid for either sign of their depth). A baseline below
+    1 cm leaves only the vanishing point: the distance to it is returned.
+    """
+    K = np.array([[contract.FOCAL_PX, 0.0, IMAGE_W / 2.0], [0.0, contract.FOCAL_PX, IMAGE_H / 2.0], [0.0, 0.0, 1.0]])
+    v = (_unproject_c(pts0) @ R0.T @ R1) @ K.T                    # vanishing points (homogeneous)
+    x1 = np.c_[np.asarray(pts1, np.float64), np.ones(len(pts1))]
+    base = np.asarray(p0, np.float64) - np.asarray(p1, np.float64)
+    if np.linalg.norm(base) < 0.01:
+        vz = np.where(np.abs(v[:, 2:3]) > 1e-9, v[:, 2:3], 1e-9)
+        return np.linalg.norm(v[:, :2] / vz - x1[:, :2], axis=1)
+    e = K @ (base @ R1)                                         # epipole (homogeneous)
+    line = np.cross(np.broadcast_to(e, v.shape), v)
+    return np.abs((line * x1).sum(1)) / np.maximum(np.hypot(line[:, 0], line[:, 1]), 1e-12)
+
+
+def _track_step(cv2, prev_grey, grey, pts, p0, p1, R0, R1, bad):
+    """One LK step with pose-seeded hypotheses: (new positions (n, 2), accepted (n,) bool).
+
+    Seeds: the point's pixel in the new frame if it were static at each SEED_DEPTHS_M depth (inf first:
+    rotation only). A point keeps the first seed whose LK result passes status, forward-backward < FB_MAX_PX,
+    stays on an unmasked pixel and lies within EPIPOLAR_PX of its epipolar line (static-scene check with the
+    logged poses). Fast flight at the store's ~6 Hz moves near features by tens of pixels beyond the
+    rotation-only prediction; finite-depth seeds recover them.
+    """
+    n = len(pts)
+    out = pts.astype(np.float64).copy()
+    good = np.zeros(n, bool)
+    todo = np.arange(n)
+    for depth in SEED_DEPTHS_M:
+        if len(todo) == 0:
+            break
+        pred, okp = _predict(pts[todo], p0, p1, R0, R1, depth)
+        okp &= contract.in_image(pred, margin_px=-LK['winSize'][0])
+        sel = todo[okp]
+        if len(sel) == 0:
+            continue
+        seed = pred[okp].astype(np.float32).reshape(-1, 1, 2)
+        q1, st, _ = cv2.calcOpticalFlowPyrLK(prev_grey, grey, pts[sel].reshape(-1, 1, 2), seed,
+                                             flags=cv2.OPTFLOW_USE_INITIAL_FLOW,
+                                             criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, .01), **LK)
+        q0b, st2, _ = cv2.calcOpticalFlowPyrLK(grey, prev_grey, q1, pts[sel].reshape(-1, 1, 2).copy(),
+                                               flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **LK)
+        q1, q0b = q1.reshape(-1, 2), q0b.reshape(-1, 2)
+        fin = np.isfinite(q1).all(1) & np.isfinite(q0b).all(1)
+        xy = np.rint(np.nan_to_num(q1, nan=-1)).astype(int)
+        inside = (xy[:, 0] >= 0) & (xy[:, 0] < IMAGE_W) & (xy[:, 1] >= 0) & (xy[:, 1] < IMAGE_H)
+        allowed = np.zeros(len(sel), bool)
+        allowed[inside] = ~bad[xy[inside, 1], xy[inside, 0]]
+        ok = (fin & inside & allowed & (st.ravel() > 0) & (st2.ravel() > 0)
+              & (np.linalg.norm(q0b - pts[sel], axis=1) < FB_MAX_PX))
+        if ok.any() and EPIPOLAR_PX is not None:
+            j = np.flatnonzero(ok)
+            ok[j] = epipolar_distance(pts[sel[j]], q1[j], p0, p1, R0, R1) <= EPIPOLAR_PX
+        out[sel[ok]] = q1[ok]
+        good[sel[ok]] = True
+        todo = np.setdiff1d(todo, sel[ok], assume_unique=True)
+    return out, good
+
+
 @dataclass
 class Tracks:
     """Observations of chained tracks: one row per (track, frame)."""
@@ -237,25 +344,7 @@ def track_run(frames, t, pos, quat, *, mask_fn=None, guard=None, log=None) -> Tr
         if breaks[k] or prev_grey is None or len(pts) == 0:
             pts, ids = np.zeros((0, 2), np.float32), np.zeros(0, np.int64)
         else:
-            # rotation-only prediction of the new pixel position (infinitely distant point)
-            d_w = _unproject_c(pts) @ R_wc[k - 1].T
-            d_c = d_w @ R_wc[k]
-            pred, ok_pred = contract.project_camera(d_c)
-            pred = np.where(ok_pred[:, None], pred, pts).astype(np.float32)
-            p1, st, _ = cv2.calcOpticalFlowPyrLK(prev_grey, grey, pts.reshape(-1, 1, 2), pred.reshape(-1, 1, 2),
-                                                 flags=cv2.OPTFLOW_USE_INITIAL_FLOW,
-                                                 criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 30, .01),
-                                                 **LK)
-            p0b, st2, _ = cv2.calcOpticalFlowPyrLK(grey, prev_grey, p1, pts.reshape(-1, 1, 2).copy(),
-                                                   flags=cv2.OPTFLOW_USE_INITIAL_FLOW, **LK)
-            p1, p0b = p1.reshape(-1, 2), p0b.reshape(-1, 2)
-            fin = np.isfinite(p1).all(1) & np.isfinite(p0b).all(1)
-            xy = np.rint(np.nan_to_num(p1, nan=-1)).astype(int)
-            inside = (xy[:, 0] >= 0) & (xy[:, 0] < IMAGE_W) & (xy[:, 1] >= 0) & (xy[:, 1] < IMAGE_H)
-            allowed = np.zeros(len(pts), bool)
-            allowed[inside] = ~bad[xy[inside, 1], xy[inside, 0]]
-            good = (fin & inside & allowed & (st.ravel() > 0) & (st2.ravel() > 0)
-                    & (np.linalg.norm(p0b - pts, axis=1) < FB_MAX_PX) & ok_pred)
+            p1, good = _track_step(cv2, prev_grey, grey, pts, pos[k - 1], pos[k], R_wc[k - 1], R_wc[k], bad)
             pts, ids = p1[good].astype(np.float32), ids[good]
         # replenish features on scene pixels away from live tracks, tile by tile (uniform coverage)
         room = MAX_CORNERS - len(pts)
@@ -334,11 +423,18 @@ def triangulate(tracks: Tracks, t, pos, quat, *, offsets=KEYFRAME_OFFSETS_S) -> 
         if len(ids_f[a]) == 0:
             continue
         cand = []
+        partners = []
         for off in offsets:
             target = t[a] + off
             b = int(np.argmin(np.abs(t - target)))
             if b == a or abs(t[b] - target) > PARTNER_TOL * abs(off) or seg[b] != seg[a]:
                 continue
+            partners.append((off, b))
+        for step in ADJACENT_STEPS:
+            b = a + step
+            if 0 <= b < n and seg[b] == seg[a] and all(b != p[1] for p in partners):
+                partners.append((float(t[b] - t[a]), b))
+        for off, b in partners:
             _, ia, ib = np.intersect1d(ids_f[a], ids_f[b], assume_unique=True, return_indices=True)
             if len(ia) < 1:
                 continue
@@ -348,19 +444,25 @@ def triangulate(tracks: Tracks, t, pos, quat, *, offsets=KEYFRAME_OFFSETS_S) -> 
             ok = res['valid'] & (res['range_sigma_m'] < MAX_SIGMA_FRACTION * res['range_m'])
             if not ok.any():
                 continue
-            # third view: the frame midway between a and b (by index) must see the point where it was tracked
-            c = (a + b) // 2
-            if c in (a, b):
-                continue
-            _, ic_a, ic = np.intersect1d(ids_f[a][ia], ids_f[c], assume_unique=True, return_indices=True)
+            # third view: the frame midway between a and b (by index) must see the point where it was tracked;
+            # for an adjacent partner, the neighbour of a on the other side, when the track reaches it
+            adjacent = abs(b - a) == 1
+            c = (a + b) // 2 if not adjacent else a - (b - a)
+            if c in (a, b) or c < 0 or c >= n or seg[c] != seg[a]:
+                c = None
             third = np.zeros(len(ia), bool)
-            if len(ic_a):
-                P = res['position_world'][ic_a]
-                d_c = (P - pos[c]) @ R_wc[c]
-                px, front = contract.project_camera(d_c)
-                resid = np.linalg.norm(px - uv_f[c][ic], axis=1)
-                third[ic_a] = front & (resid <= THIRD_VIEW_PX)
-            ok &= third
+            seen = np.zeros(len(ia), bool)
+            if c is not None:
+                _, ic_a, ic = np.intersect1d(ids_f[a][ia], ids_f[c], assume_unique=True, return_indices=True)
+                if len(ic_a):
+                    P = res['position_world'][ic_a]
+                    d_c = (P - pos[c]) @ R_wc[c]
+                    px, front = contract.project_camera(d_c)
+                    resid = np.linalg.norm(px - uv_f[c][ic], axis=1)
+                    third[ic_a] = front & (resid <= THIRD_VIEW_PX)
+                    seen[ic_a] = True
+            # adjacent pairs: a two-view estimate is kept when the track has no third observation
+            ok &= third | (adjacent & ~seen)
             if ok.any():
                 cand.append((off, ia[ok], res['position_world'][ok], res['range_m'][ok], res['range_sigma_m'][ok]))
         if not cand:
@@ -486,10 +588,18 @@ def fuse(est: Estimates, cam_pos, *, carve_stride: int = 1) -> VoxelMap:
     pos /= np.bincount(inv, weights=w, minlength=len(uk))[:, None]
     fr = np.unique(inv.astype(np.int64) * (1 << 31) + est.frame.astype(np.int64))
     n_frames = np.bincount((fr >> 31).astype(np.int64), minlength=len(uk))
+    tr = np.unique(inv.astype(np.int64) * (1 << 40) + est.track.astype(np.int64))
+    n_tracks = np.bincount((tr >> 40).astype(np.int64), minlength=len(uk))
+    # support: estimates of two tracks, or from two reference frames (note: one two-view pair puts the same
+    # point into both of its frames; MIN_OCC_FRAMES = 3 would demand a third view)
+    support = (n_tracks >= MIN_OCC_TRACKS) | (n_frames >= MIN_OCC_FRAMES)
     smin = np.full(len(uk), np.inf)
     np.minimum.at(smin, inv, est.sigma_m)
-    # carving: lines of sight up to point - max(2 sigma, 2 voxels)
+    # carving: lines of sight up to point - max(2 sigma, 2 voxels), from supported estimates only (an
+    # unsupported outlier with a too-long range would carve through real surfaces)
     sel = np.arange(0, len(est.frame), max(1, carve_stride))
+    if CARVE_SUPPORTED_ONLY:
+        sel = sel[support[inv[sel]]]
     c = cam_pos[est.frame[sel]]
     d = est.point[sel] - c
     r = np.linalg.norm(d, axis=1)
@@ -511,11 +621,12 @@ def fuse(est: Estimates, cam_pos, *, carve_stride: int = 1) -> VoxelMap:
     if len(fk):
         m = fk[j] == uk
         free_at_occ[m] = fn[j[m]]
-    occupied = (n_frames >= MIN_OCC_FRAMES) & (free_at_occ <= FREE_OVER_OCC * n)
+    occupied = support & (free_at_occ <= FREE_OVER_OCC * n)
     free_only = ~np.isin(fk, uk[occupied], assume_unique=True)
     meta = dict(estimates=int(len(est.frame)), voxels_with_estimates=int(len(uk)), occupied=int(occupied.sum()),
-                rejected_single_frame=int((n_frames < MIN_OCC_FRAMES).sum()),
-                rejected_carved=int(((n_frames >= MIN_OCC_FRAMES) & (free_at_occ > FREE_OVER_OCC * n)).sum()),
+                rejected_unsupported=int((~support).sum()),
+                rejected_carved=int((support & (free_at_occ > FREE_OVER_OCC * n)).sum()),
+                carving_estimates=int(len(sel)),
                 free_voxels=int(free_only.sum()), carve_samples=total)
     return VoxelMap(uk[occupied], pos[occupied], n[occupied].astype(np.int32), n_frames[occupied].astype(np.int32),
                     smin[occupied], fk[free_only], meta)
@@ -701,6 +812,24 @@ def run_rows(store, run_id: int, rows=None) -> np.ndarray:
     return rows[np.argsort(ix['t_wall'][rows], kind='stable')]
 
 
+class _LazyFrames:
+    """Frames of store rows read one at a time (a long run would otherwise need GBs of RAM)."""
+
+    def __init__(self, store, rows):
+        self.store, self.rows = store, np.asarray(rows, np.int64)
+        ix = store.index[self.rows]
+        self.slots = ix['slot'] if hasattr(store, '_frames') else None
+        self.mm = store._frames(int(ix['run_id'][0])) if hasattr(store, '_frames') and len(ix) else None
+
+    def __len__(self):
+        return len(self.rows)
+
+    def __getitem__(self, k):
+        if self.mm is not None:
+            return np.asarray(self.mm[int(self.slots[k])])
+        return self.store.frames(self.rows[k:k + 1])[0]
+
+
 def build_flight_map(store, run_id: int, guard, *, rows=None, mask_fn=None, log=print):
     """Track, triangulate and fuse one flight.
 
@@ -713,7 +842,7 @@ def build_flight_map(store, run_id: int, guard, *, rows=None, mask_fn=None, log=
     if len(rows) < 3:
         return rows, fuse(Estimates.empty(), np.zeros((0, 3))), Estimates.empty(), None
     ix = store.index[rows]
-    frames = store._frames(int(run_id))[ix['slot']] if hasattr(store, '_frames') else store.frames(rows)
+    frames = _LazyFrames(store, rows)
     t = ix['t_wall'].astype(np.float64)
     pos = ix['pos'].astype(np.float64)
     quat = ix['quat'].astype(np.float64)

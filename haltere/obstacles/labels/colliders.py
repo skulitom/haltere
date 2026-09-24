@@ -36,6 +36,8 @@ from .corridors import SUB_SHAPE, grid_from_subrays, subray_dirs_world, unknown_
 # sim = M @ unity (haltere.liftoff.frames.M); kept local so this module stays a pure-numpy reader.
 _M = np.array([[0.0, 0.0, 1.0], [-1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
 BUNDLE_RINGS = ((0.25, 8), (FAN_CORRIDOR_RADIUS_M, 64))
+BUNDLE_SIZE = 1 + sum(n for _, n in BUNDLE_RINGS)
+TILE = (9, 12)                     # sub-ray tile cast as one chunk (54 x 96 = 6 x 8 tiles)
 ASSUMPTION = ('box course lists no unknown geometry (unknown_geometry == 0): no collider hit within '
               'RANGE_MAX_M / FAN_MAX_M is labelled LOWER free; collider-vs-render alignment unverified')
 
@@ -76,17 +78,37 @@ class BoxScene:
             self._vertices = world_u.reshape(-1, 3) @ _M.T                       # sim = M @ unity
         return self._vertices
 
+    def _candidates(self, origins_u, dirs_u, max_range: float):
+        """Boxes that some ray of this bundle can reach within max_range (exact culling).
+
+        Range: the bounding sphere must come within max_range + spread of the bundle centre. Cone: a ray
+        from an origin within ``spread`` of the centre can only meet a bounding sphere of radius r if the
+        parallel ray from the centre meets the sphere grown by ``spread``, i.e. the sphere centre lies within
+        asin((r + spread) / dist) of that ray's direction, hence within that of the bundle's axis cone.
+        """
+        centre = origins_u.mean(axis=0)
+        spread = np.linalg.norm(origins_u - centre, axis=1).max()
+        v = self.centers - centre
+        dist = np.linalg.norm(v, axis=1)
+        keep = dist - self.radius <= max_range + spread
+        axis = dirs_u.sum(axis=0)
+        if np.linalg.norm(axis) > 1e-9:
+            axis = axis / np.linalg.norm(axis)
+            half = np.arccos(np.clip(dirs_u @ axis, -1.0, 1.0)).max()
+            grown = self.radius + spread
+            ang = np.arccos(np.clip((v @ axis) / np.maximum(dist, 1e-12), -1.0, 1.0))
+            margin = np.arcsin(np.clip(grown / np.maximum(dist, 1e-12), 0.0, 1.0))
+            keep &= (dist <= grown) | (ang - margin <= half + 1e-6)
+        return self.centers[keep], self.halfs[keep], self.rot[keep]
+
     def cast(self, origins_u, dirs_u, max_range: float = RANGE_MAX_M, chunk: int = 1024):
         """First hit distance (inf if none within max_range) for rays with per-ray origins (Unity frame)."""
         dirs_u = np.asarray(dirs_u, dtype=np.float64).reshape(-1, 3)
         origins_u = np.broadcast_to(np.asarray(origins_u, dtype=np.float64), dirs_u.shape)
         out = np.full(len(dirs_u), np.inf)
-        centre = origins_u.mean(axis=0)
-        spread = np.linalg.norm(origins_u - centre, axis=1).max() if len(origins_u) else 0.0
-        near = np.linalg.norm(self.centers - centre, axis=1) - self.radius <= max_range + spread
-        C, H, R = self.centers[near], self.halfs[near], self.rot[near]
         for a in range(0, len(dirs_u), chunk):
             o, d = origins_u[a:a + chunk], dirs_u[a:a + chunk]
+            C, H, R = self._candidates(o, d, max_range)
             best = np.full(len(d), np.inf)
             if len(C):
                 lo_ = np.einsum('rj,bjk->rbk', o, R) - np.einsum('bj,bjk->bk', C, R)[None]   # (r, b, 3)
@@ -120,9 +142,13 @@ def _scene(geometry) -> BoxScene:
 def subray_ranges(geometry, pos_abs, quat_wb, max_range: float = RANGE_MAX_M) -> np.ndarray:
     """(54, 96) collider range along every sub-ray (inf = no hit within max_range)."""
     scene = _scene(geometry)
-    dirs = subray_dirs_world(quat_wb).reshape(-1, 3)
+    dirs = subray_dirs_world(quat_wb)
     o = sim_to_unity(np.asarray(pos_abs, dtype=np.float64))
-    return scene.cast(o, sim_to_unity(dirs), max_range).reshape(SUB_SHAPE)
+    # cast in 9 x 12 sub-ray tiles so each chunk's cone (and its box candidate list) is narrow
+    th, tw = TILE
+    tiles = dirs.reshape(SUB_SHAPE[0] // th, th, SUB_SHAPE[1] // tw, tw, 3).transpose(0, 2, 1, 3, 4)
+    r = scene.cast(o, sim_to_unity(tiles.reshape(-1, 3)), max_range, chunk=th * tw)
+    return r.reshape(SUB_SHAPE[0] // th, SUB_SHAPE[1] // tw, th, tw).transpose(0, 2, 1, 3).reshape(SUB_SHAPE)
 
 
 def ranges_along(geometry, pos_abs, dirs_w, max_range: float = RANGE_MAX_M) -> np.ndarray:
@@ -156,7 +182,8 @@ def fan_hits(geometry, pos_abs, quat_wb, s_max: float = FAN_MAX_M) -> np.ndarray
     offs = _bundle_offsets(d)                                            # (36, n, 3)
     origins = o[None, None] + offs
     dirs = np.broadcast_to(d[:, None, :], offs.shape)
-    t = scene.cast(sim_to_unity(origins.reshape(-1, 3)), sim_to_unity(dirs.reshape(-1, 3)), s_max)
+    t = scene.cast(sim_to_unity(origins.reshape(-1, 3)), sim_to_unity(dirs.reshape(-1, 3)), s_max,
+                   chunk=BUNDLE_SIZE)                                  # one corridor per chunk
     best = t.reshape(offs.shape[:2]).min(axis=1)
     # box vertices inside a corridor (small boxes wholly inside the cross-section)
     v = scene.vertices_sim()
