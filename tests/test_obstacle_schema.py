@@ -277,7 +277,8 @@ def test_event_schema():
     with pytest.raises(ValueError):
         labels.validate_event({k: v for k, v in e.items() if k != 'blind'})
     from haltere.obstacles.store import REPO_ROOT
-    assert labels.load_events(REPO_ROOT / 'configs' / 'obstacles' / 'events_f12.json') == []
+    f12 = labels.load_events(REPO_ROOT / 'configs' / 'obstacles' / 'events_f12.json')
+    assert f12 and all(e['blind'] for e in f12)          # blind labels written by the labels build (M1)
 
 
 # ----------------------------------------------------------------------------- model and loss references

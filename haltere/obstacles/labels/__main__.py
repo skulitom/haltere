@@ -16,7 +16,10 @@ def main(argv=None):
     b.add_argument('--events', type=Path, required=True, help='lateral study manifest.json')
     b.add_argument('--extra-events', type=Path, default=None, help='configs/obstacles/events_f12.json')
     b.add_argument('--stages', nargs='*', default=None)
+    b.add_argument('--runs', nargs='*', default=None, help='restrict to these run ids (development)')
     b.add_argument('--flight-lock', default=None)
+    b.add_argument('--overlays', type=Path, default=None,
+                   help='overlays.py to take the L2 feature mask from (pinned snapshot; default: the package module)')
     t = sub.add_parser('teacher')
     t.add_argument('--store', type=Path, default=DEFAULT_STORE)
     t.add_argument('--flight-lock', default=None)

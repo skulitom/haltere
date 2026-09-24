@@ -40,8 +40,10 @@ TEACHER relative depth affine-fitted to L1-L3 anchors (M2); L5 COLLIDER box-coll
 (Drawing Board box course only, absolute simulator positions).
 
 Combination: each source first reduces its sub-rays/points to one constraint per cell or fan
-direction (``min_over``), then sources are folded with ``intersect`` in COMBINE_ORDER. Per-source
-raw outputs stay in parts/ so the combination can be recomputed.
+direction (``min_over``), then the sources' intervals are intersected (``intersect`` semantics on the
+full intervals, so the result does not depend on COMBINE_ORDER; build.combine_sources): conflicts
+beyond EXACT_TOL become UNKNOWN and are counted; a wide finite interval keeps UPPER hi when
+hi <= 8 m, else LOWER lo. Per-source raw outputs stay in parts/ so the combination can be recomputed.
 """
 from __future__ import annotations
 
@@ -55,7 +57,7 @@ from pathlib import Path
 import numpy as np
 
 from .. import RUNTIME_ENV_FLAG
-from ..contract import FAN_MAX_M, FAN_SHAPE, GRID_SHAPE, RANGE_MAX_M, RANGE_MIN_M
+from ..contract import BLOCKED_WITHIN_M, FAN_MAX_M, FAN_SHAPE, GRID_SHAPE, RANGE_MAX_M, RANGE_MIN_M
 
 if os.environ.get(RUNTIME_ENV_FLAG) == '1':
     raise ImportError('haltere.obstacles.labels holds offline hindsight labels and must not be imported '
@@ -113,7 +115,7 @@ LABEL_MANIFEST_KEYS = {
     'n_frames': 'rows (== store rows)',
     'arrays': '{name: {file, dtype, shape, sha256}}',
     'sources': '{TUBE|HINDSIGHT|IMPACT|TEACHER|COLLIDER: {parameters, frames_labelled, cells_by_kind}}',
-    'combine': '{order, exact_tol, min_known_frac, conflicts, interval_to_lower}',
+    'combine': '{order, rule, exact_tol, min_known_frac, wide_interval, conflicts_*, wide_to_*, cells_*}',
     'inputs': '{colliders, lateral_manifest, events_f12, folds, inventory: {path, sha256}}',
     'quality': 'K0b results: L2 vs colliders, L2 vs L3, uncensored near-travel fan share per environment',
     'offline_only': 'true: hindsight labels, never runtime inputs',
@@ -144,7 +146,7 @@ EVENT_FIELDS = {
     'lateral': 'bool: scored by E4',
     'in_view_frac_T2_T1': 'fraction of frames in [T-2, T-1] s where point_w projects into the image, or null',
     'oracle_route': 'bool: privileged oracle-route flight (excluded from evaluation sets)',
-    'source': 'lateral_manifest | blind_label | csv_contact | sidecar',
+    'source': 'lateral_manifest | blind_label | near_pass_geometry (builder) | csv_contact | capture_contact | sidecar (unlabelled store events)',
     'blind': 'bool: labelled before any model or baseline output on this event was seen',
     'labeller': 'who labelled it (agent/session id or person)',
     'labelled_at': 'ISO time',
@@ -194,12 +196,21 @@ def _intervals(values, kinds):
     return np.nan_to_num(lo, nan=0.0), np.where(np.isnan(hi), np.inf, hi)
 
 
-def _from_interval(lo, hi, tol):
+WIDE_POLICIES = ('lower', 'upper')
+
+
+def _from_interval(lo, hi, tol, wide: str = 'lower'):
     """Interval [lo, hi] -> (value, kind): exact when hi <= lo * (1 + tol) (value = lo, the nearer end);
-    upper when lo == 0; lower when hi is infinite or the interval is wide (the free-space bound is kept)."""
+    upper when lo == 0; lower when hi is infinite. A wide finite interval keeps the free-space bound
+    (LOWER lo) with ``wide='lower'`` (default) or the occupied-evidence bound (UPPER hi) with
+    ``wide='upper'``."""
+    if wide not in WIDE_POLICIES:
+        raise ValueError(f'wide must be one of {WIDE_POLICIES}')
     exact = np.isfinite(hi) & (lo > 0) & (hi <= lo * (1 + tol))
     upper = np.isfinite(hi) & (lo <= 0)
-    lower = (lo > 0) & ~exact
+    if wide == 'upper':
+        upper = upper | (np.isfinite(hi) & (lo > 0) & ~exact)
+    lower = (lo > 0) & ~exact & ~upper
     kind = np.full(np.shape(lo), LabelKind.UNKNOWN, np.uint8)
     kind[lower] = LabelKind.LOWER
     kind[upper] = LabelKind.UPPER
@@ -208,11 +219,38 @@ def _from_interval(lo, hi, tol):
     return value, kind
 
 
-def min_over(values, kinds, axis: int = -1, *, tol: float = EXACT_TOL, min_known_frac: float = 1.0):
+WIDE_UPPER_MAX_M = max(BLOCKED_WITHIN_M)   # 8 m: see resolve_interval
+
+
+def resolve_interval(lo, hi, tol: float = EXACT_TOL, wide_upper_max_m: float | None = None):
+    """Two-sided interval [lo, hi] on a range -> one stored (value, kind), plus the wide-interval mask.
+
+    As ``_from_interval`` (EXACT when hi <= lo (1 + tol), one-sided bounds keep their side), except that a
+    wide finite interval (free-space evidence lo AND occupied evidence hi) keeps UPPER hi when
+    hi <= ``wide_upper_max_m`` and LOWER lo otherwise. Rationale: in the near field, where the clearance
+    questions P(blocked <= 4 / 8 m) live, the occupied bound decides them and the free bound does not (a flown
+    tube or a carving that stops short of a surface says nothing about that surface); far hits bound little, so
+    there the free extent is the useful part. ``wide_upper_max_m=None`` always keeps LOWER lo.
+    Returns (value, kind, wide mask, wide-kept-as-UPPER mask).
+    """
+    lo = np.asarray(lo, np.float64)
+    hi = np.asarray(hi, np.float64)
+    wide = (lo > 0) & np.isfinite(hi) & (hi > lo * (1 + tol))
+    v, k = _from_interval(lo, hi, tol, wide='lower')
+    near = wide & (hi <= wide_upper_max_m) if wide_upper_max_m is not None else np.zeros(np.shape(lo), bool)
+    v = np.where(near, hi, v)
+    k = np.where(near, LabelKind.UPPER, k).astype(np.uint8)
+    return v, k, wide, near
+
+
+def min_over(values, kinds, axis: int = -1, *, tol: float = EXACT_TOL, min_known_frac: float = 1.0,
+             wide_upper_max_m: float | None = None):
     """Constraint on min_k(y_k) from constraints on each y_k (sub-rays of a cell, points of a corridor).
 
     Sub-constraints that are UNKNOWN are ignored when at least ``min_known_frac`` of them are known;
-    otherwise the minimum is at most the smallest upper value (UPPER) or UNKNOWN.
+    otherwise the minimum is at most the smallest upper value (UPPER) or UNKNOWN. The minimum lies in
+    [min lower, min upper]; a wide interval is resolved with ``resolve_interval(wide_upper_max_m)``
+    (default: LOWER, the free-space end).
     Returns (value float64, kind uint8) with ``axis`` removed.
     """
     v = np.moveaxis(np.asarray(values, dtype=np.float64), axis, -1)
@@ -228,13 +266,15 @@ def min_over(values, kinds, axis: int = -1, *, tol: float = EXACT_TOL, min_known
     considered = known | ~ignore_unknown[..., None]
     lb = np.where(considered, lo, np.inf).min(axis=-1)
     lb = np.where(np.isinf(lb), 0.0, lb)
-    return _from_interval(lb, ub, tol)
+    v, k, _, _ = resolve_interval(lb, ub, tol, wide_upper_max_m)
+    return v, k
 
 
-def intersect(v1, k1, v2, k2, *, tol: float = EXACT_TOL):
+def intersect(v1, k1, v2, k2, *, tol: float = EXACT_TOL, wide: str = 'lower'):
     """Combine two constraints on the SAME quantity. Returns (value, kind, conflict bool).
 
     Intervals are intersected; a contradiction beyond ``tol`` gives UNKNOWN and conflict=True.
+    ``wide`` chooses which end of a wide finite interval is kept (see ``_from_interval``).
     """
     lo1, hi1 = _intervals(v1, k1)
     lo2, hi2 = _intervals(v2, k2)
@@ -243,7 +283,7 @@ def intersect(v1, k1, v2, k2, *, tol: float = EXACT_TOL):
     # Overlap within tolerance collapses to the nearer value (conservative).
     lo = np.where(conflict, 0.0, np.minimum(lo, hi))
     hi = np.where(conflict, np.inf, hi)
-    value, kind = _from_interval(lo, hi, tol)
+    value, kind = _from_interval(lo, hi, tol, wide)
     return value, kind, conflict
 
 
@@ -351,12 +391,17 @@ class LabelWriter:
     def mark_done(self, stage: str, run_id: int) -> None:
         for a in self.arrays.values():
             a.flush()
-        self.progress.setdefault(stage, []).append(int(run_id))
+        done = self.progress.setdefault(stage, [])
+        if int(run_id) not in done:
+            done.append(int(run_id))
         tmp = self.root / 'progress.json.tmp'
         tmp.write_text(json.dumps(self.progress), encoding='utf-8')
         os.replace(tmp, self.root / 'progress.json')
 
-    def finalize(self, **manifest) -> dict:
+    def finalize(self, status: str = 'complete', **manifest) -> dict:
+        """Write array hashes and ``manifest`` entries; ``status`` stays 'building' for a partial build."""
+        if status not in ('building', 'complete'):
+            raise ValueError(f'status {status!r}')
         for a in self.arrays.values():
             a.flush()
         arrays = {}
@@ -365,7 +410,7 @@ class LabelWriter:
             arrays[name] = dict(file=spec.file, dtype=spec.dtype, shape=list(a.shape),
                                 sha256=_sha256_file(self.root / spec.file))
         m = json.loads((self.root / 'manifest.json').read_text(encoding='utf-8'))
-        m.update(manifest, arrays=arrays, status='complete', schema=LABELS_SCHEMA,
+        m.update(manifest, arrays=arrays, status=status, schema=LABELS_SCHEMA,
                  store_index_sha256=self.index_sha256, n_frames=self.n, offline_only=True)
         self._write_manifest(m)
         return m
@@ -413,6 +458,10 @@ class LabelSet:
         path = self.root / TEACHER.file
         if not path.exists():
             raise FileNotFoundError(f'{path}: teacher cache not built')
+        tm = json.loads((path.parent / 'manifest.json').read_text(encoding='utf-8'))
+        if tm.get('status') != 'complete' or tm.get('store_index_sha256') != self.manifest['store_index_sha256']:
+            raise ValueError(f'{path}: teacher cache is incomplete or belongs to another store index '
+                             f'(rerun "python -m haltere.obstacles.labels teacher" to revalidate it)')
         return np.load(path, mmap_mode='r')[np.asarray(rows, dtype=np.int64)].astype(np.float32)
 
     def events(self) -> list[dict]:
