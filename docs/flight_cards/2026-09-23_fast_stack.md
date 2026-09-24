@@ -188,3 +188,27 @@ was already thin: across all fast PD laps the drone crosses that arch at
 bottom-edge descent aims just steeper than the clipped ray and approaches the
 ring from above; brain-06 crosses at 12.4 m. brain-06 itself learned the old
 braking during distillation, so it needs re-distillation under the new pilot.
+
+### fast-brain-07: distilled under the arc-turn pilot (2026-09-24)
+
+Same recipe as brain-06 (readout rows 0-2 only, scene currents blanked), re-distilled
+with the arc-turn pilot so the brain learns to carve instead of brake after a
+checkpoint. Surrogate: 7/8 steep held-out courses, 0 crashes (brain-06 6/8). Weight
+audit: only `readout.weight`/`readout.bias` rows 0-2 changed (max 0.0060 / 0.0005).
+
+| Run | Result |
+|---|---|
+| `straw-brain07-02` | **Finish 5:46.846** (1:55.128, 1:54.764, 1:55.355), no detected contact |
+
+Live against `straw-brain06-02` (same course, pilot differences as described):
+
+| | brain-06 | brain-07 |
+|---|---:|---:|
+| Minimum speed after 45-75 degree switches | 2.50 m/s | **3.75 m/s** |
+| Stick change per tick after a switch | 0.0133 | **0.0092** |
+| Roll/pitch command change per tick, whole race | 0.0049 | **0.0037** |
+| Body-rate RMS | 0.66 rad/s | **0.54 rad/s** |
+| Bearing switches counted | 60 | 48 |
+
+brain-07 re-accelerates more gently after a switch (time to regain 90% of the
+pre-switch speed is longer) but carries much more speed through it.
