@@ -291,8 +291,9 @@ def test_model_output_contract():
     p = model.outputs_to_numpy(out)
     assert np.allclose(p['grid_q50'], 5.0) and np.allclose(p['fan_q20'], 1.0) and np.allclose(p['fan_p8'], 0.5)
     assert p['grid_q20'].shape == (1, 18, 32) and p['fan_p4'].dtype == np.float32
-    with pytest.raises(NotImplementedError):
-        model.build_model('dav2s')
+    with pytest.raises(ValueError):
+        model.build_model('vit-huge')          # delivered archs: model.ARCHS (tests/test_obstacle_model.py)
+    assert model.ARCHS == ('dav2s', 'resnet18fpn')
 
 
 def test_censored_laplace_reference():
