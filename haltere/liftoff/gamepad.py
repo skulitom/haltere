@@ -10,7 +10,7 @@ import sys
 import threading
 import time
 
-from .game_guard import GameDetected, describe, require_no_games, running_games
+from .game_guard import GameDetected, GameWatch, describe, require_no_games, running_games
 
 INSTALL_HELP = """
 vgamepad / ViGEmBus is not available. To drive Liftoff you need the ViGEmBus driver (admin install):
@@ -56,8 +56,10 @@ class VirtualPad:
     """The pad refuses to plug in while a game is running and unplugs itself, without pausing Liftoff,
     as soon as one starts (see game_guard): the virtual pad reaches every game on the machine."""
 
-    def __init__(self, detector=running_games, poll_seconds: float = 1.0):
-        require_no_games(detector)
+    def __init__(self, detector=None, poll_seconds: float = 1.0):
+        """`detector` returns running games; by default a full check before plugging in, then a GameWatch."""
+        require_no_games(detector or running_games)
+        detector = detector or GameWatch()
         try:
             import vgamepad as vg
         except Exception as e:  # ImportError or ViGEm client errors

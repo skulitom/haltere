@@ -271,9 +271,12 @@ processes in **Anode**, with the viewer hidden unless requested. Retain the orig
 `[Copy] New Drone`, verify throttle-low and the game's processed controls, pause
 before disconnecting the pad, and keep Liftoff open between tests. The virtual
 pad is machine-wide, so every game sees it: it refuses to plug in while another
-game runs (Steam, Epic, Xbox, GOG, EA, Ubisoft or Riot library folders; a Liftoff
-outside the pad's own session counts), unplugs itself within about a second when
-one starts, and the flight preflight refuses too.
+game runs, unplugs itself within about a second when one starts, and the flight
+preflight refuses too. A game is an install in a Steam, Epic, `C:\XboxGames`, GOG,
+EA, Ubisoft, Riot or Battle.net library, a Store game package, a known emulator,
+or any process outside the pad's session with a controller library (XInput,
+GameInput, DirectInput) loaded other than Explorer, browsers, Steam and overlays.
+A Liftoff outside the pad's own session counts.
 
 - Published motor checkpoints use `haltere liftoff fly`.
 - New visual checkpoints use `python -m haltere.liftoff.visual_brain` and their
