@@ -26,6 +26,7 @@ Offline-only modules (never imported by runtime modules):
 - ``lateral_cache``  the lateral study's caches as a pseudo store (reproduction of prior numbers)
 - ``train``     ClearanceNet training
 - ``thermal``   flight lock, GPU temperature and thread limits for heavy jobs
+- ``gap_cue_eval``  offline gates of the runtime gap cue (haltere.vision.gap_cue): masks, frames, depth, scores
 
 ``tests/test_obstacle_label_isolation.py`` proves that no runtime module can reach
 ``haltere.obstacles.labels`` through any import chain. The labels package also
@@ -71,4 +72,5 @@ OFFLINE_MODULES = (
     'haltere.obstacles.lateral_cache',
     'haltere.obstacles.train',
     'haltere.obstacles.thermal',
+    'haltere.obstacles.gap_cue_eval',
 )

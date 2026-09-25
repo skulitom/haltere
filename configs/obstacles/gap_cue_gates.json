@@ -1,0 +1,105 @@
+{
+ "schema": "haltere.obstacles.gap_cue_gates.v1",
+ "version": 1,
+ "note": "Offline gates of the gap cue (haltere.obstacles.gap_cue_eval score). Frozen with its sha256 together with configs/obstacles/gap_cue.json before any held-out frame is scored. Hindsight inputs here (impact times, time to impact, the pillar box from the impact anatomy, checkpoint-switch times from the logged cue) select and score frames only; the cue sees none of them. Every gate is reported for both disparity bases; the verdict uses the primary basis.",
+ "gap_cue_config": "configs/obstacles/gap_cue.json",
+ "latency_s": 0.065,
+ "basis": {
+  "primary": "teacher",
+  "secondary": "runtime",
+  "teacher": "store frames: labels/teacher/disparity.npy (DA-V2-Small, 602 x 336 bicubic input, fp16, 7 x 7 block means); new-flight frames: RelativeDepth(input_hw=(336, 602)), the same preprocessing",
+  "runtime": "RelativeDepth() at 448 x 252 fp16 on every new-flight frame and on the store frames of the store runs named below"
+ },
+ "motors": {"brain": "brain08", "fast_pd": "fast_pd", "pd": "fast_pd"},
+ "new_flights": {
+  "minus-brain07-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-brain08-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-fast6-cur-01": {"env": "Minus Two", "motor": "fast_pd"},
+  "minus-brain08-slow35-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-brain08-loom-01": {"env": "Minus Two", "motor": "brain"},
+  "pine-brain08-loom-01": {"env": "Pine Valley", "motor": "brain"},
+  "straw-brain08-04": {"env": "Straw Bale", "motor": "brain"},
+  "straw-brain08-06": {"env": "Straw Bale", "motor": "brain"},
+  "straw-brain07-02": {"env": "Straw Bale", "motor": "brain"},
+  "straw-brain07-03": {"env": "Straw Bale", "motor": "brain"}
+ },
+ "flight_frames": {
+  "source": "runs/fast-stack-20260923/<flight>.mp4 gameplay crop (x >= 648), every new (non-repeated) frame, cv2 INTER_AREA to 448 x 252",
+  "alignment": "t_wall = csv.wall[0] + t_video + offset; offset minimises the median pixel distance between the overlay-detected ring marker (overlays rings_uv) and the logged cue interpolated at capture time (capture_time + C), searched over -0.6..+0.4 s in 0.01 s steps; fallback -0.03 s with fewer than 12 markers",
+  "pose": "Telemetry.sample(t_wall) of the run CSV (as the obstacle store); cue: Telemetry.cue_at(t_wall) (logged pilot detection within 50 ms)",
+  "drop": "store_build.drop_reasons (outside telemetry, telemetry gap, pause menu, countdown, finish screen) and frames after the sidecar impact"
+ },
+ "store_runs": {
+  "118": {"name": "fast-stack-20260923/minus-brain03-01", "motor": "brain"},
+  "119": {"name": "fast-stack-20260923/minus-brain04-02", "motor": "brain"},
+  "120": {"name": "fast-stack-20260923/minus-brain05-01", "motor": "brain"},
+  "121": {"name": "fast-stack-20260923/minus-brain06-01", "motor": "brain"},
+  "122": {"name": "fast-stack-20260923/minus-fast6-01", "motor": "fast_pd"},
+  "123": {"name": "matched-full-races-20260923/03-minus-pd", "motor": "pd"},
+  "127": {"name": "motor10-transfer-20260922/minus", "motor": "brain"}
+ },
+ "G1": {
+  "what": "pillar A (Minus Two): the cue confirms the ring side (LEFT, shift > 0) early and never aims into the pillar",
+  "pillar_box_xy": {"x": [54.7, 55.5], "y": [3.65, 4.45]},
+  "distance_to": [54.7, 4.05],
+  "approach_region": {"x": [42.0, 54.7], "y": [0.0, 6.0]},
+  "left_confirm_distance_m": 5.5,
+  "min_passing_approaches": 6,
+  "approaches": [
+   {"name": "minus-brain03-01", "store_run_id": 118},
+   {"name": "minus-brain04-02", "store_run_id": 119},
+   {"name": "minus-brain05-01", "store_run_id": 120},
+   {"name": "minus-brain06-01", "store_run_id": 121},
+   {"name": "minus-brain07-01", "flight": "minus-brain07-01"},
+   {"name": "minus-brain08-01", "flight": "minus-brain08-01"},
+   {"name": "minus-fast6-01", "store_run_id": 122},
+   {"name": "minus-fast6-cur-01", "flight": "minus-fast6-cur-01"}
+  ],
+  "reported_not_gated": [
+   {"name": "minus-brain08-slow35-01", "flight": "minus-brain08-slow35-01"},
+   {"name": "minus-brain08-loom-01", "flight": "minus-brain08-loom-01"}
+  ],
+  "pass_approach": "the first confirmed LEFT frame in the approach region is at distance >= left_confirm_distance_m",
+  "never_into_near": "over all approach-region frames of all approaches: no confirmed frame whose aim (ring bearing + shift) lies inside the pillar box's azimuth extent seen from the drone while the ring bearing does not (ground truth), and no confirmed aim inside a near column of the cue's own profile (self-consistency). Confirmed RIGHT shifts are reported by distance."
+ },
+ "G2": {
+  "what": "pillar B (Minus Two): the cue shifts the aim towards world -x at least 1 s before impact on both runs",
+  "runs": [{"name": "matched-full-races-20260923/03-minus-pd", "store_run_id": 123},
+           {"name": "motor10-transfer-20260922/minus", "store_run_id": 127}],
+  "window_tti_s": [0.1, 3.0],
+  "min_lead_s": 1.0,
+  "side": "-x",
+  "rule": "the first confirmed frame in the window whose aim change points to world -x (shift * -sin(ring bearing) < 0) has time to impact >= min_lead_s; confirmed +x frames before it are reported"
+ },
+ "G3": {
+  "what": "clean Straw Bale full laps: few, small confirmed shifts and none at the gates",
+  "flights": ["straw-brain08-04", "straw-brain08-06", "straw-brain07-02", "straw-brain07-03"],
+  "minutes": "sum of frame gaps < 0.3 s over kept frames",
+  "max_episodes_per_min": 6.0,
+  "p90_abs_shift_max_deg": 10.0,
+  "p90_over": "confirmed frames",
+  "switch_window_s": 0.5,
+  "switch_abs_shift_max_deg": 4.0,
+  "switch_min_fraction": 0.95,
+  "switch_rule": "gap_cue_eval.checkpoint_switches on the cue bearing of kept frames (jump > 8 deg within 0.25 s, next two frames within 4 / 6 deg, >= 1 s apart, horizontal speed >= 3 m/s); a switch passes when every output |shift| in [t_switch - 0.5 s, t_switch) is <= 4 deg"
+ },
+ "G4": {
+  "what": "leak tests",
+  "sample": "every 10th kept new-flight frame (all ten flights) with an overlay-detected ring marker",
+  "perturbations": {
+   "ring_painted": "leaks.paint_ring (Liftoff checkpoint colour) at the marker row + U(-6, 6) px and a horizontal offset U(25, 90) px to a random side, radius U(8, 16) px, thickness 3; rng seed 20260925",
+   "ring_removed": "leaks.remove_ring of the frame's own overlay ring mask (marker, mint discs, checkpoint volumes)"
+  },
+  "masks": "recomputed on the perturbed frame",
+  "metric": "|decide(perturbed).shift - decide(original).shift| with the same pose and ring cue (stateless raw shift); frames where both decisions are valid",
+  "max_dshift_deg": 1.0,
+  "min_fraction": 0.95,
+  "hud_only": "every kept new-flight frame: disparity 1 on scene pixels and 10 on HUD pixels (block means 1 + 9 f_hud), validity from that frame's masks; the gate passes when no frame has a near column"
+ },
+ "pine_trunk": {
+  "what": "report only: pine-brain08-loom-01 (tree trunk on the line to the ring; impact at phase 9.56 s): would the cue have shifted, and to which side, over the last 2 s",
+  "flight": "pine-brain08-loom-01",
+  "window_before_impact_s": 2.0,
+  "reference": "the ghost-racer trails pass RIGHT of the trunk (not an input)"
+ }
+}

@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import haltere
-from haltere.obstacles import LABEL_PACKAGE, RUNTIME_ENV_FLAG, RUNTIME_MODULES, RUNTIME_PACKAGES
+from haltere.obstacles import LABEL_PACKAGE, OFFLINE_MODULES, RUNTIME_ENV_FLAG, RUNTIME_MODULES, RUNTIME_PACKAGES
 
 PACKAGE_DIR = Path(haltere.__file__).resolve().parent
 
@@ -164,9 +164,32 @@ def test_label_package_refuses_runtime_processes():
     assert r.returncode == 0 and 'ok' in r.stdout, r.stderr
 
 
-@pytest.mark.parametrize('module', ['haltere.obstacles.contract', 'haltere.obstacles.model', 'haltere.obstacles.overlays'])
+@pytest.mark.parametrize('module', ['haltere.obstacles.contract', 'haltere.obstacles.model', 'haltere.obstacles.overlays',
+                                    'haltere.vision.gap_cue', 'haltere.vision.relative_depth'])
 def test_runtime_obstacle_modules_import_only_runtime_safe_code(module):
     graph, _ = import_graph(PACKAGE_DIR, 'haltere')
+    assert module in graph
     offline = {'haltere.obstacles.store', 'haltere.obstacles.splits', 'haltere.obstacles.evaluate',
-               'haltere.obstacles.train', 'haltere.obstacles.timing', 'haltere.obstacles.store_build'}
+               'haltere.obstacles.train', 'haltere.obstacles.timing', 'haltere.obstacles.store_build',
+               'haltere.obstacles.gap_cue_eval', 'haltere.obstacles.leaks', 'haltere.obstacles.thermal'}
+    assert offline <= set(OFFLINE_MODULES)
     assert not set(reachable(graph, [module])) & offline
+
+
+def test_gap_cue_runtime_modules_load_no_label_torch_or_offline_code():
+    """The gap cue is numpy only; the depth wrapper imports torch only when a model is built."""
+    code = ('import sys, haltere.vision.gap_cue, haltere.vision.relative_depth\n'
+            f'print(sorted(m for m in sys.modules if m.startswith("{LABEL_PACKAGE}") '
+            'or m.split(".")[0] in ("torch", "cv2", "transformers") '
+            'or m in ("haltere.obstacles.gap_cue_eval", "haltere.obstacles.store")))')
+    r = _python(code, {RUNTIME_ENV_FLAG: '1'})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == '[]'
+
+
+def test_no_runtime_module_reaches_the_gap_cue_evaluation():
+    graph, _ = import_graph(PACKAGE_DIR, 'haltere')
+    assert 'haltere.obstacles.gap_cue_eval' in graph
+    chains = reachable(graph, runtime_roots(graph))
+    assert 'haltere.obstacles.gap_cue_eval' not in chains
+    assert 'haltere.vision.gap_cue' in chains and 'haltere.vision.relative_depth' in chains

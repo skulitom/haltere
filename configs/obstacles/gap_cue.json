@@ -1,0 +1,61 @@
+{
+ "schema": "haltere.vision.gap_cue.v1",
+ "version": 1,
+ "note": "Runtime parameters of haltere.vision.gap_cue (OFF by default: enabled false). Frozen with its sha256 (content without frozen/frozen_at/sha256, canonical JSON) before any held-out or live score; a change needs a new version and a new freeze, and every version's results are reported. Band, bins, background window, kappa 1.8, mu0 5 deg with the r/kappa margin scaling capped at 2.5, the +-12 deg clip and the 25 deg search window come from the M2 design study (m2design/hybrid/gapcue.py and gapsweep.py on store dev runs; kappa/margin chosen there from 9 settings on Straw Bale / Minus Two dev frames). Unknown (masked or unobserved) columns are neither near nor observed free (the prototype treated them as not free; they then bound an interval without margin). active_deg 2 is the prototype's episode threshold; confirm/release 2 frames, max_age 0.25 s, max_gap 0.3 s, the path corridor and horizon are a-priori values fitted to no data.",
+ "params": {
+  "enabled": false,
+  "band_deg": [
+   -4.0,
+   6.0
+  ],
+  "az_span_deg": 60.0,
+  "az_step_deg": 1.0,
+  "bin_halfwidth_deg": 1.5,
+  "background_halfwidth_deg": 35.0,
+  "min_background_bins": 10,
+  "kappa": 1.8,
+  "mu0_deg": 5.0,
+  "margin_ratio_cap": 2.5,
+  "search_halfwidth_deg": 25.0,
+  "shift_clip_deg": 12.0,
+  "ring_halfwidth_deg": 2.0,
+  "peak_halfwidth_deg": 8.0,
+  "lr_inner_deg": 8.0,
+  "lr_outer_deg": 35.0,
+  "lr_min_blocks": 5,
+  "min_band_blocks": 20,
+  "cue_edge_margin": 0.03,
+  "block_mask_max_fraction": 0.0,
+  "active_deg": 2.0,
+  "confirm_frames": 2,
+  "release_frames": 2,
+  "max_age_s": 0.25,
+  "max_gap_s": 0.3,
+  "path_halfwidth_deg": 4.0,
+  "path_horizon_s": 1.0,
+  "path_min_speed_mps": 1.0,
+  "motor": "brain08"
+ },
+ "mask_layers": [
+  "hud",
+  "ring",
+  "ghost"
+ ],
+ "mask_source": "haltere.obstacles.overlays.overlay_masks on the same 448 x 252 frame; a block is invalid when more than block_mask_max_fraction of its pixels are masked (union of mask_layers). 0.0: any masked pixel invalidates the block. Dev check (store Straw Bale dev runs, synthetic HUD-only disparity: 10 on HUD pixels, 1 elsewhere, block means): 0.3 gave a near column in 2012 of 2058 frames, 0.0 in none; clean-flight episodes 11.32 -> 11.24 /min, pillar-A first confirmed left unchanged except brain03 5.24 -> 4.88 m.",
+ "relative_depth": {
+  "module": "haltere.vision.relative_depth.RelativeDepth",
+  "model": "depth-anything/Depth-Anything-V2-Small-hf",
+  "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+  "weights_sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70",
+  "licence": "apache-2.0",
+  "input_hw": [
+   252,
+   448
+  ],
+  "precision": "fp16 on CUDA (fp32 CPU fallback)",
+  "block_px": 7,
+  "masked_input": false
+ },
+ "mask_note": "Propeller zone not masked: on the design study's Straw Bale dev runs masking it changed clean-flight episodes 11.32 -> 11.24 /min and lowered the share of checkpoint switches with |shift| <= 4 deg in the last 0.5 s from 0.984 to 0.918; hud+ring+ghost vs no mask: 11.32 vs 12.29 /min.",
+ "dev_time_logic": "Dev sweep (store dev runs only, before any held-out frame; block threshold 0.3 at the time, 0.0 changes the rates by < 0.1 /min): active_deg 2/3/4 x confirm 1/2/3 trades pillar-A lead against Straw Bale clean episodes (e.g. 2/1: 7 of 8 dev approaches confirmed left at >= 5.5 m, 19.0 episodes/min; 2/2: 5 of 8, 11.3/min; 4/3: 2 of 8, 3.1/min); no setting met both the pillar-A and the 6/min clean-flight targets, so the a-priori 2 deg / 2 frames were kept."
+}

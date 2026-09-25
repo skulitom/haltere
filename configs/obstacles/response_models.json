@@ -1,0 +1,31 @@
+{
+ "schema": "haltere.obstacles.response_models.v1",
+ "use": "haltere.vision.gap_cue near_on_path: the predicted flown direction flies straight along the declared velocity for delay_s after a frame, then turns towards the aim at a_lat_mps2. Declared values (the M2 design kinematic budget, m2design/anatomy/budget.py), not fitted per course.",
+ "models": {
+  "fast_pd": {
+   "delay_s": 0.30,
+   "a_lat_mps2": 8.0,
+   "declared_from": "camera age 0.07-0.14 s + confirmation ~0.1 s + PD tracking lag 0.11-0.14 s; lateral acceleration p99 of PD flights"
+  },
+  "brain08": {
+   "delay_s": 0.55,
+   "a_lat_mps2": 6.5,
+   "declared_from": "camera age + confirmation + brain lag behind the request 0.32-0.39 s; observed lateral acceleration 6.6-6.8 m/s^2 p99"
+  }
+ },
+ "log_check": {
+  "method": "pure delay + first-order lag of flown horizontal velocity to the pilot's commanded velocity (grid search, 50 Hz), camera image age (median), one frame of confirmation at the camera rate; lateral acceleration percentiles above 3 m/s from 0.1 s differences. Response = age + 1 / rate + delay + tau.",
+  "fast_pd": {
+   "minus-fast6-01": {"delay_s": 0.10, "tau_s": 0.04, "rmse_mps": 0.25, "response_s": 0.29, "a_lat_p99": 9.06},
+   "minus-fast6-cur-01": {"delay_s": 0.06, "tau_s": 0.04, "rmse_mps": 0.13, "response_s": 0.25, "a_lat_p99": 3.62},
+   "straw-fast6-02 (10-130 s)": {"delay_s": 0.10, "tau_s": 0.04, "rmse_mps": 0.24, "response_s": 0.28, "a_lat_p99": 7.57}
+  },
+  "brain08": {
+   "minus-brain08-01": {"delay_s": 0.10, "tau_s": 0.64, "rmse_mps": 0.40, "response_s": 0.89, "a_lat_p99": 2.44},
+   "minus-brain08-slow35-01": {"delay_s": 0.36, "tau_s": 0.04, "rmse_mps": 1.52, "response_s": 0.56, "a_lat_p99": 4.12, "note": "poor fit: the brain did not follow the 3.5 m/s request"},
+   "pine-brain08-01": {"delay_s": 0.28, "tau_s": 0.06, "rmse_mps": 0.73, "response_s": 0.49, "a_lat_p99": 8.85},
+   "straw-brain08-04 (10-130 s)": {"delay_s": 0.18, "tau_s": 0.16, "rmse_mps": 0.77, "response_s": 0.48, "a_lat_p99": 7.54}
+  },
+  "verdict": "declared values kept: PD 0.30 s matches 0.25-0.29 s; brain-08 0.55 s lies inside 0.48-0.89 s (short Minus windows fit worst); lateral capacities match the p99 of the longer flights (short straight Minus windows never use them)"
+ }
+}
