@@ -58,6 +58,8 @@ class FastCueConfig:
     # top of its arch).
     below_slope_growth_deg_s: float = 4.
     below_slope_margin_max_deg: float = 20.
+    # The clip's age restarts after a gap in bottom-clip frames or on a new ring.
+    below_gap_s: float = .25
     below_speed_fraction: float = .5
     edge_sweep_after_s: float = 1.5
     edge_sweep_rate: float = 1.
@@ -532,7 +534,7 @@ class FastRaceCue:
             float(calibration[k]) for k in ('hover_processed', 'throttle_scale', 'hover_stick_sim'))
         self.below_weight = 0.
         self.edge_depression = 0.
-        self.below_since = None
+        self.below_since = self.below_last = None
         self.vertical_clip_since = None
         self.sweep_side = None
         # A fast-contract brain senses horizontal velocity scaled by a declared
@@ -607,9 +609,11 @@ class FastRaceCue:
         ray = self.camera.unproject_body(np.array([[aim_u*320, cue['v']*180]]))[0]
         ray = quat_wxyz_to_mat(q) @ ray
         ray = ray/max(np.linalg.norm(ray), 1e-9)
+        switched = False
         if self.direction is None or np.degrees(np.arccos(np.clip(ray @ self.direction, -1, 1))) > self.config.new_target_deg:
             if self.direction is not None:
                 self.target_switches += 1
+                switched = True
             self.direction = ray
         else:
             blended = self.direction+self.config.direction_blend*(ray-self.direction)
@@ -629,12 +633,15 @@ class FastRaceCue:
             weight = float(np.clip((-elevation-c.below_weak_deg)/(c.below_full_deg-c.below_weak_deg), 0, 1))
             self.below_weight = max(self.below_weight, weight)
             self.edge_depression = float(max(0., -elevation))
-            if self.below_since is None:
+            # Only an unbroken clip of the same ring is evidence that the slope is too shallow.
+            if (self.below_since is None or switched or self.below_last is None
+                    or capture_time-self.below_last > c.below_gap_s):
                 self.below_since = capture_time
+            self.below_last = capture_time
         else:
             self.below_weight = 0.
             self.edge_depression = 0.
-            self.below_since = None
+            self.below_since = self.below_last = None
         if not ((self.below or self.above) and abs(cue['u']-.5) < .1):
             self.vertical_clip_since = None
             self.sweep_side = None
@@ -905,7 +912,8 @@ class FastRaceCue:
                               'clamped edge ray bearing, level (edge height is not used)',
                     bottom_edge='descent bounded by the clamped edge ray depression plus a margin that grows '
                                 'with the clip duration (below_slope_growth_deg_s, up to '
-                                'below_slope_margin_max_deg), weighted by that depression and latched per clip',
+                                'below_slope_margin_max_deg; the duration restarts after a below_gap_s gap in '
+                                'bottom-clip frames or on a new ring), weighted by that depression and latched per clip',
                     top_edge='climb while preserving the clipped slope bound',
                     centred_vertical_clip='centred top clip: slow yaw sweep after edge_sweep_after_s, direction '
                                           'latched per episode; a centred bottom clip keeps facing the ring',

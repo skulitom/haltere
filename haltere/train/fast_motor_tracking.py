@@ -315,6 +315,9 @@ def main():
         raise ValueError('Use positive ridge and sink weight, non-negative smoothing and at least one round')
     if not 0 < args.vertical_goal_seconds <= 2:
         raise ValueError('Use a vertical goal time in (0, 2] s')
+    if not args.retina_data and args.validation_retina_data:
+        raise ValueError('A readout fitted without scene currents is blanked at runtime; '
+                         'evaluate it that way too (--validation-retina-data "")')
     torch.set_num_threads(2)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=False)
@@ -328,9 +331,15 @@ def main():
         if args.smooth > 0 and 'step_gram' not in source or args.sink_weight != 1 and 'request' not in source:
             raise ValueError('That run did not save feature steps / 3D requests')
         for key in ('checkpoint', 'profile', 'speed', 'scaled_speed', 'vertical_goal_seconds', 'steep', 'seconds',
-                    'courses', 'rounds', 'retina_data', 'retina_dropout', 'evaluation_seeds'):
+                    'courses', 'rounds', 'retina_data', 'validation_retina_data', 'retina_dropout', 'evaluation_seeds'):
             if source['config'].get(key, getattr(args, key)) != getattr(args, key):
                 raise ValueError(f'--{key.replace("_", "-")} differs from the resolved run: {source["config"][key]!r}')
+        # The same paths must still hold the same files the data were collected with.
+        for key, path in (('parent_sha256', args.checkpoint), ('profile_sha256', args.profile),
+                          ('retina_data_sha256', args.retina_data),
+                          ('validation_retina_data_sha256', args.validation_retina_data)):
+            if source['config'].get(key) != (sha256(path) if path else None):
+                raise ValueError(f'{key} differs from the resolved run: the file at {path!r} was replaced')
     contract = fast_contract(args.speed, args.vertical_goal_seconds, scaled_speed=args.scaled_speed)
     if source is not None and source['config']['contract'] != contract:
         raise ValueError(f'The resolved run used another contract: {source["config"]["contract"]}')
@@ -406,8 +415,11 @@ def main():
         **contract, teacher='FastMotorPD in the measured surrogate; offline only, never loaded at runtime',
         dynamics_profile_sha256=config['profile_sha256'], parent_sha256=config['parent_sha256'],
         source_sha256=config['source_sha256'], rounds=args.rounds, courses_per_round=args.courses,
-        ridge=args.ridge, sink_weight=args.sink_weight, smooth=args.smooth,
+        ridge=args.ridge, sink_weight=args.sink_weight, smooth=args.smooth, balance_speed=args.balance_speed,
         resolved_training_sha256=config['resolved_training_sha256'],
+        resolved_from=None if source is None else dict(
+            run=args.resolve, source_sha256=source['config']['source_sha256'],
+            **{k: source['config'].get(k) for k in ('ridge', 'sink_weight', 'smooth', 'balance_speed')}),
         changed_parameters=history[-1]['changed'], runtime_requires_teacher=False,
         recorded_scene_currents=training_retina is not None, evaluation=history[-1]['evaluation']))
     export(out/'candidate.pt', brain, cfg, meta, 1)

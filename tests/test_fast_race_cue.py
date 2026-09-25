@@ -518,6 +518,19 @@ def test_centred_top_clip_sweeps_in_one_latched_direction():
     assert sweep and (all(s > .02 for s in sweep) or all(s < -.02 for s in sweep))
 
 
+def test_bottom_clip_age_restarts_after_the_ring_is_lost():
+    # Seconds without bottom-clip frames (cue lost, coasting) are no evidence that the slope is
+    # too shallow: the steepening starts again from its initial margin.
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, lambda now: None if 13. <= now < 13.5 else BELOW, 400, height=40.)
+    assert pilot.below_since >= 13.5-.06
+    history = CameraPoseHistory()
+    unbroken = FastRaceCue(SENSOR, history, 6.)
+    drive(unbroken, history, BELOW, 400, height=40.)
+    assert unbroken.below_since < 10.1
+
+
 def test_bottom_clip_descent_steepens_while_the_ring_stays_below():
     # A ring that stays clipped below while the drone follows the edge-ray slope lies
     # steeper still: the requested descent slope grows with the clip's duration, bounded.
