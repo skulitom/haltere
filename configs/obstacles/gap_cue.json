@@ -57,5 +57,8 @@
   "masked_input": false
  },
  "mask_note": "Propeller zone not masked: on the design study's Straw Bale dev runs masking it changed clean-flight episodes 11.32 -> 11.24 /min and lowered the share of checkpoint switches with |shift| <= 4 deg in the last 0.5 s from 0.984 to 0.918; hud+ring+ghost vs no mask: 11.32 vs 12.29 /min.",
- "dev_time_logic": "Dev sweep (store dev runs only, before any held-out frame; block threshold 0.3 at the time, 0.0 changes the rates by < 0.1 /min): active_deg 2/3/4 x confirm 1/2/3 trades pillar-A lead against Straw Bale clean episodes (e.g. 2/1: 7 of 8 dev approaches confirmed left at >= 5.5 m, 19.0 episodes/min; 2/2: 5 of 8, 11.3/min; 4/3: 2 of 8, 3.1/min); no setting met both the pillar-A and the 6/min clean-flight targets, so the a-priori 2 deg / 2 frames were kept."
+ "dev_time_logic": "Dev sweep (store dev runs only, before any held-out frame; block threshold 0.3 at the time, 0.0 changes the rates by < 0.1 /min): active_deg 2/3/4 x confirm 1/2/3 trades pillar-A lead against Straw Bale clean episodes (e.g. 2/1: 7 of 8 dev approaches confirmed left at >= 5.5 m, 19.0 episodes/min; 2/2: 5 of 8, 11.3/min; 4/3: 2 of 8, 3.1/min); no setting met both the pillar-A and the 6/min clean-flight targets, so the a-priori 2 deg / 2 frames were kept.",
+ "frozen": true,
+ "frozen_at": "2026-09-25T23:25:06",
+ "sha256": "26ae946693a2232d46a3a2cdb879909e92bced261046b13650a0b1af78c06c9f"
 }
