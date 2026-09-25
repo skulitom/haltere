@@ -40,7 +40,10 @@ INPUT_LIBRARIES = frozenset({'xinput1_3.dll', 'xinput1_4.dll', 'xinput9_1_0.dll'
 NOT_GAME_NAMES = frozenset({'explorer.exe', 'chrome.exe', 'msedge.exe', 'msedgewebview2.exe', 'firefox.exe',
                             'brave.exe', 'opera.exe', 'steam.exe', 'steamwebhelper.exe', 'nvidia overlay.exe',
                             'discord.exe', 'claude.exe', 'anode.exe'})
-RECHECK_AGES = (2., 5., 10., 20., 40.)  # seconds after a process is first seen; then every RECHECK_PERIOD
+# Windows' own gaming overlay and Xbox app (Game Bar starts them when a controller connects).
+NOT_GAME_PACKAGES = ('\\windowsapps\\microsoft.xboxgamingoverlay_', '\\windowsapps\\microsoft.gamingapp_',
+                     '\\windowsapps\\microsoft.gamingservices', '\\windowsapps\\microsoft.xboxidentityprovider_')
+RECHECK_AGES =(2., 5., 10., 20., 40.)  # seconds after a process is first seen; then every RECHECK_PERIOD
 RECHECK_PERIOD = 60.
 
 
@@ -114,7 +117,7 @@ def library_candidate(row, own_session):
     path = _norm(row.get('ExecutablePath'))
     windows = _norm(os.environ.get('SystemRoot', 'C:\\Windows'))+'\\'
     return (bool(path) and row.get('SessionId') != own_session and not path.startswith(windows)
-            and ntpath.basename(path) not in NOT_GAME_NAMES)
+            and ntpath.basename(path) not in NOT_GAME_NAMES and not any(p in path for p in NOT_GAME_PACKAGES))
 
 
 _K32 = _PSAPI = None

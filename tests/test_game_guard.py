@@ -141,8 +141,11 @@ def test_controller_library_users_outside_the_pad_session_block_except_known_app
             row(2, r'C:\Program Files\Google\Chrome\Application\chrome.exe', session=1),
             row(3, r'C:\Windows\explorer.exe', session=1),
             row(4, r'C:\SteamLibrary\steamapps\common\Liftoff\Liftoff.exe', session=2),
-            row(5, r'D:\Tools\quiet.exe', session=1)]
-    libraries = {1: {'xinput1_4.dll'}, 2: {'xinput1_4.dll'}, 3: {'xinput1_4.dll'}, 4: {'xinput1_3.dll'}}
+            row(5, r'D:\Tools\quiet.exe', session=1),
+            row(6, r'C:\Program Files\WindowsApps\Microsoft.GamingApp_2609.1001.16.0_x64__8wekyb3d8bbwe'
+                   r'\XboxGameBarWidgets.exe', session=1)]
+    libraries = {1: {'xinput1_4.dll'}, 2: {'xinput1_4.dll'}, 3: {'xinput1_4.dll'}, 4: {'xinput1_3.dll'},
+                 6: {'gameinput.dll'}}
     games = library_games(rows, 2, libraries=lambda pid: libraries.get(pid, set()))
     assert [g['pid'] for g in games] == [1] and 'xinput1_4.dll' in games[0]['reason']
 
