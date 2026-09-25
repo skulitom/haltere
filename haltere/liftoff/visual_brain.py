@@ -51,11 +51,21 @@ def load_lag_turn_declaration(path):
     return declaration, digest
 
 
+CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
+
+
 class RetinaCamera:
+    """Capture -> checkpoint cue/retina (published first) -> optional looming (on_image: 640 x 360 image) and
+    gap cue (on_capture: the captured frame and its detection) hooks; on_raw hands the captured frame to a side
+    process right after capture. Stage timings per frame (CAMERA_STAGES): publish is the shared-memory write of
+    the cue, gap the gap hooks (on_raw + on_capture), cue_latency capture start -> cue published."""
     def __init__(self, title='Liftoff', fps=24, gate_sensor=None, backend='mss',phase_status=None,on_frame=None,
-                 race_cues=False,detector_device='cpu',on_image=None):
+                 race_cues=False,detector_device='cpu',on_image=None,on_capture=None,on_stages=None,on_raw=None):
         self.title, self.fps = title, fps
         self.on_image = on_image
+        self.on_capture = on_capture
+        self.on_stages = on_stages
+        self.on_raw = on_raw
         self.gate_sensor = gate_sensor
         self.backend = backend
         self.phase_status = phase_status
@@ -115,7 +125,8 @@ class RetinaCamera:
             values = np.asarray(samples)*1000
             result['stages_ms'] = {name:dict(p50=float(np.percentile(values[:,i],50)),
                                             p95=float(np.percentile(values[:,i],95)),max=float(values[:,i].max()))
-                                   for i,name in enumerate(('capture','preprocess','inference','publish','total'))}
+                                   for i,name in enumerate(CAMERA_STAGES)}
+            result['stage_note'] = 'publish = cue/retina shared-memory write only (looming split out since the gap wiring)'
         return result
 
     def run(self):
@@ -126,6 +137,10 @@ class RetinaCamera:
             if self.backend=='dxgi':
                 from .game_capture import DxGameCapture
                 self.capture = DxGameCapture(self.title)
+            elif str(self.backend).startswith('replay:'):
+                # Offline runtime bench only (a recorded flight video); the flight CLI offers mss/dxgi.
+                from .camera_replay import ReplayCapture
+                self.capture = ReplayCapture.from_spec(str(self.backend)[len('replay:'):])
             with (self.capture if self.capture is not None else getattr(mss,'MSS',mss.mss)()) as screen:
                 while not self.done.is_set():
                     begin = self._phase('capture')
@@ -139,6 +154,11 @@ class RetinaCamera:
                         rgb = _capture_game_frame(screen,self.title)
                     captured = self._phase('preprocess')
                     if rgb is not None:
+                        handoff = 0.
+                        if self.on_raw is not None:
+                            # hand the raw frame to a side process first (a copy; counted as gap work)
+                            self.on_raw(capture_time,rgb)
+                            handoff = time.monotonic()-captured
                         small = cv2.resize(rgb,(640,360),interpolation=cv2.INTER_LINEAR)
                         ok,enc = cv2.imencode('.jpg',cv2.cvtColor(small,cv2.COLOR_RGB2BGR),[cv2.IMWRITE_JPEG_QUALITY,90])
                         if not ok:
@@ -183,12 +203,19 @@ class RetinaCamera:
                         self.latest = (capture_time,retina,detection)
                         if self.on_frame is not None:
                             self.on_frame(self.latest)
+                        cue_published = self._phase('looming')
                         if self.on_image is not None:
                             self.on_image(capture_time,image)
+                        loomed = self._phase('gap')
+                        if self.on_capture is not None:
+                            self.on_capture(capture_time,rgb,detection)
                         self.frames += 1
                         published = self._phase('wait')
-                        self.timings.append((captured-begin,prepared-captured,inferred-prepared,
-                                             published-inferred,published-begin))
+                        stages = (captured-begin,prepared-captured-handoff,inferred-prepared,cue_published-inferred,
+                                  loomed-cue_published,published-loomed+handoff,published-begin,cue_published-begin)
+                        self.timings.append(stages)
+                        if self.on_stages is not None:
+                            self.on_stages(capture_time,stages)
                     else:
                         self.missing_frames += 1
                     self.done.wait(max(0,1/self.fps-(time.monotonic()-begin)))
@@ -201,11 +228,14 @@ class VisualController:
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
-                 pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None):
+                 pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
+                 lag_turn_apply=True, gap_pilot=None, gap_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
             raise ValueError('Lag-aware turns are part of the fast pilot profile')
+        if gap_pilot is not None and pilot_profile != 'fast':
+            raise ValueError('The gap aim is part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -311,14 +341,15 @@ class VisualController:
                     raise ValueError(f'{lag_turn} declares no lag-aware turns for the {contract} motor contract')
                 self.lag_turn_declaration = dict(path=str(lag_turn), sha256=digest, file_sha256=sha256(lag_turn),
                                                  schema=declaration.get('schema'), version=declaration.get('version'),
-                                                 motor_contract=contract)
+                                                 motor_contract=contract, applied=bool(lag_turn_apply))
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
                                           reference_speed=assist_speed if pd_profile == 'fast' else reference,
                                           yaw_curve=yaw_curve,calibration=self.calibration,
                                           velocity_scale=fast_brain['velocity_scale'] if fast_brain else None,
-                                          lag_turn=lag_turn_config)
+                                          lag_turn=lag_turn_config, lag_turn_apply=lag_turn_apply,
+                                          gap_aim=gap_pilot, gap_apply=gap_apply)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
             reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
@@ -405,7 +436,8 @@ class VisualController:
                 torch.cuda.synchronize(self.brain.device)
 
     @torch.no_grad()
-    def step(self,frame,retina,detection=None,capture_time=None,frame_time=None,observation_time=None,clearance=None):
+    def step(self,frame,retina,detection=None,capture_time=None,frame_time=None,observation_time=None,clearance=None,
+             gap=None):
         observation_time = time.monotonic() if observation_time is None else observation_time
         if self.scene_blanked:
             retina = torch.zeros_like(retina)  # race cues still come from the camera process
@@ -433,6 +465,8 @@ class VisualController:
         if self.assistance is not None:
             from ..brain.gate_senses import gate_observation
             extra = dict(clearance=clearance) if clearance is not None and self.pilot_profile == 'fast' else {}
+            if gap is not None and self.pilot_profile == 'fast':
+                extra['gap'] = gap
             self.relative_gate,assisted_senses = self.assistance.update(
                 self.senses,self.pose.omega,detection,capture_time,observation_time,**extra)
             if self.pilot_profile == 'fast':
@@ -577,6 +611,85 @@ def looming_row(sample, now):
     value = lambda key, missing: sample[key] if sample.get(key) is not None else missing
     return (value('ttc',float('inf')),value('distance',float('inf')),now-sample['time'],
             value('below_fraction',float('nan')),value('ttc_lower',float('inf')))
+
+
+GAP_COLUMNS = ('gap_shift','gap_kind','gap_r_peak','gap_r_ring','gap_age','near_on_path','gap_applied','gap_lr',
+               'gap_conflict','gap_intended','gap_target','gap_valid','gap_ring_deg','gap_confirmed_cue','gap_seq',
+               'gap_overlay_ms','gap_depth_ms','gap_decide_ms','gap_latency_ms')
+STAGE_COLUMNS = ('cam_frame_time',)+tuple(f'cam_{name}_ms' for name in CAMERA_STAGES)
+
+
+def gap_row(sample, assistance, now):
+    """CSV values for GAP_COLUMNS: the latest gap sample (per-frame, unconfirmed shift) and the pilot's use of it.
+    gap_applied is the rotation actually applied to the aim (0 in shadow), gap_intended the shift the gap aim
+    computed (also in shadow), gap_target its confirmed target, gap_conflict 'ring'/'flag' when found this tick."""
+    nan = float('nan')
+    value = lambda key: nan if not sample or sample.get(key) is None else float(sample[key])
+    aim = getattr(assistance,'gap_aim',None)
+    near = '' if not sample or sample.get('near_on_path') is None else int(sample['near_on_path'])
+    return (value('shift'),sample.get('kind','') if sample else '',value('r_peak'),value('r_ring'),
+            now-sample['time'] if sample else nan,near,
+            float(getattr(assistance,'gap_offset_deg',nan)) if aim is not None else nan,value('lr'),
+            getattr(assistance,'gap_conflict','') if aim is not None else '',
+            aim.applied if aim is not None else nan,aim.target if aim is not None else nan,
+            int(bool(sample.get('valid'))) if sample else '',value('ring_deg'),
+            int(bool(sample.get('confirmed'))) if sample else '',value('seq'),value('overlay_ms'),value('depth_ms'),
+            value('decide_ms'),1000*value('age'))
+
+
+def stage_row(stages):
+    """CSV values for STAGE_COLUMNS: the camera's latest per-frame stage timings (ms)."""
+    if not stages:
+        return (float('nan'),)*len(STAGE_COLUMNS)
+    return (stages['frame_time'],*(stages[name] for name in CAMERA_STAGES))
+
+
+def resolve_obstacle_stack(args):
+    """Components from --obstacle-stack / --gap-cue / --lag-turn; everything is off by default.
+
+    --obstacle-stack on|shadow (requires --pilot-profile fast and --looming-brake) runs the gap cue (depth
+    process or camera hook, the pilot's gap aim) and the lag-aware turns; shadow runs the same processes and
+    computations and logs them but applies no aim shift and no lag-turn (matched control). --gap-cue off and
+    --lag-turn off remove a component from the stack. Outside the stack --lag-turn [on|DECLARATION] keeps its
+    earlier meaning and --gap-cue on is refused.
+    Returns dict(mode=None|'on'|'shadow', gap=bool, lag_turn=declaration path or None, apply=bool)."""
+    mode = getattr(args,'obstacle_stack',None)
+    gap_flag = getattr(args,'gap_cue',None)
+    lag = getattr(args,'lag_turn',None)
+    if gap_flag not in (None,'on','off'):
+        raise ValueError('--gap-cue is on or off')
+    lag_path = None if lag in (None,'off') else str(LAG_TURN_DECLARATION) if lag == 'on' else str(lag)
+    if mode is None:
+        if gap_flag == 'on':
+            raise ValueError('The gap cue is part of the obstacle stack: use --obstacle-stack on|shadow')
+        return dict(mode=None,gap=False,lag_turn=lag_path,apply=True)
+    if mode not in ('on','shadow'):
+        raise ValueError('--obstacle-stack is on or shadow')
+    if getattr(args,'pilot_profile','standard') != 'fast' or not getattr(args,'looming_brake',False):
+        raise ValueError('The obstacle stack requires --pilot-profile fast and --looming-brake')
+    return dict(mode=mode,gap=gap_flag != 'off',lag_turn=str(LAG_TURN_DECLARATION) if lag is None else lag_path,
+                apply=mode == 'on')
+
+
+def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
+    """Sidecar record of the obstacle stack: mode, components, and the frozen configs and weights behind them."""
+    if stack['mode'] is None:
+        return None
+    result = dict(mode=stack['mode'], applied=stack['apply'],
+                  components=dict(looming=True, gap_cue=bool(stack['gap']), lag_turn=stack['lag_turn'] is not None),
+                  note='shadow runs the same processes and computations and logs them; no aim shift, no lag-turn '
+                       'lead or heading change is applied' if stack['mode'] == 'shadow' else None)
+    if gap_spec:
+        path, declaration, digest = gap_declaration
+        status = (camera_status or {}).get('gap') or {}
+        provenance = status.get('provenance') or {}
+        result['gap_cue'] = dict(
+            gap_spec,
+            gap_pilot_file_sha256=sha256(path),
+            depth_weights_sha256=provenance.get('weights_sha256'),
+            depth_provenance=provenance or None,
+            worker=dict((k, v) for k, v in status.items() if k != 'provenance'))
+    return result
 
 
 def clearance_row(assistance):
@@ -729,6 +842,13 @@ def run(args):
     log_path = Path(args.log)
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
+    stack = resolve_obstacle_stack(args)
+    gap_declaration = gap_aim_config = None
+    if stack['gap']:
+        from .gap_aim import GapAimConfig
+        from .gap_stack import GAP_PILOT_PATH, load_gap_pilot
+        gap_declaration = (GAP_PILOT_PATH,)+load_gap_pilot(GAP_PILOT_PATH)
+        gap_aim_config = GapAimConfig.from_dict(gap_declaration[1]['pilot'])
     from .preflight import require_quiet
     preflight = require_quiet(log_path, getattr(args,'allow_workload_pid',()),getattr(args,'allow_workload_project',()))
     torch.set_num_threads(2)
@@ -743,7 +863,8 @@ def run(args):
                                   pilot_profile=getattr(args,'pilot_profile','standard'),
                                   pd_profile=getattr(args,'pd_profile','teacher'),
                                   dynamics_profile=getattr(args,'dynamics_profile',None),
-                                  lag_turn=getattr(args,'lag_turn',None))
+                                  lag_turn=stack['lag_turn'],lag_turn_apply=stack['apply'],
+                                  gap_pilot=gap_aim_config,gap_apply=stack['apply'])
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -772,9 +893,23 @@ def run(args):
     looming = bool(getattr(args,'looming_brake',False))
     if looming and getattr(args,'pilot_profile','standard') != 'fast':
         raise ValueError('The looming brake is part of the fast pilot profile')
+    gap_spec = None
+    if stack['gap']:
+        from .gap_stack import gap_spec as make_gap_spec
+        path, declaration, digest = gap_declaration
+        gap_spec = make_gap_spec(declaration, controller.motor_metadata.get('contract'), camera_sensor,
+                                 path=path, digest=digest)
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
                                   race_cues=controller.assistance_mode=='race-cue',
-                                  detector_device=getattr(args,'vision_device','cpu'),looming=looming).start()
+                                  detector_device=getattr(args,'vision_device','cpu'),looming=looming,
+                                  gap=gap_spec).start()
+    if gap_spec:
+        try:
+            # The depth model loads before the timed flight; its first samples must not arrive mid-launch.
+            camera.wait_ready(timeout=180.)
+        except Exception:
+            camera.stop()
+            raise
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -782,6 +917,8 @@ def run(args):
     rx = TelemetryReceiver(port=args.port,stream=(read_config() or {}).get('StreamFormat',DEFAULT_STREAM),
                            forward_port=copy_port or None)
     shared = SharedFlightState(controller.brain.N) if args.record else None
+    cue_label = {'on':'FAST CUE + OBSTACLE STACK','shadow':'FAST CUE PILOT | OBSTACLE SHADOW'}.get(
+        stack['mode'],'FAST CUE PILOT')
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
                               encoder=getattr(args,'video_encoder','libx264'),
                               controller_label='SHADOW ONLY | NO CONTROL OUTPUT' if not pad else
@@ -790,9 +927,9 @@ def run(args):
                               'DYNAMICS CALIBRATION | PD + PULSES | BRAIN IN SHADOW' if calibration_mode else
                               ('ORACLE ROUTE | PD MOTORS | BRAIN IN SHADOW' if controller.motor_baseline else
                                'ORACLE MOTOR DIAGNOSTIC | BRAIN MOTORS | ASSISTED YAW')
-                              if controller.assistance_mode == 'oracle-route' else 'FAST PD MOTORS | FAST CUE PILOT | BRAIN IN SHADOW'
+                              if controller.assistance_mode == 'oracle-route' else f'FAST PD MOTORS | {cue_label} | BRAIN IN SHADOW'
                               if controller.fast_motor is not None else 'PD MOTOR CONTROL | BRAIN IN SHADOW'
-                              if controller.motor_baseline else 'BRAIN MOTORS | FAST CUE PILOT | ASSISTED YAW'
+                              if controller.motor_baseline else f'BRAIN MOTORS | {cue_label} | ASSISTED YAW'
                               if controller.pilot_profile == 'fast' else '') if shared else None
     if recorder:
         try:
@@ -858,7 +995,7 @@ def run(args):
                                  'cmd_vx','cmd_vy','cmd_vz','pilot_state',
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
-                                 'lag_turn_weight','lag_turn_lead_deg'])
+                                 'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -914,8 +1051,9 @@ def run(args):
                     raise RuntimeError('Controller missed its real-time deadline')
                 next_tick = max(next_tick+controller.cfg.brain.dt,now)
                 step_begin = time.monotonic()
+                gap = camera.gap if stack['gap'] else None
                 action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame,now,
-                                                       clearance=camera.clearance if looming else None)
+                                                       clearance=camera.clearance if looming else None,gap=gap)
                 memory_only_ticks += int(not fresh)
                 step_times.append(time.monotonic()-step_begin)
                 loop_phases['brain_ms'] = 1000*(time.monotonic()-step_begin)
@@ -967,14 +1105,15 @@ def run(args):
                                  *clearance_row(controller.assistance),
                                  getattr(controller.assistance,'descent_scale',float('nan')),
                                  getattr(controller.assistance,'lag_turn_weight',float('nan')),
-                                 getattr(controller.assistance,'lag_turn_lead_deg',float('nan'))])
+                                 getattr(controller.assistance,'lag_turn_lead_deg',float('nan')),
+                                 *gap_row(gap,controller.assistance,now),*stage_row(camera.stages)])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
                     replay.append(controller.last_observation,torch.zeros_like(retina) if controller.scene_blanked else retina,action,pos,q,
                                   frame.timestamp,now,capture_time,fresh)
                 loop_phases['replay_ms'] = 1000*(time.monotonic()-loop_mark)
-                if looming:
+                if camera.motion is not None:
                     camera.motion.publish(now,last_frame,frame.timestamp,pos,q,velocity,np.zeros(3))
                 if geometry:
                     # Always publish the unmodified task goal, so a detour does
@@ -1035,6 +1174,7 @@ def run(args):
             pilot_meta['motor_control'] = 'PD throttle/roll/pitch; assisted yaw; brain runs in shadow'
         if controller.lag_turn_declaration is not None:
             pilot_meta['lag_turn_declaration'] = controller.lag_turn_declaration
+        obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
                       control_mode=(('experimental visual geometry guidance; PD motors; brain in shadow' if controller.motor_baseline else
@@ -1049,6 +1189,7 @@ def run(args):
                       preflight=preflight,
                       postflight=postflight,
                       pilot_assistance=pilot_meta,
+                      obstacle_stack=obstacle_meta,
                       navigation_predictor_loaded=False,
                       geometry_shadow=geometry_status if not geometry_control else None,
                       geometry_perception=geometry_status if geometry_control else None,
@@ -1171,12 +1312,20 @@ def main():
     p.add_argument('--pd-profile',choices=['teacher','fast'],default='teacher',
                    help='fast: velocity-command PD on the measured full-envelope dynamics; requires --dynamics-profile')
     p.add_argument('--dynamics-profile',default=None,help='Measured original-drone dynamics profile JSON for --pd-profile fast')
-    p.add_argument('--lag-turn',nargs='?',const=str(LAG_TURN_DECLARATION),default=None,metavar='DECLARATION',
+    p.add_argument('--lag-turn',nargs='?',const='on',default=None,metavar='on|off|DECLARATION',
                    help='EXPERIMENTAL lag-aware turns after a checkpoint switch (course lead and faster request heading '
                         'for the first second), with the parameters a frozen declaration assigns to the active fast '
-                        'motor contract (default configs/obstacles/lag_turn.json); fast pilot only')
+                        'motor contract (on: configs/obstacles/lag_turn.json); fast pilot only. Off unless given, '
+                        'except inside --obstacle-stack, where it is on unless --lag-turn off')
     p.add_argument('--looming-brake',action='store_true',
                    help='EXPERIMENTAL fly-style looming (image expansion) time-to-contact caps speed toward surfaces ahead; fast pilot only')
+    p.add_argument('--obstacle-stack',choices=['on','shadow'],default=None,
+                   help='EXPERIMENTAL obstacle stack (requires --pilot-profile fast and --looming-brake): the gap cue '
+                        '(frozen relative depth -> free interval beside the ring -> confirmed aim shift, '
+                        'configs/obstacles/gap_pilot.json) and lag-aware turns; shadow runs and logs the same '
+                        'processes but applies no aim shift and no lag-turn (matched control). No speed cap')
+    p.add_argument('--gap-cue',choices=['on','off'],default=None,
+                   help='Component override inside --obstacle-stack (default on)')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

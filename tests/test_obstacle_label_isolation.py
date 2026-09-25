@@ -165,13 +165,17 @@ def test_label_package_refuses_runtime_processes():
 
 
 @pytest.mark.parametrize('module', ['haltere.obstacles.contract', 'haltere.obstacles.model', 'haltere.obstacles.overlays',
-                                    'haltere.vision.gap_cue', 'haltere.vision.relative_depth'])
+                                    'haltere.vision.gap_cue', 'haltere.vision.relative_depth',
+                                    'haltere.liftoff.gap_stack', 'haltere.liftoff.gap_aim',
+                                    'haltere.liftoff.camera_replay', 'haltere.liftoff.camera_process',
+                                    'haltere.liftoff.fast_race_cue', 'haltere.liftoff.visual_brain'])
 def test_runtime_obstacle_modules_import_only_runtime_safe_code(module):
     graph, _ = import_graph(PACKAGE_DIR, 'haltere')
     assert module in graph
     offline = {'haltere.obstacles.store', 'haltere.obstacles.splits', 'haltere.obstacles.evaluate',
                'haltere.obstacles.train', 'haltere.obstacles.timing', 'haltere.obstacles.store_build',
-               'haltere.obstacles.gap_cue_eval', 'haltere.obstacles.leaks', 'haltere.obstacles.thermal'}
+               'haltere.obstacles.gap_cue_eval', 'haltere.obstacles.leaks', 'haltere.obstacles.thermal',
+               'haltere.obstacles.gap_bench'}
     assert offline <= set(OFFLINE_MODULES)
     assert not set(reachable(graph, [module])) & offline
 
@@ -193,3 +197,23 @@ def test_no_runtime_module_reaches_the_gap_cue_evaluation():
     chains = reachable(graph, runtime_roots(graph))
     assert 'haltere.obstacles.gap_cue_eval' not in chains
     assert 'haltere.vision.gap_cue' in chains and 'haltere.vision.relative_depth' in chains
+
+
+def test_wired_gap_cue_modules_load_no_label_torch_or_offline_code():
+    """The flight-side gap modules import numpy only at module level (torch/cv2/transformers only when a
+    worker is built); none reaches labels, the gap-cue evaluation or the bench."""
+    code = ('import sys, haltere.liftoff.gap_stack, haltere.liftoff.gap_aim, haltere.liftoff.camera_replay\n'
+            f'print(sorted(m for m in sys.modules if m.startswith("{LABEL_PACKAGE}") '
+            'or m.split(".")[0] in ("torch", "cv2", "transformers") '
+            'or m in ("haltere.obstacles.gap_cue_eval", "haltere.obstacles.gap_bench", "haltere.obstacles.store")))')
+    r = _python(code, {RUNTIME_ENV_FLAG: '1'})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == '[]'
+
+
+def test_no_runtime_module_reaches_the_gap_bench():
+    graph, _ = import_graph(PACKAGE_DIR, 'haltere')
+    assert 'haltere.obstacles.gap_bench' in graph
+    chains = reachable(graph, runtime_roots(graph))
+    assert 'haltere.obstacles.gap_bench' not in chains
+    assert {'haltere.liftoff.gap_stack', 'haltere.liftoff.gap_aim', 'haltere.obstacles.overlays'} <= set(chains)

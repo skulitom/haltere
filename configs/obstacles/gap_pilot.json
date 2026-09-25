@@ -1,0 +1,43 @@
+{
+ "schema": "haltere.liftoff.gap_pilot.v1",
+ "version": 1,
+ "note": "The obstacle stack's gap cue in flight (visual_brain --obstacle-stack on|shadow; off by default). 'pilot': haltere.liftoff.gap_aim.GapAimConfig, how the fast pilot confirms and applies the per-frame gap-cue shift. 'runtime': where the camera stack runs the relative depth and haltere.vision.gap_cue, and which declared response model (configs/obstacles/response_models.json, near_on_path only) each fast motor contract uses. Every pilot value is the a-priori M2 plan value (GapPilot+: 2 of 3 samples of one sign within 0.25 s, side latch 0.6 s, slew <= 40 deg/s, samples older than 0.2 s rejected, decay to 0 over 0.3 s, no speed cap; conflict and terrain-side values declared here), fitted to no flight or course. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported.",
+ "pilot": {
+  "active_deg": 2.0,
+  "confirm": 2,
+  "window": 3,
+  "confirm_window_s": 0.25,
+  "side_latch_s": 0.6,
+  "slew_deg_s": 40.0,
+  "max_age_s": 0.2,
+  "decay_s": 0.3,
+  "max_shift_deg": 12.0,
+  "conflict_deg": 6.0,
+  "flag_conflict_deg": 1.0,
+  "terrain": true,
+  "terrain_side_deg": 6.0,
+  "terrain_lr": 0.405
+ },
+ "pilot_notes": {
+  "active_deg": "the gap cue's own episode threshold (configs/obstacles/gap_cue.json active_deg)",
+  "max_shift_deg": "the gap cue's shift clip",
+  "conflict_deg": "a sample whose ring azimuth differs from the ring cue's by more than this describes another ring (a checkpoint switch, or a sample from a frame before it); between consecutive frames at 6 m/s the ring bearing moves about 1 deg at 20 m and about 2.5 deg at 3 m",
+  "flag_conflict_deg": "the ring cue's flag clearance (aim_u beside the ring centre, haltere.vision.race_cues.flag_clearance) counts from this offset; the opposite side to the gap shift is a conflict and the ring cue's own aim is held",
+  "terrain": "terrain side steer: only while the looming TTC governor requests a climb (expansion below the flight path); |ln(L/R)| >= terrain_lr (ratio 1.5, the design study's terrain_side.py trigger) votes terrain_side_deg (half the shift clip) toward the farther side"
+ },
+ "runtime": {
+  "gap_cue_config": "configs/obstacles/gap_cue.json",
+  "response_models": "configs/obstacles/response_models.json",
+  "response_model_for_contract": {
+   "fast_velocity_brain_v1": "brain08",
+   "fast_velocity_pd_v1": "fast_pd"
+  },
+  "placement": "process",
+  "stride": 1,
+  "device": "cuda"
+ },
+ "runtime_notes": {
+  "placement": "camera: in the camera process after the checkpoint cue and looming; process: a separate depth process at normal priority fed by a one-frame slot. Chosen by the G8 runtime bench (docs/obstacle_gap_pilot.md).",
+  "stride": "1: every camera frame; 2: every other frame"
+ }
+}

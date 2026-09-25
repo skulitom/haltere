@@ -3,9 +3,10 @@
 A runtime cue that shifts the pilot's aim off the ring bearing when a near object
 stands on or beside the line to the ring, using only the current frame's
 relative depth. It targets the dark pillar on Minus Two that looming misses
-(looming read ~14 m at the moment brain-08 hit it). **It is off by default and
-not wired into the flight stack.** This page records what it does and how it
-scored on the frozen offline gates.
+(looming read ~14 m at the moment brain-08 hit it). **It is off by default.**
+This page records what it does and how it scored on the frozen offline gates;
+[obstacle_gap_pilot.md](obstacle_gap_pilot.md) describes its wiring into the
+flight stack (`--obstacle-stack`, config version 2: the 336x602 depth input).
 
 ## Runtime pieces
 

@@ -25,6 +25,13 @@ and brakes less. `ClearanceConfig` selects the earlier stopping-distance cap.
 Without that input the behaviour is unchanged. Missing evidence is not free
 space, but it is not an obstacle either: recent evidence is dead-reckoned for
 a short memory and nothing else is inferred.
+
+Optionally (``gap_aim=GapAimConfig``, off by default), `update(..., gap=...)`
+accepts causal gap-cue samples (relative-depth free interval beside the ring,
+`haltere.liftoff.gap_stack`); `haltere.liftoff.gap_aim` confirms them and the
+confirmed shift rotates the ring ray about world z in `_ingest`. ``gap_apply``
+and ``lag_turn_apply`` False compute and log everything without applying it
+(the obstacle stack's matched shadow control).
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -34,6 +41,7 @@ import torch
 
 from ..brain.motor_baseline import measured_inverse_rate
 from ..vision.camera import Camera, quat_wxyz_to_mat
+from .gap_aim import GapAim, GapAimConfig, direction_offset, rotate_z, wrap_deg
 
 # Measured original-drone yaw curve (runs/measured-dynamics-low-speed-20260923):
 # coefficient deg/s, super rate applied after expo, expo. A loaded dynamics
@@ -590,7 +598,7 @@ class FastRaceCue:
 
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
-                 lag_turn=None):
+                 lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -645,12 +653,23 @@ class FastRaceCue:
         if lag_turn is not None and not isinstance(lag_turn, LagTurnConfig):
             raise ValueError('Pass a LagTurnConfig (or None) for lag-aware turns')
         self.lag_turn = lag_turn
+        # False: the trigger, weight and lead are computed and logged but not applied (shadow control).
+        self.lag_turn_apply = bool(lag_turn_apply)
         self.lag_turn_recent = []      # (capture time, azimuth) of recent fresh in-view cues
         self.lag_turn_since = None
         self.lag_turn_weight = 0.
         self.lag_turn_lead_deg = 0.
         self.lag_turn_triggers = 0
         self.lag_turn_time = 0.
+        # Gap aim (off unless declared): see haltere.liftoff.gap_aim.
+        if gap_aim is not None and not isinstance(gap_aim, GapAimConfig):
+            raise ValueError('Pass a GapAimConfig (or None) for the gap aim')
+        self.gap_aim = GapAim(gap_aim) if gap_aim is not None else None
+        self.gap_apply = bool(gap_apply)
+        self.gap_offset_deg = 0.       # rotation currently applied to the aim ray and the filtered direction
+        self.gap_flag_deg = 0.         # the last in-view ring cue's flag-clearance offset from its centre
+        self.gap_conflict = ''         # conflict found this tick ('ring', 'flag' or '')
+        self.gap_ring_deg = float('nan')
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -695,6 +714,8 @@ class FastRaceCue:
         ray = ray/max(np.linalg.norm(ray), 1e-9)
         if self.lag_turn is not None:
             self._lag_turn_trigger(ray, bool(cue['edge']), capture_time)
+        if self.gap_aim is not None:
+            ray = self._gap_ray(ray, cue, q, now)
         switched = False
         if self.direction is None or np.degrees(np.arccos(np.clip(ray @ self.direction, -1, 1))) > self.config.new_target_deg:
             if self.direction is not None:
@@ -789,6 +810,38 @@ class FastRaceCue:
         # Lag-aware turns (off by default): the horizontal goal leads the in-view bearing.
         return np.r_[self._lead(dh, velocity)*speed, vertical], 'cue'
 
+    def _gap_ray(self, ray, cue, quaternion, now):
+        """The aim ray rotated by the applied gap shift; reconciles the gap evidence with this ring cue.
+
+        The ring centre's world azimuth is compared with the ring bearing the gap samples describe
+        (another ring: a conflict), and the ring cue's own flag-clearance offset (aim_u beside the centre)
+        with the side of the shift (the other side: a conflict). The filtered direction is brought to the
+        same offset before it is blended with the new ray."""
+        edge = bool(cue['edge'])
+        if not edge:
+            centre = quat_wxyz_to_mat(quaternion) @ self.camera.unproject_body(
+                np.array([[cue['u']*320, cue['v']*180]]))[0]
+            if np.linalg.norm(centre[:2]) > 1e-6 and np.linalg.norm(ray[:2]) > 1e-6:
+                ring = float(np.degrees(np.arctan2(centre[1], centre[0])))
+                self.gap_ring_deg = ring
+                self.gap_flag_deg = wrap_deg(float(np.degrees(np.arctan2(ray[1], ray[0])))-ring)
+                if self.gap_aim.reconcile_ring(ring, now):
+                    self.gap_conflict = 'ring'
+                elif self.gap_aim.flag_conflict(self.gap_flag_deg, now):
+                    self.gap_conflict = 'flag'
+        else:
+            self.gap_flag_deg = 0.
+        self._set_gap_offset()
+        return rotate_z(ray, self.gap_offset_deg)
+
+    def _set_gap_offset(self):
+        """Rotate the filtered direction to the offset the applied gap shift calls for (none in shadow)."""
+        offset = (direction_offset(self.gap_aim.applied, self.gap_flag_deg, self.gap_aim.config)
+                  if self.gap_apply else 0.)
+        if self.direction is not None and offset != self.gap_offset_deg:
+            self.direction = rotate_z(self.direction, offset-self.gap_offset_deg)
+        self.gap_offset_deg = offset
+
     def _lag_turn_trigger(self, ray, edge, capture_time):
         """Open a lag-turn window when a fresh in-view bearing jumps (see LagTurnConfig)."""
         lt = self.lag_turn
@@ -798,7 +851,8 @@ class FastRaceCue:
         recent = [(t, a) for t, a in self.lag_turn_recent if capture_time-t <= lt.trigger_span_s]
         references = [a for _, a in recent]
         if self.direction is not None and np.linalg.norm(self.direction[:2]) > 1e-6:
-            references.append(float(np.arctan2(self.direction[1], self.direction[0])))
+            # compare with the ring bearing itself: remove an applied gap shift from the filtered direction
+            references.append(float(np.arctan2(self.direction[1], self.direction[0]))-np.radians(self.gap_offset_deg))
         jump = max((abs((azimuth-a+np.pi) % (2*np.pi)-np.pi) for a in references), default=0.)
         if jump >= np.radians(lt.trigger_deg):
             self.lag_turn_since = capture_time
@@ -835,6 +889,8 @@ class FastRaceCue:
         limit = np.radians(lt.course_lead_max_deg)
         lead = self.lag_turn_weight*float(np.clip(lt.course_lead*angle, -limit, limit))
         self.lag_turn_lead_deg = float(np.degrees(lead))
+        if not self.lag_turn_apply:
+            return dh                  # shadow: the lead is logged, not flown
         cos, sin = np.cos(lead), np.sin(lead)
         return np.array([cos*dh[0]-sin*dh[1], sin*dh[0]+cos*dh[1]])
 
@@ -874,13 +930,15 @@ class FastRaceCue:
         size = float(np.linalg.norm(step))
         return step*(top/size) if size > top else step
 
-    def update(self, senses, omega, detection, capture_time, now, clearance=None):
+    def update(self, senses, omega, detection, capture_time, now, clearance=None, gap=None):
         """One control tick. `clearance`, when given, is a causal forward-clearance sample:
         dict(time=capture time, ttc=s or None, distance=m or None, below_fraction=0..1 or None,
         optional ttc_lower=s or None), where below_fraction is the share of the image expansion
         below the flight path (about 0.5 for a wall facing the drone, towards 1 for ground under
         the path) and ttc_lower the TTC of the surface fitted below the path.
-        ttc and distance both None means no evidence (e.g. low texture)."""
+        ttc and distance both None means no evidence (e.g. low texture).
+        `gap`, when given and a gap aim is declared, is the latest causal gap-cue sample
+        (haltere.liftoff.camera_process.gap_sample); without a declared gap aim it is ignored."""
         c = self.config
         position = senses['pos'][0].cpu().numpy().astype(float)
         velocity = senses['vel_world'][0].cpu().numpy().astype(float)
@@ -889,6 +947,13 @@ class FastRaceCue:
         self.last_time = now
         if position[2] >= c.launch_height:
             self.launching = False
+        if self.gap_aim is not None:
+            self.gap_conflict = ''
+            # Terrain side steer only while the looming governor reports terrain (a climb request).
+            terrain = self.clearance is not None and self.clearance.climb > 0
+            self.gap_aim.ingest(gap, now, terrain=terrain)
+            self.gap_aim.step(now, dt)
+            self._set_gap_offset()
         self._ingest(detection, capture_time, now)
         yaw = float(np.arctan2(rotation[1, 0], rotation[0, 0]))
         self.lag_turn_weight = 0. if self.launching else self._lag_turn_weight_at(now)
@@ -968,8 +1033,9 @@ class FastRaceCue:
         step = desired-self.velocity_command
         heading_tc = None
         if self.lag_turn is not None and self.lag_turn_weight > 0 and in_view_goal:
-            heading_tc = c.command_time_constant+self.lag_turn_weight*(
-                self.lag_turn.heading_time_constant-c.command_time_constant)
+            if self.lag_turn_apply:
+                heading_tc = c.command_time_constant+self.lag_turn_weight*(
+                    self.lag_turn.heading_time_constant-c.command_time_constant)
             self.lag_turn_time += dt
         step[:2] = self._horizontal_step(self.velocity_command[:2], desired[:2], dt, heading_tc)
         if state == 'search':
@@ -1108,7 +1174,20 @@ class FastRaceCue:
                              'max_lead_angle_deg) and taper the request heading with heading_time_constant; both fade '
                              'out over the last fade_s; the speed schedule keeps the bearing itself',
                         parameters=asdict(self.lag_turn), triggers=self.lag_turn_triggers,
-                        active_seconds=round(self.lag_turn_time, 3)),
+                        active_seconds=round(self.lag_turn_time, 3), applied=self.lag_turn_apply),
+                    gap_aim=None if self.gap_aim is None else dict(
+                        self.gap_aim.metadata(), applied=self.gap_apply,
+                        input='causal gap-cue samples: per-frame relative-depth free-interval shift beside the ring '
+                              '(haltere.vision.gap_cue.decide in the camera stack), ring azimuth, terrain side '
+                              'statistic',
+                        rule='accept samples at most max_age_s old; confirm when confirm of the last window samples '
+                             'within confirm_window_s vote for one side (obstacle: |shift| >= active_deg; terrain, '
+                             'only while the looming governor requests a climb: |ln(L/R)| >= terrain_lr, '
+                             'terrain_side_deg to the farther side); side latch side_latch_s; applied shift slews at '
+                             '<= slew_deg_s and decays to 0 over decay_s; rotates the ring ray about world z in '
+                             '_ingest; gap evidence of another ring bearing or against the ring cue\'s flag '
+                             'clearance is a conflict: dropped, the ring cue\'s own aim is held for side_latch_s; '
+                             'never changes the requested speed'),
                     clearance_response=None if self.clearance is None else dict(
                         self._clearance_policy(),
                         parameters={k: (None if isinstance(v, float) and not np.isfinite(v) else v)

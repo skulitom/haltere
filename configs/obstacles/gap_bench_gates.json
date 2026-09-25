@@ -1,0 +1,36 @@
+{
+ "schema": "haltere.obstacles.gap_bench_gates.v1",
+ "version": 1,
+ "note": "Runtime bench G8 of the obstacle stack's gap cue (haltere.obstacles.gap_bench). Frozen with its sha256 before the first bench run; a change needs a new version and a new freeze, and every version's results are reported. Thresholds are the M2 plan's (GapPilot+ G8); the protocol values are declared from the live fast-stack flights of 2026-09-23/25, not tuned on bench results.",
+ "gates": {
+  "camera_loop_p95_ms": 95.0,
+  "camera_rate_hz_min": 15.0,
+  "gap_age_p95_ms": 150.0,
+  "cue_latency_increase_ms": 6.0,
+  "fp16_rel_error_max": 0.01
+ },
+ "definitions": {
+  "camera_loop_p95_ms": "p95 over frames of the camera iteration time: capture start to the end of all per-frame work in the camera process (RetinaCamera stage 'total': capture, preprocess, inference, cue publish, looming, gap hook)",
+  "camera_rate_hz_min": "checkpoint-cue frames published per second over the measured window",
+  "gap_age_p95_ms": "p95 over the 100 Hz controller ticks of (tick time - capture time of the newest gap sample), over ticks whose newest sample ran the depth model (an in-view ring)",
+  "cue_latency_increase_ms": "p95 of (capture start -> checkpoint cue in shared memory) with the gap cue minus the same p95 of the matched baseline (same flight segment, looming on, gap cue off)",
+  "fp16_rel_error_max": "p95 over frames of mean|fp16 - fp32| / mean|fp32| of the 36 x 64 block-mean relative disparity at the declared 336 x 602 input (configs/obstacles/gap_cue.json v2)"
+ },
+ "protocol": {
+  "video": "runs/fast-stack-20260923/<flight>.mp4 (1928 x 720 composite; the 1280 x 720 gameplay crop is served), decoded in real time by haltere.liftoff.camera_replay",
+  "flight": "straw-brain08-06",
+  "start_s": 30.0,
+  "seconds": 60.0,
+  "warmup_s": 3.0,
+  "camera_fps": 48.0,
+  "capture_pad_ms": 20.0,
+  "brain_load_ms": 6.0,
+  "gpu": "one ChunkGuard chunk per run (<= 300 s): pause above 70 C until 65 C, hard stop at 80 C, temperature polled every 2 s during a run",
+  "conditions": "baseline (looming on, gap off), camera (gap in the camera process, every frame), process (separate depth process fed by a frame slot, every frame); camera2/process2 (every other frame) only if both every-frame placements fail",
+  "declared_from": "capture_pad_ms: live mss capture stage p50 18.2-22.1 ms (minus-brain08-loom-01, pine-brain08-loom-01, minus-fast6-cur-01, straw-brain08-06); brain_load_ms: live controller step p50 5.5-7.1 ms; camera_fps 48: the runner default",
+  "limits": "Liftoff does not run during the bench, so its GPU and CPU load are absent; the replayed frames are the H.264 recording of the capture; the controller is emulated (motion publish, camera polls, a CPU load), not the brain itself"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-26T00:22:38",
+ "sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455"
+}
