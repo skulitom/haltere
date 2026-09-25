@@ -52,12 +52,6 @@ class FastCueConfig:
     below_weak_deg: float = 2.
     below_full_deg: float = 10.
     below_slope_margin_deg: float = 5.
-    # A ring that stays clipped below while the drone follows that slope must lie
-    # steeper still: the margin grows with the clip's duration up to a bound, so a
-    # long downhill approach does not reach a lower ring from above (and clip the
-    # top of its arch).
-    below_slope_growth_deg_s: float = 4.
-    below_slope_margin_max_deg: float = 20.
     below_speed_fraction: float = .5
     edge_sweep_after_s: float = 1.5
     edge_sweep_rate: float = 1.
@@ -112,8 +106,6 @@ class FastCueConfig:
             raise ValueError('Use finite positive fast cue parameters')
         if not self.min_speed_fraction < 1 or not self.direction_blend <= 1 or not self.descent_min_scale <= 1:
             raise ValueError('Fractions must stay below one')
-        if not self.below_slope_margin_max_deg >= self.below_slope_margin_deg:
-            raise ValueError('The bottom-edge slope margin bound must not be below its start')
         if not self.below_full_deg > self.below_weak_deg:
             raise ValueError('Bottom-edge evidence needs an increasing depression range')
         if not self.turn_acceleration <= self.command_acceleration:
@@ -532,9 +524,7 @@ class FastRaceCue:
             float(calibration[k]) for k in ('hover_processed', 'throttle_scale', 'hover_stick_sim'))
         self.below_weight = 0.
         self.edge_depression = 0.
-        self.below_since = None
         self.vertical_clip_since = None
-        self.sweep_side = None
         # A fast-contract brain senses horizontal velocity scaled by a declared
         # factor (below one at race speed); other motor contracts keep >= 1.
         if velocity_scale is not None and (not np.isfinite(velocity_scale) or velocity_scale <= 0):
@@ -629,15 +619,11 @@ class FastRaceCue:
             weight = float(np.clip((-elevation-c.below_weak_deg)/(c.below_full_deg-c.below_weak_deg), 0, 1))
             self.below_weight = max(self.below_weight, weight)
             self.edge_depression = float(max(0., -elevation))
-            if self.below_since is None:
-                self.below_since = capture_time
         else:
             self.below_weight = 0.
             self.edge_depression = 0.
-            self.below_since = None
         if not ((self.below or self.above) and abs(cue['u']-.5) < .1):
             self.vertical_clip_since = None
-            self.sweep_side = None
         elif self.vertical_clip_since is None:
             self.vertical_clip_since = capture_time
         self.frames += 1
@@ -680,9 +666,7 @@ class FastRaceCue:
             # marker back into view. Weight the response by the evidence.
             w = self.below_weight
             horizontal = speed*(1-w)+min(speed, max(c.edge_speed, c.below_speed_fraction*speed))*w
-            clipped_s = max(0., now-self.below_since) if self.below_since is not None else 0.
-            margin = min(c.below_slope_margin_max_deg, c.below_slope_margin_deg+c.below_slope_growth_deg_s*clipped_s)
-            sink = min(c.vertical_down, horizontal*np.tan(np.radians(min(self.edge_depression+margin, 80.))))
+            sink = min(c.vertical_down, horizontal*np.tan(np.radians(self.edge_depression+c.below_slope_margin_deg)))
             return np.r_[dh*horizontal, -sink*w], 'below' if w > 0 else 'below_weak'
         if self.above:
             # The clipped elevation is only a lower bound: preserve that slope.
@@ -831,16 +815,11 @@ class FastRaceCue:
             if abs(angle) > .08:
                 self.side = np.sign(angle)
             yaw_rate = float(np.clip(c.yaw_gain*angle-c.yaw_damping*world_rate, -c.max_yaw_rate, c.max_yaw_rate))
-            if (state == 'above' and self.vertical_clip_since is not None
+            if (state in ('above', 'below') and self.vertical_clip_since is not None
                     and now-self.vertical_clip_since > c.edge_sweep_after_s):
-                # A centred top clip cannot separate overhead from behind; a slow
-                # yaw moves a target behind off the centre. Its direction is latched
-                # for the episode: re-deciding it from the bearing flips it every few
-                # degrees. A bottom clip is never behind (Liftoff clamps rings behind
-                # to the top), so a descent keeps facing the ring instead of weaving.
-                if self.sweep_side is None:
-                    self.sweep_side = self.side
-                yaw_rate = c.edge_sweep_rate*self.sweep_side
+                # A centred top/bottom clip cannot separate overhead/underneath
+                # from behind; a slow yaw moves a target behind off the centre.
+                yaw_rate = c.edge_sweep_rate*self.side
         # Invert the measured post-expo yaw curve so max_yaw_rate is honoured.
         desired_yaw = -float(np.clip(measured_inverse_rate(
             torch.tensor([np.degrees(yaw_rate)], dtype=torch.float64), *self.yaw_curve)[0], -1., 1.))
@@ -903,12 +882,10 @@ class FastRaceCue:
                          'command_acceleration; straight-line slew below turn_min_speed',
                     side_edge='side_speed_fraction of nominal speed toward side_margin_deg beyond the '
                               'clamped edge ray bearing, level (edge height is not used)',
-                    bottom_edge='descent bounded by the clamped edge ray depression plus a margin that grows '
-                                'with the clip duration (below_slope_growth_deg_s, up to '
-                                'below_slope_margin_max_deg), weighted by that depression and latched per clip',
+                    bottom_edge='shallow descent bounded by the clamped edge ray depression plus a margin, '
+                                'weighted by that depression and latched per clip',
                     top_edge='climb while preserving the clipped slope bound',
-                    centred_vertical_clip='centred top clip: slow yaw sweep after edge_sweep_after_s, direction '
-                                          'latched per episode; a centred bottom clip keeps facing the ring',
+                    centred_vertical_clip='slow search yaw after edge_sweep_after_s',
                     launch_surface='sink rate limited near and above the launch plane',
                     yaw_mapping='measured post-expo yaw curve inverse, throttle priority on the shared stick',
                     yaw_curve=list(self.yaw_curve),
