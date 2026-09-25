@@ -161,9 +161,12 @@ def test_bottom_edge_cue_descends_with_reduced_speed():
     horizontal = np.linalg.norm(command[:2])
     expected = speed * (1 - weight) + max(CONFIG.edge_speed, CONFIG.below_speed_fraction * speed) * weight
     assert horizontal == pytest.approx(expected, rel=2e-2)
-    # Descend along a slope just steeper than the clamped edge ray, not a dive.
+    # Descend along a slope steeper than the clamped edge ray by a margin that grows
+    # with the clip's duration (bounded), not a dive.
     slope = np.degrees(np.arctan2(-command[2], horizontal))
-    assert slope == pytest.approx((pilot.edge_depression + CONFIG.below_slope_margin_deg), abs=1.)
+    margin = min(CONFIG.below_slope_margin_max_deg,
+                 CONFIG.below_slope_margin_deg + CONFIG.below_slope_growth_deg_s * (rows[-1][0] - pilot.below_since))
+    assert slope == pytest.approx(pilot.edge_depression + margin, abs=1.)
     assert -command[2] <= CONFIG.vertical_down + 1e-9
     assert horizontal < .6 * speed and command[0] > .5 and abs(command[1]) < 1e-6
     # The same bearing inside the image flies at the full aligned speed instead.
@@ -495,3 +498,34 @@ def test_fast_brain_contract_scales_goal_and_velocity_senses():
     assert float(modified['vel_world'][0, 2]) == pytest.approx(float(s['vel_world'][0, 2]))
     with pytest.raises(ValueError):
         FastRaceCue(SENSOR, CameraPoseHistory(), 8., velocity_scale=0.)
+
+
+def test_centred_bottom_clip_descends_facing_the_ring_without_a_yaw_sweep():
+    # Downhill to a ring below: Liftoff never clamps a ring behind to the bottom edge,
+    # so a long centred bottom clip must not start the yaw sweep (it made the drone weave).
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, BELOW, 400, height=30.)  # 4 s, well past edge_sweep_after_s
+    assert states(rows)[-1] == 'below' and rows[-1][2][2] < 0
+    assert max(abs(sight) for *_, sight, _ in rows) < .05
+
+
+def test_centred_top_clip_sweeps_in_one_latched_direction():
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, ABOVE, 400, height=5.)
+    sweep = [sight for now, state, _, sight, _ in rows if state == 'above' and now-rows[0][0] > CONFIG.edge_sweep_after_s+.3]
+    assert sweep and (all(s > .02 for s in sweep) or all(s < -.02 for s in sweep))
+
+
+def test_bottom_clip_descent_steepens_while_the_ring_stays_below():
+    # A ring that stays clipped below while the drone follows the edge-ray slope lies
+    # steeper still: the requested descent slope grows with the clip's duration, bounded.
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, BELOW, 700, height=40.)
+    slope = lambda command: np.degrees(np.arctan2(-command[2], np.linalg.norm(command[:2])))
+    early = slope(rows[80][2])
+    late = slope(rows[-1][2])
+    assert late > early+8.
+    assert late < early+CONFIG.below_slope_margin_max_deg-CONFIG.below_slope_margin_deg+2.
