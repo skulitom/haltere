@@ -269,7 +269,12 @@ Follow [Liftoff setup](docs/liftoff_setup.md) for telemetry, driver installation
 calibration and the persistent pad bridge. Run the game and its capture/controller
 processes in **Anode**, with the viewer hidden unless requested. Retain the original
 `[Copy] New Drone`, verify throttle-low and the game's processed controls, pause
-before disconnecting the pad, and keep Liftoff open between tests. The virtual
+before disconnecting the pad, and keep Liftoff open between tests. With Anode 0.9.0
+or later and [HidHide](https://github.com/nefarius/HidHide/releases) installed, Anode
+keeps the virtual pad inside its seat, where the user's own games cannot open it, so
+flights continue while the user plays: the pad asks `anode gamepad state` and stands
+its game guard down once Anode reports it `seatOnly` and `verifiedFromDesktop`, and
+the flight preflight lists running games instead of refusing. Otherwise the virtual
 pad is machine-wide, so every game sees it: it refuses to plug in while another
 game runs, unplugs itself within about a second when one starts, and the flight
 preflight refuses too. A game is an install in a Steam, Epic, `C:\XboxGames`, GOG,

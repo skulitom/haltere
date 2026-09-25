@@ -10,7 +10,8 @@ import sys
 import threading
 import time
 
-from .game_guard import GameDetected, GameWatch, describe, require_no_games, running_games
+from .game_guard import (GameDetected, GameWatch, anode_isolation, describe, require_no_games, running_games,
+                         seat_keeps_new_pads, seat_only_pads)
 
 INSTALL_HELP = """
 vgamepad / ViGEmBus is not available. To drive Liftoff you need the ViGEmBus driver (admin install):
@@ -53,26 +54,61 @@ class UdpSticks:
 
 
 class VirtualPad:
-    """The pad refuses to plug in while a game is running and unplugs itself, without pausing Liftoff,
-    as soon as one starts (see game_guard): the virtual pad reaches every game on the machine."""
+    """While Anode keeps the pad inside its seat (HidHide), the user's games cannot open it and it just flies.
+    Otherwise the pad reaches every game on the machine, so it refuses to plug in while a game is running and
+    unplugs itself, without pausing Liftoff, as soon as one starts (see game_guard)."""
 
-    def __init__(self, detector=None, poll_seconds: float = 1.0):
-        """`detector` returns running games; by default a full check before plugging in, then a GameWatch."""
-        require_no_games(detector or running_games)
-        detector = detector or GameWatch()
+    def __init__(self, detector=None, poll_seconds: float = 1.0, isolation=None, confirm_seconds: float = 5.):
+        """`detector` returns running games; by default a full check before plugging in, then a GameWatch.
+        `isolation` returns Anode's report on virtual pads (None without Anode); by default ``anode gamepad state``."""
+        isolation = isolation or anode_isolation
+        expect_seat_only = seat_keeps_new_pads(isolation())
+        if not expect_seat_only:
+            require_no_games(detector or running_games)
         try:
             import vgamepad as vg
         except Exception as e:  # ImportError or ViGEm client errors
             raise RuntimeError(INSTALL_HELP) from e
         self._vg = vg
+        self._detector, self._poll = detector, poll_seconds
+        self._isolation, self._confirm_seconds = isolation, confirm_seconds
         self._lock = threading.RLock()
         self._tripped = ''
+        self._stop = threading.Event()
+        self._watch = None
         self.pad = vg.VX360Gamepad()
         self.neutral()
-        self._stop = threading.Event()
-        self._watch = threading.Thread(target=self._watch_games, args=(detector, poll_seconds),
-                                       name='game-guard', daemon=True)
-        self._watch.start()
+        self.seat_only = expect_seat_only and self._confirm_seat_only()
+        if self.seat_only:
+            print(f'virtual pad {self.device} stays inside the Anode seat; the game guard stands down', file=sys.stderr, flush=True)
+        else:
+            self._guard(check_now=expect_seat_only)
+
+    @property
+    def device(self) -> str:
+        """The pad's Plug and Play name, as Anode reports it: ViGEm names a pad after its serial."""
+        return 'USB\\VID_045E&PID_028E\\' + f'{self.pad.get_index():02d}'
+
+    def _confirm_seat_only(self) -> bool:
+        """Waits for Anode to report this pad kept inside the seat and checked from the user's desktop."""
+        deadline = time.monotonic()+self._confirm_seconds
+        while True:
+            state = self._isolation()
+            if seat_keeps_new_pads(state) and self.device in seat_only_pads(state):
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            time.sleep(.25)
+
+    def _guard(self, check_now: bool = False) -> None:
+        """The pad reaches every game on the machine: unplug now if one is running, and watch for one starting."""
+        if check_now and (games := (self._detector or running_games)()):
+            self.trip(describe(games))
+            raise GameDetected(f'Anode could not confirm the virtual pad stays inside its seat, and a game is running: {describe(games)}')
+        if self._watch is None or not self._watch.is_alive():
+            self._watch = threading.Thread(target=self._watch_games, args=(self._detector or GameWatch(), self._poll),
+                                           name='game-guard', daemon=True)
+            self._watch.start()
 
     def _watch_games(self, detector, poll_seconds):
         while not self._stop.wait(poll_seconds):
@@ -152,6 +188,9 @@ class VirtualPad:
             time.sleep(pause)
             self.pad = self._vg.VX360Gamepad()
             self.neutral()
+            if self.seat_only and not self._confirm_seat_only():
+                self.seat_only = False
+                self._guard(check_now=True)
 
     def close(self) -> None:
         self._stop.set()
