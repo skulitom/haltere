@@ -161,9 +161,12 @@ def test_bottom_edge_cue_descends_with_reduced_speed():
     horizontal = np.linalg.norm(command[:2])
     expected = speed * (1 - weight) + max(CONFIG.edge_speed, CONFIG.below_speed_fraction * speed) * weight
     assert horizontal == pytest.approx(expected, rel=2e-2)
-    # Descend along a slope just steeper than the clamped edge ray, not a dive.
+    # Descend along a slope steeper than the clamped edge ray by a margin that grows
+    # with the clip's duration (bounded), not a dive.
     slope = np.degrees(np.arctan2(-command[2], horizontal))
-    assert slope == pytest.approx((pilot.edge_depression + CONFIG.below_slope_margin_deg), abs=1.)
+    margin = min(CONFIG.below_slope_margin_max_deg,
+                 CONFIG.below_slope_margin_deg + CONFIG.below_slope_growth_deg_s * (rows[-1][0] - pilot.below_since))
+    assert slope == pytest.approx(pilot.edge_depression + margin, abs=1.)
     assert -command[2] <= CONFIG.vertical_down + 1e-9
     assert horizontal < .6 * speed and command[0] > .5 and abs(command[1]) < 1e-6
     # The same bearing inside the image flies at the full aligned speed instead.
@@ -229,13 +232,14 @@ def test_dropout_coasts_then_brakes_and_searches(speed, coasts):
     pilot = FastRaceCue(SENSOR, history, speed)
     ahead = cue_toward([10., 0., 0.])
     seen_steps = 250  # the ring is visible for 2.5 s, then frames keep arriving without it
-    rows = drive(pilot, history, lambda now: ahead if now < 10. + (seen_steps - .5) * .01 else None, 520)
+    coast_window = min(CONFIG.coast_s, max(.25, CONFIG.coast_distance_m / speed))
+    steps = seen_steps + int((coast_window + speed / CONFIG.search_deceleration + 1.) / .01)
+    rows = drive(pilot, history, lambda now: ahead if now < 10. + (seen_steps - .5) * .01 else None, steps)
     last_seen = pilot.last_seen
     assert last_seen == pytest.approx(rows[seen_steps - 1][0] - .05)
     at_loss = rows[seen_steps][2]
     assert np.linalg.norm(at_loss[:2]) == pytest.approx(speed, rel=1e-2)
     # 4 m of coasting, capped at 0.6 s and never shorter than the 0.25 s frame-gap allowance.
-    coast_window = min(CONFIG.coast_s, max(.25, CONFIG.coast_distance_m / speed))
     for k, (now, state, command, *_) in enumerate(rows):
         age = now - last_seen
         if k < seen_steps or age <= .25:
@@ -246,8 +250,15 @@ def test_dropout_coasts_then_brakes_and_searches(speed, coasts):
         else:
             assert state == 'search'
     assert ('coast' in states(rows)) == coasts
+    # The search slows gently and rises for search_climb_s, then settles at a zero-velocity request.
+    search = [(now, command) for now, state, command, *_ in rows if state == 'search']
+    horizontal = np.array([np.linalg.norm(command[:2]) for _, command in search])
+    assert (np.diff(horizontal) >= -CONFIG.search_deceleration * .01 - 1e-9).all()
+    begin = search[0][0]
+    rising = [command[2] for now, command in search if .5 < now - begin < CONFIG.search_climb_s]
+    assert min(rising) == pytest.approx(CONFIG.search_climb, abs=1e-6)
     final = rows[-1][2]
-    np.testing.assert_allclose(final, np.zeros(3), atol=.1)  # braking toward a zero-velocity request
+    np.testing.assert_allclose(final, np.zeros(3), atol=.1)  # then a zero-velocity request
     assert pilot.pilot.target is None and pilot.pilot.mode == 4
     expected = -float(measured_inverse_rate(torch.tensor([np.degrees(CONFIG.search_yaw_rate * pilot.side)],
                                                          dtype=torch.float64), *DEFAULT_YAW_CURVE)[0])
@@ -272,6 +283,41 @@ def test_support_detection_climbs_when_commanded_descent_is_not_achieved():
     assert (np.diff(vz) >= -1e-12).all() and vz.max() > 0
     assert rows[end][0] - rows[climbing][0] == pytest.approx(CONFIG.support_climb_s, abs=.03)
     assert trail[end] == 'below'
+
+
+def slide(pilot, history, throttle, steps=150, velocity=(0., 2.5, -.5), height=20., dt=.01):
+    """Descend toward a bottom-clipped ring while the measured motion stays that of a hillside slide."""
+    rows = []
+    for k in range(steps):
+        now = 10.+k*dt
+        s = senses(position=(0., 0., height), velocity=velocity, yaw=np.pi/2)
+        history.append(now, [0., 0., height], s['quat'][0].numpy())
+        pilot.update(s, [0., 0., 0.], dict(race_cue=dict(BELOW)), now-.05, now)
+        pilot.command(np.array([throttle, 0., 0., 0.]))
+        rows.append((now, pilot.state, pilot.velocity_command.copy()))
+    return rows
+
+
+def test_support_on_a_slope_needs_low_thrust_and_a_persistent_sink_shortfall():
+    # Sliding down a hillside sinks at the hill's slope (here -0.5 m/s), so the flat-ground
+    # rule (sink stopped) never fires; thrust well below hover without the requested sink does.
+    hover = CAL['hover_stick_sim']
+    history = CameraPoseHistory()
+    pressed = FastRaceCue(SENSOR, history, 6., calibration=CAL)
+    rows = slide(pressed, history, hover-.35)
+    trail = [state for _, state, _ in rows]
+    assert 'support_climb' in trail
+    short = next(now for now, _, command in rows if command[2] < -.8 and -.5 > command[2]+CONFIG.support_slope_shortfall)
+    climbing = next(now for now, state, _ in rows if state == 'support_climb')
+    assert climbing-short == pytest.approx(CONFIG.support_slope_after_s, abs=.05)
+    # Near-hover thrust with the same motion is a controller lagging in free air: no climb.
+    history = CameraPoseHistory()
+    lagging = FastRaceCue(SENSOR, history, 6., calibration=CAL)
+    assert 'support_climb' not in [state for _, state, _ in slide(lagging, history, hover-.05)]
+    # Without a throttle calibration the rule stays off.
+    history = CameraPoseHistory()
+    uncalibrated = FastRaceCue(SENSOR, history, 6.)
+    assert 'support_climb' not in [state for _, state, _ in slide(uncalibrated, history, hover-.35)]
 
 
 def test_support_detection_ignores_a_tracked_descent():
@@ -495,3 +541,47 @@ def test_fast_brain_contract_scales_goal_and_velocity_senses():
     assert float(modified['vel_world'][0, 2]) == pytest.approx(float(s['vel_world'][0, 2]))
     with pytest.raises(ValueError):
         FastRaceCue(SENSOR, CameraPoseHistory(), 8., velocity_scale=0.)
+
+
+def test_centred_bottom_clip_descends_facing_the_ring_without_a_yaw_sweep():
+    # Downhill to a ring below: Liftoff never clamps a ring behind to the bottom edge,
+    # so a long centred bottom clip must not start the yaw sweep (it made the drone weave).
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, BELOW, 400, height=30.)  # 4 s, well past edge_sweep_after_s
+    assert states(rows)[-1] == 'below' and rows[-1][2][2] < 0
+    assert max(abs(sight) for *_, sight, _ in rows) < .05
+
+
+def test_centred_top_clip_sweeps_in_one_latched_direction():
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, ABOVE, 400, height=5.)
+    sweep = [sight for now, state, _, sight, _ in rows if state == 'above' and now-rows[0][0] > CONFIG.edge_sweep_after_s+.3]
+    assert sweep and (all(s > .02 for s in sweep) or all(s < -.02 for s in sweep))
+
+
+def test_bottom_clip_age_restarts_after_the_ring_is_lost():
+    # Seconds without bottom-clip frames (cue lost, coasting) are no evidence that the slope is
+    # too shallow: the steepening starts again from its initial margin.
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, lambda now: None if 13. <= now < 13.5 else BELOW, 400, height=40.)
+    assert pilot.below_since >= 13.5-.06
+    history = CameraPoseHistory()
+    unbroken = FastRaceCue(SENSOR, history, 6.)
+    drive(unbroken, history, BELOW, 400, height=40.)
+    assert unbroken.below_since < 10.1
+
+
+def test_bottom_clip_descent_steepens_while_the_ring_stays_below():
+    # A ring that stays clipped below while the drone follows the edge-ray slope lies
+    # steeper still: the requested descent slope grows with the clip's duration, bounded.
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6.)
+    rows = drive(pilot, history, BELOW, 700, height=40.)
+    slope = lambda command: np.degrees(np.arctan2(-command[2], np.linalg.norm(command[:2])))
+    early = slope(rows[80][2])
+    late = slope(rows[-1][2])
+    assert late > early+8.
+    assert late < early+CONFIG.below_slope_margin_max_deg-CONFIG.below_slope_margin_deg+2.

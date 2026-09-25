@@ -52,6 +52,14 @@ class FastCueConfig:
     below_weak_deg: float = 2.
     below_full_deg: float = 10.
     below_slope_margin_deg: float = 5.
+    # A ring that stays clipped below while the drone follows that slope must lie
+    # steeper still: the margin grows with the clip's duration up to a bound, so a
+    # long downhill approach does not reach a lower ring from above (and clip the
+    # top of its arch).
+    below_slope_growth_deg_s: float = 4.
+    below_slope_margin_max_deg: float = 20.
+    # The clip's age restarts after a gap in bottom-clip frames or on a new ring.
+    below_gap_s: float = .25
     below_speed_fraction: float = .5
     edge_sweep_after_s: float = 1.5
     edge_sweep_rate: float = 1.
@@ -79,6 +87,12 @@ class FastCueConfig:
     coast_s: float = .6
     coast_distance_m: float = 4.
     search_yaw_rate: float = 1.2
+    # A lost checkpoint is searched for while slowing gently and rising for a moment:
+    # a hard stop pitches the camera up (the ring then reappears clamped to the bottom
+    # edge) and, close to the ground, the brake-and-turn that follows can touch it.
+    search_deceleration: float = 3.
+    search_climb: float = .5
+    search_climb_s: float = 1.5
     yaw_gain: float = 3.
     yaw_damping: float = .25
     max_yaw_rate: float = 3.
@@ -88,6 +102,12 @@ class FastCueConfig:
     feedforward_time_constant: float = .05
     support_after_s: float = .4
     support_climb_s: float = .6
+    # Contact on a slope: sliding down a hillside still sinks at the hill's slope, so
+    # a requested descent short by this much while the issued throttle sits this far
+    # (brain units) below hover for support_slope_after_s also means support.
+    support_slope_shortfall: float = .4
+    support_thrust_margin: float = .2
+    support_slope_after_s: float = .6
     launch_height: float = .6
     # Descent path angle: while a requested descent (sink > descent_sink) is
     # not achieved, the filtered shortfall (time constant descent_time_constant)
@@ -106,6 +126,8 @@ class FastCueConfig:
             raise ValueError('Use finite positive fast cue parameters')
         if not self.min_speed_fraction < 1 or not self.direction_blend <= 1 or not self.descent_min_scale <= 1:
             raise ValueError('Fractions must stay below one')
+        if not self.below_slope_margin_max_deg >= self.below_slope_margin_deg:
+            raise ValueError('The bottom-edge slope margin bound must not be below its start')
         if not self.below_full_deg > self.below_weak_deg:
             raise ValueError('Bottom-edge evidence needs an increasing depression range')
         if not self.turn_acceleration <= self.command_acceleration:
@@ -524,7 +546,9 @@ class FastRaceCue:
             float(calibration[k]) for k in ('hover_processed', 'throttle_scale', 'hover_stick_sim'))
         self.below_weight = 0.
         self.edge_depression = 0.
+        self.below_since = self.below_last = None
         self.vertical_clip_since = None
+        self.sweep_side = None
         # A fast-contract brain senses horizontal velocity scaled by a declared
         # factor (below one at race speed); other motor contracts keep >= 1.
         if velocity_scale is not None and (not np.isfinite(velocity_scale) or velocity_scale <= 0):
@@ -543,7 +567,9 @@ class FastRaceCue:
         self.target_switches = 0
         self.velocity_command = None
         self.feedforward = np.zeros(3)
-        self.support_since = None
+        self.search_since = None
+        self.support_since = self.slope_support_since = None
+        self.issued_throttle = None
         self.climb_until = None
         self.descent_shortfall = 0.
         self.descent_scale = 1.
@@ -597,9 +623,11 @@ class FastRaceCue:
         ray = self.camera.unproject_body(np.array([[aim_u*320, cue['v']*180]]))[0]
         ray = quat_wxyz_to_mat(q) @ ray
         ray = ray/max(np.linalg.norm(ray), 1e-9)
+        switched = False
         if self.direction is None or np.degrees(np.arccos(np.clip(ray @ self.direction, -1, 1))) > self.config.new_target_deg:
             if self.direction is not None:
                 self.target_switches += 1
+                switched = True
             self.direction = ray
         else:
             blended = self.direction+self.config.direction_blend*(ray-self.direction)
@@ -619,11 +647,18 @@ class FastRaceCue:
             weight = float(np.clip((-elevation-c.below_weak_deg)/(c.below_full_deg-c.below_weak_deg), 0, 1))
             self.below_weight = max(self.below_weight, weight)
             self.edge_depression = float(max(0., -elevation))
+            # Only an unbroken clip of the same ring is evidence that the slope is too shallow.
+            if (self.below_since is None or switched or self.below_last is None
+                    or capture_time-self.below_last > c.below_gap_s):
+                self.below_since = capture_time
+            self.below_last = capture_time
         else:
             self.below_weight = 0.
             self.edge_depression = 0.
+            self.below_since = self.below_last = None
         if not ((self.below or self.above) and abs(cue['u']-.5) < .1):
             self.vertical_clip_since = None
+            self.sweep_side = None
         elif self.vertical_clip_since is None:
             self.vertical_clip_since = capture_time
         self.frames += 1
@@ -666,7 +701,9 @@ class FastRaceCue:
             # marker back into view. Weight the response by the evidence.
             w = self.below_weight
             horizontal = speed*(1-w)+min(speed, max(c.edge_speed, c.below_speed_fraction*speed))*w
-            sink = min(c.vertical_down, horizontal*np.tan(np.radians(self.edge_depression+c.below_slope_margin_deg)))
+            clipped_s = max(0., now-self.below_since) if self.below_since is not None else 0.
+            margin = min(c.below_slope_margin_max_deg, c.below_slope_margin_deg+c.below_slope_growth_deg_s*clipped_s)
+            sink = min(c.vertical_down, horizontal*np.tan(np.radians(min(self.edge_depression+margin, 80.))))
             return np.r_[dh*horizontal, -sink*w], 'below' if w > 0 else 'below_weak'
         if self.above:
             # The clipped elevation is only a lower bound: preserve that slope.
@@ -730,6 +767,12 @@ class FastRaceCue:
         self._ingest(detection, capture_time, now)
         yaw = float(np.arctan2(rotation[1, 0], rotation[0, 0]))
         desired, state = self._desired(position, velocity, yaw, now)
+        if state == 'search':
+            self.search_since = now if self.search_since is None else self.search_since
+            if now-self.search_since < c.search_climb_s:
+                desired[2] = c.search_climb
+        else:
+            self.search_since = None
         if self.launching:
             desired[:2] *= min(1., 1.5/max(np.linalg.norm(desired[:2]), 1e-9))
             desired[2] = max(desired[2], 1.5)
@@ -758,10 +801,22 @@ class FastRaceCue:
         elif (self.velocity_command is not None and self.velocity_command[2] < -.8
               and velocity[2] > max(-.25, self.velocity_command[2]+.6)):
             self.support_since = now if self.support_since is None else self.support_since
+            self.slope_support_since = None
             if now-self.support_since > c.support_after_s:
                 self.climb_until, self.support_since = now+c.support_climb_s, None
-        else:
+        elif (self.velocity_command is not None and self.velocity_command[2] < -.8
+              and velocity[2] > self.velocity_command[2]+c.support_slope_shortfall
+              and self.calibration is not None and self.issued_throttle is not None
+              and self.issued_throttle < self.calibration[2]-c.support_thrust_margin):
+            # Thrust well below hover would reach the requested sink within a
+            # fraction of a second in free air; a persistent shortfall means the
+            # vehicle is resting on something, e.g. sliding down a hillside.
             self.support_since = None
+            self.slope_support_since = now if self.slope_support_since is None else self.slope_support_since
+            if now-self.slope_support_since > c.support_slope_after_s:
+                self.climb_until, self.slope_support_since = now+c.support_climb_s, None
+        else:
+            self.support_since = self.slope_support_since = None
         cap = ray = None
         climb = 0.
         if clearance is not None and not self.launching:
@@ -784,6 +839,10 @@ class FastRaceCue:
             self.velocity_command = velocity.copy()
         step = desired-self.velocity_command
         step[:2] = self._horizontal_step(self.velocity_command[:2], desired[:2], dt)
+        if state == 'search':
+            norm = float(np.linalg.norm(step[:2]))
+            if norm > c.search_deceleration*dt:
+                step[:2] *= c.search_deceleration*dt/norm
         up = max(c.vertical_command_acceleration, self.clearance_config.terrain_climb_acceleration if climb > 0 else 0.)
         step[2] = np.clip(step[2], -c.vertical_command_acceleration*dt, up*dt)
         previous = self.velocity_command.copy()
@@ -815,11 +874,16 @@ class FastRaceCue:
             if abs(angle) > .08:
                 self.side = np.sign(angle)
             yaw_rate = float(np.clip(c.yaw_gain*angle-c.yaw_damping*world_rate, -c.max_yaw_rate, c.max_yaw_rate))
-            if (state in ('above', 'below') and self.vertical_clip_since is not None
+            if (state == 'above' and self.vertical_clip_since is not None
                     and now-self.vertical_clip_since > c.edge_sweep_after_s):
-                # A centred top/bottom clip cannot separate overhead/underneath
-                # from behind; a slow yaw moves a target behind off the centre.
-                yaw_rate = c.edge_sweep_rate*self.side
+                # A centred top clip cannot separate overhead from behind; a slow
+                # yaw moves a target behind off the centre. Its direction is latched
+                # for the episode: re-deciding it from the bearing flips it every few
+                # degrees. A bottom clip is never behind (Liftoff clamps rings behind
+                # to the top), so a descent keeps facing the ring instead of weaving.
+                if self.sweep_side is None:
+                    self.sweep_side = self.side
+                yaw_rate = c.edge_sweep_rate*self.sweep_side
         # Invert the measured post-expo yaw curve so max_yaw_rate is honoured.
         desired_yaw = -float(np.clip(measured_inverse_rate(
             torch.tensor([np.degrees(yaw_rate)], dtype=torch.float64), *self.yaw_curve)[0], -1., 1.))
@@ -841,6 +905,7 @@ class FastRaceCue:
 
     def command(self, action):
         result = np.array(action, copy=True)
+        self.issued_throttle = float(result[0])   # motor throttle (brain units), read by the support rule
         result[3] = float(np.clip(self.pilot.sight_yaw, -1., 1.))
         if self.calibration is not None:
             # Throttle and yaw share one pad stick clamped to the unit circle:
@@ -882,15 +947,21 @@ class FastRaceCue:
                          'command_acceleration; straight-line slew below turn_min_speed',
                     side_edge='side_speed_fraction of nominal speed toward side_margin_deg beyond the '
                               'clamped edge ray bearing, level (edge height is not used)',
-                    bottom_edge='shallow descent bounded by the clamped edge ray depression plus a margin, '
-                                'weighted by that depression and latched per clip',
+                    bottom_edge='descent bounded by the clamped edge ray depression plus a margin that grows '
+                                'with the clip duration (below_slope_growth_deg_s, up to '
+                                'below_slope_margin_max_deg; the duration restarts after a below_gap_s gap in '
+                                'bottom-clip frames or on a new ring), weighted by that depression and latched per clip',
                     top_edge='climb while preserving the clipped slope bound',
-                    centred_vertical_clip='slow search yaw after edge_sweep_after_s',
+                    centred_vertical_clip='centred top clip: slow yaw sweep after edge_sweep_after_s, direction '
+                                          'latched per episode; a centred bottom clip keeps facing the ring',
                     launch_surface='sink rate limited near and above the launch plane',
                     yaw_mapping='measured post-expo yaw curve inverse, throttle priority on the shared stick',
                     yaw_curve=list(self.yaw_curve),
-                    support='requested descent not achieved for support_after_s -> short climb',
-                    cue_dropout='coast on the previous request, then brake and search',
+                    support='requested descent not achieved for support_after_s, or short by support_slope_shortfall with the '
+                            'issued throttle support_thrust_margin below hover for support_slope_after_s (a slope) '
+                            '-> short climb',
+                    cue_dropout='coast on the previous request, then search: slow at <= search_deceleration while rising at '
+                                'search_climb for search_climb_s',
                     parameters=asdict(self.config), yaw_assistance=True, speed_assistance=True,
                     nominal_speed_mps=self.speed, trained_motor_reference_mps=self.reference_speed,
                     cue_frames=self.frames, target_switches_observed=self.target_switches,
