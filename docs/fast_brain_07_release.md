@@ -1,5 +1,9 @@
 # fast-brain-07: experimental fast motor-readout weights, smoother after gates
 
+Superseded by [fast-brain-08](fast_brain_08_release.md) (Straw Bale 5:17.805, no downhill weave).
+Main from `09898a1` flies the downhill-fixed pilot, with which brain-07 crashed 2/2;
+reproduce brain-07's results at `a7dbbac` (or `64adb8d`).
+
 Reviewed on 2026-09-25. Download from
 [GitHub Releases](https://github.com/skulitom/haltere/releases/tag/fast-brain-07-experimental)
 or [Hugging Face](https://huggingface.co/Skulitom/haltere/tree/main/fast-brain07).
@@ -42,7 +46,7 @@ Live on Straw Bale, brain-07 against brain-06 (same course and drone):
 |---|---:|---:|
 | Race time | 5:50.204 / 5:50.489 | **5:45.792 / 5:46.846** |
 | Minimum speed after 45-75 degree checkpoint switches | 2.50 m/s | **3.75 m/s** |
-| Stick change per 10 ms tick after a switch | 0.0133 | **0.0092** |
+| Stick change per 10 ms tick after 45-75 degree switches | 0.0133 | **0.0092** |
 | Roll/pitch command change per tick, whole race | 0.0049 | **0.0037** |
 | Body-rate RMS | 0.66 rad/s | **0.54 rad/s** |
 
@@ -61,7 +65,8 @@ desktop, CPU brain, CUDA vision, 6 m/s, processed-control ground check per pad):
 
 The downhill fix removed a real yaw weave, but brain-07 does not follow the
 steeper descent and slower horizontal request it asked for, so without the weave
-it reached a lower ring from above. Those pilot changes were reverted; see the
+it reached a lower ring from above. Those pilot changes were reverted in `a7dbbac`
+(and re-applied for fast-brain-08 in `71a2e50`); see the
 [downhill flight card](flight_cards/2026-09-24_downhill.md). Surrogate evaluation
 (not flight evidence): 7/8 steep held-out synthetic courses, 0 crashes. The full
 suite passed 596 tests at `a7dbbac`.
@@ -73,13 +78,13 @@ suite passed 596 tests at `a7dbbac`.
   Valley terrain and boulder); a learned clearance model is in development.
 - On long descents the pilot's yaw sweeps side to side (see above); the fix waits
   for a brain that tracks steeper descents.
-- The virtual gamepad used for Liftoff is machine-wide: do not play another
-  gamepad game while it flies.
+- At the time of these flights the virtual gamepad was machine-wide; with Anode's
+  HidHide seat isolation it now stays inside the seat (see fast-brain-08).
 
 ## Download and use
 
 Extract `fast-brain07-inference.zip` into the repository root at `a7dbbac` or a
-later compatible revision. It contains the checkpoint, the GateNet detector and
+later revision before `71a2e50` (later main flies the downhill-fixed pilot). It contains the checkpoint, the GateNet detector and
 stick mapping it expects, the measured dynamics profile, training source,
 configuration, audit, evaluation, flight sidecars, ground checks, finish
 screenshots and per-file hashes (`fast-brain07-manifest.json`).
