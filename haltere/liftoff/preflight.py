@@ -3,9 +3,11 @@
 Checks every Windows session, not just Anode. Known training/benchmark commands
 block even while waiting for work; other busy compute processes block on CPU
 use; a running game blocks because the virtual gamepad is machine-wide (the pad
-bridge also unplugs itself when one starts, see game_guard). This is a
-snapshot, not an operating-system reservation. Recheck after the flight and
-keep runtime failures separate from navigation outcomes.
+bridge also unplugs itself when one starts, see game_guard), unless Anode keeps
+the seat's pads inside it, where the user's game cannot read them; the report
+then lists the game instead. This is a snapshot, not an operating-system
+reservation. Recheck after the flight and keep runtime failures separate from
+navigation outcomes.
 """
 from __future__ import annotations
 
@@ -19,7 +21,7 @@ import sys
 import time
 from datetime import datetime, timezone
 
-from .game_guard import game_processes, library_games, own_session
+from .game_guard import anode_isolation, game_processes, library_games, own_session, pads_stay_in_seat
 
 
 _INVENTORY = r"""
@@ -137,8 +139,12 @@ def check_workloads(allowed_pids=(), allowed_projects=()):
     elapsed = time.monotonic()-start
     blockers = classify(before, after, elapsed, os.getpid())
     own = own_session()
-    blockers += [dict(g, reason=f"game running ({g['reason']}); the virtual gamepad would reach it", cpu_cores=None)
-                 for g in game_processes(after, own)+library_games(after, own)]
+    games = game_processes(after, own)+library_games(after, own)
+    # Anode keeping the pads in its seat means a game on the desktop cannot read the flight's commands.
+    seat_only = pads_stay_in_seat(anode_isolation())
+    if not seat_only:
+        blockers += [dict(g, reason=f"game running ({g['reason']}); the virtual gamepad would reach it", cpu_cores=None)
+                     for g in games]
     project_pids=project_workload_pids(after,allowed_projects)
     # Explicit operator exceptions still fail if their measured CPU work rises.
     # Keep both the permission and observed load visible in the flight record.
@@ -147,6 +153,7 @@ def check_workloads(allowed_pids=(), allowed_projects=()):
     blockers = [b for b in blockers if b not in exceptions]
     return dict(checked_at=datetime.now(timezone.utc).isoformat(), passed=not blockers,
                 blockers=blockers, operator_exception_pids=list(allowed_pids), exceptions=exceptions,
+                pads_seat_only=seat_only, games_beside_seat_only_pads=games if seat_only else [],
                 operator_exception_projects=list(allowed_projects),
                 resolved_project_workloads=[dict(pid=pid,project=root) for pid,root in sorted(project_pids.items())],
                 scope='all Windows sessions; known jobs, busy compute executables and games',

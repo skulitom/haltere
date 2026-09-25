@@ -16,11 +16,18 @@ Liftoff counts only outside the pad's own session: our Liftoff runs in the seat
 beside the pad, a Liftoff on another desktop is the user's. This is a heuristic
 that fails safe for unknown controller users (they block) but can miss a game
 that reads the pad through another API before it loads one of those libraries.
+
+None of this is needed while Anode keeps the pad inside its seat: with HidHide
+installed, Anode lists every virtual pad plugged in while the seat runs so that
+only programs in the seat can open it, and checks from the user's desktop that
+they cannot. ``anode_isolation`` reads that report (``anode gamepad state``).
 """
 from __future__ import annotations
 
+import json
 import ntpath
 import os
+import subprocess
 import sys
 import time
 
@@ -49,6 +56,37 @@ RECHECK_PERIOD = 60.
 
 class GameDetected(RuntimeError):
     pass
+
+
+def anode_isolation(run=subprocess.run):
+    """Anode's report on virtual controllers (the ``isolation`` part of ``anode gamepad state``), or None
+    when Anode is not running, is older than 0.9.0 or cannot say."""
+    try:
+        result = run(['anode', 'gamepad', 'state'], capture_output=True, text=True, timeout=10,
+                     creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+        state = json.loads(result.stdout) if result.returncode == 0 else None
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    return state.get('isolation') if isinstance(state, dict) else None
+
+
+def seat_keeps_new_pads(isolation):
+    """True while Anode hides every new virtual pad from the user's desktop from its first moment. It stops
+    doing that for other programs' pads while a ViGEm program runs outside the seat."""
+    return bool(isolation) and isolation.get('hidHide') == 'active' and not isolation.get('otherViGEmPrograms')
+
+
+def seat_only_pads(isolation):
+    """Pads Anode keeps inside the seat and has checked from the user's desktop."""
+    return {p['device'] for p in (isolation or {}).get('pads') or []
+            if p.get('seatOnly') and p.get('verifiedFromDesktop') and p.get('device')}
+
+
+def pads_stay_in_seat(isolation):
+    """True while no virtual pad of the seat can reach a game on the user's desktop: new pads are hidden from
+    their first moment and every seat pad Anode reports is hidden and checked. Other programs' pads do not count."""
+    pads = [p for p in (isolation or {}).get('pads') or [] if p.get('owner') != 'outside']
+    return seat_keeps_new_pads(isolation) and all(p.get('seatOnly') and p.get('verifiedFromDesktop') for p in pads)
 
 
 def _norm(path):

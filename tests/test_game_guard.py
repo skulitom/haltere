@@ -40,6 +40,9 @@ class FakeTarget:
     def update(self):
         self.log.append('update')
 
+    def get_index(self):
+        return 1
+
     def reset(self):
         self.log.append('reset')
 
@@ -183,3 +186,70 @@ def test_game_watch_rescans_quiet_processes_once_a_minute():
         clock[0] = float(t)
         watch()
     assert calls == [0., 2., 5., 10., 20., 40., 100., 160.]
+
+
+SEAT_ONLY = dict(hidHide='active', otherViGEmPrograms=[], pads=[])
+PAD1 = r'USB\VID_045E&PID_028E\01'
+NMS = [dict(pid=1, session=1, executable='NMS.exe')]
+
+
+def reported(*devices, verified=True, owner='seat'):
+    """Anode's isolation report with these pads kept in the seat."""
+    return dict(SEAT_ONLY, pads=[dict(device=d, owner=owner, seatOnly=True, verifiedFromDesktop=verified) for d in devices])
+
+
+def test_pad_keeps_flying_beside_a_game_while_anode_keeps_it_in_the_seat(fake_vgamepad):
+    from haltere.liftoff.gamepad import VirtualPad
+    reports = [SEAT_ONLY]
+    pad = VirtualPad(detector=lambda: NMS, isolation=lambda: reports.pop(0) if reports else reported(PAD1), confirm_seconds=1.)
+    assert pad.seat_only and pad._watch is None and pad.device == PAD1
+    pad.send(0., .1, .2, .3)
+    assert 'unplug' not in fake_vgamepad
+    pad.close()
+
+
+def test_guard_returns_when_anode_does_not_confirm_the_pad(fake_vgamepad):
+    from haltere.liftoff.gamepad import VirtualPad
+    with pytest.raises(GameDetected, match='could not confirm'):
+        VirtualPad(detector=lambda: NMS, isolation=lambda: reported(PAD1, verified=False), confirm_seconds=.3)
+    assert fake_vgamepad.count('plug') == 1 and 'unplug' in fake_vgamepad
+
+
+def test_a_replugged_pad_is_confirmed_again(fake_vgamepad):
+    from haltere.liftoff.gamepad import VirtualPad
+    state = dict(report=reported(PAD1))
+    pad = VirtualPad(detector=lambda: NMS, isolation=lambda: state['report'], confirm_seconds=.3)
+    assert pad.seat_only
+    state['report'] = reported(PAD1, verified=False)
+    with pytest.raises(GameDetected, match='could not confirm'):
+        pad.reconnect(pause=0.)
+    assert not pad.seat_only and fake_vgamepad.count('plug') == 2 and fake_vgamepad[-1] == 'unplug'
+
+
+def test_anode_isolation_reads_gamepad_state():
+    from haltere.liftoff.game_guard import anode_isolation, pads_stay_in_seat
+    state = types.SimpleNamespace(returncode=0, stdout='{"slots": [], "isolation": {"hidHide": "active", "pads": []}}')
+    assert anode_isolation(run=lambda *a, **k: state)['hidHide'] == 'active'
+    assert anode_isolation(run=lambda *a, **k: types.SimpleNamespace(returncode=1, stdout='')) is None
+
+    def missing(*a, **k):
+        raise FileNotFoundError('anode')
+    assert anode_isolation(run=missing) is None
+    assert pads_stay_in_seat(SEAT_ONLY) and pads_stay_in_seat(reported(PAD1))
+    assert not pads_stay_in_seat(dict(SEAT_ONLY, otherViGEmPrograms=['DS4Windows.exe (PID 7, session 1)']))
+    assert not pads_stay_in_seat(reported(PAD1, verified=False)) and pads_stay_in_seat(reported(PAD1, verified=False, owner='outside'))
+    assert not pads_stay_in_seat(None) and not pads_stay_in_seat(dict(SEAT_ONLY, hidHide='not installed'))
+
+
+def test_preflight_lets_a_game_run_while_anode_keeps_the_pads_in_the_seat(monkeypatch):
+    from haltere.liftoff import preflight
+    rows = [dict(ProcessId=43, ParentProcessId=0, SessionId=1, Name='NMS.exe', CommandLine='', UserModeTime=0,
+                 KernelModeTime=0, ExecutablePath=r"C:\SteamLibrary\steamapps\common\No Man's Sky\Binaries\NMS.exe")]
+    monkeypatch.setattr(preflight, 'inventory', lambda: rows)
+    monkeypatch.setattr(preflight.time, 'sleep', lambda _: None)
+    monkeypatch.setattr(preflight, 'own_session', lambda: 2)
+    monkeypatch.setattr(preflight, 'library_games', lambda rows, own: [])
+    assert not preflight.check_workloads()['passed']
+    monkeypatch.setattr(preflight, 'anode_isolation', lambda: reported(PAD1))
+    report = preflight.check_workloads()
+    assert report['passed'] and report['pads_seat_only'] and [g['pid'] for g in report['games_beside_seat_only_pads']] == [43]

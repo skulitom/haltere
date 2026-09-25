@@ -23,6 +23,11 @@
   moving the Steam session there; retain the original `[Copy] New Drone`.
 - Keep Liftoff open between tests. Verify throttle-low and real processed control
   response; Xbox neutral throttle is not zero. Pause before disconnecting a pad.
+- The user may play their own games while flights run. Anode (0.9.0+, with HidHide)
+  keeps the virtual pad inside its seat, and the pad bridge stands its game guard
+  down only after `anode gamepad state` reports the pad `seatOnly` and
+  `verifiedFromDesktop`. Do not stop flights because the user is gaming; stop if the
+  pad says it is machine-wide or the guard unplugs it.
 - Push completed, verified changes to GitHub. Publish new weights to GitHub and
   Hugging Face when ready, with accurate evaluation limits and model provenance.
 - Prefer fixing visible flight problems and useful visual demonstrations over
