@@ -96,6 +96,12 @@ class FastCueConfig:
     feedforward_time_constant: float = .05
     support_after_s: float = .4
     support_climb_s: float = .6
+    # Contact on a slope: sliding down a hillside still sinks at the hill's slope, so
+    # a requested descent short by this much while the issued throttle sits this far
+    # (brain units) below hover for support_slope_after_s also means support.
+    support_slope_shortfall: float = .4
+    support_thrust_margin: float = .2
+    support_slope_after_s: float = .6
     launch_height: float = .6
     # Descent path angle: while a requested descent (sink > descent_sink) is
     # not achieved, the filtered shortfall (time constant descent_time_constant)
@@ -555,7 +561,8 @@ class FastRaceCue:
         self.target_switches = 0
         self.velocity_command = None
         self.feedforward = np.zeros(3)
-        self.support_since = None
+        self.support_since = self.slope_support_since = None
+        self.issued_throttle = None
         self.climb_until = None
         self.descent_shortfall = 0.
         self.descent_scale = 1.
@@ -781,10 +788,22 @@ class FastRaceCue:
         elif (self.velocity_command is not None and self.velocity_command[2] < -.8
               and velocity[2] > max(-.25, self.velocity_command[2]+.6)):
             self.support_since = now if self.support_since is None else self.support_since
+            self.slope_support_since = None
             if now-self.support_since > c.support_after_s:
                 self.climb_until, self.support_since = now+c.support_climb_s, None
-        else:
+        elif (self.velocity_command is not None and self.velocity_command[2] < -.8
+              and velocity[2] > self.velocity_command[2]+c.support_slope_shortfall
+              and self.calibration is not None and self.issued_throttle is not None
+              and self.issued_throttle < self.calibration[2]-c.support_thrust_margin):
+            # Thrust well below hover would reach the requested sink within a
+            # fraction of a second in free air; a persistent shortfall means the
+            # vehicle is resting on something, e.g. sliding down a hillside.
             self.support_since = None
+            self.slope_support_since = now if self.slope_support_since is None else self.slope_support_since
+            if now-self.slope_support_since > c.support_slope_after_s:
+                self.climb_until, self.slope_support_since = now+c.support_climb_s, None
+        else:
+            self.support_since = self.slope_support_since = None
         cap = ray = None
         climb = 0.
         if clearance is not None and not self.launching:
@@ -869,6 +888,7 @@ class FastRaceCue:
 
     def command(self, action):
         result = np.array(action, copy=True)
+        self.issued_throttle = float(result[0])   # motor throttle (brain units), read by the support rule
         result[3] = float(np.clip(self.pilot.sight_yaw, -1., 1.))
         if self.calibration is not None:
             # Throttle and yaw share one pad stick clamped to the unit circle:
@@ -920,7 +940,9 @@ class FastRaceCue:
                     launch_surface='sink rate limited near and above the launch plane',
                     yaw_mapping='measured post-expo yaw curve inverse, throttle priority on the shared stick',
                     yaw_curve=list(self.yaw_curve),
-                    support='requested descent not achieved for support_after_s -> short climb',
+                    support='requested descent not achieved for support_after_s, or short by support_slope_shortfall with the '
+                            'issued throttle support_thrust_margin below hover for support_slope_after_s (a slope) '
+                            '-> short climb',
                     cue_dropout='coast on the previous request, then brake and search',
                     parameters=asdict(self.config), yaw_assistance=True, speed_assistance=True,
                     nominal_speed_mps=self.speed, trained_motor_reference_mps=self.reference_speed,

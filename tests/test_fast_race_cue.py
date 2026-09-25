@@ -277,6 +277,41 @@ def test_support_detection_climbs_when_commanded_descent_is_not_achieved():
     assert trail[end] == 'below'
 
 
+def slide(pilot, history, throttle, steps=150, velocity=(0., 2.5, -.5), height=20., dt=.01):
+    """Descend toward a bottom-clipped ring while the measured motion stays that of a hillside slide."""
+    rows = []
+    for k in range(steps):
+        now = 10.+k*dt
+        s = senses(position=(0., 0., height), velocity=velocity, yaw=np.pi/2)
+        history.append(now, [0., 0., height], s['quat'][0].numpy())
+        pilot.update(s, [0., 0., 0.], dict(race_cue=dict(BELOW)), now-.05, now)
+        pilot.command(np.array([throttle, 0., 0., 0.]))
+        rows.append((now, pilot.state, pilot.velocity_command.copy()))
+    return rows
+
+
+def test_support_on_a_slope_needs_low_thrust_and_a_persistent_sink_shortfall():
+    # Sliding down a hillside sinks at the hill's slope (here -0.5 m/s), so the flat-ground
+    # rule (sink stopped) never fires; thrust well below hover without the requested sink does.
+    hover = CAL['hover_stick_sim']
+    history = CameraPoseHistory()
+    pressed = FastRaceCue(SENSOR, history, 6., calibration=CAL)
+    rows = slide(pressed, history, hover-.35)
+    trail = [state for _, state, _ in rows]
+    assert 'support_climb' in trail
+    short = next(now for now, _, command in rows if command[2] < -.8 and -.5 > command[2]+CONFIG.support_slope_shortfall)
+    climbing = next(now for now, state, _ in rows if state == 'support_climb')
+    assert climbing-short == pytest.approx(CONFIG.support_slope_after_s, abs=.05)
+    # Near-hover thrust with the same motion is a controller lagging in free air: no climb.
+    history = CameraPoseHistory()
+    lagging = FastRaceCue(SENSOR, history, 6., calibration=CAL)
+    assert 'support_climb' not in [state for _, state, _ in slide(lagging, history, hover-.05)]
+    # Without a throttle calibration the rule stays off.
+    history = CameraPoseHistory()
+    uncalibrated = FastRaceCue(SENSOR, history, 6.)
+    assert 'support_climb' not in [state for _, state, _ in slide(uncalibrated, history, hover-.35)]
+
+
 def test_support_detection_ignores_a_tracked_descent():
     history = CameraPoseHistory()
     pilot = FastRaceCue(SENSOR, history, 10.)
