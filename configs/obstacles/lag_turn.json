@@ -1,0 +1,46 @@
+{
+ "schema": "haltere.liftoff.lag_turn.v1",
+ "version": 1,
+ "note": "Lag-aware turns after a checkpoint switch for the fast race-cue pilot (FastRaceCue lag_turn=LagTurnConfig). Off unless the runner is given --lag-turn; then the entry for the active motor contract applies (null = off for that contract, and the runner refuses --lag-turn for it). Lead, clip, heading time constant and window are the a-priori M2 plan values (course_lead 0.6 clipped to 15 deg, heading time constant 0.10 s, first second after a switch), not fitted to any course; trigger_deg/trigger_span_s follow the anatomy study's switch detector (bearing jump within two frames). The hash covers everything except frozen/frozen_at/sha256; a changed file needs a new version and a new freeze, and every frozen version used for scoring is reported.",
+ "rule": "trigger: a fresh in-view (not edge-clamped) cue whose azimuth differs by >= trigger_deg from the filtered bearing or from an in-view cue captured within trigger_span_s; for window_s after it, while the ring is in view (pilot state cue): aim course_lead*(bearing - flown course) beyond the bearing, clipped to course_lead_max_deg (no lead below min_course_speed or beyond max_lead_angle_deg), and taper the request heading with heading_time_constant instead of command_time_constant; both fade out over the last fade_s; turn_acceleration still bounds the heading rate and the speed schedule is unchanged",
+ "response_models": {
+  "note": "Declared motor response to a horizontal velocity request (documentation of why a lead is needed and the kinematic models used for offline replays; the pilot does not read these). Delay plus first-order lag fitted on fast-stack-20260923 logs: brain-08 0.14-0.16 s plus 0.20-0.58 s (0.32-0.39 s overall on Straw Bale), fast PD 0.08-0.10 s plus about 0.04 s (0.11-0.14 s overall).",
+  "fast_velocity_brain_v1": {
+   "delay_s": 0.15,
+   "time_constant_s": 0.3,
+   "max_horizontal_acceleration_mps2": 6.5
+  },
+  "fast_velocity_pd_v1": {
+   "delay_s": 0.09,
+   "time_constant_s": 0.05,
+   "max_horizontal_acceleration_mps2": 12.0
+  }
+ },
+ "contracts": {
+  "fast_velocity_brain_v1": {
+   "course_lead": 0.6,
+   "course_lead_max_deg": 15.0,
+   "heading_time_constant": 0.1,
+   "window_s": 1.0,
+   "fade_s": 0.25,
+   "trigger_deg": 10.0,
+   "trigger_span_s": 0.25,
+   "min_course_speed": 1.0,
+   "max_lead_angle_deg": 90.0
+  },
+  "fast_velocity_pd_v1": {
+   "course_lead": 0.6,
+   "course_lead_max_deg": 15.0,
+   "heading_time_constant": 0.1,
+   "window_s": 1.0,
+   "fade_s": 0.25,
+   "trigger_deg": 10.0,
+   "trigger_span_s": 0.25,
+   "min_course_speed": 1.0,
+   "max_lead_angle_deg": 90.0
+  }
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-25T23:49:35",
+ "sha256": "94315b4ddc4a1750137e1856dd40d1be0d2823d0ef359961eda0d29937271aad"
+}

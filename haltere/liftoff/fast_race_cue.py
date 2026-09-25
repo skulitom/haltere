@@ -136,6 +136,65 @@ class FastCueConfig:
             raise ValueError('Use a side speed fraction <= 1 and a side margin below 90 degrees')
 
 
+# The state in which lag-aware turns act: the ring is in view (not clamped to an edge).
+LAG_TURN_STATES = ('cue',)
+
+
+@dataclass(frozen=True)
+class LagTurnConfig:
+    """Faster convergence onto a new checkpoint bearing for a motor that lags its request.
+
+    Off unless a runner passes it (declared per motor contract). The motors follow a
+    velocity request late (brain-08 by 0.3-0.4 s, the fast PD by 0.1-0.15 s), so after
+    a checkpoint switch the flown path swings outside the line to the new ring.
+
+    Trigger (a new checkpoint): a fresh in-view (not edge-clamped) cue whose bearing
+    azimuth differs by at least trigger_deg from the filtered bearing or from any fresh
+    in-view cue captured within the last trigger_span_s (the HUD marker can take two
+    frames to move to the new ring). Clamped markers never trigger: their azimuth is
+    not reliable. For window_s after the triggering capture, while the ring is in view:
+    - the horizontal goal aims beyond the bearing by course_lead times the angle from
+      the flown course (measured horizontal velocity) to the bearing, clipped to
+      course_lead_max_deg; no lead below min_course_speed or beyond max_lead_angle_deg;
+    - the request heading rotates toward the goal with heading_time_constant instead
+      of command_time_constant (turn_acceleration still bounds the rotation rate, and
+      the speed change keeps command_time_constant).
+    Both fade out linearly over the last fade_s of the window. The speed schedule
+    still uses the angle to the bearing itself, so no extra braking is requested.
+    """
+    course_lead: float = .6
+    course_lead_max_deg: float = 15.
+    heading_time_constant: float = .1
+    window_s: float = 1.
+    fade_s: float = .25
+    trigger_deg: float = 10.
+    trigger_span_s: float = .25
+    min_course_speed: float = 1.
+    max_lead_angle_deg: float = 90.
+
+    def __post_init__(self):
+        values = list(asdict(self).values())
+        if not np.isfinite(values).all() or min(values) <= 0:
+            raise ValueError('Use finite positive lag-turn parameters')
+        if not self.course_lead_max_deg < 90 or not self.trigger_deg < 90 or not self.max_lead_angle_deg <= 180:
+            raise ValueError('Use a lead clip and trigger below 90 degrees and a lead range within 180 degrees')
+        if not self.fade_s <= self.window_s:
+            raise ValueError('The lag-turn fade must fit inside its window')
+
+
+def lag_turn_for_contract(declaration, contract):
+    """The `LagTurnConfig` that a declaration already parsed by the runner (a dict with
+    'contracts': {motor contract: parameters or None}) assigns to a motor contract, or
+    None when that contract has no lag-turn entry. This module reads no files."""
+    contracts = (declaration or {}).get('contracts')
+    if not isinstance(contracts, dict):
+        raise ValueError('A lag-turn declaration lists its motor contracts')
+    entry = contracts.get(contract)
+    if entry is None:
+        return None
+    return LagTurnConfig(**entry)
+
+
 def stopping_speed(distance, deceleration, latency, margin):
     """Largest speed v with v*latency + v^2/(2*deceleration) + margin <= distance."""
     room = max(0., float(distance)-margin)
@@ -530,7 +589,8 @@ class FastRaceCue:
     profile = 'fast-v1'
 
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
-                 yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None):
+                 yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
+                 lag_turn=None):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -581,6 +641,16 @@ class FastRaceCue:
         self.clearance = None
         self.clearance_braking = False
         self.clearance_time = {}
+        # Off (None) unless declared for the motor contract; see LagTurnConfig.
+        if lag_turn is not None and not isinstance(lag_turn, LagTurnConfig):
+            raise ValueError('Pass a LagTurnConfig (or None) for lag-aware turns')
+        self.lag_turn = lag_turn
+        self.lag_turn_recent = []      # (capture time, azimuth) of recent fresh in-view cues
+        self.lag_turn_since = None
+        self.lag_turn_weight = 0.
+        self.lag_turn_lead_deg = 0.
+        self.lag_turn_triggers = 0
+        self.lag_turn_time = 0.
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -623,6 +693,8 @@ class FastRaceCue:
         ray = self.camera.unproject_body(np.array([[aim_u*320, cue['v']*180]]))[0]
         ray = quat_wxyz_to_mat(q) @ ray
         ray = ray/max(np.linalg.norm(ray), 1e-9)
+        if self.lag_turn is not None:
+            self._lag_turn_trigger(ray, bool(cue['edge']), capture_time)
         switched = False
         if self.direction is None or np.degrees(np.arccos(np.clip(ray @ self.direction, -1, 1))) > self.config.new_target_deg:
             if self.direction is not None:
@@ -714,9 +786,59 @@ class FastRaceCue:
         if abs(vertical) > limit:
             speed *= limit/abs(vertical)
             vertical = np.sign(vertical)*limit
-        return np.r_[dh*speed, vertical], 'cue'
+        # Lag-aware turns (off by default): the horizontal goal leads the in-view bearing.
+        return np.r_[self._lead(dh, velocity)*speed, vertical], 'cue'
 
-    def _horizontal_step(self, current, goal, dt):
+    def _lag_turn_trigger(self, ray, edge, capture_time):
+        """Open a lag-turn window when a fresh in-view bearing jumps (see LagTurnConfig)."""
+        lt = self.lag_turn
+        if edge or np.linalg.norm(ray[:2]) < 1e-6:
+            return
+        azimuth = float(np.arctan2(ray[1], ray[0]))
+        recent = [(t, a) for t, a in self.lag_turn_recent if capture_time-t <= lt.trigger_span_s]
+        references = [a for _, a in recent]
+        if self.direction is not None and np.linalg.norm(self.direction[:2]) > 1e-6:
+            references.append(float(np.arctan2(self.direction[1], self.direction[0])))
+        jump = max((abs((azimuth-a+np.pi) % (2*np.pi)-np.pi) for a in references), default=0.)
+        if jump >= np.radians(lt.trigger_deg):
+            self.lag_turn_since = capture_time
+            self.lag_turn_triggers += 1
+            recent = []                # later frames compare with the new bearing
+        self.lag_turn_recent = recent+[(capture_time, azimuth)]
+
+    def _lag_turn_weight_at(self, now):
+        """1 during a lag-turn window, falling linearly to 0 over its last fade_s; 0 when off."""
+        lt = self.lag_turn
+        if lt is None or self.lag_turn_since is None:
+            return 0.
+        age = now-self.lag_turn_since
+        if not 0 <= age < lt.window_s:
+            return 0.
+        return float(min(1., (lt.window_s-age)/lt.fade_s))
+
+    def _lead(self, dh, velocity):
+        """Horizontal goal direction: the bearing, led beyond it during a lag-turn window.
+
+        The lead is course_lead times the angle from the flown course to the bearing,
+        clipped, so it shrinks to zero as the lagging motor's course catches up and turns
+        back if the course overshoots."""
+        lt = self.lag_turn
+        if lt is None or self.lag_turn_weight <= 0:
+            return dh
+        horizontal_speed = float(np.linalg.norm(velocity[:2]))
+        if horizontal_speed < lt.min_course_speed:
+            return dh
+        course = velocity[:2]/horizontal_speed
+        angle = float(np.arctan2(course[0]*dh[1]-course[1]*dh[0], course @ dh))
+        if abs(angle) > np.radians(lt.max_lead_angle_deg):
+            return dh
+        limit = np.radians(lt.course_lead_max_deg)
+        lead = self.lag_turn_weight*float(np.clip(lt.course_lead*angle, -limit, limit))
+        self.lag_turn_lead_deg = float(np.degrees(lead))
+        cos, sin = np.cos(lead), np.sin(lead)
+        return np.array([cos*dh[0]-sin*dh[1], sin*dh[0]+cos*dh[1]])
+
+    def _horizontal_step(self, current, goal, dt, heading_time_constant=None):
         """Change of the horizontal request this tick: a coordinated turn.
 
         The heading rotates toward the goal's at most turn_acceleration/max(|v|, 1)
@@ -726,8 +848,11 @@ class FastRaceCue:
         taper with command_time_constant near the goal, which to first order equals
         the straight-line taper for small corrections. Without a defined heading
         (request or goal slower than turn_min_speed) the straight-line slew applies.
+        `heading_time_constant`, when given, replaces command_time_constant in the
+        heading taper only (a lag-aware turn); the default keeps the rule above.
         """
         c = self.config
+        heading_tc = c.command_time_constant if heading_time_constant is None else heading_time_constant
         chord = goal-current
         norm = float(np.linalg.norm(chord))
         top = c.command_acceleration*dt
@@ -738,7 +863,7 @@ class FastRaceCue:
         if min(speed, target) < c.turn_min_speed:
             return chord*(limit/norm) if norm > limit else chord
         angle = float(np.arctan2(current[0]*goal[1]-current[1]*goal[0], current @ goal))
-        rotation = np.sign(angle)*min(abs(angle)*dt/c.command_time_constant,
+        rotation = np.sign(angle)*min(abs(angle), abs(angle)*dt/heading_tc,
                                       c.turn_acceleration/max(speed, 1.)*dt)
         normal = speed*abs(rotation)/max(dt, 1e-9)
         room = float(np.sqrt(max(c.command_acceleration**2-normal**2, 0.)))*dt
@@ -766,7 +891,10 @@ class FastRaceCue:
             self.launching = False
         self._ingest(detection, capture_time, now)
         yaw = float(np.arctan2(rotation[1, 0], rotation[0, 0]))
+        self.lag_turn_weight = 0. if self.launching else self._lag_turn_weight_at(now)
+        self.lag_turn_lead_deg = 0.
         desired, state = self._desired(position, velocity, yaw, now)
+        in_view_goal = state in LAG_TURN_STATES
         if state == 'search':
             self.search_since = now if self.search_since is None else self.search_since
             if now-self.search_since < c.search_climb_s:
@@ -838,7 +966,12 @@ class FastRaceCue:
         if self.velocity_command is None:
             self.velocity_command = velocity.copy()
         step = desired-self.velocity_command
-        step[:2] = self._horizontal_step(self.velocity_command[:2], desired[:2], dt)
+        heading_tc = None
+        if self.lag_turn is not None and self.lag_turn_weight > 0 and in_view_goal:
+            heading_tc = c.command_time_constant+self.lag_turn_weight*(
+                self.lag_turn.heading_time_constant-c.command_time_constant)
+            self.lag_turn_time += dt
+        step[:2] = self._horizontal_step(self.velocity_command[:2], desired[:2], dt, heading_tc)
         if state == 'search':
             norm = float(np.linalg.norm(step[:2]))
             if norm > c.search_deceleration*dt:
@@ -967,6 +1100,15 @@ class FastRaceCue:
                     cue_frames=self.frames, target_switches_observed=self.target_switches,
                     state_seconds={k: round(v, 3) for k, v in self.state_time.items()},
                     estimated_passages=None,
+                    lag_turn=None if self.lag_turn is None else dict(
+                        rule='for window_s after a fresh in-view cue azimuth differs >= trigger_deg from the filtered '
+                             'bearing or from an in-view cue of the last trigger_span_s (clamped markers never trigger): '
+                             'with the ring in view (state cue) aim course_lead*(bearing - flown course) beyond the '
+                             'bearing (clipped to course_lead_max_deg; none below min_course_speed or beyond '
+                             'max_lead_angle_deg) and taper the request heading with heading_time_constant; both fade '
+                             'out over the last fade_s; the speed schedule keeps the bearing itself',
+                        parameters=asdict(self.lag_turn), triggers=self.lag_turn_triggers,
+                        active_seconds=round(self.lag_turn_time, 3)),
                     clearance_response=None if self.clearance is None else dict(
                         self._clearance_policy(),
                         parameters={k: (None if isinstance(v, float) and not np.isfinite(v) else v)
