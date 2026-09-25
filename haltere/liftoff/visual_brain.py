@@ -14,6 +14,7 @@ from collections import deque
 from contextlib import closing
 import csv
 import gc
+import hashlib
 import json
 import threading
 import time
@@ -28,6 +29,26 @@ from ..vision.datasets import sha256
 from .commands import load_mapping
 from .pilot import TelemetryPilot
 from .telemetry import TelemetryReceiver, read_config, DEFAULT_STREAM
+
+# Declared lag-aware turn parameters per fast motor contract (used only with --lag-turn).
+LAG_TURN_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'lag_turn.json'
+LAG_TURN_META_KEYS = ('frozen', 'frozen_at', 'sha256')
+
+
+def lag_turn_declaration_sha256(declaration):
+    """Hash of a lag-turn declaration without its freeze keys (canonical sorted, compact JSON)."""
+    body = {k: v for k, v in declaration.items() if k not in LAG_TURN_META_KEYS}
+    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(',', ':'),
+                                     ensure_ascii=True).encode('utf-8')).hexdigest()
+
+
+def load_lag_turn_declaration(path):
+    """A frozen lag-turn declaration and its content hash; refuses an unfrozen or edited file."""
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen lag-turn declaration, or it changed after the freeze')
+    return declaration, digest
 
 
 class RetinaCamera:
@@ -180,9 +201,11 @@ class VisualController:
     def __init__(self, checkpoint, mapping_path, device='cuda', *, stop_on_search_timeout=True,
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
-                 pilot_profile='standard', pd_profile='teacher', dynamics_profile=None):
+                 pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
+        if lag_turn and pilot_profile != 'fast':
+            raise ValueError('Lag-aware turns are part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -254,6 +277,7 @@ class VisualController:
         from .camera_pose import CameraPoseHistory
         self.camera_poses = CameraPoseHistory()
         self.assistance = None
+        self.lag_turn_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -272,12 +296,29 @@ class VisualController:
                 reference = fast_brain['nominal_speed_mps']
                 if assist_speed > reference+1e-9:
                     raise ValueError('The fast brain contract was trained up to its nominal speed')
+            lag_turn_config = None
+            if lag_turn:
+                # Declared per fast motor contract (its response lag), never per course.
+                from .fast_race_cue import lag_turn_for_contract
+                contract = ('fast_velocity_brain_v1' if fast_brain else
+                            'fast_velocity_pd_v1' if pd_profile == 'fast' and motor_controller == 'pd' else None)
+                if contract is None:
+                    raise ValueError('Lag-aware turns are declared for the fast brain and fast PD motor contracts')
+                declaration, digest = load_lag_turn_declaration(lag_turn)
+                lag_turn_config = lag_turn_for_contract(declaration, contract)
+                if lag_turn_config is None:
+                    # Do not fly a condition labelled "lag turn" that the declaration leaves off.
+                    raise ValueError(f'{lag_turn} declares no lag-aware turns for the {contract} motor contract')
+                self.lag_turn_declaration = dict(path=str(lag_turn), sha256=digest, file_sha256=sha256(lag_turn),
+                                                 schema=declaration.get('schema'), version=declaration.get('version'),
+                                                 motor_contract=contract)
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
                                           reference_speed=assist_speed if pd_profile == 'fast' else reference,
                                           yaw_curve=yaw_curve,calibration=self.calibration,
-                                          velocity_scale=fast_brain['velocity_scale'] if fast_brain else None)
+                                          velocity_scale=fast_brain['velocity_scale'] if fast_brain else None,
+                                          lag_turn=lag_turn_config)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
             reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
@@ -701,7 +742,8 @@ def run(args):
                                   oracle_motor_diagnostic=getattr(args,'oracle_motor_diagnostic',False),
                                   pilot_profile=getattr(args,'pilot_profile','standard'),
                                   pd_profile=getattr(args,'pd_profile','teacher'),
-                                  dynamics_profile=getattr(args,'dynamics_profile',None))
+                                  dynamics_profile=getattr(args,'dynamics_profile',None),
+                                  lag_turn=getattr(args,'lag_turn',None))
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -815,7 +857,8 @@ def run(args):
                                  'rpm_lf','rpm_rf','rpm_lb','rpm_rb',
                                  'cmd_vx','cmd_vy','cmd_vz','pilot_state',
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
-                                 'clearance_status','clearance_cap','clearance_climb','descent_scale'])
+                                 'clearance_status','clearance_cap','clearance_climb','descent_scale',
+                                 'lag_turn_weight','lag_turn_lead_deg'])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -922,7 +965,9 @@ def run(args):
                                  getattr(controller.assistance,'state','') if controller.assistance else '',
                                  *looming_row(camera.clearance if looming else None,now),
                                  *clearance_row(controller.assistance),
-                                 getattr(controller.assistance,'descent_scale',float('nan'))])
+                                 getattr(controller.assistance,'descent_scale',float('nan')),
+                                 getattr(controller.assistance,'lag_turn_weight',float('nan')),
+                                 getattr(controller.assistance,'lag_turn_lead_deg',float('nan'))])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -988,6 +1033,8 @@ def run(args):
         pilot_meta = controller.assistance.metadata() if assisted else dict(mode='none')
         if controller.motor_baseline and controller.assistance_mode not in ('oracle-route','dynamics-calibration'):
             pilot_meta['motor_control'] = 'PD throttle/roll/pitch; assisted yaw; brain runs in shadow'
+        if controller.lag_turn_declaration is not None:
+            pilot_meta['lag_turn_declaration'] = controller.lag_turn_declaration
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
                       control_mode=(('experimental visual geometry guidance; PD motors; brain in shadow' if controller.motor_baseline else
@@ -1124,6 +1171,10 @@ def main():
     p.add_argument('--pd-profile',choices=['teacher','fast'],default='teacher',
                    help='fast: velocity-command PD on the measured full-envelope dynamics; requires --dynamics-profile')
     p.add_argument('--dynamics-profile',default=None,help='Measured original-drone dynamics profile JSON for --pd-profile fast')
+    p.add_argument('--lag-turn',nargs='?',const=str(LAG_TURN_DECLARATION),default=None,metavar='DECLARATION',
+                   help='EXPERIMENTAL lag-aware turns after a checkpoint switch (course lead and faster request heading '
+                        'for the first second), with the parameters a frozen declaration assigns to the active fast '
+                        'motor contract (default configs/obstacles/lag_turn.json); fast pilot only')
     p.add_argument('--looming-brake',action='store_true',
                    help='EXPERIMENTAL fly-style looming (image expansion) time-to-contact caps speed toward surfaces ahead; fast pilot only')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
