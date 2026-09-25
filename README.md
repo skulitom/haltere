@@ -10,25 +10,26 @@ that goal; the fly brain remains a meaningful motor controller.
 [Models](#models-and-data) · [Game setup](docs/liftoff_setup.md) ·
 [Training](#training) · [For agents and contributors](#for-agents-and-contributors)
 
-![Connectome activity beside a brain-motor Straw Bale race at 6 m/s](docs/liftoff_fast_brain06.gif)
+![Connectome activity beside a brain-motor Straw Bale race at 6 m/s](docs/liftoff_fast_brain07.gif)
 
-*fast-brain-06 on Straw Bale, hilltop through the descending checkpoint, at 4×
+*fast-brain-07 on Straw Bale, hilltop through the descending checkpoints, at 4×
 speed: connectome activity (left) beside gameplay (right). The brain drives
 throttle, roll and pitch; the disclosed fast race-cue pilot supplies the velocity
-goal and yaw. It finished the full three-lap race in 5:50.204 and 5:50.489 on this
+goal and yaw. It finished the full three-lap race in 5:45.792 and 5:46.846 on this
 seen course; it has not finished Minus Two or Pine Valley.*
-[Release, videos and limits](docs/fast_brain_06_release.md).
+[Release, videos and limits](docs/fast_brain_07_release.md).
 
 ## Current status
 
-**Reviewed against code and flight evidence on 2026-09-24.** Haltere can finish
+**Reviewed against code and flight evidence on 2026-09-25.** Haltere can finish
 specific seen races with assistance, but reliable, fast general race and
 freestyle flight remains unsolved. The newest published weights are
-[fast-brain-06](docs/fast_brain_06_release.md), an experimental download: with
-brain motors under the [fast race-cue pilot](docs/fast_racing.md) at 6 m/s it
-finished Straw Bale twice (**5:50.204**, 5:50.489; previous brain best 14:05.703;
-matched fast PD 5:02.933), but not Minus Two or Pine Valley, where obstacles on or
-beside the line to the checkpoint also stop the PD.
+[fast-brain-07](docs/fast_brain_07_release.md), an experimental download: with
+brain motors under the [fast race-cue pilot](docs/fast_racing.md) (arc turns) at
+6 m/s it finished Straw Bale twice (**5:45.792**, 5:46.846; fast-brain-06 5:50.204;
+matched fast PD 5:02.933) and is smoother after checkpoints than brain-06, but has
+not finished Minus Two or Pine Valley, where obstacles on or beside the line to the
+checkpoint also stop the PD.
 
 The [session checkpoint](docs/resume_2026-09-23.md) records the unfinished dense
 geometry comparison and where to resume. [Automatic telemetry monitoring](docs/flight_monitoring.md)
@@ -61,6 +62,7 @@ geometry as the next priority and also exposes a motor-tracking gap.
 
 | Component | Current evidence and limits |
 |---|---|
+| fast-brain-07 + fast race-cue pilot | Re-distilled under arc turns: Straw Bale **5:45.792** and 5:46.846; 50% more speed through 45-75° checkpoint switches and 25% less stick chatter than brain-06. Minus Two pillar and Pine Valley impacts. [Release](docs/fast_brain_07_release.md). |
 | fast-brain-06 + fast race-cue pilot | Brain motors at 6 m/s: Straw Bale **5:50.204** and 5:50.489 (2/2 after a telemetry-guard fix); Minus Two pillar and Pine Valley terrain crashes. Only readout rows 0-2 changed; scene currents blanked. [Release](docs/fast_brain_06_release.md). |
 | Fast PD + fast race-cue pilot | Matched baseline, brain in shadow: Straw Bale **5:02.933**; Minus Two and Pine Valley obstacle crashes. `--looming-brake` climbed the Pine mound before a boulder stopped it. [Flight card](docs/flight_cards/2026-09-23_fast_stack.md). |
 | Scene09 + visible race cues | Earlier full three-lap finishes: Straw Bale **14:05.703**, Minus Two **9:27.415**. Both are seen courses. |
@@ -119,7 +121,7 @@ The third training attempt completed that same motor task in **29.929 s**,
 but remained slower and less precise than its unchanged parent. None of these
 flight-cost checkpoints replaces the published model.
 
-Validation: the last full suite passed **579 tests** at `d5dd2d2` (existing
+Validation: the last full suite passed **596 tests** at `a7dbbac` (existing
 PyTorch warnings). The CPU
 quickstart and checkpoint loading were checked in this checkout, and recorded
 flights verified actual processed controls. A fresh installation has not been
@@ -164,6 +166,7 @@ Install the gamepad driver before adding `liftoff`; see [game setup](docs/liftof
 
 | Checkpoint | Role |
 |---|---|
+| [fast-brain-07 bundle](docs/fast_brain_07_release.md) | Experimental fast motor-readout weights distilled under the arc-turn pilot (scene currents blanked). Two Straw Bale finishes (5:45.792); Minus Two and Pine Valley failed. Download separately. |
 | [fast-brain-06 bundle](docs/fast_brain_06_release.md) | Experimental fast motor-readout weights (scene currents blanked) for the fast race-cue pilot at 6 m/s. Two Straw Bale finishes; Minus Two and Pine Valley failed. Download separately. |
 | [Motor10 candidate05 bundle](docs/motor_brain_10_release.md) | New experimental motor-readout weights with recorded-scene robustness training. One development-loop finish; obstacle races failed. Download separately; not promoted over scene09. |
 | [Scene09 bundle](docs/scene_brain_09_release.md) | Published learned-scene reference with its exact detector and original-drone mapping. Download separately; evaluated with explicit visual assistance. |
