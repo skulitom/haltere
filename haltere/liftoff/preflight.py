@@ -2,7 +2,8 @@
 
 Checks every Windows session, not just Anode. Known training/benchmark commands
 block even while waiting for work; other busy compute processes block on CPU
-use. This is a snapshot, not an operating-system reservation. Recheck after the
+use; a running game blocks because the virtual gamepad is machine-wide (the pad
+bridge also unplugs itself when one starts, see game_guard). This is a snapshot, not an operating-system reservation. Recheck after the
 flight and keep runtime failures separate from navigation outcomes.
 """
 from __future__ import annotations
@@ -17,9 +18,11 @@ import sys
 import time
 from datetime import datetime, timezone
 
+from .game_guard import game_processes, own_session
+
 
 _INVENTORY = r"""
-Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,SessionId,Name,CommandLine,UserModeTime,KernelModeTime | ConvertTo-Json -Compress
+Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,SessionId,Name,ExecutablePath,CommandLine,UserModeTime,KernelModeTime | ConvertTo-Json -Compress
 """
 _COMPUTE = re.compile(r'^(python(?:w|\d+(?:\.\d+)?)?|pypy\d*|pytest|torchrun|accelerate|uv|node|java|dotnet|ffmpeg|cargo|rustc|cmake|ninja|msbuild|wsl|docker)(?:\.exe)?$', re.I)
 _WORK = re.compile(r'(?:^|[\\/._-])(train(?:ing)?|bench(?:mark)?s?|pytest|evaluate|evaluation|quality-measurement|bptt)(?:$|[\\/._-])', re.I)
@@ -132,6 +135,8 @@ def check_workloads(allowed_pids=(), allowed_projects=()):
     after = inventory()
     elapsed = time.monotonic()-start
     blockers = classify(before, after, elapsed, os.getpid())
+    blockers += [dict(g, reason='game running; the virtual gamepad would reach it', cpu_cores=None)
+                 for g in game_processes(after, own_session())]
     project_pids=project_workload_pids(after,allowed_projects)
     # Explicit operator exceptions still fail if their measured CPU work rises.
     # Keep both the permission and observed load visible in the flight record.
@@ -142,7 +147,7 @@ def check_workloads(allowed_pids=(), allowed_projects=()):
                 blockers=blockers, operator_exception_pids=list(allowed_pids), exceptions=exceptions,
                 operator_exception_projects=list(allowed_projects),
                 resolved_project_workloads=[dict(pid=pid,project=root) for pid,root in sorted(project_pids.items())],
-                scope='all Windows sessions; known jobs and busy compute executables',
+                scope='all Windows sessions; known jobs, busy compute executables and games',
                 limitation='snapshot; does not reserve resources or identify all possible GPU jobs')
 
 

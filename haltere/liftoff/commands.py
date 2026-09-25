@@ -196,8 +196,13 @@ def cmd_pad(a):
     the wizard."""
     import socket
     import struct
+    from .game_guard import GameDetected
     from .gamepad import VirtualPad
-    pad = VirtualPad()
+    try:
+        pad = VirtualPad()
+    except GameDetected as e:
+        print(f'pad refused: {e}', flush=True)
+        raise SystemExit(3)
     ctl = Path(a.control_file) if a.control_file else None
     if ctl:
         ctl.parent.mkdir(parents=True, exist_ok=True)
@@ -298,6 +303,9 @@ def cmd_pad(a):
             time.sleep(0.005 if sock is not None else 0.05)
     except KeyboardInterrupt:
         pass
+    except GameDetected as e:
+        print(f'[{time.strftime("%H:%M:%S")}] {e}', flush=True)
+        raise SystemExit(3)
     finally:
         pad.close()
         if log_f:

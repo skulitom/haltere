@@ -269,7 +269,11 @@ Follow [Liftoff setup](docs/liftoff_setup.md) for telemetry, driver installation
 calibration and the persistent pad bridge. Run the game and its capture/controller
 processes in **Anode**, with the viewer hidden unless requested. Retain the original
 `[Copy] New Drone`, verify throttle-low and the game's processed controls, pause
-before disconnecting the pad, and keep Liftoff open between tests.
+before disconnecting the pad, and keep Liftoff open between tests. The virtual
+pad is machine-wide, so every game sees it: it refuses to plug in while another
+game runs (Steam, Epic, Xbox, GOG, EA, Ubisoft or Riot library folders; a Liftoff
+outside the pad's own session counts), unplugs itself within about a second when
+one starts, and the flight preflight refuses too.
 
 - Published motor checkpoints use `haltere liftoff fly`.
 - New visual checkpoints use `python -m haltere.liftoff.visual_brain` and their

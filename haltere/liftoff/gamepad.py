@@ -6,7 +6,11 @@ left stick x = yaw, left stick y = throttle, right stick x = roll, right stick y
 from __future__ import annotations
 
 import math
+import sys
+import threading
 import time
+
+from .game_guard import GameDetected, describe, require_no_games, running_games
 
 INSTALL_HELP = """
 vgamepad / ViGEmBus is not available. To drive Liftoff you need the ViGEmBus driver (admin install):
@@ -49,14 +53,52 @@ class UdpSticks:
 
 
 class VirtualPad:
-    def __init__(self):
+    """The pad refuses to plug in while a game is running and unplugs itself, without pausing Liftoff,
+    as soon as one starts (see game_guard): the virtual pad reaches every game on the machine."""
+
+    def __init__(self, detector=running_games, poll_seconds: float = 1.0):
+        require_no_games(detector)
         try:
             import vgamepad as vg
         except Exception as e:  # ImportError or ViGEm client errors
             raise RuntimeError(INSTALL_HELP) from e
         self._vg = vg
+        self._lock = threading.RLock()
+        self._tripped = ''
         self.pad = vg.VX360Gamepad()
         self.neutral()
+        self._stop = threading.Event()
+        self._watch = threading.Thread(target=self._watch_games, args=(detector, poll_seconds),
+                                       name='game-guard', daemon=True)
+        self._watch.start()
+
+    def _watch_games(self, detector, poll_seconds):
+        while not self._stop.wait(poll_seconds):
+            try:
+                games = detector()
+            except Exception as e:  # a failed check must not leave the pad attached unguarded
+                games = [dict(pid=-1, session=None, executable=f'game check failed: {e}')]
+            if games:
+                self.trip(describe(games))
+                return
+
+    def trip(self, reason: str) -> None:
+        """Release all inputs and unplug the pad for good."""
+        with self._lock:
+            if self._tripped:
+                return
+            self._tripped = reason
+            try:
+                self.pad.reset()
+                self.pad.update()
+            except Exception:
+                pass
+            self.pad = None               # vgamepad removes the ViGEm target on destruction
+        print(f'virtual pad unplugged, a game is running: {reason}', file=sys.stderr, flush=True)
+
+    def _require_live(self):
+        if self._tripped:
+            raise GameDetected(f'virtual pad unplugged because a game is running: {self._tripped}')
 
     @staticmethod
     def _clip(x: float) -> float:
@@ -64,20 +106,24 @@ class VirtualPad:
 
     def send(self, throttle: float, roll: float, pitch: float, yaw: float) -> None:
         """All values in [-1, 1]; throttle -1 = idle."""
-        self.pad.left_joystick_float(x_value_float=self._clip(yaw), y_value_float=self._clip(throttle))
-        self.pad.right_joystick_float(x_value_float=self._clip(roll), y_value_float=self._clip(pitch))
-        self.pad.update()
+        with self._lock:
+            self._require_live()
+            self.pad.left_joystick_float(x_value_float=self._clip(yaw), y_value_float=self._clip(throttle))
+            self.pad.right_joystick_float(x_value_float=self._clip(roll), y_value_float=self._clip(pitch))
+            self.pad.update()
 
     def neutral(self) -> None:
         self.send(-1.0, 0.0, 0.0, 0.0)
 
     def press(self, button: str = 'A', seconds: float = 0.1) -> None:
         b = getattr(self._vg.XUSB_BUTTON, f'XUSB_GAMEPAD_{button.upper()}')
-        self.pad.press_button(button=b)
-        self.pad.update()
-        time.sleep(seconds)
-        self.pad.release_button(button=b)
-        self.pad.update()
+        with self._lock:
+            self._require_live()
+            self.pad.press_button(button=b)
+            self.pad.update()
+            time.sleep(seconds)
+            self.pad.release_button(button=b)
+            self.pad.update()
 
     def sweep(self, axis: str, seconds: float = 3.0, hz: float = 100.0) -> None:
         """Move one axis through its full range (sine), keeping the others neutral (for the wizard)."""
@@ -93,20 +139,26 @@ class VirtualPad:
     def reconnect(self, pause: float = 1.0) -> None:
         """Unplug the virtual pad and plug a fresh one in. Liftoff drops its binding to the pad now and then
         (after the window lost the focus, it seems); a re-plug makes the game pick it up again."""
-        try:
-            self.pad.reset()
-            self.pad.update()
-        except Exception:
-            pass
-        del self.pad                      # vgamepad removes the ViGEm target on destruction
-        time.sleep(pause)
-        self.pad = self._vg.VX360Gamepad()
-        self.neutral()
+        with self._lock:
+            self._require_live()
+            try:
+                self.pad.reset()
+                self.pad.update()
+            except Exception:
+                pass
+            self.pad = None               # vgamepad removes the ViGEm target on destruction
+            time.sleep(pause)
+            self.pad = self._vg.VX360Gamepad()
+            self.neutral()
 
     def close(self) -> None:
-        try:
-            self.neutral()
-            self.pad.reset()
-            self.pad.update()
-        except Exception:
-            pass
+        self._stop.set()
+        with self._lock:
+            if self._tripped:
+                return
+            try:
+                self.neutral()
+                self.pad.reset()
+                self.pad.update()
+            except Exception:
+                pass
