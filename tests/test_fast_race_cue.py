@@ -232,13 +232,14 @@ def test_dropout_coasts_then_brakes_and_searches(speed, coasts):
     pilot = FastRaceCue(SENSOR, history, speed)
     ahead = cue_toward([10., 0., 0.])
     seen_steps = 250  # the ring is visible for 2.5 s, then frames keep arriving without it
-    rows = drive(pilot, history, lambda now: ahead if now < 10. + (seen_steps - .5) * .01 else None, 520)
+    coast_window = min(CONFIG.coast_s, max(.25, CONFIG.coast_distance_m / speed))
+    steps = seen_steps + int((coast_window + speed / CONFIG.search_deceleration + 1.) / .01)
+    rows = drive(pilot, history, lambda now: ahead if now < 10. + (seen_steps - .5) * .01 else None, steps)
     last_seen = pilot.last_seen
     assert last_seen == pytest.approx(rows[seen_steps - 1][0] - .05)
     at_loss = rows[seen_steps][2]
     assert np.linalg.norm(at_loss[:2]) == pytest.approx(speed, rel=1e-2)
     # 4 m of coasting, capped at 0.6 s and never shorter than the 0.25 s frame-gap allowance.
-    coast_window = min(CONFIG.coast_s, max(.25, CONFIG.coast_distance_m / speed))
     for k, (now, state, command, *_) in enumerate(rows):
         age = now - last_seen
         if k < seen_steps or age <= .25:
@@ -249,8 +250,15 @@ def test_dropout_coasts_then_brakes_and_searches(speed, coasts):
         else:
             assert state == 'search'
     assert ('coast' in states(rows)) == coasts
+    # The search slows gently and rises for search_climb_s, then settles at a zero-velocity request.
+    search = [(now, command) for now, state, command, *_ in rows if state == 'search']
+    horizontal = np.array([np.linalg.norm(command[:2]) for _, command in search])
+    assert (np.diff(horizontal) >= -CONFIG.search_deceleration * .01 - 1e-9).all()
+    begin = search[0][0]
+    rising = [command[2] for now, command in search if .5 < now - begin < CONFIG.search_climb_s]
+    assert min(rising) == pytest.approx(CONFIG.search_climb, abs=1e-6)
     final = rows[-1][2]
-    np.testing.assert_allclose(final, np.zeros(3), atol=.1)  # braking toward a zero-velocity request
+    np.testing.assert_allclose(final, np.zeros(3), atol=.1)  # then a zero-velocity request
     assert pilot.pilot.target is None and pilot.pilot.mode == 4
     expected = -float(measured_inverse_rate(torch.tensor([np.degrees(CONFIG.search_yaw_rate * pilot.side)],
                                                          dtype=torch.float64), *DEFAULT_YAW_CURVE)[0])

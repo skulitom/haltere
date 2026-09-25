@@ -87,6 +87,12 @@ class FastCueConfig:
     coast_s: float = .6
     coast_distance_m: float = 4.
     search_yaw_rate: float = 1.2
+    # A lost checkpoint is searched for while slowing gently and rising for a moment:
+    # a hard stop pitches the camera up (the ring then reappears clamped to the bottom
+    # edge) and, close to the ground, the brake-and-turn that follows can touch it.
+    search_deceleration: float = 3.
+    search_climb: float = .5
+    search_climb_s: float = 1.5
     yaw_gain: float = 3.
     yaw_damping: float = .25
     max_yaw_rate: float = 3.
@@ -561,6 +567,7 @@ class FastRaceCue:
         self.target_switches = 0
         self.velocity_command = None
         self.feedforward = np.zeros(3)
+        self.search_since = None
         self.support_since = self.slope_support_since = None
         self.issued_throttle = None
         self.climb_until = None
@@ -760,6 +767,12 @@ class FastRaceCue:
         self._ingest(detection, capture_time, now)
         yaw = float(np.arctan2(rotation[1, 0], rotation[0, 0]))
         desired, state = self._desired(position, velocity, yaw, now)
+        if state == 'search':
+            self.search_since = now if self.search_since is None else self.search_since
+            if now-self.search_since < c.search_climb_s:
+                desired[2] = c.search_climb
+        else:
+            self.search_since = None
         if self.launching:
             desired[:2] *= min(1., 1.5/max(np.linalg.norm(desired[:2]), 1e-9))
             desired[2] = max(desired[2], 1.5)
@@ -826,6 +839,10 @@ class FastRaceCue:
             self.velocity_command = velocity.copy()
         step = desired-self.velocity_command
         step[:2] = self._horizontal_step(self.velocity_command[:2], desired[:2], dt)
+        if state == 'search':
+            norm = float(np.linalg.norm(step[:2]))
+            if norm > c.search_deceleration*dt:
+                step[:2] *= c.search_deceleration*dt/norm
         up = max(c.vertical_command_acceleration, self.clearance_config.terrain_climb_acceleration if climb > 0 else 0.)
         step[2] = np.clip(step[2], -c.vertical_command_acceleration*dt, up*dt)
         previous = self.velocity_command.copy()
@@ -943,7 +960,8 @@ class FastRaceCue:
                     support='requested descent not achieved for support_after_s, or short by support_slope_shortfall with the '
                             'issued throttle support_thrust_margin below hover for support_slope_after_s (a slope) '
                             '-> short climb',
-                    cue_dropout='coast on the previous request, then brake and search',
+                    cue_dropout='coast on the previous request, then search: slow at <= search_deceleration while rising at '
+                                'search_climb for search_climb_s',
                     parameters=asdict(self.config), yaw_assistance=True, speed_assistance=True,
                     nominal_speed_mps=self.speed, trained_motor_reference_mps=self.reference_speed,
                     cue_frames=self.frames, target_switches_observed=self.target_switches,
