@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 from collections import deque
+from contextlib import closing
 import csv
 import gc
 import json
@@ -498,6 +499,37 @@ class VisualController:
         return brain_action,processed,raw
 
 
+class QueuedCsvWriter:
+    """csv.writer on a background thread: a slow disk write (a 202 ms flush stopped a
+    clean race) must not stall the control loop. close() drains every queued row and
+    re-raises a write error."""
+
+    def __init__(self, f):
+        import queue
+        self._rows = queue.SimpleQueue()
+        self._writer = csv.writer(f)
+        self._error = None
+        self._thread = threading.Thread(target=self._drain, name='flight-csv', daemon=True)
+        self._thread.start()
+
+    def writerow(self, row):
+        self._rows.put(row)
+
+    def _drain(self):
+        while (row := self._rows.get()) is not None:
+            if self._error is None:
+                try:
+                    self._writer.writerow(row)
+                except Exception as e:  # reported by close()
+                    self._error = e
+
+    def close(self):
+        self._rows.put(None)
+        self._thread.join()
+        if self._error is not None:
+            raise self._error
+
+
 def looming_row(sample, now):
     if not sample:
         return (float('nan'),)*5
@@ -769,8 +801,7 @@ def run(args):
     max_image_age = 0.
     previous_loop_phases = {}
     try:
-        with log_path.open('w',newline='') as f:
-            writer = csv.writer(f)
+        with log_path.open('w',newline='') as f, closing(QueuedCsvWriter(f)) as writer:
             writer.writerow(['wall','ts','image_age','shadow','thr','roll','pitch','yaw',
                              'processed_thr','processed_roll','processed_pitch','processed_yaw','x','y','z',
                              'in_thr','in_yaw','in_pitch','in_roll','raw_thr','raw_roll','raw_pitch','raw_yaw',
