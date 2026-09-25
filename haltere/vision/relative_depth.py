@@ -156,7 +156,10 @@ class RelativeDepth:
             a = a[None]
         if a.shape[1:] != FRAME_HW + (3,) or a.dtype != np.uint8:
             raise ValueError(f'expected (B, 252, 448, 3) uint8 RGB frames, got {a.shape} {a.dtype}')
-        x = torch.from_numpy(np.ascontiguousarray(a)).to(self.device).permute(0, 3, 1, 2).float() / 255.0
+        a = np.ascontiguousarray(a)
+        if not a.flags.writeable:          # e.g. a read-only memmap: torch.from_numpy needs a writable buffer
+            a = a.copy()
+        x = torch.from_numpy(a).to(self.device).permute(0, 3, 1, 2).float() / 255.0
         if self.input_hw != FRAME_HW:
             x = F.interpolate(x, size=self.input_hw, mode='bicubic', align_corners=False).clamp(0, 1)
         x = (x - self.mean) / self.std

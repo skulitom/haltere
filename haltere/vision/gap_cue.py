@@ -402,10 +402,11 @@ class GapCue:
     """Stateful gap cue: stateless ``decide`` per fresh frame plus confirmation, release and staleness."""
 
     def __init__(self, params: GapCueParams | None = None, camera: Camera = DEFAULT_CAMERA,
-                 response: ResponseModel | None = None):
+                 response: ResponseModel | None = None, keep_profile: bool = False):
         self.params = params or GapCueParams()
         self.camera = camera
         self.response = response
+        self.keep_profile = keep_profile          # keep each decision's profile (diagnostics / evaluation)
         self.reset()
 
     def reset(self):
@@ -451,7 +452,7 @@ class GapCue:
             self._sign = 0
         self._last_t = t_capture
         d = decide(disparity, quat_wxyz, cue_uv, velocity=velocity, valid=valid, params=p, camera=self.camera,
-                   response=self.response)
+                   response=self.response, keep_profile=self.keep_profile)
         self._last_decision = d
         active = d.valid and abs(d.shift_deg) >= p.active_deg
         if active:

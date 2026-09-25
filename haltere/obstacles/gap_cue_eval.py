@@ -133,9 +133,10 @@ def cmd_masks(args):
 
 def run_sequence(t, disp, quat, cue, vel, valid, params, response, latency_s):
     """Feed one flight's frames (time order) through a GapCue; returns per-frame arrays."""
-    cue_obj = gc.GapCue(replace(params, enabled=True), gc.DEFAULT_CAMERA, response)
+    cue_obj = gc.GapCue(replace(params, enabled=True), gc.DEFAULT_CAMERA, response, keep_profile=True)
     n = len(t)
     out = dict(shift=np.zeros(n), raw=np.full(n, np.nan), confirmed=np.zeros(n, bool), valid=np.zeros(n, bool),
+               aim_in_near=np.zeros(n, bool),
                kind=np.empty(n, object), ring=np.full(n, np.nan), r_ring=np.full(n, np.nan),
                r_peak=np.full(n, np.nan), lr=np.full(n, np.nan), near_on_path=np.zeros(n, bool),
                episode=np.zeros(n, np.int32), interval_lo=np.full(n, np.nan), interval_hi=np.full(n, np.nan))
@@ -155,6 +156,10 @@ def run_sequence(t, disp, quat, cue, vel, valid, params, response, latency_s):
             out['near_on_path'][k] = bool(d.near_on_path)
             if d.interval_deg is not None:
                 out['interval_lo'][k], out['interval_hi'][k] = d.interval_deg
+            if o.confirmed and d.valid and d.ratio is not None:
+                # self-consistency: the output aim never points into a near column of this frame's profile
+                kk = int(np.argmin(np.abs(d.az_deg - o.shift_deg)))
+                out['aim_in_near'][k] = bool(np.isfinite(d.ratio[kk]) and d.ratio[kk] > params.kappa)
     return out
 
 
@@ -426,6 +431,18 @@ class Seq(dict):
     """One flight's frames in time order with the cue outputs (dict of arrays)."""
 
 
+_NPZ = {}
+
+
+def _npz(path) -> dict:
+    """All arrays of an .npz, decompressed once (NpzFile decompresses on every key access)."""
+    key = str(path)
+    if key not in _NPZ:
+        with np.load(path) as z:
+            _NPZ[key] = {k: z[k] for k in z.files}
+    return _NPZ[key]
+
+
 def _motor(gates, key):
     return gates['motors'][key]
 
@@ -459,8 +476,8 @@ def store_sequence(rid, basis, params, layers, response, latency, cache):
 
 
 def flight_sequence(name, basis, params, layers, response, latency, out):
-    rec = np.load(Path(out) / 'flights' / f'{name}.npz')
-    dep = np.load(Path(out) / 'depth' / f'{name}.npz')
+    rec = _npz(Path(out) / 'flights' / f'{name}.npz')
+    dep = _npz(Path(out) / 'depth' / f'{name}.npz')
     keep = rec['keep']
     sel = np.flatnonzero(keep)
     t = rec['t_wall'][sel]
@@ -507,6 +524,7 @@ def g1_approach(seq, g):
                 passes=bool(first is not None and first >= g['left_confirm_distance_m']),
                 confirmed_right_d_m=[round(float(d[k]), 2) for k in right],
                 aim_into_pillar_d_m=[round(float(d[k]), 2) for k in np.flatnonzero(aim_in)],
+                aim_into_own_near_d_m=[round(float(d[k]), 2) for k in np.flatnonzero(reg & seq['aim_in_near'])],
                 closest_d_m=round(float(d[reg].min()), 2) if reg.any() else None)
 
 
@@ -550,8 +568,8 @@ def g3_flight(seq, g):
 
 
 def g4_flight(name, basis, params, layers, out):
-    rec = np.load(Path(out) / 'flights' / f'{name}.npz')
-    dep = np.load(Path(out) / 'depth' / f'{name}.npz')
+    rec = _npz(Path(out) / 'flights' / f'{name}.npz')
+    dep = _npz(Path(out) / 'depth' / f'{name}.npz')
     res = {}
     src, kinds = rec['leak_src'], rec['leak_kind']
     for kind in ('ring_painted', 'ring_removed'):
@@ -581,6 +599,79 @@ def g4_flight(name, basis, params, layers, out):
     return res
 
 
+def _draw(rgb, dec, q, shift, confirmed, label, params, scale=2):
+    """One frame with the band (white), profile ratios (green free / red near), ring (cyan) and the confirmed
+    aim (magenta cross)."""
+    import cv2
+    from ..vision.camera import quat_wxyz_to_mat
+    cam = gc.DEFAULT_CAMERA
+    R = quat_wxyz_to_mat(np.asarray(q, np.float64))
+
+    def px(az, el):
+        a, e = np.radians(az), np.radians(el)
+        w = np.array([np.cos(e) * np.cos(a), np.cos(e) * np.sin(a), np.sin(e)])
+        p, ok = cam.project_body((R.T @ w)[None])
+        return (int(p[0, 0] * scale), int(p[0, 1] * scale)) if ok[0] else None
+    img = cv2.resize(np.asarray(rgb), (FRAME_HW[1] * scale, FRAME_HW[0] * scale),
+                     interpolation=cv2.INTER_LINEAR)[..., ::-1].copy()
+    if dec is not None and dec.ring_bearing_deg is not None and dec.ratio is not None:
+        rb = dec.ring_bearing_deg
+        for el in params.band_deg:
+            pts = [p for p in (px(rb + a, el) for a in np.arange(-60, 61, 2)) if p is not None]
+            for a_, b_ in zip(pts[:-1], pts[1:]):
+                cv2.line(img, a_, b_, (230, 230, 230), 1, cv2.LINE_AA)
+        for a, r in zip(dec.az_deg, dec.ratio):
+            p = px(rb + a, params.band_deg[1])
+            if p is None or not np.isfinite(r):
+                continue
+            cv2.line(img, p, (p[0], p[1] - int(min(r, 5) * 10)), (40, 40, 255) if r > params.kappa else (60, 200, 60), 2)
+        p = px(rb, 0)
+        if p is not None:
+            cv2.circle(img, p, 11, (255, 255, 0), 2)
+        if confirmed:
+            p = px(rb + shift, 0)
+            if p is not None:
+                cv2.drawMarker(img, p, (255, 0, 255), cv2.MARKER_TILTED_CROSS, 26, 4)
+    for k, s in enumerate(label):
+        cv2.putText(img, s, (10, 28 + 26 * k), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 4, cv2.LINE_AA)
+        cv2.putText(img, s, (10, 28 + 26 * k), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1, cv2.LINE_AA)
+    return img
+
+
+def cmd_sheet(args):
+    """Contact sheet of one new flight at given times before impact (frozen config)."""
+    import cv2
+    params, cfg, _ = gc.load_config(require_frozen=True)
+    params = replace(params, enabled=True)
+    layers = tuple(cfg['mask_layers'])
+    gates, _ = load_gates(require_frozen=True)
+    out = Path(args.out)
+    mot = _motor(gates, gates['new_flights'][args.flight]['motor'])
+    seq = flight_sequence(args.flight, args.basis, params, layers, gc.load_response_models()[mot],
+                          float(gates['latency_s']), out)
+    rec = _npz(out / 'flights' / f'{args.flight}.npz')
+    dep = _npz(out / 'depth' / f'{args.flight}.npz')
+    mm = np.memmap(out / 'flights' / f'{args.flight}.u8', dtype=np.uint8, mode='r',
+                   shape=(len(rec['frame_idx']),) + FRAME_HW + (3,))
+    tiles = []
+    for tti in (float(x) for x in args.tti.split(',')):
+        k = int(np.argmin(np.abs(seq['tti'] - tti)))
+        j = int(seq['sel'][k])
+        valid = validity_from_fractions(rec['maskfrac'][j], layers, params.block_mask_max_fraction)
+        dec = gc.decide(np.asarray(dep[args.basis][j], np.float32), rec['quat'][j], rec['cue_uv'][j], valid=valid,
+                        params=params, keep_profile=True)
+        lab = [f'{args.flight} T-{seq["tti"][k]:.2f}s',
+               f'{seq["kind"][k]}  raw {seq["raw"][k]:+.1f}  out {seq["shift"][k]:+.1f} deg'
+               + ('  CONFIRMED' if seq['confirmed'][k] else '')]
+        tiles.append(_draw(np.array(mm[j]), dec, rec['quat'][j], seq['shift'][k], seq['confirmed'][k], lab, params))
+    while len(tiles) % 3:
+        tiles.append(np.zeros_like(tiles[0]))
+    img = np.vstack([np.hstack(tiles[i:i + 3]) for i in range(0, len(tiles), 3)])
+    img = cv2.resize(img, None, fx=args.scale, fy=args.scale, interpolation=cv2.INTER_AREA)
+    cv2.imwrite(args.image, img, [cv2.IMWRITE_JPEG_QUALITY, 82])
+    _log(f'{args.image} {img.shape}')
+
+
 def cmd_freeze(args):
     for p in (gc.CONFIG_PATH, GATES_PATH):
         o = freeze_file(p)
@@ -599,10 +690,10 @@ def cmd_score(args):
     S = data_root() / 'runs' / 'obstacle-store-v1'
     cache = dict(index=np.load(S / 'index.npy', mmap_mode='r'),
                  teacher=np.load(S / 'labels' / 'teacher' / 'disparity.npy', mmap_mode='r'),
-                 masks=np.load(out / 'store_masks.npz'))
+                 masks=_npz(out / 'store_masks.npz'))
     rtp = out / 'depth' / 'store_runtime.npz'
     if rtp.exists():
-        cache['runtime'] = np.load(rtp)
+        cache['runtime'] = _npz(rtp)
     results = dict(schema='haltere.obstacles.gap_cue_results.v1',
                    scored_at=_dt.datetime.now().isoformat(timespec='seconds'),
                    gap_cue_config_sha256=cfg_sha, gates_sha256=gates_sha,
@@ -629,9 +720,10 @@ def cmd_score(args):
         extra = {a['name']: g1_approach(seq_for(a), g) for a in g['reported_not_gated']}
         n_pass = sum(a['passes'] for a in app.values())
         into = sum(len(a['aim_into_pillar_d_m']) for a in app.values())
+        own = sum(len(a['aim_into_own_near_d_m']) for a in app.values())
         R['G1'] = dict(approaches=app, reported_not_gated=extra, passing=n_pass, required=g['min_passing_approaches'],
-                       aim_into_pillar_frames=into,
-                       passes=bool(n_pass >= g['min_passing_approaches'] and into == 0))
+                       aim_into_pillar_frames=into, aim_into_own_near_frames=own,
+                       passes=bool(n_pass >= g['min_passing_approaches'] and into == 0 and own == 0))
         g = gates['G2']
         runs = {r['name']: g2_run(seq_for(r), g) for r in g['runs']}
         R['G2'] = dict(runs=runs, passes=bool(all(r['passes'] for r in runs.values())))
@@ -719,9 +811,16 @@ def main(argv=None):
     sub.add_parser('freeze')
     a = sub.add_parser('score')
     a.add_argument('--out', required=True)
+    a = sub.add_parser('sheet')
+    a.add_argument('--out', required=True)
+    a.add_argument('--flight', required=True)
+    a.add_argument('--tti', required=True, help='comma-separated seconds before impact')
+    a.add_argument('--image', required=True)
+    a.add_argument('--basis', default='teacher', choices=('teacher', 'runtime'))
+    a.add_argument('--scale', type=float, default=0.5)
     args = ap.parse_args(argv)
     {'masks': cmd_masks, 'frames': cmd_frames, 'depth': cmd_depth, 'freeze': cmd_freeze,
-     'score': cmd_score}[args.cmd](args)
+     'score': cmd_score, 'sheet': cmd_sheet}[args.cmd](args)
 
 
 if __name__ == '__main__':

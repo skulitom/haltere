@@ -1,0 +1,1551 @@
+{
+ "schema": "haltere.obstacles.gap_cue_results.v1",
+ "scored_at": "2026-09-25T23:45:43",
+ "gap_cue_config_sha256": "26ae946693a2232d46a3a2cdb879909e92bced261046b13650a0b1af78c06c9f",
+ "gates_sha256": "fc4887713cd1415ad4f0a33cc41209e40103bab2f4ce2b1faffb6a5a8740f3b1",
+ "gap_cue_config_version": 1,
+ "gates_version": 1,
+ "depth_provenance": {
+  "runtime": {
+   "model": "depth-anything/Depth-Anything-V2-Small-hf",
+   "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+   "model_dir": "C:/DEV/Haltere/runs/dense-depth-probe-20260923/model",
+   "weights_sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70",
+   "licence": "apache-2.0",
+   "device": "cuda",
+   "precision": "fp16",
+   "input_hw": [
+    252,
+    448
+   ],
+   "frame_hw": [
+    252,
+    448
+   ],
+   "block_px": 7,
+   "masked_input": false,
+   "output": "relative inverse depth (affine-invariant), block mean"
+  },
+  "teacher": {
+   "model": "depth-anything/Depth-Anything-V2-Small-hf",
+   "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+   "model_dir": "C:/DEV/Haltere/runs/dense-depth-probe-20260923/model",
+   "weights_sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70",
+   "licence": "apache-2.0",
+   "device": "cuda",
+   "precision": "fp16",
+   "input_hw": [
+    336,
+    602
+   ],
+   "frame_hw": [
+    252,
+    448
+   ],
+   "block_px": 7,
+   "masked_input": false,
+   "output": "relative inverse depth (affine-invariant), block mean"
+  },
+  "runtime_latency_ms": 8.58,
+  "teacher_latency_ms": 8.69
+ },
+ "bases": {
+  "teacher": {
+   "G1": {
+    "approaches": {
+     "minus-brain03-01": {
+      "frames": 36,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 4.88,
+      "first_raw_left_d_m": 6.83,
+      "passes": false,
+      "confirmed_right_d_m": [
+       1.7,
+       1.37,
+       1.12
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.61
+     },
+     "minus-brain04-02": {
+      "frames": 36,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 5.83,
+      "first_raw_left_d_m": 6.12,
+      "passes": true,
+      "confirmed_right_d_m": [
+       1.76,
+       1.24,
+       0.96
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.71
+     },
+     "minus-brain05-01": {
+      "frames": 30,
+      "rate_hz": 9.0,
+      "first_left_confirmed_d_m": 5.71,
+      "first_raw_left_d_m": 6.26,
+      "passes": true,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.25
+     },
+     "minus-brain06-01": {
+      "frames": 39,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 5.32,
+      "first_raw_left_d_m": 5.58,
+      "passes": false,
+      "confirmed_right_d_m": [
+       2.67,
+       2.12,
+       1.9,
+       1.58,
+       1.36,
+       1.06
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.56
+     },
+     "minus-brain07-01": {
+      "frames": 34,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 5.46,
+      "first_raw_left_d_m": 7.03,
+      "passes": false,
+      "confirmed_right_d_m": [
+       2.05,
+       1.55,
+       1.27,
+       1.07
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.77
+     },
+     "minus-brain08-01": {
+      "frames": 35,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 6.98,
+      "first_raw_left_d_m": 7.26,
+      "passes": true,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [
+       1.8,
+       1.44
+      ],
+      "closest_d_m": 0.5
+     },
+     "minus-fast6-01": {
+      "frames": 37,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 4.49,
+      "first_raw_left_d_m": 4.78,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.8
+     },
+     "minus-fast6-cur-01": {
+      "frames": 36,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 6.45,
+      "first_raw_left_d_m": 9.43,
+      "passes": true,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.51
+     }
+    },
+    "reported_not_gated": {
+     "minus-brain08-slow35-01": {
+      "frames": 31,
+      "rate_hz": 9.0,
+      "first_left_confirmed_d_m": 2.81,
+      "first_raw_left_d_m": 7.69,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.55
+     },
+     "minus-brain08-loom-01": {
+      "frames": 28,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 5.29,
+      "first_raw_left_d_m": 5.65,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.67
+     }
+    },
+    "passing": 4,
+    "required": 6,
+    "aim_into_pillar_frames": 0,
+    "aim_into_own_near_frames": 2,
+    "passes": false
+   },
+   "G2": {
+    "runs": {
+     "matched-full-races-20260923/03-minus-pd": {
+      "first_minus_x_tti_s": 1.35,
+      "passes": true,
+      "plus_x_before_tti_s": [],
+      "frames": 36
+     },
+     "motor10-transfer-20260922/minus": {
+      "first_minus_x_tti_s": 1.04,
+      "passes": true,
+      "plus_x_before_tti_s": [],
+      "frames": 42
+     }
+    },
+    "passes": true
+   },
+   "G3": {
+    "flights": {
+     "straw-brain08-04": {
+      "minutes": 5.4,
+      "frames": 5341,
+      "episodes": 53,
+      "episodes_per_min": 9.81,
+      "confirmed_frames": 196,
+      "confirmed_share": 0.0367,
+      "abs_shift_p50": 5.0,
+      "abs_shift_p90": 12.0,
+      "switches": 31,
+      "switches_ok": 30,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       8.1,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1094,
+       "clear": 2402,
+       "gap": 1750,
+       "occluded": 95
+      },
+      "near_on_path_share": 0.0511
+     },
+     "straw-brain08-06": {
+      "minutes": 5.4,
+      "frames": 4797,
+      "episodes": 42,
+      "episodes_per_min": 7.78,
+      "confirmed_frames": 194,
+      "confirmed_share": 0.0404,
+      "abs_shift_p50": 6.39,
+      "abs_shift_p90": 12.0,
+      "switches": 28,
+      "switches_ok": 28,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1041,
+       "clear": 2181,
+       "gap": 1495,
+       "occluded": 80
+      },
+      "near_on_path_share": 0.0484
+     },
+     "straw-brain07-02": {
+      "minutes": 5.89,
+      "frames": 5520,
+      "episodes": 64,
+      "episodes_per_min": 10.87,
+      "confirmed_frames": 240,
+      "confirmed_share": 0.0435,
+      "abs_shift_p50": 4.0,
+      "abs_shift_p90": 7.52,
+      "switches": 31,
+      "switches_ok": 31,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1078,
+       "clear": 2409,
+       "gap": 1988,
+       "occluded": 45
+      },
+      "near_on_path_share": 0.042
+     },
+     "straw-brain07-03": {
+      "minutes": 5.87,
+      "frames": 5332,
+      "episodes": 51,
+      "episodes_per_min": 8.68,
+      "confirmed_frames": 221,
+      "confirmed_share": 0.0414,
+      "abs_shift_p50": 4.67,
+      "abs_shift_p90": 9.5,
+      "switches": 30,
+      "switches_ok": 30,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1019,
+       "clear": 2282,
+       "gap": 1989,
+       "occluded": 42
+      },
+      "near_on_path_share": 0.0418
+     }
+    },
+    "total": {
+     "minutes": 22.56,
+     "episodes_per_min": 9.31,
+     "abs_shift_p90": 12.0,
+     "switches": 120,
+     "switch_ok_fraction": 0.9917
+    },
+    "passes": false,
+    "checks": {
+     "episodes": false,
+     "p90": false,
+     "switches": true
+    }
+   },
+   "G4": {
+    "ring_painted": {
+     "n": 1723,
+     "within_fraction": 0.9594,
+     "dshift_p95": 0.69,
+     "dshift_max": 12.42
+    },
+    "ring_removed": {
+     "n": 1723,
+     "within_fraction": 0.9478,
+     "dshift_p95": 1.09,
+     "dshift_max": 24.0
+    },
+    "hud_only": {
+     "frames": 17580,
+     "frames_with_near_column": 0
+    },
+    "per_flight": {
+     "minus-brain07-01": {
+      "ring_painted": {
+       "n": 15,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 15,
+       "within": 1.0
+      }
+     },
+     "minus-brain08-01": {
+      "ring_painted": {
+       "n": 17,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 17,
+       "within": 0.9412
+      }
+     },
+     "minus-fast6-cur-01": {
+      "ring_painted": {
+       "n": 17,
+       "within": 0.8824
+      },
+      "ring_removed": {
+       "n": 17,
+       "within": 0.8824
+      }
+     },
+     "minus-brain08-slow35-01": {
+      "ring_painted": {
+       "n": 13,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 13,
+       "within": 1.0
+      }
+     },
+     "minus-brain08-loom-01": {
+      "ring_painted": {
+       "n": 13,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 13,
+       "within": 1.0
+      }
+     },
+     "pine-brain08-loom-01": {
+      "ring_painted": {
+       "n": 8,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 8,
+       "within": 1.0
+      }
+     },
+     "straw-brain08-04": {
+      "ring_painted": {
+       "n": 409,
+       "within": 0.9731
+      },
+      "ring_removed": {
+       "n": 409,
+       "within": 0.956
+      }
+     },
+     "straw-brain08-06": {
+      "ring_painted": {
+       "n": 358,
+       "within": 0.9581
+      },
+      "ring_removed": {
+       "n": 358,
+       "within": 0.9413
+      }
+     },
+     "straw-brain07-02": {
+      "ring_painted": {
+       "n": 443,
+       "within": 0.9549
+      },
+      "ring_removed": {
+       "n": 443,
+       "within": 0.9436
+      }
+     },
+     "straw-brain07-03": {
+      "ring_painted": {
+       "n": 430,
+       "within": 0.9488
+      },
+      "ring_removed": {
+       "n": 430,
+       "within": 0.9465
+      }
+     }
+    },
+    "passes": false
+   },
+   "pine_trunk": {
+    "frames": [
+     {
+      "tti_s": 2.0,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.08,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.88,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.11,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.83,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.05,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.72,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.02,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.66,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.02,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.55,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.01,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.5,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 0.96,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.38,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.03,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.33,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.08,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.27,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.07,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.16,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.04,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.11,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.15,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.0,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.17,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.94,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.62,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.88,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.37,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.83,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.66,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.77,
+      "kind": "gap",
+      "raw_shift": -5.4,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.94,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.66,
+      "kind": "occluded",
+      "raw_shift": -10.0,
+      "shift": -10.0,
+      "confirmed": true,
+      "r_ring": 2.5,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.61,
+      "kind": "occluded",
+      "raw_shift": -10.2,
+      "shift": -10.2,
+      "confirmed": true,
+      "r_ring": 2.61,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.55,
+      "kind": "occluded",
+      "raw_shift": -8.4,
+      "shift": -8.4,
+      "confirmed": true,
+      "r_ring": 1.95,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.44,
+      "kind": "occluded",
+      "raw_shift": -9.5,
+      "shift": -9.5,
+      "confirmed": true,
+      "r_ring": 2.33,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.38,
+      "kind": "occluded",
+      "raw_shift": -8.3,
+      "shift": -8.3,
+      "confirmed": true,
+      "r_ring": 1.92,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.33,
+      "kind": "occluded",
+      "raw_shift": -8.3,
+      "shift": -8.3,
+      "confirmed": true,
+      "r_ring": 1.9,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.22,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": -8.3,
+      "confirmed": true,
+      "r_ring": 1.39,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.16,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.58,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.11,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.0,
+      "near_on_path": false
+     }
+    ],
+    "first_confirmed_tti_s": 0.66,
+    "confirmed_sides": [
+     "right"
+    ],
+    "reference": "the ghost-racer trails pass RIGHT of the trunk (not an input)"
+   }
+  },
+  "runtime": {
+   "G1": {
+    "approaches": {
+     "minus-brain03-01": {
+      "frames": 36,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 4.58,
+      "first_raw_left_d_m": 4.88,
+      "passes": false,
+      "confirmed_right_d_m": [
+       1.7,
+       1.37,
+       1.12
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.61
+     },
+     "minus-brain04-02": {
+      "frames": 36,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 4.84,
+      "first_raw_left_d_m": 5.2,
+      "passes": false,
+      "confirmed_right_d_m": [
+       1.76,
+       1.24,
+       0.96
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.71
+     },
+     "minus-brain05-01": {
+      "frames": 30,
+      "rate_hz": 9.0,
+      "first_left_confirmed_d_m": 2.8,
+      "first_raw_left_d_m": 5.71,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.25
+     },
+     "minus-brain06-01": {
+      "frames": 39,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 4.71,
+      "first_raw_left_d_m": 4.98,
+      "passes": false,
+      "confirmed_right_d_m": [
+       2.12,
+       1.36,
+       1.06
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.56
+     },
+     "minus-brain07-01": {
+      "frames": 34,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 3.55,
+      "first_raw_left_d_m": 5.46,
+      "passes": false,
+      "confirmed_right_d_m": [
+       2.26,
+       2.05,
+       1.55,
+       1.27,
+       1.07
+      ],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.77
+     },
+     "minus-brain08-01": {
+      "frames": 35,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 4.35,
+      "first_raw_left_d_m": 5.04,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.5
+     },
+     "minus-fast6-01": {
+      "frames": 37,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 3.24,
+      "first_raw_left_d_m": 4.14,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.8
+     },
+     "minus-fast6-cur-01": {
+      "frames": 36,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 3.22,
+      "first_raw_left_d_m": 3.56,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.51
+     }
+    },
+    "reported_not_gated": {
+     "minus-brain08-slow35-01": {
+      "frames": 31,
+      "rate_hz": 9.0,
+      "first_left_confirmed_d_m": 7.46,
+      "first_raw_left_d_m": 7.69,
+      "passes": true,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.55
+     },
+     "minus-brain08-loom-01": {
+      "frames": 28,
+      "rate_hz": 18.0,
+      "first_left_confirmed_d_m": 2.52,
+      "first_raw_left_d_m": 2.81,
+      "passes": false,
+      "confirmed_right_d_m": [],
+      "aim_into_pillar_d_m": [],
+      "aim_into_own_near_d_m": [],
+      "closest_d_m": 0.67
+     }
+    },
+    "passing": 0,
+    "required": 6,
+    "aim_into_pillar_frames": 0,
+    "aim_into_own_near_frames": 0,
+    "passes": false
+   },
+   "G2": {
+    "runs": {
+     "matched-full-races-20260923/03-minus-pd": {
+      "first_minus_x_tti_s": 0.62,
+      "passes": false,
+      "plus_x_before_tti_s": [],
+      "frames": 36
+     },
+     "motor10-transfer-20260922/minus": {
+      "first_minus_x_tti_s": 0.93,
+      "passes": false,
+      "plus_x_before_tti_s": [],
+      "frames": 42
+     }
+    },
+    "passes": false
+   },
+   "G3": {
+    "flights": {
+     "straw-brain08-04": {
+      "minutes": 5.4,
+      "frames": 5341,
+      "episodes": 56,
+      "episodes_per_min": 10.37,
+      "confirmed_frames": 193,
+      "confirmed_share": 0.0361,
+      "abs_shift_p50": 4.5,
+      "abs_shift_p90": 10.3,
+      "switches": 31,
+      "switches_ok": 29,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       10.5,
+       7.7,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1094,
+       "clear": 2517,
+       "gap": 1642,
+       "occluded": 88
+      },
+      "near_on_path_share": 0.0447
+     },
+     "straw-brain08-06": {
+      "minutes": 5.4,
+      "frames": 4797,
+      "episodes": 40,
+      "episodes_per_min": 7.41,
+      "confirmed_frames": 161,
+      "confirmed_share": 0.0336,
+      "abs_shift_p50": 4.51,
+      "abs_shift_p90": 12.0,
+      "switches": 28,
+      "switches_ok": 28,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1041,
+       "clear": 2290,
+       "gap": 1389,
+       "occluded": 77
+      },
+      "near_on_path_share": 0.039
+     },
+     "straw-brain07-02": {
+      "minutes": 5.89,
+      "frames": 5520,
+      "episodes": 47,
+      "episodes_per_min": 7.98,
+      "confirmed_frames": 165,
+      "confirmed_share": 0.0299,
+      "abs_shift_p50": 4.5,
+      "abs_shift_p90": 7.5,
+      "switches": 31,
+      "switches_ok": 31,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1078,
+       "clear": 2510,
+       "gap": 1875,
+       "occluded": 57
+      },
+      "near_on_path_share": 0.0447
+     },
+     "straw-brain07-03": {
+      "minutes": 5.87,
+      "frames": 5332,
+      "episodes": 43,
+      "episodes_per_min": 7.32,
+      "confirmed_frames": 194,
+      "confirmed_share": 0.0364,
+      "abs_shift_p50": 4.7,
+      "abs_shift_p90": 9.5,
+      "switches": 30,
+      "switches_ok": 29,
+      "switch_max_abs_shift_deg": [
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       7.4,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "kinds": {
+       "no_ring": 1019,
+       "clear": 2379,
+       "gap": 1879,
+       "occluded": 55
+      },
+      "near_on_path_share": 0.0426
+     }
+    },
+    "total": {
+     "minutes": 22.56,
+     "episodes_per_min": 8.24,
+     "abs_shift_p90": 9.61,
+     "switches": 120,
+     "switch_ok_fraction": 0.975
+    },
+    "passes": false,
+    "checks": {
+     "episodes": false,
+     "p90": true,
+     "switches": true
+    }
+   },
+   "G4": {
+    "ring_painted": {
+     "n": 1723,
+     "within_fraction": 0.9414,
+     "dshift_p95": 1.5,
+     "dshift_max": 23.67
+    },
+    "ring_removed": {
+     "n": 1723,
+     "within_fraction": 0.9454,
+     "dshift_p95": 1.32,
+     "dshift_max": 17.5
+    },
+    "hud_only": {
+     "frames": 17580,
+     "frames_with_near_column": 0
+    },
+    "per_flight": {
+     "minus-brain07-01": {
+      "ring_painted": {
+       "n": 15,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 15,
+       "within": 1.0
+      }
+     },
+     "minus-brain08-01": {
+      "ring_painted": {
+       "n": 17,
+       "within": 0.8824
+      },
+      "ring_removed": {
+       "n": 17,
+       "within": 1.0
+      }
+     },
+     "minus-fast6-cur-01": {
+      "ring_painted": {
+       "n": 17,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 17,
+       "within": 1.0
+      }
+     },
+     "minus-brain08-slow35-01": {
+      "ring_painted": {
+       "n": 13,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 13,
+       "within": 1.0
+      }
+     },
+     "minus-brain08-loom-01": {
+      "ring_painted": {
+       "n": 13,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 13,
+       "within": 0.9231
+      }
+     },
+     "pine-brain08-loom-01": {
+      "ring_painted": {
+       "n": 8,
+       "within": 1.0
+      },
+      "ring_removed": {
+       "n": 8,
+       "within": 0.875
+      }
+     },
+     "straw-brain08-04": {
+      "ring_painted": {
+       "n": 409,
+       "within": 0.9487
+      },
+      "ring_removed": {
+       "n": 409,
+       "within": 0.956
+      }
+     },
+     "straw-brain08-06": {
+      "ring_painted": {
+       "n": 358,
+       "within": 0.9469
+      },
+      "ring_removed": {
+       "n": 358,
+       "within": 0.9525
+      }
+     },
+     "straw-brain07-02": {
+      "ring_painted": {
+       "n": 443,
+       "within": 0.9278
+      },
+      "ring_removed": {
+       "n": 443,
+       "within": 0.9323
+      }
+     },
+     "straw-brain07-03": {
+      "ring_painted": {
+       "n": 430,
+       "within": 0.9372
+      },
+      "ring_removed": {
+       "n": 430,
+       "within": 0.9372
+      }
+     }
+    },
+    "passes": false
+   },
+   "pine_trunk": {
+    "frames": [
+     {
+      "tti_s": 2.0,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.1,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.88,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.04,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.83,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.0,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.72,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 0.97,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.66,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.07,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.55,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.04,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.5,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.0,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.38,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.1,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.33,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.13,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.27,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.1,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.16,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.03,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.11,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.17,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 1.0,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.17,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.94,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.65,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.88,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.37,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.83,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.61,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.77,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.69,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.66,
+      "kind": "occluded",
+      "raw_shift": -9.2,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 2.23,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.61,
+      "kind": "occluded",
+      "raw_shift": -9.1,
+      "shift": -9.1,
+      "confirmed": true,
+      "r_ring": 2.18,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.55,
+      "kind": "occluded",
+      "raw_shift": -8.3,
+      "shift": -8.3,
+      "confirmed": true,
+      "r_ring": 1.91,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.44,
+      "kind": "occluded",
+      "raw_shift": -9.1,
+      "shift": -9.1,
+      "confirmed": true,
+      "r_ring": 2.19,
+      "near_on_path": true
+     },
+     {
+      "tti_s": 0.38,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": -9.1,
+      "confirmed": true,
+      "r_ring": 1.52,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.33,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.61,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.22,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.7,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.16,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.48,
+      "near_on_path": false
+     },
+     {
+      "tti_s": 0.11,
+      "kind": "clear",
+      "raw_shift": 0.0,
+      "shift": 0.0,
+      "confirmed": false,
+      "r_ring": 1.0,
+      "near_on_path": false
+     }
+    ],
+    "first_confirmed_tti_s": 0.61,
+    "confirmed_sides": [
+     "right"
+    ],
+    "reference": "the ghost-racer trails pass RIGHT of the trunk (not an input)"
+   }
+  }
+ },
+ "verdict": {
+  "G1": false,
+  "G2": true,
+  "G3": false,
+  "G4": false
+ }
+}

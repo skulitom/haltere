@@ -63,3 +63,5 @@ consistency 57% Minus, 40% Pine).
    (a scripted collection campaign, only when the user is not gaming: the virtual
    gamepad is machine-wide and GPU training slows their games).
 3. Un-freeze the validity channel; re-run the shortcut tests.
+
+See also [gap_cue.md](gap_cue.md): the M2 runtime gap cue (relative depth, off by default) and its frozen offline gates.
