@@ -1,0 +1,267 @@
+{
+ "schema": "haltere.obstacles.thresholds.v1",
+ "version": 1,
+ "frozen": true,
+ "frozen_at": "2026-09-24T15:02:17",
+ "sha256": "daed6d8e6b36251ba7e42a9ed79d52a44b223f514fe80594a6331ec61243ceb5",
+ "note": "Version 1. Every held-out score uses a frozen version (`python -m haltere.obstacles.evaluate freeze`); the hash covers everything except frozen/frozen_at/sha256. A changed file needs a new version and a new freeze; each frozen version is scored once per (predictor, fold) and every version is reported. The decision parameters of version 1 are a-priori values from the M3 governor design (reaction 0.3 s, margin 0.5 m, required distance about 6 m at 6 m/s, side hold 0.6 s, release after 0.3 s clear); they were fitted to no data, held-out or otherwise.",
+ "timing": {
+  "latency_s": 0.065,
+  "stress_latency_s": [
+   0.1,
+   0.15
+  ],
+  "rate_hz": 16.0,
+  "rule": "a frame's output is usable at t_wall + latency_s; decisions use the latest usable output; frames denser than rate_hz are thinned (evaluate.deployed_schedule) and a skipped frame keeps the previous decision"
+ },
+ "E1": {
+  "window_s_before_event": [
+   0.15,
+   3.0
+  ],
+  "event_kinds": [
+   "terminal_impact"
+  ],
+  "point": "point_w, else drone_pos_w",
+  "bins_m": [
+   [
+    0.5,
+    2.0
+   ],
+   [
+    2.0,
+    4.0
+   ],
+   [
+    4.0,
+    7.0
+   ],
+   [
+    7.0,
+    16.0
+   ]
+  ],
+  "prediction": "grid_q50",
+  "neighbourhood_cells": 1,
+  "neighbourhood_note": "the projected cell only (14 px). The plan's '3x3 minimum' was the lateral study's 3 x 3 pixels at 160 x 90 (about 8 px at 448 x 252); a 3 x 3-cell window (42 px, about 15 deg) biases pred/true down by about 30 % on identical depth maps (prior B2 maps: 1.90 / 1.10 at 2-4 / 4-7 m instead of 2.65 / 1.64 with one cell; study 2.62 / 1.72), which would also make the M2 E1 gate easier. Chosen on the prior B2 maps (a baseline) before any model output existed.",
+  "overshoot_ratio": 1.5,
+  "overshoot_true_below_m": 6.0,
+  "prior_filter": {
+   "max_chord_angle_deg": 15.0,
+   "range_m": [
+    0.5,
+    20.0
+   ],
+   "min_speed_mps": 1.0,
+   "min_optical_depth_m": 0.3,
+   "use": "reproduction of the lateral study's scale check only"
+  },
+  "m2_pass": {
+   "median_ratio_bins": {
+    "2-4": [
+     0.8,
+     1.25
+    ],
+    "4-7": [
+     0.8,
+     1.25
+    ]
+   },
+   "per_env_median_ratio": [
+    0.75,
+    1.33
+   ],
+   "max_overshoot_fraction": 0.15,
+   "pillar_approaches": {
+    "min_approaches": 2,
+    "of": 3,
+    "max_ratio": 1.3,
+    "range_m": [
+     1.5,
+     6.0
+    ]
+   }
+  }
+ },
+ "E2": {
+  "prediction": "grid_q50",
+  "near_m": 6.0,
+  "overshoot_ratio": 1.5,
+  "fan_blocked_within_m": 6.0,
+  "fan_quantile": "fan_q20",
+  "fan_max_abs_yaw_deg": 20.0,
+  "m2_pass": {
+   "max_near_overshoot_fraction": 0.1,
+   "min_recall": 0.9,
+   "min_precision": 0.8
+  }
+ },
+ "E3": {
+  "probability": "fan_p8",
+  "ece_bins": 10,
+  "blocked_within_m": 6.0,
+  "fan_quantile": "fan_q20",
+  "max_abs_yaw_from_bearing_deg": 20.0,
+  "max_abs_elev_from_bearing_deg": 10.0,
+  "bearing": "logged HUD ring bearing, else the telemetry velocity direction, else straight ahead",
+  "tube_false_block_quantile": "grid_q20",
+  "tube_tolerance": 0.1,
+  "gate_opening": {
+   "prediction": "grid_q20",
+   "window_s_before_pass": [
+    0.5,
+    2.0
+   ],
+   "blocked_ratio": 0.9,
+   "rule": "the pass point (drone position at the pass) projects into the frame; blocked when the prediction at its cell is < blocked_ratio x its distance (the drone flew through, so the true free range is at least that distance)",
+   "detector": {
+    "jump_min": 0.25,
+    "centre_u": 0.35,
+    "centre_v": 0.4,
+    "max_dt": 0.3
+   }
+  },
+  "m2_pass": {
+   "min_auroc": 0.85,
+   "max_ece": 0.1,
+   "max_tube_false_block_fraction": 0.02,
+   "max_gate_opening_blocked_fraction": 0.05
+  }
+ },
+ "E4": {
+  "window_s": 3.0,
+  "warmup_s": 3.0,
+  "end_grace_s": 0.15,
+  "correct_hold_s": 1.0,
+  "wrong_hold_s": 0.3,
+  "event_kinds": [
+   "terminal_impact"
+  ],
+  "m3_pass": {
+   "minus_pine_correct": [
+    5,
+    8
+   ],
+   "pillars_correct": [
+    2,
+    3
+   ],
+   "max_wrong_overall": 1
+  }
+ },
+ "E5": {
+  "out_of_view_fraction": 0.3333,
+  "window_s_before_event": [
+   1.0,
+   2.0
+  ]
+ },
+ "E6": {
+  "min_episode_s": 0.2,
+  "activation": "m3_checks count 'any' episodes (LEFT, RIGHT or CENTRE: the governor acts on all three); side-only episodes (the lateral study's definition) are reported too",
+  "near_pass_window_s": [
+   1.4,
+   0.4
+  ],
+  "m3_pass": {
+   "max_per_min_overall": 1.0,
+   "max_per_min_env": 2.0,
+   "max_active_fraction": 0.03
+  },
+  "pd_pillar_near_pass": {
+   "run": "minus-fast6-01",
+   "phase_s": [
+    12.2,
+    13.0
+   ],
+   "pre_s": 1.0,
+   "must_not": "swerve toward the pillar (right)"
+  }
+ },
+ "E7": {
+  "z": 1.96,
+  "bootstrap": {
+   "resample": "unique obstacles",
+   "n": 2000,
+   "seed": 0
+  }
+ },
+ "E8": {
+  "max_median_relative_change": 0.05,
+  "perturbations": [
+   "ring_on_obstacle",
+   "ring_on_free_space",
+   "ring_removed",
+   "hud_glyph_scramble",
+   "ghost_trails_inserted",
+   "translation_scale_0.5_1.5 (temporal variant only)"
+  ]
+ },
+ "decision": {
+  "note": "frozen side rule (evaluate.decide_side): per frame, required distance D(v) = v (latency + reaction_s) + v^2 / (2 brake_mps2) + margin_m; a yaw column is clear when its free distance (min of the quantile over the elevation rows within elev_window_deg of the travel elevation, at least the nearest row; 5 deg ~ the 0.5 m corridor at D; out of view or NaN = blocked) is >= D; reference column = the ring bearing (velocity when no cue); reference clear = NONE, else the nearest clear column on the left/right of the reference = pass the blocking obstacle on its LEFT/RIGHT, none = CENTRE; hysteresis per the values below. Grid-only predictors use contract.grid_to_fan of their grid.",
+  "quantile": "fan_q20",
+  "required_distance": {
+   "reaction_s": 0.3,
+   "margin_m": 0.5,
+   "brake_mps2": 5.5
+  },
+  "hysteresis": {
+   "hold_s": 0.6,
+   "release_s": 0.3,
+   "switch_margin_deg": 10.0
+  },
+  "on_frames": 2,
+  "off_frames": 3,
+  "elev_window_deg": 5.0,
+  "min_speed_mps": 1.0,
+  "in_view_margin_px": 0.0,
+  "max_gap_s": 0.4
+ },
+ "baselines": {
+  "B0": {
+   "sides": [
+    "right",
+    "left"
+   ]
+  },
+  "B1": {
+   "module": "haltere.obstacles.split_looming",
+   "config": "SELECTED_CONFIG (lateral study config_selected.json sha256 62b111f9770428f6)",
+   "input": "store frame resized to 240x135 INTER_AREA by the estimator, its own HUD mask"
+  },
+  "B2": {
+   "model": "Depth-Anything-V2-Metric-Indoor-Small",
+   "input": [
+    252,
+    448
+   ],
+   "precision": "fp16",
+   "grid": "minimum range per 14x14 cell, clipped to [0.3, 60] m"
+  },
+  "B3": {
+   "model": "Depth-Anything-V2-Small (relative)",
+   "calibration": "one monotone (isotonic) map relative disparity -> ln range, fitted on fold training environments",
+   "disparity": "cell maximum of the labels teacher cache, else a 252x448 run"
+  },
+  "B4": {
+   "causal": false,
+   "note": "per-frame affine fit to the evaluated frame's labels: ceiling only",
+   "min_anchors": 8
+  }
+ },
+ "reproduce_prior": {
+  "B1_lateral_correct": [
+   1,
+   11
+  ],
+  "B0_right_correct": [
+   7,
+   10
+  ],
+  "B2_E1_median_ratio": {
+   "2-4": 2.62,
+   "4-7": 1.72
+  },
+  "tolerance": 0.15
+ }
+}
