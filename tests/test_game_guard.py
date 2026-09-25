@@ -109,8 +109,74 @@ def test_preflight_blocks_a_game_but_not_our_seat_liftoff(monkeypatch):
     monkeypatch.setattr(preflight, 'inventory', lambda: rows)
     monkeypatch.setattr(preflight.time, 'sleep', lambda _: None)
     monkeypatch.setattr(preflight, 'own_session', lambda: 2)
+    monkeypatch.setattr(preflight, 'library_games', lambda rows, own: [])
     assert preflight.check_workloads()['passed']
     rows.append(dict(rows[0], ProcessId=43, SessionId=1, Name='NMS.exe',
                      ExecutablePath=r"C:\SteamLibrary\steamapps\common\No Man's Sky\Binaries\NMS.exe"))
     report = preflight.check_workloads([43])
     assert not report['passed'] and [b['pid'] for b in report['blockers']] == [43]
+
+
+def test_battle_net_store_and_emulator_games_are_recognised(tmp_path):
+    from haltere.liftoff.game_guard import is_game_path
+    diablo = tmp_path/'GAMES'/'Diablo IV'
+    (diablo/'x64').mkdir(parents=True)
+    (diablo/'.build.info').write_text('')
+    store = tmp_path/'WindowsApps'/'Contoso.Game_1.0_x64__abc'
+    store.mkdir(parents=True)
+    (store/'MicrosoftGame.config').write_text('')
+    (tmp_path/'WindowsApps'/'Microsoft.WindowsTerminal_1_x64__8we').mkdir()
+    assert is_game_path(str(diablo/'Diablo IV.exe')) and is_game_path(str(diablo/'x64'/'Diablo IV64.exe'))
+    assert is_game_path(str(store/'Game.exe'))
+    assert is_game_path(r'C:\Program Files\WindowsApps\Microsoft.MinecraftUWP_1.21_x64__8we\Minecraft.Windows.exe')
+    assert is_game_path('C:/RetroArch-Win64/retroarch.exe')
+    assert not is_game_path(str(tmp_path/'WindowsApps'/'Microsoft.WindowsTerminal_1_x64__8we'/'WindowsTerminal.exe'))
+    assert not is_game_path(r'C:\Program Files (x86)\Battle.net\Battle.net.exe')
+    assert not is_game_path(str(tmp_path/'Tools'/'editor.exe'))
+
+
+def test_controller_library_users_outside_the_pad_session_block_except_known_apps():
+    from haltere.liftoff.game_guard import library_games
+    rows = [row(1, r'D:\Games\Standalone\game.exe', session=1),
+            row(2, r'C:\Program Files\Google\Chrome\Application\chrome.exe', session=1),
+            row(3, r'C:\Windows\explorer.exe', session=1),
+            row(4, r'C:\SteamLibrary\steamapps\common\Liftoff\Liftoff.exe', session=2),
+            row(5, r'D:\Tools\quiet.exe', session=1)]
+    libraries = {1: {'xinput1_4.dll'}, 2: {'xinput1_4.dll'}, 3: {'xinput1_4.dll'}, 4: {'xinput1_3.dll'}}
+    games = library_games(rows, 2, libraries=lambda pid: libraries.get(pid, set()))
+    assert [g['pid'] for g in games] == [1] and 'xinput1_4.dll' in games[0]['reason']
+
+
+def test_game_watch_rechecks_new_processes_until_their_controller_library_loads():
+    from haltere.liftoff.game_guard import GameWatch
+    clock, loaded, calls = [0.], set(), []
+    rows = [row(1, r'D:\Games\Standalone\game.exe', session=1)]
+
+    def libraries(pid):
+        calls.append(clock[0])
+        return {'xinput1_4.dll'} if pid in loaded else set()
+
+    watch = GameWatch(own=2, snapshot=lambda: rows, libraries=libraries, clock=lambda: clock[0])
+    assert watch() == [] and calls == [0.]
+    clock[0] = 1.
+    assert watch() == [] and calls == [0.]          # not due yet: polls stay cheap
+    loaded.add(1)
+    clock[0] = 2.
+    assert [g['pid'] for g in watch()] == [1]
+    clock[0] = 3.
+    assert [g['pid'] for g in watch()] == [1] and calls == [0., 2.]   # stays flagged without a rescan
+    rows.clear()
+    watch()
+    assert watch.seen == {} and watch.flagged == {}
+
+
+def test_game_watch_rescans_quiet_processes_once_a_minute():
+    from haltere.liftoff.game_guard import GameWatch
+    clock, calls = [0.], []
+    rows = [row(1, r'D:\Tools\quiet.exe', session=1)]
+    watch = GameWatch(own=2, snapshot=lambda: rows, libraries=lambda pid: calls.append(clock[0]) or set(),
+                      clock=lambda: clock[0])
+    for t in range(0, 200):
+        clock[0] = float(t)
+        watch()
+    assert calls == [0., 2., 5., 10., 20., 40., 100., 160.]
