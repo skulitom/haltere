@@ -41,6 +41,13 @@ inside a cone, bounded in time), and the TTC governor's terrain climb is kept
 out of ceilings (unexplained alarms during a climb are walls, weak climbs are
 bounded, overhead evidence cuts the climb and bounds the vertical request).
 ``wall_apply`` False computes and logs them without applying them.
+
+Optionally (``vertical_guard=VerticalGuardConfig``, off by default; the obstacle stack's vertical-guard
+declaration), a scale-free graded vertical guard on the same looming samples: a time margin to the ground below
+the path scales the pilot's own sink, a descent is stopped before any terrain climb, a terrain climb needs
+confirmation and stays gentle until rising ground is confirmed, and the descent-path governor does not cut speed
+for a sink the guard withheld or that contact prevents. ``vertical_apply`` False computes and logs it without
+applying it.
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace

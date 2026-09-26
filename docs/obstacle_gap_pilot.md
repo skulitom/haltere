@@ -26,6 +26,10 @@ answer these crashes: turn before translating at a wall, and a ceiling guard on 
 terrain climb (`configs/obstacles/wall_pilot.json` version 3). They are part of the
 stack and have not been flown; see [Wall-pilot rules](#wall-pilot-rules-round-2).
 
+Round 3 adds a scale-free [vertical guard](vertical_guard.md) to the stack, against the
+governor's fixed 3.5 m/s terrain climb (Minus Two ceilings) and for keeping speed on the
+Straw Bale downhill. It has only been replayed open loop.
+
 ## Flags
 
 | Flag | Default | Effect |
@@ -33,6 +37,7 @@ stack and have not been flown; see [Wall-pilot rules](#wall-pilot-rules-round-2)
 | `--obstacle-stack on\|shadow` | off | Needs `--pilot-profile fast` and `--looming-brake`. Runs the gap cue and the lag-aware turns. `shadow` runs the same processes and computations and logs them, but applies no aim shift and no lag-turn lead or heading change. It is the matched control. |
 | `--gap-cue on\|off` | on inside the stack | Component override. `on` is refused without `--obstacle-stack`. |
 | `--wall-pilot on\|off` | on inside the stack | Component override for the [wall-pilot rules](#wall-pilot-rules-round-2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs them without applying them. |
+| `--vertical-guard on\|off` | on inside the stack | Component override for the [vertical guard](vertical_guard.md) (round 3: a time margin to the ground below the path, descent first, terrain climbs above 1 m/s only for rising ground; `configs/obstacles/vertical_guard.json` version 2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs it without applying it. Not flown. |
 | `--lag-turn [on\|off\|DECLARATION]` | on inside the stack, off outside | Component override. Outside the stack it keeps its earlier meaning (a bare flag means on). |
 
 There is no speed cap: the live runs showed that brain-08 ignores slow requests

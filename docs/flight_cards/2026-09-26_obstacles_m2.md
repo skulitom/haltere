@@ -72,6 +72,24 @@ caps and slow legs in the DAgger rollouts, a braking weight, and a
 ridge/smoothing refit sweep, with cap-step, sustained-request and live-state
 swap gates frozen first.
 
+## Round 3 (not flown): vertical guard
+
+Branch `m2-vertical` adds a scale-free [vertical guard](../vertical_guard.md) to the stack
+(`configs/obstacles/vertical_guard.json` v2; v1 kept). It keeps a time margin to the ground
+below the path, stops a descent before any terrain climb, and climbs above 1 m/s only for
+confirmed rising ground. It also keeps speed at contacts.
+
+Open-loop replays of the logs (development evidence):
+
+- The Minus Two ceiling climbs fall from 3.4-3.5 to at most 0.98 m/s.
+- The Pine mound is still climbed at up to 3.5 m/s.
+- Stack off and shadow are bit-identical to `m2-hairpin`.
+- It fails two of its frozen gates:
+  - **V-Straw:** looming cannot see the Straw Bale contacts, because the descent points
+    below the camera's view. Also, about 23 s per lap of escalated climb remain on the
+    uphill legs.
+  - **V-Pine:** 73.8% against 80%; the flown log itself reaches 72.4%.
+
 ## Next (revised)
 
 1. Graded terrain climb: when the floor looms because the drone is descending,
