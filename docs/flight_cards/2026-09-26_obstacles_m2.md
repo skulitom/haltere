@@ -77,7 +77,11 @@ swap gates frozen first.
 1. Graded terrain climb: when the floor looms because the drone is descending,
    stop the descent first; climb hard only if the below-path TTC stays short while
    level (rising ground).
-2. brain-09 with the braking recipe above.
+2. brain-09 with the braking recipe above. Done offline ([brain-09](../brain09_braking.md)): with
+   synthetic caps, slow legs and a brake weight the best candidate brakes for 1-4.5 m/s requests
+   almost like the PD on straight legs (cap excess +0.19 against brain-08's +1.20), but it slows
+   1.5 m/s too much in the arch-turn windows and chatters 0.0051 (limit 0.0035); none of 22
+   candidates passed the frozen gates, so there is no brain-09 to fly yet.
 3. Then Minus Two again (PD and brain), a Straw Bale regression lap and Pine
    Valley with the stack on.
 

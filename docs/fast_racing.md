@@ -30,6 +30,15 @@ neurons' responsive range (about 1 m of vertical goal); `--sink-weight` up-weigh
 samples asking for 1.5 m/s or more of sink; `--smooth` penalises the command change
 over one 10 ms tick (lower ridge alone makes the sticks chatter in closed loop).
 
+Braking data (off by default; [brain-09](brain09_braking.md)): `--synthetic-caps F` gives a share of the
+drones in every round a `SyntheticCaps` stand-in for the looming governor (caps along the travel direction
+that fall, hold and release as the TTC governor does), `--slow-legs F --slow-leg-speed LO HI` flies a share
+of the courses at a sustained slower pilot speed, and `--brake-weight W` up-weights aligned, level, at-speed
+over-speed samples. `python -m haltere.train.brake_gates CHECKPOINT|pd --gates configs/brain09_gates.json`
+scores a checkpoint against the frozen brain-09 surrogate gates (cap steps and sustained requests from a
+hover and from logged Minus Two states, logged-request swaps against the PD, rollout(S), in-course caps,
+the 16-course regressions and the weight audit). No brain-09 candidate passed all of them.
+
 DAgger in the measured-drone surrogate (`IdentifiedSim`) on seeded synthetic
 checkpoint courses with the fast pilot and a synthetic HUD marker: one round under
 the fast PD, then rounds under the brain with PD labels on the states it visits.
