@@ -58,6 +58,53 @@ def gap_sample(values):
     return sample
 
 
+# Free-space corridor planner (docs/free_space_planner.md section 5), one sample per processed frame in the depth
+# process's own shared array `plan_out`: all float64, NaN = not applicable. kind indexes PLAN_KINDS; valid = 1 iff
+# kind is clear, aperture, shift or blocked; cls +1 left, -1 right, +2 vertical, 0 none; az/el and the l_*/r_*/v_*
+# options are offsets from the ring cue ray of that frame (deg, + left / + up; NOT confirmed); feasible and *_ok 1
+# when the option's lag-aware path is free, 0 when saturated (urgent); v_cap m/s; h_floor, h_ceil, rise, rise_x
+# metres from the camera at capture; age = publication - capture (s); stage timings in ms.
+PLAN_KINDS = ('off', 'no_ring', 'no_pose', 'slow', 'no_scale', 'stale', 'clear', 'aperture', 'shift', 'blocked')
+PLAN_FIELDS = ('time', 'seq', 'valid', 'kind', 'motor', 'speed', 'course_az', 'ring_az', 'ring_el',
+               'cls', 'az', 'el', 'feasible',
+               'l_az', 'l_el', 'l_ok', 'r_az', 'r_el', 'r_ok', 'v_el', 'v_ok',
+               'd_free_ring', 'd_h', 'v_cap', 'n_block_ring', 'below_frac',
+               'h_floor', 'h_ceil', 'rise', 'rise_x',
+               'scale_a', 'scale_b', 'scale_n', 'scale_spread', 'scale_held', 'n_tracks',
+               'age', 'frame_ms', 'overlay_ms', 'depth_ms', 'lk_ms', 'plan_ms')
+
+
+def plan_kind_name(index):
+    if index is None or not np.isfinite(index) or not 0 <= int(index) < len(PLAN_KINDS):
+        return ''
+    return PLAN_KINDS[int(index)]
+
+
+def plan_sample(values):
+    """The pilot's planner sample from `plan_out` values (PLAN_FIELDS order), or None when nothing was published
+    (time 0). ``kind`` is the kind name, ``valid`` a bool; NaN becomes None."""
+    raw = dict(zip(PLAN_FIELDS, (float(v) for v in values)))
+    if not raw['time'] or not np.isfinite(raw['time']):
+        return None
+    sample = {k: (v if np.isfinite(v) else None) for k, v in raw.items()}
+    sample.update(time=raw['time'], kind=plan_kind_name(raw['kind']), valid=bool(raw['valid'] == 1.))
+    return sample
+
+
+def plan_values(sample):
+    """PLAN_FIELDS values for a planner sample dict (the inverse of `plan_sample`; None/missing -> NaN)."""
+    out = []
+    for key in PLAN_FIELDS:
+        v = sample.get(key)
+        if key == 'kind':
+            out.append(float(PLAN_KINDS.index(v)) if v in PLAN_KINDS else float('nan'))
+        elif key == 'valid':
+            out.append(float(bool(v)))
+        else:
+            out.append(float('nan') if v is None else float(v))
+    return out
+
+
 def stage_sample(values):
     """Latest camera stage timings (ms) with the capture time they belong to, or None."""
     raw = dict(zip(STAGE_FIELDS, (float(v) for v in values)))
@@ -311,6 +358,17 @@ class ProcessRetinaCamera:
                     self._take_gap(np.frombuffer(gap_out.get_obj(),dtype=np.float64).copy())
                 finally:
                     gap_lock.release()
+        plan_out = getattr(self,'plan_out',None)
+        if plan_out is not None:
+            # the depth process's planner samples: the same nonblocking snapshot; a busy lock skips the read (counted)
+            plan_lock = plan_out.get_lock()
+            if plan_lock.acquire(False):
+                try:
+                    self._take_plan(np.frombuffer(plan_out.get_obj(),dtype=np.float64).copy())
+                finally:
+                    plan_lock.release()
+            else:
+                self.plan_busy = getattr(self,'plan_busy',0)+1
         for queue in (self.queue, getattr(self,'gap_queue',None)):
             while queue is not None:
                 try:
@@ -337,11 +395,23 @@ class ProcessRetinaCamera:
                           or values[0] != self._gap['time']):
             self._gap = gap_sample(values)
 
+    def _take_plan(self, values):
+        previous = getattr(self,'_plan',None)
+        if values[0] and (previous is None or values[PLAN_FIELDS.index('seq')] != previous['seq']
+                          or values[0] != previous['time']):
+            self._plan = plan_sample(values)
+
     @property
     def gap(self):
         """Latest gap-cue sample (see gap_sample) or None."""
         self._poll()
         return self._gap
+
+    @property
+    def plan(self):
+        """Latest free-space planner sample (see plan_sample) or None (also without a planner)."""
+        self._poll()
+        return getattr(self,'_plan',None)
 
     @property
     def stages(self):

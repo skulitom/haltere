@@ -168,14 +168,15 @@ def test_label_package_refuses_runtime_processes():
                                     'haltere.vision.gap_cue', 'haltere.vision.relative_depth',
                                     'haltere.liftoff.gap_stack', 'haltere.liftoff.gap_aim',
                                     'haltere.liftoff.camera_replay', 'haltere.liftoff.camera_process',
-                                    'haltere.liftoff.fast_race_cue', 'haltere.liftoff.visual_brain'])
+                                    'haltere.liftoff.fast_race_cue', 'haltere.liftoff.visual_brain',
+                                    'haltere.liftoff.corridor_aim'])
 def test_runtime_obstacle_modules_import_only_runtime_safe_code(module):
     graph, _ = import_graph(PACKAGE_DIR, 'haltere')
     assert module in graph
     offline = {'haltere.obstacles.store', 'haltere.obstacles.splits', 'haltere.obstacles.evaluate',
                'haltere.obstacles.train', 'haltere.obstacles.timing', 'haltere.obstacles.store_build',
                'haltere.obstacles.gap_cue_eval', 'haltere.obstacles.leaks', 'haltere.obstacles.thermal',
-               'haltere.obstacles.gap_bench'}
+               'haltere.obstacles.gap_bench', 'haltere.obstacles.pilot_replay'}
     assert offline <= set(OFFLINE_MODULES)
     assert not set(reachable(graph, [module])) & offline
 
@@ -217,3 +218,20 @@ def test_no_runtime_module_reaches_the_gap_bench():
     chains = reachable(graph, runtime_roots(graph))
     assert 'haltere.obstacles.gap_bench' not in chains
     assert {'haltere.liftoff.gap_stack', 'haltere.liftoff.gap_aim', 'haltere.obstacles.overlays'} <= set(chains)
+
+
+def test_planner_pilot_modules_load_no_label_torch_or_offline_code():
+    """The planner's pilot side (corridor aim, vertical guard) and the camera's planner interface import numpy only;
+    no runtime module reaches the planner's offline replay/gate harness."""
+    code = ('import sys, haltere.liftoff.corridor_aim, haltere.liftoff.camera_process\n'
+            f'print(sorted(m for m in sys.modules if m.startswith("{LABEL_PACKAGE}") '
+            'or m.split(".")[0] in ("torch", "cv2", "transformers") '
+            'or m in ("haltere.obstacles.pilot_replay", "haltere.obstacles.gap_cue_eval", "haltere.obstacles.store")))')
+    r = _python(code, {RUNTIME_ENV_FLAG: '1'})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == '[]'
+    graph, strings = import_graph(PACKAGE_DIR, 'haltere')
+    chains = reachable(graph, runtime_roots(graph))
+    assert 'haltere.obstacles.pilot_replay' in graph and 'haltere.obstacles.pilot_replay' not in chains
+    assert 'haltere.liftoff.corridor_aim' in chains
+    assert not {s for m in ('haltere.liftoff.corridor_aim',) for s in strings.get(m, ())}

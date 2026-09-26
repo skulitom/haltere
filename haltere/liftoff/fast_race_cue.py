@@ -41,6 +41,16 @@ inside a cone, bounded in time), and the TTC governor's terrain climb is kept
 out of ceilings (unexplained alarms during a climb are walls, weak climbs are
 bounded, overhead evidence cuts the climb and bounds the vertical request).
 ``wall_apply`` False computes and logs them without applying them.
+
+Optionally (``corridor_aim=CorridorAimConfig`` with ``vertical_guard=VerticalGuardConfig``, off by default; the
+obstacle stack's ``--obstacle-planner``), `update(..., plan=...)` accepts causal free-space planner samples
+(`haltere.liftoff.camera_process.plan_sample`); `haltere.liftoff.corridor_aim` confirms and latches the offset beside
+the ring (sideways or up), which rotates the ring ray about world z and tilts it up in `_ingest`; a confirmed blocked
+or urgent path caps the speed along the applied aim; the graded vertical guard (floor bound, descent first, terrain
+climb, ceiling bound) replaces the TTC governor's terrain climb while the planner's newest sample is fresh and valid
+(otherwise the governor's climb applies as before, levelled first while sinking). The planner replaces the gap aim:
+a gap aim must then be declared with ``gap_apply`` False. ``planner_apply`` False computes and logs everything
+without applying it (the planner's shadow control).
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -50,6 +60,8 @@ import torch
 
 from ..brain.motor_baseline import measured_inverse_rate
 from ..vision.camera import Camera, quat_wxyz_to_mat
+from .corridor_aim import (FREE_SPACE_VERSION, PLAN_SUSPEND_STATES, CorridorAim, CorridorAimConfig, VerticalGuard,
+                           VerticalGuardConfig)
 from .gap_aim import GapAim, GapAimConfig, direction_offset, rotate_z, wrap_deg
 
 # Measured original-drone yaw curve (runs/measured-dynamics-low-speed-20260923):
@@ -781,6 +793,30 @@ def clearance_governor(config):
     return TtcClearanceGovernor(config) if isinstance(config, TtcClearanceConfig) else ClearanceGovernor(config)
 
 
+# Planner offsets never tilt a ray beyond this elevation (deg): a tilt is kept invertible.
+PLAN_MAX_ELEVATION_DEG = 85.
+# Per-tick pilot-side planner log columns (FastRaceCue.plan_log; the runner adds plan_<field> of the newest sample).
+PLAN_PILOT_COLUMNS = ('plan_fresh', 'plan_cls_confirmed', 'plan_intended_az', 'plan_intended_el', 'plan_applied_az',
+                      'plan_applied_el', 'plan_v_cap_intended', 'plan_v_cap_applied', 'plan_vz_lo', 'plan_vz_hi',
+                      'plan_climb', 'plan_vz_before', 'plan_vz_after', 'governor_climb_shadow', 'plan_squeeze',
+                      'plan_conflict', 'plan_episode', 'plan_flip')
+
+
+def offset_ray(vector, az_deg, el_deg):
+    """A world vector rotated about +z by az_deg (+ left), then tilted about its horizontal normal by el_deg (+ up);
+    its length is kept. A vertical vector (no azimuth) is returned unchanged."""
+    v = rotate_z(vector, az_deg) if az_deg else np.array(vector, dtype=float, copy=True)
+    if not el_deg:
+        return v
+    horizontal = float(np.hypot(v[0], v[1]))
+    norm = float(np.linalg.norm(v))
+    if horizontal < 1e-9:
+        return v
+    elevation = np.degrees(np.arctan2(v[2], horizontal))
+    new = np.radians(np.clip(elevation+el_deg, -PLAN_MAX_ELEVATION_DEG, PLAN_MAX_ELEVATION_DEG))
+    return np.array([v[0]/horizontal*np.cos(new)*norm, v[1]/horizontal*np.cos(new)*norm, np.sin(new)*norm])
+
+
 class FastRaceCue:
     """Follow the visible checkpoint bearing with a continuous velocity request."""
 
@@ -789,7 +825,7 @@ class FastRaceCue:
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
-                 ceiling_guard=None, wall_apply=True):
+                 ceiling_guard=None, wall_apply=True, corridor_aim=None, vertical_guard=None, planner_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -879,6 +915,28 @@ class FastRaceCue:
         self.turn_first_active = False
         self.turn_first_counts = dict(episodes=0, aligned=0, handoff=0, timeout=0)
         self.turn_first_time = 0.
+        # Free-space corridor planner (off unless declared; obstacle stack only): see haltere.liftoff.corridor_aim.
+        # planner_apply False computes and logs everything without applying it (the planner's shadow control).
+        if (corridor_aim is None) != (vertical_guard is None):
+            raise ValueError('The corridor planner needs both its aim and its vertical guard configs')
+        if corridor_aim is not None and not isinstance(corridor_aim, CorridorAimConfig):
+            raise ValueError('Pass a CorridorAimConfig (or None) for the corridor aim')
+        if vertical_guard is not None and not isinstance(vertical_guard, VerticalGuardConfig):
+            raise ValueError('Pass a VerticalGuardConfig (or None) for the vertical guard')
+        if corridor_aim is not None and self.gap_aim is not None and self.gap_apply:
+            raise ValueError('The corridor planner replaces the gap aim: declare the gap aim with gap_apply=False')
+        if corridor_aim is not None and not isinstance(self.clearance_config, TtcClearanceConfig):
+            raise ValueError('The corridor planner displaces the TTC governor\'s terrain climb (TTC policy only)')
+        self.corridor = CorridorAim(corridor_aim) if corridor_aim is not None else None
+        self.vertical = VerticalGuard(vertical_guard, corridor_aim) if vertical_guard is not None else None
+        self.planner_apply = bool(planner_apply)
+        self.plan_offset_az = self.plan_offset_el = 0.   # offset currently applied to the aim ray and the direction
+        self.plan_flag_deg = 0.
+        self.plan_conflict = ''
+        self.plan_log_values = None
+        self.plan_counts = dict(fallback_level_off_ticks=0, displaced_climb_ticks=0, cap_applied_ticks=0)
+        self.plan_fallback = False
+        self.plan_vertical_applied = False     # this tick the guard's rules replaced the governor climb (diagnostic)
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -940,6 +998,8 @@ class FastRaceCue:
             self.lag_turn_centre, _ = self._blend(self.lag_turn_centre, centre)
         if self.gap_aim is not None:
             ray = self._gap_ray(ray, cue, q, now)
+        if self.corridor is not None:
+            ray = self._plan_ray(ray, cue, q, now)
         self.direction, switched = self._blend(self.direction, ray)
         self.target_switches += int(switched)
         self.last_seen, self.edge = capture_time, bool(cue['edge'])
@@ -1067,6 +1127,42 @@ class FastRaceCue:
             self.direction = rotate_z(self.direction, offset-self.gap_offset_deg)
         self.gap_offset_deg = offset
 
+    def _plan_ray(self, ray, cue, quaternion, now):
+        """The aim ray with the applied planner offset (rotated about world z, then tilted up); reconciles the
+        planner evidence with this ring cue first (another ring bearing, or a flag clearance on the other side: a
+        conflict, the ring cue's own aim is held). In shadow the ray is returned as it is."""
+        if not cue['edge']:
+            centre = quat_wxyz_to_mat(quaternion) @ self.camera.unproject_body(
+                np.array([[cue['u']*320, cue['v']*180]]))[0]
+            if np.linalg.norm(centre[:2]) > 1e-6 and np.linalg.norm(ray[:2]) > 1e-6:
+                ring = float(np.degrees(np.arctan2(centre[1], centre[0])))
+                self.plan_flag_deg = wrap_deg(float(np.degrees(np.arctan2(ray[1], ray[0])))-ring)
+                if self.corridor.reconcile_ring(ring, now):
+                    self.plan_conflict = 'ring'
+                elif self.corridor.flag_conflict(self.plan_flag_deg, now):
+                    self.plan_conflict = 'flag'
+        else:
+            self.plan_flag_deg = 0.
+        self._set_plan_offset()
+        if not (self.plan_offset_az or self.plan_offset_el):
+            return ray
+        return offset_ray(ray, self.plan_offset_az, self.plan_offset_el)
+
+    def _set_plan_offset(self):
+        """Bring the filtered direction to the offset the corridor aim calls for (none in shadow). The az offset is
+        relative to the ring centre; with a flag clearance on the same side the aim keeps the larger of the two
+        (as the gap aim does, `gap_aim.direction_offset`)."""
+        if self.planner_apply:
+            az = direction_offset(self.corridor.az, self.plan_flag_deg, self.corridor.config)
+            el = float(self.corridor.el)
+        else:
+            az = el = 0.
+        if self.direction is not None and (az != self.plan_offset_az or el != self.plan_offset_el):
+            back = offset_ray(self.direction, 0., -self.plan_offset_el)
+            self.direction = offset_ray(rotate_z(back, az-self.plan_offset_az), 0., el)
+            self.direction = self.direction/max(np.linalg.norm(self.direction), 1e-9)
+        self.plan_offset_az, self.plan_offset_el = az, el
+
     def _lag_turn_trigger(self, centre, edge, capture_time):
         """Open a lag-turn window when a fresh in-view ring-centre bearing jumps (see LagTurnConfig).
 
@@ -1109,7 +1205,8 @@ class FastRaceCue:
         the lead is computed on the ring cue's own bearing (the shift removed) and the shift
         is added after it, so the lead never amplifies the shift and each keeps its own
         declared bound (course_lead_max_deg, max_shift_deg); in shadow the logged lead is the
-        one this rule would fly."""
+        one this rule would fly. The corridor planner's applied az offset is treated the same
+        way (bound course_lead_max_deg + max_az_deg, 15 + 20 deg)."""
         lt = self.lag_turn
         if lt is None or self.lag_turn_weight <= 0:
             return dh
@@ -1117,7 +1214,8 @@ class FastRaceCue:
         if horizontal_speed < lt.min_course_speed:
             return dh
         course = velocity[:2]/horizontal_speed
-        shift = np.radians(self.gap_offset_deg)
+        # the applied gap shift and planner az offset are removed before the lead and added after it
+        shift = np.radians(self.gap_offset_deg if self.corridor is None else self.gap_offset_deg+self.plan_offset_az)
         bearing = dh if shift == 0. else np.array([np.cos(-shift)*dh[0]-np.sin(-shift)*dh[1],
                                                    np.sin(-shift)*dh[0]+np.cos(-shift)*dh[1]])
         angle = float(np.arctan2(course[0]*bearing[1]-course[1]*bearing[0], course @ bearing))
@@ -1235,7 +1333,7 @@ class FastRaceCue:
         size = float(np.linalg.norm(step))
         return step*(top/size) if size > top else step
 
-    def update(self, senses, omega, detection, capture_time, now, clearance=None, gap=None):
+    def update(self, senses, omega, detection, capture_time, now, clearance=None, gap=None, plan=None):
         """One control tick. `clearance`, when given, is a causal forward-clearance sample:
         dict(time=capture time, ttc=s or None, distance=m or None, below_fraction=0..1 or None,
         optional ttc_lower=s or None), where below_fraction is the share of the image expansion
@@ -1243,7 +1341,9 @@ class FastRaceCue:
         the path) and ttc_lower the TTC of the surface fitted below the path.
         ttc and distance both None means no evidence (e.g. low texture).
         `gap`, when given and a gap aim is declared, is the latest causal gap-cue sample
-        (haltere.liftoff.camera_process.gap_sample); without a declared gap aim it is ignored."""
+        (haltere.liftoff.camera_process.gap_sample); without a declared gap aim it is ignored.
+        `plan`, when given and the corridor planner is declared, is the latest causal free-space planner
+        sample (haltere.liftoff.camera_process.plan_sample; each seq is used once); otherwise it is ignored."""
         c = self.config
         position = senses['pos'][0].cpu().numpy().astype(float)
         velocity = senses['vel_world'][0].cpu().numpy().astype(float)
@@ -1259,6 +1359,14 @@ class FastRaceCue:
             self.gap_aim.ingest(gap, now, terrain=terrain)
             self.gap_aim.step(now, dt)
             self._set_gap_offset()
+        if self.corridor is not None:
+            self.plan_conflict = ''
+            self.corridor.ingest(plan, now)
+            self.vertical.ingest(plan, now)
+            # states that own the request reset the corridor aim; turn-first holds its az at 0 (last tick's rules)
+            suspended = self.launching or self.state in PLAN_SUSPEND_STATES
+            self.corridor.step(now, dt, turn_first=self.turn_first_active, suspended=suspended)
+            self._set_plan_offset()
         self._ingest(detection, capture_time, now)
         yaw = float(np.arctan2(rotation[1, 0], rotation[0, 0]))
         self.lag_turn_weight = 0. if self.launching else self._lag_turn_weight_at(now)
@@ -1315,17 +1423,41 @@ class FastRaceCue:
                 self.climb_until, self.slope_support_since = now+c.support_climb_s, None
         else:
             self.support_since = self.slope_support_since = None
+        guard, plan_vertical, vz_before = None, False, float(desired[2])
+        if self.corridor is not None:
+            # Graded vertical rules from the planner's newest fresh valid sample (computed in shadow too).
+            guard = self.vertical.apply(vz_before, now, dt, float(position[2]), velocity)
+            plan_vertical = self.planner_apply and guard.active and not self.launching
+            if plan_vertical:
+                desired[2] = guard.z
+            self.plan_vertical_applied = plan_vertical
         cap = ray = vertical_cap = None
-        climb = 0.
+        climb = climb_applied = 0.
+        governor_climb_shadow = float('nan')
+        self.plan_fallback = False
         if clearance is not None and not self.launching:
             self._ingest_clearance(clearance, velocity, yaw, now)
         if self.clearance is not None:
             cap, ray, climb = self.clearance.limits(position, velocity, now, dt, c.vertical_up)
             if self.clearance_shadow is not None:
                 self.clearance_shadow.limits(position, velocity, now, dt, c.vertical_up)
-            if climb > 0:
+            climb_applied = climb
+            if self.corridor is not None:
+                if guard.active:
+                    governor_climb_shadow = float(climb)     # the climb a fresh valid planner sample displaces
+                if plan_vertical:
+                    climb_applied = 0.
+                    self.plan_counts['displaced_climb_ticks'] += int(climb > 0)
+                elif (self.planner_apply and climb > 0 and self.vertical.config.fallback_descent_first
+                      and velocity[2] < -self.vertical.config.level_band_mps):
+                    # planner stale or not valid: the governor's climb applies, but a sink is levelled off first
+                    climb_applied = 0.
+                    desired[2] = max(desired[2], 0.)
+                    self.plan_fallback = True
+                    self.plan_counts['fallback_level_off_ticks'] += 1
+            if climb_applied > 0:
                 # Expansion below the flight path: rise over it rather than stop.
-                desired[2] = max(desired[2], climb)
+                desired[2] = max(desired[2], climb_applied)
             vertical_cap = getattr(self.clearance, 'vertical_cap', None)
             if vertical_cap is not None:
                 # Ceiling guard: overhead evidence during a climb bounds the whole vertical request.
@@ -1340,6 +1472,19 @@ class FastRaceCue:
             self.clearance_braking = braking
             status = ('blind' if self.clearance.blind else 'brake') if braking else self.clearance.status
             self.clearance_time[status] = self.clearance_time.get(status, 0.)+dt
+        plan_cap = plan_ray = None
+        if self.corridor is not None:
+            # A confirmed blocked (or urgent) ring path caps the speed along the applied aim; the lower of the
+            # planner's and the governor's caps wins (the governor's stays in any case).
+            intended = self.corridor.v_cap
+            if (intended is not None and self.planner_apply and self.direction is not None
+                    and (cap is None or intended < cap) and np.linalg.norm(self.direction[:2]) > 1e-6):
+                plan_ray = np.r_[self.direction[:2]/np.linalg.norm(self.direction[:2]), 0.]
+                along = float(desired @ plan_ray)
+                if along > intended:
+                    desired = desired-plan_ray*(along-intended)
+                plan_cap = float(intended)
+                self.plan_counts['cap_applied_ticks'] += 1
         turn_first = None
         if self.turn_first is not None:
             # Turn before translating at a wall (computed in shadow too, applied only with wall_apply).
@@ -1364,9 +1509,14 @@ class FastRaceCue:
             norm = float(np.linalg.norm(step[:2]))
             if norm > c.search_deceleration*dt:
                 step[:2] *= c.search_deceleration*dt/norm
-        up = max(c.vertical_command_acceleration, self.clearance_config.terrain_climb_acceleration if climb > 0 else 0.)
+        up = max(c.vertical_command_acceleration,
+                 self.clearance_config.terrain_climb_acceleration if climb_applied > 0 else 0.)
         down = (c.vertical_command_acceleration if vertical_cap is None
                 else max(c.vertical_command_acceleration, self.clearance.ceiling.vertical_slew))
+        if plan_vertical:
+            # the guard's ramps: floor bound 5, terrain climb 10 (up), ceiling bound 15 m/s^2 (down)
+            up = max(up, guard.up_rate or 0.)
+            down = max(down, guard.down_rate or 0.)
         step[2] = np.clip(step[2], -down*dt, up*dt)
         previous = self.velocity_command.copy()
         self.velocity_command = self.velocity_command+step
@@ -1376,6 +1526,11 @@ class FastRaceCue:
             # The cap acts on the request itself, without the taper, at up to brake_slew.
             self.velocity_command = self._cap_command(previous, self.velocity_command, cap, ray, dt, slew, top,
                                                       vertical_limits)
+        if plan_cap is not None:
+            # ... and so does the planner's cap along the applied aim, at up to cap_slew_mps2.
+            rate = self.corridor.config.cap_slew_mps2
+            self.velocity_command = self._cap_command(previous, self.velocity_command, plan_cap, plan_ray, dt, rate,
+                                                      max(top, rate*dt), vertical_limits)
         if turn_first is not None:
             # ... and so does turn-first: no speed toward the wall that capped it.
             self.velocity_command = self._cap_command(previous, self.velocity_command, 0.,
@@ -1385,6 +1540,8 @@ class FastRaceCue:
         self.feedforward = self.feedforward+alpha*(raw_ff-self.feedforward)
         self.state = state
         self.state_time[state] = self.state_time.get(state, 0.)+dt
+        if self.corridor is not None:
+            self._log_plan(now, guard, vz_before, governor_climb_shadow, plan_cap)
         # Yaw faces the observed checkpoint; searching turns toward its last side.
         world_rate = float((rotation @ np.asarray(omega))[2])
         if state == 'search' or self.direction is None:
@@ -1422,6 +1579,78 @@ class FastRaceCue:
                                                                  device=scaled_velocity.device)}
         # Body-frame one-second lead for goal-point motor contracts and logs.
         return rotation.T @ self.velocity_command, modified
+
+    def _log_plan(self, now, guard, vz_before, governor_climb_shadow, plan_cap):
+        nan = float('nan')
+        finite = lambda v: float(v) if v is not None and np.isfinite(v) else nan
+        corridor = self.corridor
+        latched = bool(corridor.cls)
+        self.plan_log_values = dict(
+            plan_fresh=int(corridor.fresh(now)),
+            plan_cls_confirmed=corridor.confirmed_class(),
+            plan_intended_az=float(corridor.target_az) if latched else 0.,
+            plan_intended_el=float(corridor.target_el) if latched else 0.,
+            plan_applied_az=float(corridor.az) if self.planner_apply else 0.,
+            plan_applied_el=float(corridor.el) if self.planner_apply else 0.,
+            plan_v_cap_intended=finite(corridor.v_cap),
+            plan_v_cap_applied=finite(plan_cap),
+            plan_vz_lo=finite(guard.lo) if guard.active else nan,
+            plan_vz_hi=finite(guard.hi) if guard.active else nan,
+            plan_climb=float(guard.climb) if guard.active else nan,
+            plan_vz_before=float(vz_before),
+            plan_vz_after=float(guard.z),
+            governor_climb_shadow=governor_climb_shadow,
+            plan_squeeze=int(guard.squeeze),
+            plan_conflict=self.plan_conflict or corridor.conflict_kind,
+            plan_episode=corridor.episode if corridor.engaged else 0,
+            plan_flip=int(corridor.flip))
+
+    def plan_log(self):
+        """Per-tick planner values for logs (PLAN_PILOT_COLUMNS): what the corridor aim and the vertical guard
+        intend (also in shadow) and what was applied (0 / NaN in shadow); NaN / '' when the planner is off or
+        before its first tick."""
+        if self.plan_log_values is not None:
+            return dict(self.plan_log_values)
+        nan = float('nan')
+        return {k: ('' if k == 'plan_conflict' else nan) for k in PLAN_PILOT_COLUMNS}
+
+    def _planner_metadata(self):
+        if self.corridor is None:
+            return None
+        return dict(
+            version=FREE_SPACE_VERSION, applied=self.planner_apply,
+            input='causal free-space planner samples (haltere.liftoff.camera_process.plan_sample): per-frame corridor '
+                  'options beside and above the ring (deg), urgent flags, a speed cap, floor/ceiling clearance and '
+                  'rising ground (m) from scaled relative depth; no course geometry, route or label',
+            corridor_aim=dict(
+                self.corridor.metadata(),
+                rule='accept valid samples at most max_age_s old, each seq once; confirm a class (left/right/up) when '
+                     'confirm of the last window samples within confirm_window_s are shift samples of that class '
+                     '(blocked: blocked samples); latch it at least side_latch_s and while the ring path stays blocked; '
+                     'target = its option in the newest sample (a missing option holds the target); flip to another '
+                     'confirmed class only after flip_after samples without an option; release after release_after '
+                     'clear/aperture samples or stale_release_s without a sample, decaying over decay_s; slew <= '
+                     'slew_az/el_deg_s within |az| <= max_az_deg, 0 <= el <= max_el_deg; rotates the ring ray about '
+                     'world z and tilts it up in _ingest (with a same-side flag clearance the larger offset); '
+                     'conflicts (another ring, a flag clearance on the other side) drop the evidence and hold the ring '
+                     'aim for conflict_hold_s; turn-first holds az at 0; search/launch/wait/support climb reset it; '
+                     'a confirmed blocked path or an urgent shift caps the speed along the applied aim at max(v_cap, '
+                     'v_cap_floor_mps) (the lower of it and the governor cap wins) at cap_slew_mps2; the lag-turn lead '
+                     'is computed without the offset and the offset added after it'),
+            vertical_guard=dict(
+                self.vertical.metadata(),
+                rule='from the newest fresh valid sample, heights dead-reckoned with the measured vz: (1) vz >= '
+                     '-(h_floor_now - floor_clear_m)/tau_s, a positive bound capped at gentle_up_mps; (2) while the '
+                     'measured vz < -level_band_mps no terrain climb; (3) rising ground confirmed (finite rise in '
+                     'confirm of window samples) while level: vz >= min(climb_max_mps, v_h tan(gamma+ at capture) + '
+                     'rise/max(rise_x/v_h - rise_lag_s, rise_min_t_s)), held climb_hold_s, released at '
+                     'climb_release_mps2, ended climb_max_rise_m above its start; (4) last: vz <= max((h_ceil_now - '
+                     'ceil_clear_m)/tau_s, -gentle_down_mps), a squeeze (hi < lo) requests (lo + hi)/2; ramps '
+                     'floor_accel/climb_accel up, ceil_accel down. Replaces the TTC governor terrain climb while the '
+                     'newest sample is fresh and valid; otherwise the governor climb applies (fallback_descent_first: '
+                     'levelled off first while sinking, applied mode only); the governor wall brake, stand-off, caps '
+                     'and the ceiling guard overhead hold stay'),
+            counts=dict(self.plan_counts))
 
     def _guarded_governor(self):
         """The governor that runs the ceiling guard: the flown one, or its shadow copy; None without the guard."""
@@ -1563,6 +1792,7 @@ class FastRaceCue:
                              'never changes the requested speed; with lag-aware turns the lead is computed on the '
                              'bearing without the shift and the shift is added after it (not amplified)'),
                     wall_pilot=self._wall_metadata(),
+                    planner=self._planner_metadata(),
                     clearance_response=None if self.clearance is None else dict(
                         self._clearance_policy(),
                         parameters={k: (None if isinstance(v, float) and not np.isfinite(v) else v)

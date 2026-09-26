@@ -75,6 +75,28 @@ def load_wall_pilot(path=WALL_PILOT_DECLARATION):
     return declaration, digest
 
 
+# Declared free-space corridor planner of the obstacle stack (--obstacle-planner; perception in the depth process,
+# pilot rules in haltere.liftoff.corridor_aim).
+FREE_SPACE_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'free_space.json'
+
+
+def load_free_space(path=FREE_SPACE_DECLARATION):
+    """A frozen free-space declaration and its content hash (the canonical hash of gap_pilot.json); refuses an
+    unfrozen or edited file and any schema/version other than the one the pilot implements (corridor_aim)."""
+    from .corridor_aim import FREE_SPACE_SCHEMA, FREE_SPACE_VERSION
+    path = Path(path)
+    if not path.exists():
+        raise ValueError(f'{path} does not exist: the planner needs the frozen free-space declaration')
+    declaration = json.loads(path.read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen free-space declaration, or it changed after the freeze')
+    if declaration.get('schema') != FREE_SPACE_SCHEMA or declaration.get('version') != FREE_SPACE_VERSION:
+        raise ValueError(f'{path} declares {declaration.get("schema")} version {declaration.get("version")}; the '
+                         f'pilot implements {FREE_SPACE_SCHEMA} version {FREE_SPACE_VERSION}')
+    return declaration, digest
+
+
 CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
 
 
@@ -253,13 +275,16 @@ class VisualController:
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
-                 lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True):
+                 lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
+                 planner=None, planner_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
             raise ValueError('Lag-aware turns are part of the fast pilot profile')
         if gap_pilot is not None and pilot_profile != 'fast':
             raise ValueError('The gap aim is part of the fast pilot profile')
+        if planner is not None and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The corridor planner is part of the fast pilot profile')
         if wall_pilot and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The wall-pilot rules are part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
@@ -378,6 +403,11 @@ class VisualController:
                 self.wall_pilot_declaration = dict(path=str(wall_pilot), sha256=digest, file_sha256=sha256(wall_pilot),
                                                    schema=declaration.get('schema'),
                                                    version=declaration.get('version'), applied=bool(wall_apply))
+            # planner: dict(corridor=CorridorAimConfig, vertical=VerticalGuardConfig) from the frozen free-space
+            # declaration (read by the runner); the gap aim is then declared unapplied (the planner replaces it)
+            planner_configs = {} if planner is None else dict(corridor_aim=planner['corridor'],
+                                                                vertical_guard=planner['vertical'],
+                                                                planner_apply=planner_apply)
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -386,7 +416,7 @@ class VisualController:
                                           velocity_scale=fast_brain['velocity_scale'] if fast_brain else None,
                                           lag_turn=lag_turn_config, lag_turn_apply=lag_turn_apply,
                                           gap_aim=gap_pilot, gap_apply=gap_apply, wall_apply=wall_apply,
-                                          **wall_configs)
+                                          **wall_configs, **planner_configs)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
             reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
@@ -474,7 +504,7 @@ class VisualController:
 
     @torch.no_grad()
     def step(self,frame,retina,detection=None,capture_time=None,frame_time=None,observation_time=None,clearance=None,
-             gap=None):
+             gap=None,plan=None):
         observation_time = time.monotonic() if observation_time is None else observation_time
         if self.scene_blanked:
             retina = torch.zeros_like(retina)  # race cues still come from the camera process
@@ -504,6 +534,8 @@ class VisualController:
             extra = dict(clearance=clearance) if clearance is not None and self.pilot_profile == 'fast' else {}
             if gap is not None and self.pilot_profile == 'fast':
                 extra['gap'] = gap
+            if plan is not None and self.pilot_profile == 'fast':
+                extra['plan'] = plan
             self.relative_gate,assisted_senses = self.assistance.update(
                 self.senses,self.pose.omega,detection,capture_time,observation_time,**extra)
             if self.pilot_profile == 'fast':
@@ -749,6 +781,116 @@ def wall_row(assistance):
     return tuple(values[k] for k in WALL_COLUMNS)
 
 
+def _plan_columns():
+    from .camera_process import PLAN_FIELDS
+    from .fast_race_cue import PLAN_PILOT_COLUMNS
+    return tuple(f'plan_{name}' for name in PLAN_FIELDS)+PLAN_PILOT_COLUMNS
+
+
+PLAN_COLUMNS = _plan_columns()
+
+
+def plan_row(sample, assistance):
+    """CSV values for PLAN_COLUMNS: plan_<field> of the newest planner sample the pilot received (NaN before the
+    first; kind as its name, valid as 1/0) and the pilot's use of it (FastRaceCue.plan_log; NaN/'' when off)."""
+    from .camera_process import PLAN_FIELDS
+    from .fast_race_cue import PLAN_PILOT_COLUMNS
+    nan = float('nan')
+    corridor = getattr(assistance,'corridor',None)
+    latest = corridor.latest if corridor is not None else sample
+    values = []
+    for name in PLAN_FIELDS:
+        v = None if not latest else latest.get(name)
+        if name == 'kind':
+            values.append(v or '')
+        elif name == 'valid':
+            values.append('' if not latest else int(bool(v)))
+        else:
+            values.append(nan if v is None else float(v))
+    log = assistance.plan_log() if hasattr(assistance,'plan_log') else None
+    pilot = [(log or {}).get(k, '' if k == 'plan_conflict' else nan) for k in PLAN_PILOT_COLUMNS]
+    return (*values,*pilot)
+
+
+def resolve_obstacle_planner(args, stack):
+    """--obstacle-planner off|shadow|on (default off) inside the obstacle stack: None, 'shadow' or 'on'.
+
+    The planner runs in the stack's depth process after the relative depth, so it needs --obstacle-stack with the
+    gap cue component; 'on' needs --obstacle-stack on (under --obstacle-stack shadow only 'shadow' is accepted).
+    With the planner (shadow or on) the gap cue is still computed and logged but its aim is never applied."""
+    flag = getattr(args,'obstacle_planner',None)
+    if flag not in (None,'off','shadow','on'):
+        raise ValueError('--obstacle-planner is off, shadow or on')
+    if flag in (None,'off'):
+        return None
+    if stack['mode'] is None:
+        raise ValueError('The free-space planner is part of the obstacle stack: use --obstacle-stack on|shadow')
+    if flag == 'on' and stack['mode'] != 'on':
+        raise ValueError('--obstacle-planner on needs --obstacle-stack on (the stack in shadow applies nothing)')
+    if not stack['gap']:
+        raise ValueError('The free-space planner runs in the gap cue depth process: do not pass --gap-cue off')
+    return flag
+
+
+class PlanStats:
+    """Controller-side record of the planner samples a flight received (each seq once): per-kind counts and the
+    p50/p95 of age, lk_ms, plan_ms, depth_ms and scale_n (sidecar)."""
+    KEYS = ('age','lk_ms','plan_ms','depth_ms','scale_n')
+
+    def __init__(self):
+        self.last = None
+        self.kinds = {}
+        self.values = {k: [] for k in self.KEYS}
+        self.held = 0
+
+    def add(self, sample):
+        if not sample:
+            return
+        ident = (sample.get('seq'), sample.get('time'))
+        if ident == self.last:
+            return
+        self.last = ident
+        kind = sample.get('kind') or ''
+        self.kinds[kind] = self.kinds.get(kind,0)+1
+        self.held += int(bool(sample.get('scale_held')))
+        for k in self.KEYS:
+            v = sample.get(k)
+            if v is not None and np.isfinite(v):
+                self.values[k].append(float(v))
+
+    def summary(self):
+        pct = lambda v, q: float(np.percentile(v,q)) if v else None
+        return dict(samples=sum(self.kinds.values()),kinds=dict(self.kinds),held_scale_samples=self.held,
+                    percentiles={k: dict(p50=pct(v,50),p95=pct(v,95)) for k, v in self.values.items()})
+
+
+def planner_stack_metadata(planner, declaration, gap_spec, camera_status, stats):
+    """Sidecar record of the free-space planner: mode, the frozen declaration (content, hashes, version), the
+    response models and depth weights behind it, placement, motor model, worker counters and received-sample
+    percentiles."""
+    if planner is None:
+        return None
+    path, obj, digest = declaration
+    status = (camera_status or {}).get('gap') or {}
+    worker = status.get('plan') or status.get('free_space')
+    models = obj.get('response_models')
+    models_path = Path(__file__).resolve().parents[2]/models if models else None
+    return dict(mode=planner, applied=planner == 'on',
+                note=('shadow: every planner quantity is computed and logged, nothing is applied; the gap cue aim is '
+                      'not applied either (matched control of the planner on)') if planner == 'shadow' else
+                     'the planner replaces the gap cue aim (computed and logged, not applied) and the TTC governor '
+                     'terrain climb while its samples are fresh and valid',
+                free_space=dict(path=str(path),sha256=digest,file_sha256=sha256(path),schema=obj.get('schema'),
+                                version=obj.get('version'),content=obj),
+                response_models_file_sha256=sha256(models_path) if models_path and models_path.exists() else None,
+                depth_weights_sha256_prefix=(obj.get('depth') or {}).get('weights_sha256_prefix'),
+                depth_weights_sha256=((status.get('provenance') or {}).get('weights_sha256')),
+                placement=(obj.get('runtime') or {}).get('placement'),
+                motor_model=(gap_spec or {}).get('free_space',{}).get('motor'),
+                motor_contract=(gap_spec or {}).get('motor_contract'),
+                worker=worker,received=stats.summary() if stats is not None else None)
+
+
 def clearance_row(assistance):
     governor = getattr(assistance,'clearance',None)
     if governor is None:
@@ -900,12 +1042,19 @@ def run(args):
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
     stack = resolve_obstacle_stack(args)
+    planner = resolve_obstacle_planner(args, stack)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
         from .gap_aim import GapAimConfig
         from .gap_stack import GAP_PILOT_PATH, load_gap_pilot
         gap_declaration = (GAP_PILOT_PATH,)+load_gap_pilot(GAP_PILOT_PATH)
         gap_aim_config = GapAimConfig.from_dict(gap_declaration[1]['pilot'])
+    planner_declaration = planner_config = None
+    if planner is not None:
+        # Only the frozen version-1 declaration flies; the pilot's rules come from it (corridor_aim).
+        from .corridor_aim import planner_pilot_configs
+        planner_declaration = (FREE_SPACE_DECLARATION,)+load_free_space(FREE_SPACE_DECLARATION)
+        planner_config = planner_pilot_configs(planner_declaration[1])
     from .preflight import require_quiet
     preflight = require_quiet(log_path, getattr(args,'allow_workload_pid',()),getattr(args,'allow_workload_project',()))
     torch.set_num_threads(2)
@@ -921,8 +1070,9 @@ def run(args):
                                   pd_profile=getattr(args,'pd_profile','teacher'),
                                   dynamics_profile=getattr(args,'dynamics_profile',None),
                                   lag_turn=stack['lag_turn'],lag_turn_apply=stack['apply'],
-                                  gap_pilot=gap_aim_config,gap_apply=stack['apply'],
-                                  wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'])
+                                  gap_pilot=gap_aim_config,gap_apply=stack['apply'] and planner is None,
+                                  wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'],
+                                  planner=planner_config,planner_apply=planner == 'on')
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -957,6 +1107,15 @@ def run(args):
         path, declaration, digest = gap_declaration
         gap_spec = make_gap_spec(declaration, controller.motor_metadata.get('contract'), camera_sensor,
                                  path=path, digest=digest)
+        if planner is not None:
+            # The depth process runs the planner after the relative depth (m3-freespace); the spec names the frozen
+            # declaration it must load and the response model of this motor contract.
+            from .corridor_aim import planner_pilot_configs
+            contract = controller.motor_metadata.get('contract')
+            fpath, fobj, fdigest = planner_declaration
+            gap_spec['free_space'] = dict(mode=planner, config=str(fpath), sha256=fdigest,
+                                          file_sha256=sha256(fpath), version=fobj.get('version'),
+                                          motor=planner_pilot_configs(fobj, contract)['motor'], motor_contract=contract)
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
                                   race_cues=controller.assistance_mode=='race-cue',
                                   detector_device=getattr(args,'vision_device','cpu'),looming=looming,
@@ -965,9 +1124,13 @@ def run(args):
         try:
             # The depth model loads before the timed flight; its first samples must not arrive mid-launch.
             camera.wait_ready(timeout=180.)
+            if planner is not None and getattr(camera,'plan_out',None) is None:
+                # never fly a run labelled "planner" whose camera stack publishes no planner samples
+                raise RuntimeError('The camera stack publishes no free-space planner samples (plan_out)')
         except Exception:
             camera.stop()
             raise
+    plan_stats = PlanStats() if planner is not None else None
     pad = None
     if args.udp_out:
         host,port = args.udp_out.rsplit(':',1)
@@ -977,6 +1140,8 @@ def run(args):
     shared = SharedFlightState(controller.brain.N) if args.record else None
     cue_label = {'on':'FAST CUE + OBSTACLE STACK','shadow':'FAST CUE PILOT | OBSTACLE SHADOW'}.get(
         stack['mode'],'FAST CUE PILOT')
+    if planner is not None:
+        cue_label += ' + CORRIDOR PLANNER' if planner == 'on' else ' | PLANNER SHADOW'
     recorder = FlightRecorder(shared,controller.cfg.train.graph,out=args.record,capture='Liftoff',fps=18,
                               encoder=getattr(args,'video_encoder','libx264'),
                               controller_label='SHADOW ONLY | NO CONTROL OUTPUT' if not pad else
@@ -1053,7 +1218,8 @@ def run(args):
                                  'cmd_vx','cmd_vy','cmd_vz','pilot_state',
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
-                                 'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS])
+                                 'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
+                                 *PLAN_COLUMNS])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1110,8 +1276,12 @@ def run(args):
                 next_tick = max(next_tick+controller.cfg.brain.dt,now)
                 step_begin = time.monotonic()
                 gap = camera.gap if stack['gap'] else None
+                plan = camera.plan if planner is not None else None
+                if plan_stats is not None:
+                    plan_stats.add(plan)
                 action,processed,raw = controller.step(frame,retina,detection,capture_time,last_frame,now,
-                                                       clearance=camera.clearance if looming else None,gap=gap)
+                                                       clearance=camera.clearance if looming else None,gap=gap,
+                                                       plan=plan)
                 memory_only_ticks += int(not fresh)
                 step_times.append(time.monotonic()-step_begin)
                 loop_phases['brain_ms'] = 1000*(time.monotonic()-step_begin)
@@ -1165,7 +1335,7 @@ def run(args):
                                  getattr(controller.assistance,'lag_turn_weight',float('nan')),
                                  getattr(controller.assistance,'lag_turn_lead_deg',float('nan')),
                                  *gap_row(gap,controller.assistance,now),*stage_row(camera.stages),
-                                 *wall_row(controller.assistance)])
+                                 *wall_row(controller.assistance),*plan_row(plan,controller.assistance)])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1236,6 +1406,14 @@ def run(args):
         if controller.wall_pilot_declaration is not None:
             pilot_meta['wall_pilot_declaration'] = controller.wall_pilot_declaration
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
+        if obstacle_meta is not None:
+            obstacle_meta['planner'] = planner_stack_metadata(planner, planner_declaration, gap_spec, camera_status,
+                                                              plan_stats)
+            if planner is not None:
+                obstacle_meta['gap_cue_applied'] = False
+                # the pilot's corridor aim and vertical guard counts (also under pilot_assistance.planner)
+                obstacle_meta['planner']['pilot'] = pilot_meta.get('planner')
+                obstacle_meta['planner']['controller_busy_skips'] = int(getattr(camera,'plan_busy',0))
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
                       control_mode=(('experimental visual geometry guidance; PD motors; brain in shadow' if controller.motor_baseline else
@@ -1392,6 +1570,13 @@ def main():
     p.add_argument('--wall-pilot',choices=['on','off'],default=None,
                    help='Component override inside --obstacle-stack (default on): turn before translating at a wall '
                         'and the ceiling guard of the terrain climb (configs/obstacles/wall_pilot.json)')
+    p.add_argument('--obstacle-planner',choices=['off','shadow','on'],default='off',
+                   help='EXPERIMENTAL free-space corridor planner inside --obstacle-stack (default off; frozen '
+                        'configs/obstacles/free_space.json v1 only): steer beside or above an obstacle toward the '
+                        'ring (a confirmed, latched offset), cap the speed on a blocked path, and the graded vertical '
+                        'guard (floor bound, descent first, terrain climb, ceiling bound) in place of the looming '
+                        'terrain climb. It replaces the gap cue aim (still computed and logged). shadow computes and '
+                        'logs everything and applies nothing; on needs --obstacle-stack on')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

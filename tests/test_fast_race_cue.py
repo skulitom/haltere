@@ -514,7 +514,7 @@ def test_fast_cue_reads_no_files_and_imports_no_course_or_route_module():
         elif isinstance(node, ast.ImportFrom):
             imported.add('.' * node.level + (node.module or ''))
     assert imported == {'dataclasses', 'types', 'numpy', 'torch', '..vision.camera', '..brain.motor_baseline',
-                        '.gap_aim'}, imported
+                        '.gap_aim', '.corridor_aim'}, imported
     called = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
@@ -535,6 +535,18 @@ def test_fast_cue_reads_no_files_and_imports_no_course_or_route_module():
         elif isinstance(node, ast.ImportFrom):
             aim_imports.add('.' * node.level + (node.module or ''))
     assert aim_imports == {'__future__', 'collections', 'dataclasses', 'numpy'}, aim_imports
+    # ... and so is the corridor planner's pilot side (its declaration is read by the runner).
+    corridor = (SOURCE.parent/'corridor_aim.py').read_text(encoding='utf-8')
+    for token in ('open(', 'read_text', 'read_bytes', 'Path(', 'json', 'yaml', 'np.load', 'torch.load'):
+        assert token not in corridor, f'corridor_aim.py contains {token!r}'
+    assert not [name for name in COURSE_NAMES if name in corridor]
+    corridor_imports = set()
+    for node in ast.walk(ast.parse(corridor)):
+        if isinstance(node, ast.Import):
+            corridor_imports |= {alias.name for alias in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            corridor_imports.add('.' * node.level + (node.module or ''))
+    assert corridor_imports == {'__future__', 'collections', 'dataclasses', 'numpy'}, corridor_imports
 
 
 def test_fast_brain_contract_scales_goal_and_velocity_senses():
