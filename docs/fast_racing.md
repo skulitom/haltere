@@ -11,7 +11,7 @@ brain's PD teacher contract; every part is opt-in.
 | Fast brain contract | a checkpoint with `fast_motor_tracking` metadata, `--motor-controller brain` | The brain receives the pilot's velocity request as a body-frame goal and its horizontal velocity senses scaled by a declared factor, so a nominal-speed flight looks like its familiar regime. Speeds above the trained nominal are refused. |
 | Looming brake (experimental, off) | `--looming-brake` | Fly-style time-to-contact from image expansion around the focus of expansion, computed in the camera process with de-rotated optical flow. A graded time-to-contact policy slows along the looming ray and climbs when the expansion lies below the flight path (terrain). |
 | Lag-aware turns (experimental, off) | `--lag-turn [on\|off\|DECLARATION]` | For the first second after the in-view ring marker's centre bearing jumps (a flag clearance beside it does not count), the goal leads the bearing by a clipped share of the flown course error and the request heading turns faster (per motor contract, `configs/obstacles/lag_turn.json` version 2). With the gap cue, the lead is computed without the gap shift and the shift is added after it. |
-| Obstacle stack (experimental, off) | `--obstacle-stack on\|shadow` (needs `--looming-brake`), overrides `--gap-cue on\|off`, `--lag-turn on\|off` | Gap cue (frozen relative depth of the current frame -> free interval beside the ring -> a confirmed aim shift of up to 12 deg, no speed cap) plus lag-aware turns; `shadow` runs and logs the same processes without applying either. See [obstacle_gap_pilot.md](obstacle_gap_pilot.md). |
+| Obstacle stack (experimental, off) | `--obstacle-stack on\|shadow` (needs `--looming-brake`), overrides `--gap-cue on\|off`, `--lag-turn on\|off`, `--wall-pilot on\|off` | Gap cue (frozen relative depth of the current frame -> free interval beside the ring -> a confirmed aim shift of up to 12 deg, no speed cap) plus lag-aware turns and the wall-pilot rules (at a wall with the checkpoint far off the heading, turn before translating; keep the looming terrain climb out of ceilings; `configs/obstacles/wall_pilot.json`); `shadow` runs and logs the same processes without applying any of them. See [obstacle_gap_pilot.md](obstacle_gap_pilot.md). |
 
 Nothing in the stack reads course files, routes or per-course parameters. The
 checkpoint ring is a disclosed generic Liftoff race cue; it gives a bearing, not
@@ -81,9 +81,13 @@ open problem; three offline side cues did not detect them in time.
 Under the current pilot (arc turns, downhill fix, slope support, gentle search),
 `fast-brain-08` finished Straw Bale twice (5:17.898, 5:17.805;
 [release](fast_brain_08_release.md)). The PD and brain-06 results above used the
-2026-09-23 pilot; the PD has not been flown with the current one.
+2026-09-23 pilot; the PD has flown the current one only in the obstacle-stack
+flight on Minus Two below.
 
 The obstacle stack (`--obstacle-stack on|shadow`: gap cue plus lag-aware turns) is
-wired and passes its runtime bench with the depth model in its own process, but it
-has not been flown and the gap cue still fails three of its four offline gates; see
+wired and passes its runtime bench with the depth model in its own process; the gap
+cue still fails three of its four offline gates. In its first live flights on Minus
+Two (2026-09-26) both motors passed pillar A, then crashed at the next hairpin
+(brain-08 into the garage ceiling, the fast PD sideways into a wall). The wall-pilot
+rules added for those crashes have only been replayed open loop; see
 [obstacle_gap_pilot.md](obstacle_gap_pilot.md).

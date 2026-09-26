@@ -1,0 +1,365 @@
+{
+ "provenance": {
+  "code_commit": "c9945543c1dd6fd89a06491354c307081e8deb3d",
+  "wall_pilot_version": 3,
+  "wall_pilot_sha256": "cafe4aa8c8bfac6ed34050724a04e881bf2b7db01b025e17d8552e21c0688b62",
+  "harness": "session scratchpad m2r2/pilot/replay_rules.py (variants flown, wall, shadow), compare.py, collect.py; offline Straw Bale looming streams: m2r2/pilot/stream_prep.py",
+  "method": "open loop: every logged controller tick is fed to FastRaceCue with the recorded pose, velocity, attitude, rates, ring cue and capture time, the logged looming sample (capture time = now - looming_age) and, on stack flights, the logged gap sample; now = capture_time + image_age. The recorded motion does not respond to the replayed requests. Calibration (support rule) from the fast-brain-08 checkpoint. Not flight evidence.",
+  "variants": {
+   "flown": "as flown (gap aim + lag turn on --obstacle-stack on flights)",
+   "wall": "flown + wall-pilot rules applied",
+   "shadow": "flown + wall-pilot rules in shadow"
+  }
+ },
+ "results": {
+  "minus-brain08-gapon-01": {
+   "ticks": 1906,
+   "seconds": 19.1,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 1.35,
+   "request_changed_windows": [
+    [
+     17.72,
+     19.07
+    ]
+   ],
+   "max_horizontal_request_change": 2.42,
+   "max_vertical_request_change": 4.52,
+   "turn_first_seconds": 0.0,
+   "turn_first_windows": [],
+   "overhead_seconds": 0.0,
+   "overhead_windows": [],
+   "climb_max_flown": 3.5,
+   "climb_max_wall": 0.9,
+   "climb_seconds_flown": 1.47,
+   "climb_seconds_wall": 0.8,
+   "brake_seconds_flown": 3.5,
+   "brake_seconds_wall": 3.8
+  },
+  "minus-brain08-gapon-02": {
+   "ticks": 1857,
+   "seconds": 18.6,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 0.51,
+   "request_changed_windows": [
+    [
+     18.08,
+     18.58
+    ]
+   ],
+   "max_horizontal_request_change": 0.18,
+   "max_vertical_request_change": 3.51,
+   "turn_first_seconds": 0.0,
+   "turn_first_windows": [],
+   "overhead_seconds": 0.42,
+   "overhead_windows": [
+    [
+     18.17,
+     18.58
+    ]
+   ],
+   "climb_max_flown": 3.5,
+   "climb_max_wall": 3.5,
+   "climb_seconds_flown": 0.85,
+   "climb_seconds_wall": 0.43,
+   "brake_seconds_flown": 7.35,
+   "brake_seconds_wall": 7.39
+  },
+  "minus-fast6-gapon-01": {
+   "ticks": 2159,
+   "seconds": 21.6,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 3.21,
+   "request_changed_windows": [
+    [
+     13.4,
+     14.84
+    ],
+    [
+     17.17,
+     18.27
+    ],
+    [
+     21.0,
+     21.64
+    ]
+   ],
+   "max_horizontal_request_change": 2.81,
+   "max_vertical_request_change": 0.22,
+   "turn_first_seconds": 0.77,
+   "turn_first_windows": [
+    [
+     17.17,
+     17.36
+    ],
+    [
+     20.98,
+     21.06
+    ],
+    [
+     21.17,
+     21.64
+    ]
+   ],
+   "overhead_seconds": 0.0,
+   "overhead_windows": [],
+   "climb_max_flown": 1.1,
+   "climb_max_wall": 1.0,
+   "climb_seconds_flown": 1.95,
+   "climb_seconds_wall": 1.91,
+   "brake_seconds_flown": 7.26,
+   "brake_seconds_wall": 8.12
+  },
+  "minus-brain08-loom-01": {
+   "ticks": 1288,
+   "seconds": 12.9,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 0.0,
+   "request_changed_windows": [],
+   "max_horizontal_request_change": 0.0,
+   "max_vertical_request_change": 0.0,
+   "turn_first_seconds": 0.0,
+   "turn_first_windows": [],
+   "overhead_seconds": 0.0,
+   "overhead_windows": [],
+   "climb_max_flown": 0.0,
+   "climb_max_wall": 0.0,
+   "climb_seconds_flown": 0.0,
+   "climb_seconds_wall": 0.0,
+   "brake_seconds_flown": 1.36,
+   "brake_seconds_wall": 1.36
+  },
+  "pine-fast6-ttc-01": {
+   "ticks": 2112,
+   "seconds": 21.1,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 0.0,
+   "request_changed_windows": [],
+   "max_horizontal_request_change": 0.0,
+   "max_vertical_request_change": 0.0,
+   "turn_first_seconds": 0.0,
+   "turn_first_windows": [],
+   "overhead_seconds": 0.0,
+   "overhead_windows": [],
+   "climb_max_flown": 3.5,
+   "climb_max_wall": 3.5,
+   "climb_seconds_flown": 6.26,
+   "climb_seconds_wall": 6.26,
+   "brake_seconds_flown": 2.37,
+   "brake_seconds_wall": 2.37
+  },
+  "pine-brain08-loom-01": {
+   "ticks": 953,
+   "seconds": 9.5,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 0.0,
+   "request_changed_windows": [],
+   "max_horizontal_request_change": 0.0,
+   "max_vertical_request_change": 0.0,
+   "turn_first_seconds": 0.0,
+   "turn_first_windows": [],
+   "overhead_seconds": 0.0,
+   "overhead_windows": [],
+   "climb_max_flown": 3.5,
+   "climb_max_wall": 3.5,
+   "climb_seconds_flown": 0.09,
+   "climb_seconds_wall": 0.09,
+   "brake_seconds_flown": 0.0,
+   "brake_seconds_wall": 0.0
+  },
+  "straw-brain08-04": {
+   "ticks": 32650,
+   "seconds": 326.5,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 4.52,
+   "request_changed_windows": [
+    [
+     46.56,
+     47.57
+    ],
+    [
+     51.0,
+     52.49
+    ],
+    [
+     153.61,
+     154.92
+    ],
+    [
+     164.81,
+     165.48
+    ],
+    [
+     165.54,
+     165.55
+    ]
+   ],
+   "max_horizontal_request_change": 0.0,
+   "max_vertical_request_change": 2.57,
+   "turn_first_seconds": 0.0,
+   "turn_first_windows": [],
+   "overhead_seconds": 0.0,
+   "overhead_windows": [],
+   "climb_max_flown": 3.5,
+   "climb_max_wall": 3.28,
+   "climb_seconds_flown": 15.32,
+   "climb_seconds_wall": 12.45,
+   "brake_seconds_flown": 5.89,
+   "brake_seconds_wall": 5.89,
+   "looming_samples": "offline stream (recorded video, repository looming2), received 0.085 s late",
+   "minutes_moving": 5.39,
+   "turn_first_per_minute": 0.0,
+   "overhead_per_minute": 0.0
+  },
+  "straw-brain08-06": {
+   "ticks": 32634,
+   "seconds": 326.3,
+   "shadow_flies_the_flown_pilot_bit_for_bit": true,
+   "shadow_logs_the_same_rule_states": true,
+   "request_changed_seconds": 11.96,
+   "request_changed_windows": [
+    [
+     41.36,
+     42.87
+    ],
+    [
+     46.66,
+     48.17
+    ],
+    [
+     51.04,
+     52.81
+    ],
+    [
+     58.05,
+     61.72
+    ],
+    [
+     143.66,
+     144.37
+    ],
+    [
+     153.59,
+     154.6
+    ],
+    [
+     254.11,
+     255.78
+    ]
+   ],
+   "max_horizontal_request_change": 1.86,
+   "max_vertical_request_change": 4.22,
+   "turn_first_seconds": 0.0,
+   "turn_first_windows": [],
+   "overhead_seconds": 1.0,
+   "overhead_windows": [
+    [
+     254.49,
+     255.48
+    ]
+   ],
+   "climb_max_flown": 3.5,
+   "climb_max_wall": 2.96,
+   "climb_seconds_flown": 17.98,
+   "climb_seconds_wall": 10.4,
+   "brake_seconds_flown": 8.87,
+   "brake_seconds_wall": 10.14,
+   "looming_samples": "offline stream (recorded video, repository looming2), received 0.085 s late",
+   "minutes_moving": 5.39,
+   "turn_first_per_minute": 0.0,
+   "overhead_per_minute": 0.18
+  }
+ },
+ "moments": {
+  "minus-brain08-gapon-01_ceiling_18.4_19.07": {
+   "note": "garage-ceiling alarms ahead of the climbing path (TTC 0.93 -> 0.43 s, no vertical evidence)",
+   "flown_climb_max": 3.5,
+   "wall_climb_max": 0.0,
+   "flown_requested_vz_max": 3.5,
+   "wall_requested_vz_max": 0.0,
+   "wall_requested_vz_min": -1.02,
+   "recorded_z_end": 2.08
+  },
+  "minus-brain08-gapon-02_arch_then_ceiling_17.9_18.58": {
+   "note": "below-path evidence from the checkpoint arch requested 3.5 m/s at z 1.0; ceiling alarms followed",
+   "overhead_cut_at": 18.17,
+   "recorded_z_at_cut": 1.12,
+   "recorded_vz_at_cut": 1.22,
+   "wall_requested_vz_at_cut": 3.29,
+   "wall_request_level_at": 18.39,
+   "flown_requested_vz_end": 3.5,
+   "recorded_z_end": 2.16
+  },
+  "minus-fast6-gapon-01_hairpin_21.17_21.64": {
+   "note": "stand-off at the wall (x ~ 80) with the ring clamped at a side edge/corner; impact at 21.64 s",
+   "flown_request_x_max": 2.31,
+   "wall_request_x_max": 0.68,
+   "flown_horizontal_request_end": 3.33,
+   "wall_horizontal_request_end": 0.63,
+   "recorded_vx_end": 1.68,
+   "recorded_x_end": 79.97
+  },
+  "minus-fast6-gapon-01_first_hairpin_17.17_17.40": {
+   "note": "the first wall (x ~ 72), which the flown run turned without contact",
+   "flown_horizontal_request_max": 2.37,
+   "wall_horizontal_request_max": 1.04
+  }
+ },
+ "version_history": {
+  "v1": {
+   "replayed": "Minus Two and Pine Valley live logs",
+   "minus_brain08_gapon_01_overhead_windows": [
+    [
+     17.7,
+     19.07
+    ]
+   ],
+   "finding": "the overhead cut engaged at 17.70 s on two unexplained alarms (TTC 1.13 s) while the drone sank toward the floor at 0.8-0.9 m/s, removing the floor climb; v2 adds overhead_min_rise"
+  },
+  "v2": {
+   "replayed": "Minus Two and Pine Valley live logs; Straw Bale laps with offline looming samples",
+   "straw_overhead_windows": {
+    "straw-brain08-04": [
+     [
+      153.66,
+      154.71
+     ],
+     [
+      164.88,
+      166.03
+     ]
+    ],
+    "straw-brain08-06": [
+     [
+      41.38,
+      42.87
+     ],
+     [
+      46.71,
+      47.76
+     ],
+     [
+      58.05,
+      59.15
+     ],
+     [
+      153.59,
+      154.58
+     ],
+     [
+      254.05,
+      255.48
+     ]
+    ]
+   },
+   "finding": "on the clean laps the overhead cut fired during hill climbs on pairs of samples in which neither vertical window crossed the path; v3 adds overhead_positive"
+  }
+ }
+}

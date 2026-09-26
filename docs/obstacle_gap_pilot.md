@@ -5,10 +5,12 @@ into the live flight runner. The target is the dark pillar on Minus Two, which
 looming misses: the aim should move beside a near object on the line to the ring
 early enough for the lagging motor to follow.
 
-**Status: nothing has been flown.** The stack is off by default. The runtime
-bench (G8) passes with the depth model in its own process. The gap cue itself
-still fails three of its four frozen offline gates (G1, G3, G4). Enabling it for
-a live test is an explicit choice; run `shadow` first.
+**Status:** the stack is off by default. The runtime bench (G8) passes with the
+depth model in its own process. The gap cue itself still fails three of its four
+frozen offline gates (G1, G3, G4). Enabling it for a live test is an explicit
+choice; run `shadow` first. The first three live flights with the stack on
+(2026-09-26, Minus Two, below) are the only flight evidence so far. The
+wall-pilot rules added after them have not been flown.
 
 A review on 2026-09-26 found three faults, all fixed before any flight (see
 [Review fixes](#review-fixes-2026-09-26)): the depth process ran below normal
@@ -17,17 +19,26 @@ clearance; and the lag-turn lead amplified the gap shift. The declarations are n
 `gap_pilot.json` and `lag_turn.json` version 2, and G8 passes again with the
 fixed runtime.
 
+The first live flights with the stack on (2026-09-26) got both motors past
+pillar A, then crashed at the next hairpin: brain-08 climbed into the garage
+ceiling and the fast PD was pushed sideways into a wall. Two generic pilot rules
+answer these crashes: turn before translating at a wall, and a ceiling guard on the
+terrain climb (`configs/obstacles/wall_pilot.json` version 3). They are part of the
+stack and have not been flown; see [Wall-pilot rules](#wall-pilot-rules-round-2).
+
 ## Flags
 
 | Flag | Default | Effect |
 |---|---|---|
 | `--obstacle-stack on\|shadow` | off | Needs `--pilot-profile fast` and `--looming-brake`. Runs the gap cue and the lag-aware turns. `shadow` runs the same processes and computations and logs them, but applies no aim shift and no lag-turn lead or heading change. It is the matched control. |
 | `--gap-cue on\|off` | on inside the stack | Component override. `on` is refused without `--obstacle-stack`. |
+| `--wall-pilot on\|off` | on inside the stack | Component override for the [wall-pilot rules](#wall-pilot-rules-round-2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs them without applying them. |
 | `--lag-turn [on\|off\|DECLARATION]` | on inside the stack, off outside | Component override. Outside the stack it keeps its earlier meaning (a bare flag means on). |
 
 There is no speed cap: the live runs showed that brain-08 ignores slow requests
-(asked for 3.5 m/s, it flew 5.1 m/s). The stack changes only the aim bearing and,
-through the lag turn, the heading taper.
+(asked for 3.5 m/s, it flew 5.1 m/s). The gap cue and the lag turn change only the
+aim bearing and the heading taper. The wall-pilot rules change the request only at
+a wall (turn first) and during a looming terrain climb (ceiling guard).
 
 Example, brain-08 shadow run (not flown yet):
 
@@ -144,6 +155,11 @@ flight and are NaN or empty when the stack is off.
   - `cam_cue_latency_ms`: capture to the checkpoint cue in shared memory.
   - `publish` now covers only the cue write. Looming was part of `publish`
     before this change.
+- **Wall-pilot columns** (at the end of the row; NaN or empty without the rules):
+  - `turn_first`: 1 while a turn-first episode is active, also in shadow;
+  - `ceiling_status`, `ceiling_climb`, `ceiling_vertical_cap`: the status, climb
+    request and vertical bound of the governor that runs the ceiling guard (in
+    shadow, a guarded copy fed the same samples; the flown governor is unguarded).
 
 The sidecar's `obstacle_stack` records:
 
@@ -158,7 +174,13 @@ The sidecar's `obstacle_stack` records:
 
 `pilot_assistance.gap_aim` holds the pilot counts: samples, stale samples,
 episodes, latch blocks, conflicts and engaged seconds. `lag_turn` and
-`lag_turn_declaration` record `applied`.
+`lag_turn_declaration` record `applied`. `pilot_assistance.wall_pilot` holds the
+rules, parameters and counts of turn-first (episodes, aligned, handoff, timeout,
+active seconds) and of the ceiling guard (overhead samples and engagements,
+unexplained walls, weak and suppressed climb samples);
+`pilot_assistance.wall_pilot_declaration` records its path, content and file
+sha256, version and `applied`. `obstacle_stack.components.wall_pilot` says whether
+the rules were part of the stack.
 
 ## Frozen configs
 
@@ -170,6 +192,9 @@ episodes, latch blocks, conflicts and engaged seconds. `lag_turn` and
 | `configs/obstacles/lag_turn.json` | 2 | `d4eb83da51ab...` | after the review, before any replay |
 | `configs/obstacles/gap_pilot_v1.json` | 1 | `e704a3ba0d3d...` | kept verbatim; refused at runtime |
 | `configs/obstacles/lag_turn_v1.json` (from `m2-lagturn`) | 1 | `94315b4ddc4a...` | kept verbatim; refused at runtime |
+| `configs/obstacles/wall_pilot.json` | 3 | `cafe4aa8c8bf...` | after the open-loop replays of versions 1 and 2, before any flight |
+| `configs/obstacles/wall_pilot_v2.json` | 2 | `095addc577c0...` | after the replay of version 1; kept verbatim; refused at runtime |
+| `configs/obstacles/wall_pilot_v1.json` | 1 | `17fecfb1fad7...` | before any replay; kept verbatim; refused at runtime |
 
 About these versions:
 
@@ -505,9 +530,231 @@ process, and only then raises itself, as the runner does under Anode.
   flight with the user's game running would check `cam_cue_latency_ms` and
   `gap_age` under real load.
 
+## Wall-pilot rules (round 2)
+
+**Status: not flown.** Only open-loop replays of the live logs and unit tests
+exist. The rules are on inside the obstacle stack (`--wall-pilot off` removes them),
+`shadow` computes and logs them without applying them, and nothing changes without
+the stack.
+
+### The crashes they answer
+
+On 2026-09-26 the stack flew on Minus Two with `--looming-brake --obstacle-stack on`.
+The gap cue and the lag-aware turns got both motors past pillar A for the first time
+(`minus-brain08-gapon-01` and `-02` crossed at y = 4.65 and 4.71 m, pillar edge
+4.45 m; `minus-fast6-gapon-01` at 5.18 m). The next hairpin, a 90 deg turn through
+an arch into a garage bay, ended all three:
+
+- **brain-08, ceiling.** After the turn the TTC governor braked (caps 3.7-4 m/s),
+  but the brain kept about 6 m/s and overshot sideways (vy 6.4 m/s against 4.2
+  requested). Then the governor's terrain climb drove it into the garage ceiling:
+  - `gapon-01`: the floor under a sinking path (below_fraction 1.0, lower TTC
+    0.24-0.63 s at z 0.9 m) asked for about 1 m/s. At 18.4 s alarms arrived from
+    the ceiling ahead of the now climbing path (TTC 0.93 -> 0.43 s) with no
+    vertical evidence (below_fraction None, lower TTC none or 1.23 s). While a climb
+    is active such samples counted as terrain, so the climb rose to 3.5 m/s.
+    Impact at 19.07 s (last logged z 2.08 m).
+  - `gapon-02`: the checkpoint arch below the path read as terrain
+    (below_fraction 1.0, lower TTC 0.3-0.7 s) and asked for 3.5 m/s at z 1.0 m.
+    Ceiling alarms followed (TTC 0.8 -> 0.3 s, below_fraction None or 0.0).
+    Impact at 18.58 s (last logged z 2.16 m).
+- **fast PD, wall.** It braked properly (caps 1-1.5 m/s) and held a stand-off at
+  the bay wall (x about 80) with the next ring clamped at a side edge or corner. The
+  side rule (65 % of nominal speed toward the clamped edge + 10 deg) then requested
+  up to 2.3 m/s toward the wall (+x). The stand-off cap let this through, because
+  it bounds only the speed along the looming ray (1.58 m/s), and that ray, the
+  travel direction when the wall was seen, pointed partly along the wall.
+  Low-speed impact at (80.0, 18.1, 0.66), 21.64 s.
+
+### The rules
+
+Both live in `haltere/liftoff/fast_race_cue.py`. They read only the pilot's own
+state, the causal looming samples and the visible checkpoint marker: no course
+geometry, route or per-course value.
+
+**Turn first (`TurnFirstConfig`).** This is what a pilot does at a hairpin wall:
+stop, yaw to the next gate, then go.
+
+- Engage when two things hold:
+  - Near a wall: the TTC governor holds a stand-off, or its wall brake capped the
+    request within the last 1 s while the horizontal speed is at most 1.5 m/s.
+  - The checkpoint is far off the heading: its marker is clamped at a side edge or
+    a corner, or its bearing is 50 deg or more off the heading.
+- While engaged:
+  - The horizontal request loses any component toward the wall. The wall direction
+    is the horizontal part of the looming ray that capped the request, taken at
+    engagement.
+  - The horizontal request is bounded to 0.8 m/s, and the request's existing speed
+    toward the wall is removed at the brake slew (15 m/s^2).
+  - The yaw rule is unchanged, so the assisted yaw keeps turning toward the ring.
+- The episode ends in one of three ways:
+  - aligned: the bearing is within 30 deg of the heading;
+  - handoff: search, launch or a support climb takes over;
+  - timeout: after 2 s, and then it cannot re-engage for 2 s. The drone never
+    hovers at a wall.
+
+**Ceiling guard (`CeilingGuardConfig`, TTC governor).** Three rules:
+
+- **Unexplained alarms are walls.** During a climb, a sample without vertical
+  evidence counts as terrain only when the lower window explains it (lower TTC <=
+  1.0 x alarm TTC). Otherwise it is a wall: it may brake and never climbs. Before,
+  such samples always counted as terrain during a climb.
+- **Weak climbs are bounded.** A climb that only such explained samples keep alive
+  is capped:
+  - it requests at most 1 m/s and refreshes the hold only at that level;
+  - it ends 1 m above where the last below-path request (below_fraction >= 0.7)
+    was accepted.
+- **Overhead cut.** It needs evidence of something above a rising path:
+  - The condition: during a climb, while the drone rises faster than 0.3 m/s, two
+    samples within 0.25 s have TTC < 1.2 s and either lie above the path
+    (below_fraction <= 0.3) or are unexplained.
+  - At least one of the two must be positive evidence that the alarm is not the
+    surface below: below_fraction <= 0.3, or a known lower TTC longer than the
+    alarm. A sample in which neither vertical window crosses the path says nothing
+    either way, because climbing a hill both windows often lose it.
+  - The effect: the climb is cut to 0, and an overhead hold starts for 1 s,
+    renewed by further evidence. During the hold there is no terrain climb,
+    below-path samples brake like walls, and the whole vertical request (pilot and
+    governor) is bounded to level, brought down at 15 m/s^2 instead of the pilot's
+    5 m/s^2.
+
+Below-path climbs (below_fraction >= 0.7) otherwise keep their full rate, hold and
+2.5 m bound, which is what lifted the fast PD over the Pine Valley mound.
+
+The upper looming window (`ttc_upper`, report-only in looming2) was not used. The
+camera process does not publish it and the logs do not carry it. While climbing it
+lies at the top of the image, where the HUD mask removes the upper 20 %. On
+`gapon-01` at 18.5 s the lower window was urgent while below_fraction was None, so
+the upper window had no evidence under the ceiling.
+
+### Declaration versions
+
+`configs/obstacles/wall_pilot.json`:
+
+- **Version 1** (`17fecfb1fad7...`) was frozen before any replay. Its values are the
+  task's a-priori values, set after inspecting the three incidents.
+- **Its replay found one fault.** On `gapon-01` at 17.7 s two unexplained alarms
+  (TTC 1.13 s) arrived while the drone still sank toward the floor at 0.8 m/s, and
+  the overhead cut removed the floor climb that was arresting the sink. A ceiling
+  cannot cross a sinking path.
+- **Version 2** (`095addc577c0...`) adds only `overhead_min_rise` (0.3 m/s, a noise
+  margin, not fitted).
+- **Its Straw Bale replay found a second fault.** On the clean laps
+  `straw-brain08-04` and `-06` the overhead cut fired 7 times. Each time the
+  looming governor was climbing a hill, and the cut came from two samples in which
+  neither vertical window crossed the path (below_fraction None, lower TTC None,
+  alarm TTC 0.8-1.2 s). The laps flew without any climb, so nothing was lost there,
+  but on a mound the same pattern would cut a needed climb.
+- **Version 3** (`cafe4aa8c8bf...`) adds only `overhead_positive` (1): at least one
+  confirming sample must show that the alarm is not the surface below. The real
+  ceiling cases had such samples (below_fraction 0.0 on `gapon-02`, a lower TTC of
+  1.23 s against a 0.63 s alarm on `gapon-01`).
+- Versions 1 and 2 are kept verbatim as `wall_pilot_v1.json` and
+  `wall_pilot_v2.json` and are refused at runtime.
+- **Consequence for the evidence:** the Minus Two incident replays and the Straw
+  Bale replays are development evidence for version 3, not held-out evidence. The
+  Pine Valley replays were unchanged by every version.
+
+### Open-loop replays
+
+The replay harness is `m2r2/pilot/replay_rules.py` in the session scratchpad; the
+results are in `docs/experiments/obstacle_wall_pilot_replay.json`.
+
+- **Inputs.** Each logged controller tick goes through `FastRaceCue` as the runner
+  fed it:
+  - the recorded pose, velocity, attitude and rates;
+  - the ring cue with its capture time;
+  - the logged looming sample (capture time = now - `looming_age`);
+  - the logged gap sample on stack flights;
+  - the controller clock (`capture_time + image_age`).
+- **Fidelity.** With the rules off, the replay reproduces every logged pilot state
+  (100 %) and the logged request to 0.07-0.12 m/s p99 on the Minus Two logs.
+  `pine-fast6-ttc-01` flew an older pilot (before the arc turns), so its
+  horizontal request differs by 2 m/s p99, but the governor's climb depends only on
+  the samples and the pose.
+- **Variants.** Each flight ran three variants:
+  - as flown;
+  - as flown plus the wall rules;
+  - as flown plus the rules in shadow.
+  On every flight the shadow variant requested exactly what the flown variant
+  did, bit for bit.
+- **Open loop.** The recorded motion does not respond to the replayed requests.
+  These are the requests the rules would have made at the recorded states, not
+  flights.
+
+| Flight | Request changed | What the rules did |
+|---|---|---|
+| minus-brain08-gapon-01 (ceiling) | 1.35 s (17.7-19.1 s) | The ceiling alarms are walls, not terrain. The climb stays at the floor climb (max 0.90 m/s, released by 18.4 s) instead of rising to 3.5 m/s. From 18.4 s to the impact the requested vz is the pilot's own descent toward the ring below (-0.2 to -1.0 m/s) instead of +0.7 -> +3.5 m/s. The overhead cut never engages (the climb had ended). |
+| minus-brain08-gapon-02 (arch, then ceiling) | 0.51 s (18.1-18.6 s) | The arch's below-path climb (3.5 m/s) is unchanged. The overhead cut engages at 18.17 s (recorded z 1.12 m, rising 1.2 m/s), and the requested vz falls from 3.3 to 0 by 18.39 s. As flown it stayed at 3.5 m/s. |
+| minus-fast6-gapon-01 (wall) | 3.21 s | Turn-first at the crash hairpin (20.98-21.06 and 21.17-21.64 s): the request toward the wall (+x) falls from 0.7 to 0 by 21.26 s (as flown, up to 2.3 m/s). The request ends at 0.6 m/s along the wall, where the flown run ended at (1.8, 2.8) m/s. At the first wall (17.17-17.36 s, turned without contact as flown) the request falls toward 0.8 m/s (at most 1.04 m/s, against 2.37 as flown). At pillar A (13.4-14.8 s) two unexplained alarms become a brake of about 0.7 m/s and the climb is bounded to 1.0 m/s (1.1 as flown). |
+| minus-brain08-loom-01 | 0 | No change. |
+| pine-fast6-ttc-01 (mound climbs) | 0 | Identical climbs (max 3.5 m/s, 6.3 s of climb) and caps at every tick. |
+| pine-brain08-loom-01 | 0 | No change. |
+
+**Clean Straw Bale laps.** `straw-brain08-04` and `-06` flew without looming, so
+the replay had to recompute the looming samples:
+
+- **Recomputing the samples.** The recorded videos were aligned to the logs with
+  the earlier looming study's method (epipolar residual 0.31 and 0.36 px). The
+  repository's looming2, in the flight camera's configuration, then ran over every
+  new frame with the logged attitude and velocity. The samples reach the pilot
+  0.085 s after capture.
+- **What "as flown" means here.** It includes the looming governor, which these
+  laps never flew, so it is a hypothetical baseline.
+- **What the table shows.** The rules' effect on top of that baseline, over 5.4
+  minutes per lap.
+
+| Lap | Turn-first | Overhead cuts | Request changed | Effect |
+|---|---|---|---|---|
+| straw-brain08-04 | 0 | 0 | 4.5 s | Vertical request only lowered, never raised (climb 15.3 -> 12.5 s, max change 2.6 m/s). Horizontal request and braking unchanged. |
+| straw-brain08-06 | 0 | 1 (254.5 s) | 12.0 s | Vertical request only lowered (climb 18.0 -> 10.4 s). Unexplained alarms during climbs braked as walls: +1.3 s of braking, the largest horizontal change 1.9 m/s at 60.4 s (5.6 m/s requested as flown, 4.4 with the rules). The single overhead cut followed four blind samples on a hill; its positive sample had below_fraction 0.29, at the 0.3 threshold. |
+
+Turn-first stays quiet on both laps. The ceiling guard is not quiet, but on these
+laps it only removes climbing that the looming governor would have added, climbing
+that the laps flew without. Version 2 cut 7 such climbs; version 3 cuts one (0.18
+per minute).
+
+### Tests
+
+`tests/test_fast_race_cue_wall.py` has 16 tests:
+
+- **Declarations:** frozen, hash-checked, the declared values are the defaults, and
+  versions 1 and 2 are kept and refused.
+- **Ceiling guard:**
+  - the `gapon-01` shape (the old rule climbs to 3.5 m/s, the guard cuts the climb
+    and brakes);
+  - weak climbs and their height bound;
+  - overhead confirmation and hold;
+  - the sinking-path case (version 2);
+  - the hill case with no vertical evidence (version 3);
+  - a Pine-like below-path climb identical at every tick;
+  - the pilot levelling off at 15 m/s^2;
+  - shadow flying the unguarded pilot bit for bit.
+- **Turn first:**
+  - the side-clamp stand-off (no request toward the wall, at most 0.8 m/s, the
+    same yaw);
+  - release inside the cone, and the timeout and rearm;
+  - no episode without a wall or with the ring ahead;
+  - shadow.
+- **Runner:** the log columns and the refusals.
+- **Measured-surrogate hairpin** (fast PD, perfect TTC, two checkpoints, the second
+  behind the drone at the wall):
+  - turn-first engages, removes the request toward the wall within 0.3 s,
+    releases inside its cone and still reaches the ring;
+  - the plain pilot does not touch the wall in this surrogate either, so the
+    surrogate cannot show the live side push;
+  - the rule costs less than 1 s there.
+
+`tests/test_gap_pilot.py` covers the new `--wall-pilot` flag. The full suite
+passes: 920 tests. A CPU wiring check built `VisualController` as `run()` does,
+with no pad and no flight, for three cases: brain-08 with the stack on, brain-08
+in shadow, and the fast PD with the stack on. Each pilot received the version 3
+rules, the sidecar record and the four log columns.
+
 ## Limits
 
-- **Nothing here is flight evidence.** A decision to keep the stack needs
+- **Apart from the three live flights of round 2, nothing here is flight
+  evidence.** A decision to keep the stack needs
   complete-system flights compared with it disabled (`shadow` is the matched
   control), on held-out courses too (`docs/project_direction.md`).
 - **The gap cue fails G1, G3 and G4.** Expect false episodes near gate arch legs,
@@ -540,3 +787,35 @@ process, and only then raises itself, as the runner does under Anode.
   changed here).
 - **Brain-08 does not slow down on request.** There is therefore no speed cap:
   the shift must be early enough on its own.
+- **The wall-pilot replays are open loop.** They show the requests, not the flight:
+  - Whether brain-08 levels off when its vertical request drops is not shown. It
+    does not follow slow horizontal requests.
+  - On `gapon-02` the cut comes at z 1.12 m while the drone already rises at
+    1.2 m/s toward a ceiling at about 2.1 m.
+  - Turn-first never engaged on the brain flights: brain-08 never slowed below
+    1.5 m/s, so its lateral overshoot after the arch turn is not addressed here.
+- **Turn-first takes the looming ray as the wall direction.** That ray is the
+  travel direction when the wall was seen, not the wall's normal. When they differ,
+  a request within the 0.8 m/s creep speed can still have a component toward the
+  wall. At the crash hairpin, after 21.26 s, the replayed request toward +x stayed
+  at or below 0.1 m/s.
+- **Turn-first costs time at hairpins it did not need.** At the first Minus Two
+  wall the fast PD turned without contact as flown; the rule bounds its request to
+  0.8 m/s there for 0.2 s. In the measured surrogate the plain pilot also clears the
+  hairpin, so neither a crash avoided nor the full time cost is established.
+- **The ceiling guard also acts away from ceilings.**
+  - At pillar A (fast PD, 13.4-14.8 s) it turned two unexplained alarms during a
+    climb into a brake of about 0.7 m/s.
+  - On the Straw Bale hills it lowers the looming governor's climbs, adds wall
+    braking, and cut one climb.
+  - A mound whose climb only unexplained alarms keep alive would now get at most
+    1 m/s and a brake.
+  - The Pine Valley climbs were unchanged: their samples carried below-path
+    evidence.
+  - The arch below the path on `gapon-02` still reads as terrain and still asks
+    for the full 3.5 m/s climb.
+- **The Straw Bale looming samples are an offline recomputation** from the
+  recorded video, not the camera's own samples.
+- **Versions 2 and 3 were each changed after a replay** of the previous version
+  (see [Declaration versions](#declaration-versions)). No replay here is held-out
+  evidence for version 3.
