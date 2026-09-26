@@ -10,6 +10,13 @@ bench (G8) passes with the depth model in its own process. The gap cue itself
 still fails three of its four frozen offline gates (G1, G3, G4). Enabling it for
 a live test is an explicit choice; run `shadow` first.
 
+A review on 2026-09-26 found three faults, all fixed before any flight (see
+[Review fixes](#review-fixes-2026-09-26)): the depth process ran below normal
+priority and could stall the camera; the lag-turn trigger fired on the flag
+clearance; and the lag-turn lead amplified the gap shift. The declarations are now
+`gap_pilot.json` and `lag_turn.json` version 2, and G8 passes again with the
+fixed runtime.
+
 ## Flags
 
 | Flag | Default | Effect |
@@ -44,18 +51,34 @@ Example, brain-08 shadow run (not flown yet):
      would take 2-3 ms to copy directly. It is instead converted from that
      buffer with one cv2 call (0.14 ms p50). The benched replay frames were
      already contiguous.
-2. **Depth process** (`gap_stack.gap_process_worker`, normal priority). While the
-   camera computes the cue, it:
+   - Once the cue is published, the camera also copies it into the slot.
+   - Neither copy ever waits for the depth process. The camera tries the
+     slot's locks without blocking: if the depth process holds one, that frame
+     or cue is skipped and counted. The camera signals with semaphores, which
+     never block. It does not use a multiprocessing Event, because an Event's
+     `set()` takes a lock the waiter also takes and then waits for the sleeping
+     waiter to wake.
+2. **Depth process** (`gap_stack.gap_process_worker`, above-normal priority).
+   - It sets its own priority class first, as the camera process does. It is
+     spawned before the runner raises its own class, so under Anode it would
+     otherwise inherit below normal.
+   - It takes no lock or event of the camera's. It reads the cue from the slot,
+     writes its samples into its own shared array (`gap_out`), which the
+     controller reads without blocking, and stops on its own event.
+
+   While the camera computes the cue, it:
    - resizes the frame to 448x252 with INTER_AREA (the same path as the obstacle
      store and the gates);
    - computes the HUD, ring and ghost overlay masks, which become block validity;
    - runs Depth-Anything-V2-Small (frozen, fp16 on CUDA, 336x602 input) to get
      36x64 block relative disparity.
 
-   It then waits for that frame's ring cue in the camera's shared memory (median
-   wait 9 ms). With the pose at capture time, taken from telemetry the controller
-   has already observed, it runs `GapCue.update`. It publishes one sample into
-   new shared slots after the looming slots (`camera_process.GAP_FIELDS`):
+   It then waits for that frame's ring cue in the slot (median wait 9 ms in the
+   first bench). With the pose at capture time, taken from telemetry the
+   controller has already observed, it runs `GapCue.update`. It publishes one
+   sample (`camera_process.GAP_FIELDS`) into its own array. The camera placement
+   writes the same fields into the camera's shared slots, after the looming
+   slots. A sample holds:
    - capture time;
    - the per-frame shift (unconfirmed);
    - kind, r_peak, r_ring, near_on_path and lr;
@@ -77,8 +100,14 @@ Example, brain-08 shadow run (not flown yet):
    - In `_ingest` it rotates the ring ray about world z (positive = left). The
      filtered direction is rotated by every change of the applied shift, so yaw,
      speed schedule and switch detection all see one consistent bearing.
-   - The lag-turn trigger compares bearings with the shift removed, so a shift
-     never looks like a checkpoint switch.
+   - The lag-turn trigger reads the ring marker's centre (u, v) and a filtered
+     centre bearing, never the flown aim. Neither the shift nor the flag
+     clearance can look like a checkpoint switch.
+   - During a lag-turn window the lead is computed on the bearing without the
+     shift, and the shift is added after it. The lead never amplifies the
+     shift, and each keeps its own bound: up to 15 + 12 deg from the ring cue's
+     aim during a window, and 12 deg outside one. In shadow the logged lead is
+     the one this rule would fly.
    - Conflicts:
      - A sample whose ring azimuth differs from the ring cue's by more than 6 deg
        describes another ring, for example right after a checkpoint switch.
@@ -122,7 +151,10 @@ The sidecar's `obstacle_stack` records:
 - the depth weights sha256 (`3152477c...`, reported by the worker at load);
 - the content and file sha256 of `gap_cue.json`, `response_models.json` and
   `gap_pilot.json`;
-- the placement, the motor response model and the worker's timings.
+- the placement, the motor response model and the worker's timings;
+- in `gap_cue.worker`: the depth process's priority class before and after it
+  raised it (`priority`), and the frames and cues the camera skipped because the
+  slot was busy (`camera_skips`).
 
 `pilot_assistance.gap_aim` holds the pilot counts: samples, stale samples,
 episodes, latch blocks, conflicts and engaged seconds. `lag_turn` and
@@ -134,8 +166,10 @@ episodes, latch blocks, conflicts and engaged seconds. `lag_turn` and
 |---|---|---|---|
 | `configs/obstacles/gap_cue.json` | 2 | `284b3c46a819...` | before any wiring result |
 | `configs/obstacles/gap_bench_gates.json` (G8) | 1 | `db551b8813a3...` | before the first bench run |
-| `configs/obstacles/gap_pilot.json` | 1 | `e704a3ba0d3d...` | after the bench, before any flight |
-| `configs/obstacles/lag_turn.json` (from `m2-lagturn`) | 1 | `94315b4ddc4a...` | unchanged |
+| `configs/obstacles/gap_pilot.json` | 2 | `67ec1f140a31...` | after the review, before any replay or bench rerun |
+| `configs/obstacles/lag_turn.json` | 2 | `d4eb83da51ab...` | after the review, before any replay |
+| `configs/obstacles/gap_pilot_v1.json` | 1 | `e704a3ba0d3d...` | kept verbatim; refused at runtime |
+| `configs/obstacles/lag_turn_v1.json` (from `m2-lagturn`) | 1 | `94315b4ddc4a...` | kept verbatim; refused at runtime |
 
 About these versions:
 
@@ -148,6 +182,11 @@ About these versions:
 - **`gap_pilot.json`** holds a-priori values, fitted to no flight: the M2 plan
   values plus the declared conflict and terrain thresholds. Its only choice made
   after the bench is `placement: process`, and that choice is not a threshold.
+- **Version 2 of `gap_pilot.json` and `lag_turn.json`** keeps every value of
+  version 1. It changes the rules and notes: the priority and hand-off wording,
+  the lag-turn trigger ray, and the declared interaction of the lead with the gap
+  shift. The runner refuses any other version (`gap_stack.GAP_PILOT_VERSION`,
+  `fast_race_cue.LAG_TURN_VERSION`).
 
 ## Gates and results
 
@@ -182,7 +221,10 @@ cue, on `straw-brain08-06` from 30 to 90 s. The video is replayed at real time
 through `camera_replay.py`, with the capture padded to 20 ms (the live mss median)
 and Liftoff idle. A 100 Hz controller stand-in publishes the recorded pose, polls
 the camera and burns a 6 ms brain-step load. Each run is one GPU chunk; the GPU
-peaked at 42-45 C.
+peaked at 42-45 C. This first bench ran the version 1 runtime, with the depth
+process at the bench parent's normal class. The fixed runtime was re-benched from
+a below-normal parent; see
+[G8 rerun of the fixed runtime](#g8-rerun-of-the-fixed-runtime).
 
 | 60 s, Straw Bale | baseline (looming, no gap) | gap in camera process | gap in depth process |
 |---|---|---|---|
@@ -245,7 +287,10 @@ peaked at 42-45 C.
   - Gap age p95 was 118 and 121 ms.
 - **Wired pilot on pillar A.** `gap_aim` was replayed over those samples at the
   bench's 100 Hz ticks, using each sample's receipt time; hindsight geometry was
-  used only for scoring.
+  used only for scoring. This replay ran `GapAim` alone: no ring or flag
+  reconciliation and no lag-turn lead. Its conflict counts of 0 could therefore
+  not have been anything else. The replay through the full `FastRaceCue` is in
+  [Review fixes](#review-fixes-2026-09-26).
   - It first confirmed a left shift inside the G1 approach region at **5.78 m**
     (brain-08) and **5.95 m** (fast PD), with no confirmed right shift, and
     applied up to 12 deg.
@@ -268,10 +313,197 @@ peaked at 42-45 C.
 
   The fake pose is unrelated to the video, so its decisions mean nothing. This
   was a plumbing check only.
-- **Unit tests:** `tests/test_gap_pilot.py`, 35 tests. The label-isolation test
-  also covers `gap_stack`, `gap_aim`, `camera_replay`, `camera_process`,
-  `fast_race_cue` and `visual_brain`, and checks that no runtime module reaches
-  the bench. The full suite passes: 882 tests.
+- **Unit tests:** `tests/test_gap_pilot.py`, 35 tests at the time (52 after the
+  review fixes). The label-isolation test also covers `gap_stack`, `gap_aim`,
+  `camera_replay`, `camera_process`, `fast_race_cue` and `visual_brain`, and
+  checks that no runtime module reaches the bench. The full suite passed: 882
+  tests at the time, 904 after the review fixes.
+
+## Review fixes (2026-09-26)
+
+A review of `m2-wire` reported three faults. All three were confirmed and fixed.
+Version 2 of `gap_pilot.json` and `lag_turn.json` was frozen before any of the
+replays or benches below. The results are in
+`docs/experiments/obstacle_gap_pilot_review.json`; the scripts are in the session
+scratchpad (`m2impl/review-fix/scripts`). None of this is flight evidence.
+
+### 1. The depth process ran below normal and could stall the camera
+
+The fault:
+
+- Live sidecars (`minus-brain08-loom-01`, `pine-brain08-loom-01`,
+  `minus-fast6-cur-01`, `straw-brain08-06`) record the runner and the camera
+  process starting at 16384 (below normal), because Anode launches them there.
+- The depth process was spawned before the runner raised its own class, and it
+  never set its own, so it stayed below normal. With the venv, a spawned child of
+  a below-normal parent came up below normal; a child spawned after the parent
+  raised itself came up at normal.
+- The above-normal camera took three things blocking that the depth process also
+  took:
+  - the shared-data lock (the depth process polled the cue every 1 ms and wrote
+    its samples there);
+  - the slot's Event. Its `set()` takes the Event's lock and then waits until the
+    sleeping waiter has woken. The review did not list this one.
+  - the camera's `done` Event, which the depth process polled every 1 ms.
+
+A demonstration with the depth process suspended for 1 s (the worst case of a
+starved process, `starved_depth_demo.py`):
+
+| Camera call | Depth process suspended while | Camera waited |
+|---|---|---|
+| old: slot `Event.set()` | waiting for a frame | **1004.6 ms** |
+| new: `write` + `publish_cue` | waiting for a frame | 0.46 ms (both written) |
+| new: `write` + `publish_cue` | holding the frame lock | 0.05 ms (frame skipped, counted) |
+| new: `write` + `publish_cue` | holding the cue lock | 0.16 ms (cue skipped, counted) |
+
+The fix is the data flow above: the depth process runs above normal, and it
+shares no blocking lock or event with the camera.
+
+### 2. The lag-turn trigger fired on the flag clearance
+
+The trigger read the flown aim ray (`aim_u`), so a flag clearance that appeared,
+disappeared or flickered opened a window with no ring change. Version 2 reads the
+ring marker's centre. The replay feeds each flight's logged ticks (pose, cue,
+capture time) through the real `FastRaceCue` in shadow. It reproduces the
+sidecars' `target_switches_observed` on every flight.
+
+| Flight | v1 triggers | v1 without a ring-centre jump | v2 triggers | v2 without a ring-centre jump |
+|---|---|---|---|---|
+| straw-brain08-06 | 94 | 6 | 88 | 0 |
+| straw-fast6-02 | 45 | 10 | 35 | 0 |
+| minus-brain08-01 (pillar A) | 13 | 10 | 3 | 0 |
+| minus-fast6-cur-01 | 1 | 0 | 1 | 0 |
+| minus-brain08-loom-01 | 2 | 0 | 2 | 0 |
+| minus-brain08-slow35-01 | 7 | 0 | 7 | 0 |
+| pine-brain08-01 | 28 | 24 | 4 | 0 |
+| pine-brain08-loom-01 | 3 | 0 | 3 | 0 |
+| pine-brain06-01 | 24 | 22 | 2 | 0 |
+| pine-fast6-01 | 0 | 0 | 0 | 0 |
+| pine-fast6-loom-01 | 7 | 7 | 0 | 0 |
+
+- A trigger "without a ring-centre jump" has no jump of 10 deg or more in the
+  centre azimuth, against the in-view centres of the last 0.25 s and the filtered
+  centre bearing.
+- On Pine, v2 does not trigger on 7 in-view pilot "switches" (pine-brain08-01,
+  8.2-8.6 s) or on 4 (pine-brain06-01, 8.9-9.1 s). In those frames the ring
+  centre moved smoothly (pine-brain08-01: 162 to 123 px) while `aim_u` jumped
+  between about 100 and 250 px every frame. The flag clearance was flipping sides, so these are
+  not checkpoint switches.
+- Every in-view switch on Straw Bale and Minus Two that v1 covered, v2 also
+  covers.
+- straw-fast6-02 has two pilot switches (137.64 and 137.70 s) with no trigger in
+  either version. There the marker jumped 58 px vertically for one frame, and the
+  trigger reads azimuth only.
+
+### 3. The lead amplified the gap shift
+
+Version 2 computes the lead on the bearing without the shift and adds the shift
+after it.
+
+**Synthetic case** (the review's): a static course at 0 deg, the ring marker
+moving from 0 to 12.7 deg left, and gap samples of +12 deg. Command heading
+0.8 s after the jump:
+
+| | Heading | Beyond the ring | Lead |
+|---|---|---|---|
+| gap only | 21.5 deg | 8.8 deg | - |
+| lag turn only | 20.1 deg | 7.4 deg | 6.4 deg |
+| both, v1 | 38.6 deg | **25.9 deg** | 12.5 deg |
+| both, v2 | 31.8 deg | 19.1 deg | 6.4 deg |
+| both, shadow | 12.1 deg | -0.6 deg | 6.4 deg (v1 logged 6.4 while on flew 12.5) |
+
+**Pillar A through the full `FastRaceCue`.** This replay runs the gap aim with
+ring and flag reconciliation, the lag turns and their interaction. It uses the
+logged ticks of the first 13 s and the G8 bench's live-wired gap samples of the
+same video, mapped into the flight's clock by the video offset. It is open loop:
+the commands are not flown.
+
+| | minus-brain08-01 v1 | minus-brain08-01 v2 | minus-fast6-cur-01 v1 | minus-fast6-cur-01 v2 |
+|---|---|---|---|---|
+| first confirmed left | 5.75 m | 5.75 m | 5.93 m | 5.93 m |
+| confirmed right / ring / flag conflicts | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| lag-turn triggers (flight) | 13 | 3 | 1 | 1 |
+| max lead in the approach, on / shadow | 15.0 / 11.6 deg | 11.6 / 11.6 deg | 9.9 / 7.2 deg | 7.2 / 7.2 deg |
+| max goal beside the ring (on) | 29.3 deg | 23.0 deg | 13.8 deg | 12.0 deg |
+
+- The conflict counts are 0 here with the reconciliation running, so the
+  first confirmation distances of the earlier `GapAim`-only replay (5.78 m and
+  5.95 m) stand.
+- In v2 the on-mode and shadow leads are identical at every tick (maximum
+  difference 0.0 deg). In v1 they differed by up to 7.2 deg and 3.1 deg.
+
+**G5 surrogate, repeated** (harness `m2impl/lagturn/harness_lt.py`: 16 synthetic
+courses, sim seed 17). The synthetic marker has `aim_u = u` and there is no gap
+shift, so v2 must equal v1 there.
+
+- **Fast PD with v2:** bit-identical to the original v1 run in every per-course
+  result: 14/16 with the same two crashes, chatter 0.00633.
+- **Brain-08 with v2:** bit-identical per course, in the lateral bins and in the
+  gate events to a rerun of the pre-fix `m2-wire` tree made the same day.
+- **The original brain-08 run cannot be reproduced.** The unchanged
+  `m2-lagturn` commit (the same `fast_race_cue.py` sha256 as that run) now gives
+  15/16 with 0 crashes and 89 triggers. The original run gave 15/16 with the
+  steep-3007 crash and 115 triggers. With lag turns off too, today's run is
+  slower on 13 of the 14 courses both runs finished (steep-3000 74.4 s to
+  91.6 s), leaves steep-3004 unfinished and finishes steep-3007. The checkpoint,
+  the dynamics profile and the brain code are unchanged. The cause is not known. Within one session the results
+  are deterministic: three trees agree bit for bit.
+- **The matched brain pair of today**, lag turns off and then on with v2:
+
+  | | Off | On (v2) |
+  |---|---|---|
+  | finished | 15/16 | 15/16 |
+  | unfinished | steep-3004 | steep-3004 |
+  | crashes | 0 | 0 |
+  | chatter (limit 0.0035) | 0.00329 | 0.00336 |
+  | lateral lag 1 s after a 20-40 deg switch, median | 1.75 m | 1.69 m |
+  | lateral lag at 1.5 s, median | 1.75 m | 1.53 m |
+  | paired finish delta | | +0.14 s |
+
+  - The paired lag at 1 s over the 20-40 deg switches changes by +0.04 m on
+    average (median -0.06 m; 15 of 20 improved).
+  - The original pair reported -0.19 m. The brain's benefit from the lag turn is
+    smaller in today's surrogate.
+
+### G8 rerun of the fixed runtime
+
+The rerun used the same frozen gates (v1, `db551b8813a3...`), flight segment and
+protocol as the first bench, with one change: `gap_bench run --parent-priority
+below-normal`. The bench starts below normal, spawns the camera and the depth
+process, and only then raises itself, as the runner does under Anode.
+
+- The recorded priority classes are as intended. The camera and the depth
+  process each went from 16384 (below normal) to 32768 (above normal); the
+  parent was raised after spawning.
+- Liftoff was open in its seat, not flying, and the GPU was at 48-51%
+  utilization before each run. Peak GPU temperature was 42 C.
+- The fp16 result is carried over from the first bench: the model, the input and
+  the weights are unchanged.
+
+| 60 s, Straw Bale | first bench: baseline | first bench: process | rerun: baseline | rerun: process |
+|---|---|---|---|---|
+| camera rate | 17.8 Hz | 17.9 Hz | 16.6 Hz | 17.7 Hz |
+| camera loop p50 / p95 | 60.4 / 68.3 ms | 60.6 / 68.3 ms | 62.5 / 77.4 ms | 60.2 / 70.8 ms |
+| checkpoint-cue latency p50 / p95 | 49.5 / 56.4 ms | 49.9 / 56.5 ms | 51.6 / 65.7 ms | 49.8 / 59.0 ms |
+| cue age at the controller p95 | 111.2 ms | 111.3 ms | 125.5 ms | 114.4 ms |
+| gap sample age at the controller p50 / p95 | - | 76 / 113 ms | - | 79 / 117 ms |
+| gap capture-to-publish p50 / p95 | - | 51 / 58 ms | - | 51 / 61 ms |
+| depth model p50 | - | 12.4 ms | - | 17.2 ms |
+| depth-side cue wait p50 / p95 | - | 8.6 / 15.1 ms | - | 2.1 / 12.8 ms |
+| frames / cues the camera skipped | - | - | - | 0 / 0 |
+| cues missed by the depth process | - | 0 | - | 2 of 1059 |
+| **G8** | | pass | | **pass** |
+
+- The rerun baseline was the slower of the pair. The cue-latency "increase" is
+  therefore -6.7 ms: here the matched comparison is within the noise of the
+  background GPU load, not a gain.
+- The depth-side cue wait is shorter because the depth process now wakes on the
+  camera's signal instead of polling every 1 ms.
+- This bench shows the classes and the timings of the fixed hand-off without a
+  game loading the CPU. That the camera does not wait for a starved depth
+  process is shown by the suspension test above, not by this bench. A shadow
+  flight with the user's game running would check `cam_cue_latency_ms` and
+  `gap_age` under real load.
 
 ## Limits
 
@@ -293,5 +525,18 @@ peaked at 42-45 C.
 - **The conflict thresholds and the terrain side steer are a-priori.** Terrain
   votes never occurred in these replays, because the governor was not consulted
   there.
+- **The depth process still shares the telemetry buffer.** The controller writes
+  the pose into `MotionBuffer`; the camera (looming) and the depth process read
+  it. Every side takes its lock without blocking, so nobody waits. A collision
+  drops one motion row or one looming update, as a collision between the
+  controller and the camera already could.
+- **With both components on, the aim can be up to 27 deg beside the ring cue's
+  aim** during a lag-turn window (15 deg lead plus 12 deg shift). This is the
+  declared sum of the two bounds, not a tested safe value.
+- **The flag clearance itself can flip sides every frame on Pine** (8-9 s into
+  pine-brain08-01 and pine-brain06-01). The lag-turn trigger no longer reacts to
+  it. The flown aim and the
+  pilot's own switch counter still do (a pre-existing race-cue behaviour, not
+  changed here).
 - **Brain-08 does not slow down on request.** There is therefore no speed cap:
   the shift must be early enough on its own.

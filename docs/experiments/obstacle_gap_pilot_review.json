@@ -1,0 +1,2049 @@
+{
+ "schema": "haltere.obstacles.gap_pilot_review.v1",
+ "note": "Review fixes of m2-wire (2026-09-26): depth process priority and non-waiting camera hand-off; lag-turn trigger on the ring centre; lead computed without the gap shift. Declarations gap_pilot.json and lag_turn.json version 2 were frozen before every replay and bench below. Report only; not flight evidence. Scripts: session scratchpad m2impl/review-fix/scripts.",
+ "declarations": {
+  "gap_pilot": {
+   "version": 2,
+   "sha256": "67ec1f140a312256f205bbe444268fabb5d023df70cec9e5591d61876f08c7d6",
+   "frozen_at": "2026-09-26T01:50:59"
+  },
+  "lag_turn": {
+   "version": 2,
+   "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+   "frozen_at": "2026-09-26T01:50:59"
+  }
+ },
+ "starved_depth_process": {
+  "note": "the depth process suspended for 1 s (NtSuspendProcess) while waiting or holding a slot lock; time of the camera-side call",
+  "results": {
+   "old_event_set_ms_with_waiter_suspended_1s": 1004.58,
+   "new_write_and_publish_cue_ms_depth_suspended_wait": {
+    "ms": 0.464,
+    "written": [
+     true,
+     true
+    ],
+    "skips": {
+     "frames": 0,
+     "cues": 0
+    }
+   },
+   "new_write_and_publish_cue_ms_depth_suspended_frame_lock": {
+    "ms": 0.052,
+    "written": [
+     false,
+     true
+    ],
+    "skips": {
+     "frames": 1,
+     "cues": 0
+    }
+   },
+   "new_write_and_publish_cue_ms_depth_suspended_cue_lock": {
+    "ms": 0.164,
+    "written": [
+     true,
+     false
+    ],
+    "skips": {
+     "frames": 0,
+     "cues": 1
+    }
+   }
+  }
+ },
+ "lag_trigger_replay": {
+  "note": "logged ticks of the live flights through the real FastRaceCue in shadow (open loop); a trigger without a ring-centre jump >= trigger_deg is not a checkpoint switch",
+  "v1": {
+   "straw-brain08-06": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 94,
+    "pilot_target_switches": 66,
+    "switches_on_clamped_markers": 23,
+    "in_view_switches": 43,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 66,
+    "classified": {
+     "triggers": 94,
+     "centre_jump": 88,
+     "no_centre_jump": 6,
+     "flag_driven": 6
+    },
+    "window_share_of_cue_ticks": 0.148,
+    "cue_seconds": 267.1,
+    "examples_without_centre_jump": [
+     {
+      "t": 168.8,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 22.1
+     },
+     {
+      "t": 168.94,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 23.5,
+      "prev_px320": 17.1
+     },
+     {
+      "t": 169.52,
+      "centre_jump_deg": 0.6,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 14.8
+     },
+     {
+      "t": 169.85,
+      "centre_jump_deg": 1.1,
+      "aim_minus_centre_px320": 26.3,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 169.91,
+      "centre_jump_deg": 0.5,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 26.3
+     },
+     {
+      "t": 275.49,
+      "centre_jump_deg": 0.7,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 24.6
+     }
+    ]
+   },
+   "straw-fast6-02": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 45,
+    "pilot_target_switches": 39,
+    "switches_on_clamped_markers": 12,
+    "in_view_switches": 27,
+    "in_view_switches_without_trigger_within_0_3s": [
+     137.64,
+     137.7
+    ],
+    "sidecar_switches": 39,
+    "classified": {
+     "triggers": 45,
+     "centre_jump": 35,
+     "no_centre_jump": 10,
+     "flag_driven": 10
+    },
+    "window_share_of_cue_ticks": 0.111,
+    "cue_seconds": 239.8,
+    "examples_without_centre_jump": [
+     {
+      "t": 14.31,
+      "centre_jump_deg": 3.9,
+      "aim_minus_centre_px320": -21.6,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 47.41,
+      "centre_jump_deg": 0.3,
+      "aim_minus_centre_px320": 13.3,
+      "prev_px320": 14.0
+     },
+     {
+      "t": 57.55,
+      "centre_jump_deg": 0.7,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 31.4
+     },
+     {
+      "t": 149.98,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 14.3,
+      "prev_px320": 11.8
+     },
+     {
+      "t": 150.28,
+      "centre_jump_deg": 3.6,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 11.2
+     },
+     {
+      "t": 159.5,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 20.9,
+      "prev_px320": 20.1
+     }
+    ]
+   },
+   "minus-brain08-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 13,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 13,
+     "centre_jump": 3,
+     "no_centre_jump": 10,
+     "flag_driven": 9
+    },
+    "window_share_of_cue_ticks": 0.251,
+    "cue_seconds": 9.2,
+    "examples_without_centre_jump": [
+     {
+      "t": 7.18,
+      "centre_jump_deg": 0.9,
+      "aim_minus_centre_px320": 31.5,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 7.24,
+      "centre_jump_deg": 0.4,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 31.5
+     },
+     {
+      "t": 7.3,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 44.6,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 7.36,
+      "centre_jump_deg": 0.1,
+      "aim_minus_centre_px320": 65.0,
+      "prev_px320": 44.6
+     },
+     {
+      "t": 7.42,
+      "centre_jump_deg": 0.3,
+      "aim_minus_centre_px320": 92.7,
+      "prev_px320": 65.0
+     },
+     {
+      "t": 7.48,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 32.9,
+      "prev_px320": 92.7
+     }
+    ]
+   },
+   "minus-fast6-cur-01": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 1,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 1,
+     "centre_jump": 1,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.1,
+    "cue_seconds": 9.4,
+    "examples_without_centre_jump": []
+   },
+   "minus-brain08-loom-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 2,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 2,
+     "centre_jump": 2,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.201,
+    "cue_seconds": 9.2,
+    "examples_without_centre_jump": []
+   },
+   "minus-brain08-slow35-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 7,
+    "pilot_target_switches": 3,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 3,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 3,
+    "classified": {
+     "triggers": 7,
+     "centre_jump": 7,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.138,
+    "cue_seconds": 10.1,
+    "examples_without_centre_jump": []
+   },
+   "pine-brain08-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 28,
+    "pilot_target_switches": 11,
+    "switches_on_clamped_markers": 3,
+    "in_view_switches": 8,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 11,
+    "classified": {
+     "triggers": 28,
+     "centre_jump": 4,
+     "no_centre_jump": 24,
+     "flag_driven": 24
+    },
+    "window_share_of_cue_ticks": 0.331,
+    "cue_seconds": 14.0,
+    "examples_without_centre_jump": [
+     {
+      "t": 7.13,
+      "centre_jump_deg": 0.4,
+      "aim_minus_centre_px320": 23.2,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 7.17,
+      "centre_jump_deg": 0.9,
+      "aim_minus_centre_px320": -18.5,
+      "prev_px320": 23.2
+     },
+     {
+      "t": 7.24,
+      "centre_jump_deg": 0.6,
+      "aim_minus_centre_px320": 5.7,
+      "prev_px320": -18.5
+     },
+     {
+      "t": 7.97,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 24.1,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 8.04,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 24.1
+     },
+     {
+      "t": 8.1,
+      "centre_jump_deg": 0.1,
+      "aim_minus_centre_px320": -18.4,
+      "prev_px320": 0.0
+     }
+    ]
+   },
+   "pine-brain08-loom-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 3,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 3,
+     "centre_jump": 3,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.184,
+    "cue_seconds": 5.8,
+    "examples_without_centre_jump": []
+   },
+   "pine-brain06-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 24,
+    "pilot_target_switches": 5,
+    "switches_on_clamped_markers": 1,
+    "in_view_switches": 4,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 5,
+    "classified": {
+     "triggers": 24,
+     "centre_jump": 2,
+     "no_centre_jump": 22,
+     "flag_driven": 22
+    },
+    "window_share_of_cue_ticks": 0.269,
+    "cue_seconds": 14.5,
+    "examples_without_centre_jump": [
+     {
+      "t": 7.56,
+      "centre_jump_deg": 0.5,
+      "aim_minus_centre_px320": -56.1,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 7.62,
+      "centre_jump_deg": 0.2,
+      "aim_minus_centre_px320": -48.6,
+      "prev_px320": -56.1
+     },
+     {
+      "t": 7.68,
+      "centre_jump_deg": 0.6,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": -48.6
+     },
+     {
+      "t": 7.74,
+      "centre_jump_deg": 0.1,
+      "aim_minus_centre_px320": -58.7,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 7.86,
+      "centre_jump_deg": 0.3,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": -40.6
+     },
+     {
+      "t": 7.92,
+      "centre_jump_deg": 0.1,
+      "aim_minus_centre_px320": -49.7,
+      "prev_px320": 0.0
+     }
+    ]
+   },
+   "pine-fast6-01": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 0,
+    "pilot_target_switches": 1,
+    "switches_on_clamped_markers": 1,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 1,
+    "classified": {
+     "triggers": 0,
+     "centre_jump": 0,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.0,
+    "cue_seconds": 12.3,
+    "examples_without_centre_jump": []
+   },
+   "pine-fast6-loom-01": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 7,
+    "pilot_target_switches": 1,
+    "switches_on_clamped_markers": 1,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 1,
+    "classified": {
+     "triggers": 7,
+     "centre_jump": 0,
+     "no_centre_jump": 7,
+     "flag_driven": 6
+    },
+    "window_share_of_cue_ticks": 0.326,
+    "cue_seconds": 12.1,
+    "examples_without_centre_jump": [
+     {
+      "t": 6.86,
+      "centre_jump_deg": 7.9,
+      "aim_minus_centre_px320": -37.4,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 6.99,
+      "centre_jump_deg": 1.8,
+      "aim_minus_centre_px320": -11.0,
+      "prev_px320": -24.3
+     },
+     {
+      "t": 8.41,
+      "centre_jump_deg": 0.1,
+      "aim_minus_centre_px320": 38.5,
+      "prev_px320": 0.0
+     },
+     {
+      "t": 8.48,
+      "centre_jump_deg": 0.1,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 38.5
+     },
+     {
+      "t": 9.91,
+      "centre_jump_deg": 0.5,
+      "aim_minus_centre_px320": 21.5,
+      "prev_px320": -11.9
+     },
+     {
+      "t": 10.15,
+      "centre_jump_deg": 0.1,
+      "aim_minus_centre_px320": 0.0,
+      "prev_px320": 19.8
+     }
+    ]
+   }
+  },
+  "v2": {
+   "straw-brain08-06": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 88,
+    "pilot_target_switches": 66,
+    "switches_on_clamped_markers": 23,
+    "in_view_switches": 43,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 66,
+    "classified": {
+     "triggers": 88,
+     "centre_jump": 88,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.137,
+    "cue_seconds": 267.1,
+    "examples_without_centre_jump": []
+   },
+   "straw-fast6-02": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 35,
+    "pilot_target_switches": 39,
+    "switches_on_clamped_markers": 12,
+    "in_view_switches": 27,
+    "in_view_switches_without_trigger_within_0_3s": [
+     137.64,
+     137.7
+    ],
+    "sidecar_switches": 39,
+    "classified": {
+     "triggers": 35,
+     "centre_jump": 35,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.092,
+    "cue_seconds": 239.8,
+    "examples_without_centre_jump": []
+   },
+   "minus-brain08-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 3,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 3,
+     "centre_jump": 3,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.187,
+    "cue_seconds": 9.2,
+    "examples_without_centre_jump": []
+   },
+   "minus-fast6-cur-01": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 1,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 1,
+     "centre_jump": 1,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.1,
+    "cue_seconds": 9.4,
+    "examples_without_centre_jump": []
+   },
+   "minus-brain08-loom-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 2,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 2,
+     "centre_jump": 2,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.201,
+    "cue_seconds": 9.2,
+    "examples_without_centre_jump": []
+   },
+   "minus-brain08-slow35-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 7,
+    "pilot_target_switches": 3,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 3,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 3,
+    "classified": {
+     "triggers": 7,
+     "centre_jump": 7,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.138,
+    "cue_seconds": 10.1,
+    "examples_without_centre_jump": []
+   },
+   "pine-brain08-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 4,
+    "pilot_target_switches": 11,
+    "switches_on_clamped_markers": 3,
+    "in_view_switches": 8,
+    "in_view_switches_without_trigger_within_0_3s": [
+     8.22,
+     8.28,
+     8.34,
+     8.4,
+     8.46,
+     8.58,
+     8.64
+    ],
+    "sidecar_switches": 11,
+    "classified": {
+     "triggers": 4,
+     "centre_jump": 4,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.142,
+    "cue_seconds": 14.0,
+    "examples_without_centre_jump": []
+   },
+   "pine-brain08-loom-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 3,
+    "pilot_target_switches": 0,
+    "switches_on_clamped_markers": 0,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 0,
+    "classified": {
+     "triggers": 3,
+     "centre_jump": 3,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.184,
+    "cue_seconds": 5.8,
+    "examples_without_centre_jump": []
+   },
+   "pine-brain06-01": {
+    "contract": "fast_velocity_brain_v1",
+    "lag_turn_triggers": 2,
+    "pilot_target_switches": 5,
+    "switches_on_clamped_markers": 1,
+    "in_view_switches": 4,
+    "in_view_switches_without_trigger_within_0_3s": [
+     8.89,
+     8.95,
+     9.01,
+     9.07
+    ],
+    "sidecar_switches": 5,
+    "classified": {
+     "triggers": 2,
+     "centre_jump": 2,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.106,
+    "cue_seconds": 14.5,
+    "examples_without_centre_jump": []
+   },
+   "pine-fast6-01": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 0,
+    "pilot_target_switches": 1,
+    "switches_on_clamped_markers": 1,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 1,
+    "classified": {
+     "triggers": 0,
+     "centre_jump": 0,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.0,
+    "cue_seconds": 12.3,
+    "examples_without_centre_jump": []
+   },
+   "pine-fast6-loom-01": {
+    "contract": "fast_velocity_pd_v1",
+    "lag_turn_triggers": 0,
+    "pilot_target_switches": 1,
+    "switches_on_clamped_markers": 1,
+    "in_view_switches": 0,
+    "in_view_switches_without_trigger_within_0_3s": [],
+    "sidecar_switches": 1,
+    "classified": {
+     "triggers": 0,
+     "centre_jump": 0,
+     "no_centre_jump": 0,
+     "flag_driven": 0
+    },
+    "window_share_of_cue_ticks": 0.0,
+    "cue_seconds": 12.1,
+    "examples_without_centre_jump": []
+   }
+  }
+ },
+ "synthetic_lead_and_gap": {
+  "note": "static course 0 deg, ring 0 -> 12.7 deg left at 10.3 s, gap +12 deg; command heading 0.8 s after the jump",
+  "v1": {
+   "tree": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m2impl\\review-fix\\old",
+   "after_0_8_s": {
+    "gap_only": {
+     "command_heading": 21.53,
+     "beyond_ring": 8.83,
+     "lead": 0.0,
+     "gap_offset": 12.0,
+     "triggers": 0
+    },
+    "lag_only": {
+     "command_heading": 20.07,
+     "beyond_ring": 7.37,
+     "lead": 6.4,
+     "gap_offset": 0.0,
+     "triggers": 1
+    },
+    "both": {
+     "command_heading": 38.58,
+     "beyond_ring": 25.88,
+     "lead": 12.45,
+     "gap_offset": 12.0,
+     "triggers": 1
+    },
+    "both_shadow": {
+     "command_heading": 12.08,
+     "beyond_ring": -0.62,
+     "lead": 6.4,
+     "gap_offset": 0.0,
+     "triggers": 1
+    }
+   },
+   "flag_triggers": {
+    "flicker": 2,
+    "appears": 1,
+    "disappears": 1,
+    "ring_jump_16_with_flag_8": 1
+   }
+  },
+  "v2": {
+   "tree": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_d7499ca4-9b2-6",
+   "after_0_8_s": {
+    "gap_only": {
+     "command_heading": 21.53,
+     "beyond_ring": 8.83,
+     "lead": 0.0,
+     "gap_offset": 12.0,
+     "triggers": 0
+    },
+    "lag_only": {
+     "command_heading": 20.07,
+     "beyond_ring": 7.37,
+     "lead": 6.4,
+     "gap_offset": 0.0,
+     "triggers": 1
+    },
+    "both": {
+     "command_heading": 31.77,
+     "beyond_ring": 19.07,
+     "lead": 6.4,
+     "gap_offset": 12.0,
+     "triggers": 1
+    },
+    "both_shadow": {
+     "command_heading": 12.08,
+     "beyond_ring": -0.62,
+     "lead": 6.4,
+     "gap_offset": 0.0,
+     "triggers": 1
+    }
+   },
+   "flag_triggers": {
+    "flicker": 0,
+    "appears": 0,
+    "disappears": 0,
+    "ring_jump_16_with_flag_8": 1
+   }
+  }
+ },
+ "pillar_a_full_fast_race_cue": {
+  "v1": {
+   "tree": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m2impl\\review-fix\\old",
+   "gap_pilot": {
+    "version": 1,
+    "sha256": "e704a3ba0d3d88018a91f18b68659f0046de9da105de0f60916dc4c6b4efc0db"
+   },
+   "lag_turn": {
+    "version": 1,
+    "sha256": "94315b4ddc4a1750137e1856dd40d1be0d2823d0ef359961eda0d29937271aad"
+   },
+   "g1_region": {
+    "x": [
+     42.0,
+     54.7
+    ],
+    "y": [
+     0.0,
+     6.0
+    ]
+   },
+   "pillar": [
+    54.7,
+    4.05
+   ],
+   "flights": {
+    "minus-brain08-01": {
+     "on": {
+      "first_confirmed_left": {
+       "distance_m": 5.75,
+       "t_s": 12.26,
+       "target_deg": 6.13
+      },
+      "approach_ticks": 195,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 12.0,
+      "max_lead_deg": 14.99,
+      "lag_window_ticks_in_approach": 86,
+      "max_goal_beside_ring_deg": 29.33,
+      "closest_distance_m": 1.52,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       6.93,
+       6.98,
+       7.17,
+       7.22,
+       7.29,
+       7.36,
+       7.41,
+       7.48,
+       7.53,
+       7.6,
+       12.14,
+       12.68,
+       12.74
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 209,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 1,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "shadow": {
+      "first_confirmed_left": {
+       "distance_m": 5.75,
+       "t_s": 12.26,
+       "target_deg": 6.13
+      },
+      "approach_ticks": 195,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 0.0,
+      "max_lead_deg": 11.57,
+      "lag_window_ticks_in_approach": 86,
+      "max_goal_beside_ring_deg": 7.79,
+      "closest_distance_m": 1.52,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       6.93,
+       6.98,
+       7.17,
+       7.22,
+       7.29,
+       7.36,
+       7.41,
+       7.48,
+       7.53,
+       7.6,
+       12.14,
+       12.68,
+       12.74
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 209,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 1,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "max_lead_difference_on_vs_shadow_deg": 7.2
+    },
+    "minus-fast6-cur-01": {
+     "on": {
+      "first_confirmed_left": {
+       "distance_m": 5.93,
+       "t_s": 11.83,
+       "target_deg": 5.14
+      },
+      "approach_ticks": 218,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 12.0,
+      "max_lead_deg": 9.9,
+      "lag_window_ticks_in_approach": 94,
+      "max_goal_beside_ring_deg": 13.82,
+      "closest_distance_m": 0.41,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       11.73
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 201,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 2,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "shadow": {
+      "first_confirmed_left": {
+       "distance_m": 5.93,
+       "t_s": 11.83,
+       "target_deg": 5.14
+      },
+      "approach_ticks": 218,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 0.0,
+      "max_lead_deg": 7.2,
+      "lag_window_ticks_in_approach": 94,
+      "max_goal_beside_ring_deg": 7.06,
+      "closest_distance_m": 0.41,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       11.73
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 201,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 2,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "max_lead_difference_on_vs_shadow_deg": 3.084528
+    }
+   }
+  },
+  "v2": {
+   "tree": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_d7499ca4-9b2-6",
+   "gap_pilot": {
+    "version": 2,
+    "sha256": "67ec1f140a312256f205bbe444268fabb5d023df70cec9e5591d61876f08c7d6"
+   },
+   "lag_turn": {
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860"
+   },
+   "g1_region": {
+    "x": [
+     42.0,
+     54.7
+    ],
+    "y": [
+     0.0,
+     6.0
+    ]
+   },
+   "pillar": [
+    54.7,
+    4.05
+   ],
+   "flights": {
+    "minus-brain08-01": {
+     "on": {
+      "first_confirmed_left": {
+       "distance_m": 5.75,
+       "t_s": 12.26,
+       "target_deg": 6.13
+      },
+      "approach_ticks": 195,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 12.0,
+      "max_lead_deg": 11.57,
+      "lag_window_ticks_in_approach": 86,
+      "max_goal_beside_ring_deg": 22.98,
+      "closest_distance_m": 1.52,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       6.93,
+       6.98,
+       12.14
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 209,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 1,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "shadow": {
+      "first_confirmed_left": {
+       "distance_m": 5.75,
+       "t_s": 12.26,
+       "target_deg": 6.13
+      },
+      "approach_ticks": 195,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 0.0,
+      "max_lead_deg": 11.57,
+      "lag_window_ticks_in_approach": 86,
+      "max_goal_beside_ring_deg": 7.79,
+      "closest_distance_m": 1.52,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       6.93,
+       6.98,
+       12.14
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 209,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 1,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "max_lead_difference_on_vs_shadow_deg": 0.0
+    },
+    "minus-fast6-cur-01": {
+     "on": {
+      "first_confirmed_left": {
+       "distance_m": 5.93,
+       "t_s": 11.83,
+       "target_deg": 5.14
+      },
+      "approach_ticks": 218,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 12.0,
+      "max_lead_deg": 7.2,
+      "lag_window_ticks_in_approach": 94,
+      "max_goal_beside_ring_deg": 12.01,
+      "closest_distance_m": 0.41,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       11.73
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 201,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 2,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "shadow": {
+      "first_confirmed_left": {
+       "distance_m": 5.93,
+       "t_s": 11.83,
+       "target_deg": 5.14
+      },
+      "approach_ticks": 218,
+      "confirmed_right_ticks": 0,
+      "max_intended_deg": 12.0,
+      "max_applied_offset_deg": 0.0,
+      "max_lead_deg": 7.2,
+      "lag_window_ticks_in_approach": 94,
+      "max_goal_beside_ring_deg": 7.06,
+      "closest_distance_m": 0.41,
+      "conflicts": [],
+      "lag_turn_triggers": [
+       11.73
+      ],
+      "target_switches": 0,
+      "counts": {
+       "samples": 201,
+       "stale": 0,
+       "repeated": 0,
+       "obstacle_votes": 13,
+       "terrain_votes": 0,
+       "obstacle_episodes": 2,
+       "terrain_episodes": 0,
+       "latch_blocks": 0,
+       "ring_conflicts": 0,
+       "flag_conflicts": 0
+      }
+     },
+     "max_lead_difference_on_vs_shadow_deg": 0.0
+    }
+   }
+  }
+ },
+ "g5_surrogate": {
+  "note": "harness m2impl/lagturn/harness_lt.py, 16 courses, sim seed 17. v2 PD is bit-identical to the original v1 run; v2 brain is bit-identical to a same-day rerun of the pre-fix tree and of the m2-lagturn commit, but the original v1 brain run (2026-09-25 23:37) is not reproducible (same code, checkpoint and profile).",
+  "pd_v2": {
+   "finished": 14,
+   "crashed": 2,
+   "mean_speed": 5.125,
+   "stick_chatter": 0.00633,
+   "lag_turn_triggers": 85,
+   "lag_turn_active_s": 67.84,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 44.11,
+    "flat-3001": 58.03,
+    "flat-3002": 49.02,
+    "flat-3003": 47.19,
+    "flat-3004": 55.05,
+    "flat-3005": 51.9,
+    "flat-3006": 53.61,
+    "flat-3007": 50.95,
+    "steep-3000": 63.37,
+    "steep-3001": 69.4,
+    "steep-3002": 54.96,
+    "steep-3003": 55.79,
+    "steep-3004": 82.36,
+    "steep-3005": null,
+    "steep-3006": 56.66,
+    "steep-3007": null
+   }
+  },
+  "pd_v1_original": {
+   "finished": 14,
+   "crashed": 2,
+   "mean_speed": 5.125,
+   "stick_chatter": 0.00633,
+   "lag_turn_triggers": 85,
+   "lag_turn_active_s": 67.84,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 44.11,
+    "flat-3001": 58.03,
+    "flat-3002": 49.02,
+    "flat-3003": 47.19,
+    "flat-3004": 55.05,
+    "flat-3005": 51.9,
+    "flat-3006": 53.61,
+    "flat-3007": 50.95,
+    "steep-3000": 63.37,
+    "steep-3001": 69.4,
+    "steep-3002": 54.96,
+    "steep-3003": 55.79,
+    "steep-3004": 82.36,
+    "steep-3005": null,
+    "steep-3006": 56.66,
+    "steep-3007": null
+   }
+  },
+  "pd_off_original": {
+   "finished": 14,
+   "crashed": 2,
+   "mean_speed": 5.121,
+   "stick_chatter": 0.00571,
+   "lag_turn_triggers": 0,
+   "lag_turn_active_s": 0.0,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 43.25,
+    "flat-3001": 57.87,
+    "flat-3002": 49.02,
+    "flat-3003": 47.13,
+    "flat-3004": 55.07,
+    "flat-3005": 52.06,
+    "flat-3006": 53.84,
+    "flat-3007": 53.31,
+    "steep-3000": 63.15,
+    "steep-3001": 69.42,
+    "steep-3002": 54.81,
+    "steep-3003": 55.68,
+    "steep-3004": 82.36,
+    "steep-3005": null,
+    "steep-3006": 56.61,
+    "steep-3007": null
+   }
+  },
+  "brain_v2": {
+   "finished": 15,
+   "crashed": 0,
+   "mean_speed": 4.583,
+   "stick_chatter": 0.00336,
+   "lag_turn_triggers": 89,
+   "lag_turn_active_s": 67.23,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 49.5,
+    "flat-3001": 64.5,
+    "flat-3002": 55.36,
+    "flat-3003": 52.08,
+    "flat-3004": 59.88,
+    "flat-3005": 61.52,
+    "flat-3006": 60.46,
+    "flat-3007": 62.56,
+    "steep-3000": 90.83,
+    "steep-3001": 103.11,
+    "steep-3002": 70.71,
+    "steep-3003": 64.48,
+    "steep-3004": null,
+    "steep-3005": 67.46,
+    "steep-3006": 73.95,
+    "steep-3007": 75.64
+   }
+  },
+  "brain_v1_prefix_tree_same_day": {
+   "finished": 15,
+   "crashed": 0,
+   "mean_speed": 4.583,
+   "stick_chatter": 0.00336,
+   "lag_turn_triggers": 89,
+   "lag_turn_active_s": 67.23,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 49.5,
+    "flat-3001": 64.5,
+    "flat-3002": 55.36,
+    "flat-3003": 52.08,
+    "flat-3004": 59.88,
+    "flat-3005": 61.52,
+    "flat-3006": 60.46,
+    "flat-3007": 62.56,
+    "steep-3000": 90.83,
+    "steep-3001": 103.11,
+    "steep-3002": 70.71,
+    "steep-3003": 64.48,
+    "steep-3004": null,
+    "steep-3005": 67.46,
+    "steep-3006": 73.95,
+    "steep-3007": 75.64
+   }
+  },
+  "brain_m2_lagturn_commit_same_day": {
+   "finished": 15,
+   "crashed": 0,
+   "mean_speed": 4.583,
+   "stick_chatter": 0.00336,
+   "lag_turn_triggers": 89,
+   "lag_turn_active_s": 67.23,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 49.5,
+    "flat-3001": 64.5,
+    "flat-3002": 55.36,
+    "flat-3003": 52.08,
+    "flat-3004": 59.88,
+    "flat-3005": 61.52,
+    "flat-3006": 60.46,
+    "flat-3007": 62.56,
+    "steep-3000": 90.83,
+    "steep-3001": 103.11,
+    "steep-3002": 70.71,
+    "steep-3003": 64.48,
+    "steep-3004": null,
+    "steep-3005": 67.46,
+    "steep-3006": 73.95,
+    "steep-3007": 75.64
+   }
+  },
+  "brain_off_same_day": {
+   "finished": 15,
+   "crashed": 0,
+   "mean_speed": 4.58,
+   "stick_chatter": 0.00329,
+   "lag_turn_triggers": 0,
+   "lag_turn_active_s": 0.0,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 49.76,
+    "flat-3001": 64.74,
+    "flat-3002": 55.44,
+    "flat-3003": 52.11,
+    "flat-3004": 60.0,
+    "flat-3005": 61.55,
+    "flat-3006": 60.44,
+    "flat-3007": 62.9,
+    "steep-3000": 91.55,
+    "steep-3001": 102.43,
+    "steep-3002": 70.47,
+    "steep-3003": 64.52,
+    "steep-3004": null,
+    "steep-3005": 67.83,
+    "steep-3006": 71.07,
+    "steep-3007": 75.14
+   }
+  },
+  "brain_v1_original": {
+   "finished": 15,
+   "crashed": 1,
+   "mean_speed": 4.773,
+   "stick_chatter": 0.00337,
+   "lag_turn_triggers": 115,
+   "lag_turn_active_s": 80.93,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 49.66,
+    "flat-3001": 61.24,
+    "flat-3002": 55.07,
+    "flat-3003": 51.22,
+    "flat-3004": 60.32,
+    "flat-3005": 57.89,
+    "flat-3006": 58.99,
+    "flat-3007": 55.24,
+    "steep-3000": 74.35,
+    "steep-3001": 83.18,
+    "steep-3002": 61.17,
+    "steep-3003": 61.48,
+    "steep-3004": 92.89,
+    "steep-3005": 68.13,
+    "steep-3006": 63.81,
+    "steep-3007": null
+   }
+  },
+  "brain_off_original": {
+   "finished": 15,
+   "crashed": 1,
+   "mean_speed": 4.804,
+   "stick_chatter": 0.00298,
+   "lag_turn_triggers": 0,
+   "lag_turn_active_s": 0.0,
+   "lat_20_40_at_1s": null,
+   "finish_s": {
+    "flat-3000": 49.23,
+    "flat-3001": 60.9,
+    "flat-3002": 54.47,
+    "flat-3003": 50.66,
+    "flat-3004": 59.96,
+    "flat-3005": 57.74,
+    "flat-3006": 57.84,
+    "flat-3007": 54.97,
+    "steep-3000": 74.39,
+    "steep-3001": 79.24,
+    "steep-3002": 60.81,
+    "steep-3003": 61.25,
+    "steep-3004": 93.16,
+    "steep-3005": 68.17,
+    "steep-3006": 62.99,
+    "steep-3007": null
+   }
+  },
+  "tables": {
+   "brain_same_day": "== brain\n  finished 15/16 -> 15/16; crashed 0 [] -> 0 []; new crashes []; unfinished off ['steep-3004'] on ['steep-3004']\n  chatter 0.00329 -> 0.00336; mean speed 4.58 -> 4.583; paired finish (n=15) mean delta +0.14 s (median -0.04); triggers 89, active 67.23 s\n  lat bin <20   n 13->14  @0.5 0.37/0.42/p90 0.74 -> 0.38/0.44/p90 0.78  @1.0 0.57/0.70/p90 1.24 -> 0.54/0.67/p90 1.22  @1.5 0.51/0.76/p90 1.42 -> 0.61/0.66/p90 1.23  inside(min2) 0.00/-0.01/p90 0.00 -> 0.00/-0.01/p90 0.00\n  lat bin 20-40 n 20->17  @0.5 1.17/1.17/p90 1.38 -> 1.18/1.18/p90 1.43  @1.0 1.75/1.75/p90 2.06 -> 1.69/1.69/p90 2.05  @1.5 1.75/1.77/p90 2.36 -> 1.53/1.46/p90 1.83  inside(min2) 0.00/0.00/p90 0.00 -> 0.00/0.00/p90 0.00\n  lat bin 40-75 n 28->29  @0.5 1.89/1.86/p90 2.42 -> 1.91/1.88/p90 2.43  @1.0 2.44/2.50/p90 3.48 -> 2.43/2.50/p90 3.53  @1.5 2.15/2.25/p90 3.22 -> 2.13/2.14/p90 3.40  inside(min2) 0.00/0.00/p90 0.00 -> 0.00/-0.01/p90 0.00\n  lat bin >75   n 51->52  @0.5 1.94/1.94/p90 2.71 -> 1.95/1.96/p90 2.72  @1.0 2.91/2.87/p90 3.75 -> 2.91/2.94/p90 3.85  @1.5 2.71/2.65/p90 3.84 -> 2.82/2.79/p90 3.91  inside(min2) 0.00/-0.07/p90 0.00 -> 0.00/-0.03/p90 0.00\n  paired lat@1s 20-40: n 20 mean delta +0.041 m, median -0.062, improved 15/20\n  paired lat@1s all: n 112 mean delta +0.027 m, median -0.015, improved 62/112\n  switch bin <45   n 16->16 speed_min 3.5221->3.5895 regain 2.0831->2.3062 stick_after 0.0088->0.0091 pitch_swing 0.7229->0.7249\n  switch bin 45-75 n 60->60 speed_min 2.1992->2.1699 regain 2.0077->2.0017 stick_after 0.0142->0.0144 pitch_swing 0.9759->0.9726\n  switch bin >75   n 11->12 speed_min 1.4874->1.4745 regain 1.7518->1.7242 stick_after 0.0134->0.014 pitch_swing 0.8848->0.8579\n",
+   "pd": "== pd\n  finished 14/16 -> 14/16; crashed 2 ['steep-3005', 'steep-3007'] -> 2 ['steep-3005', 'steep-3007']; new crashes []; unfinished off ['steep-3005', 'steep-3007'] on ['steep-3005', 'steep-3007']\n  chatter 0.00571 -> 0.00633; mean speed 5.121 -> 5.125; paired finish (n=14) mean delta -0.08 s (median +0.02); triggers 85, active 67.84 s\n  lat bin <20   n 16->16  @0.5 0.46/0.45/p90 0.75 -> 0.37/0.40/p90 0.66  @1.0 0.45/0.44/p90 0.76 -> 0.33/0.33/p90 0.52  @1.5 0.38/0.35/p90 0.64 -> 0.27/0.29/p90 0.50  inside(min2) 0.00/-0.00/p90 0.00 -> 0.00/-0.00/p90 0.00\n  lat bin 20-40 n 11->11  @0.5 1.02/1.01/p90 1.29 -> 0.97/0.96/p90 1.25  @1.0 0.96/0.99/p90 1.22 -> 0.80/0.76/p90 0.99  @1.5 0.83/0.83/p90 1.07 -> 0.75/0.68/p90 0.95  inside(min2) 0.00/0.00/p90 0.00 -> 0.00/0.00/p90 0.00\n  lat bin 40-75 n 28->28  @0.5 1.89/1.84/p90 2.38 -> 1.91/1.86/p90 2.30  @1.0 2.09/2.07/p90 2.80 -> 2.03/1.98/p90 2.76  @1.5 1.75/1.74/p90 2.34 -> 1.65/1.64/p90 2.22  inside(min2) 0.00/0.00/p90 0.00 -> 0.00/0.00/p90 0.00\n  lat bin >75   n 45->45  @0.5 2.38/2.19/p90 2.70 -> 2.45/2.19/p90 2.70  @1.0 3.58/3.39/p90 3.94 -> 3.48/3.37/p90 3.89  @1.5 3.58/3.41/p90 4.09 -> 3.28/3.22/p90 4.01  inside(min2) 0.00/0.00/p90 0.00 -> 0.00/0.00/p90 0.00\n  paired lat@1s 20-40: n 11 mean delta -0.229 m, median -0.234, improved 10/11\n  paired lat@1s all: n 100 mean delta -0.077 m, median -0.033, improved 63/100\n"
+  }
+ },
+ "g8_rerun": {
+  "note": "gates v1 unchanged; bench launched below normal and raised after spawning (--parent-priority below-normal); Liftoff open in its seat, GPU 48-51% busy before the runs; fp16 carried over from the first bench (unchanged model, input and weights)",
+  "gates": {
+   "schema": "haltere.obstacles.gap_bench_gates_result.v1",
+   "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+   "gates": {
+    "camera_loop_p95_ms": 95.0,
+    "camera_rate_hz_min": 15.0,
+    "gap_age_p95_ms": 150.0,
+    "cue_latency_increase_ms": 6.0,
+    "fp16_rel_error_max": 0.01
+   },
+   "baselines": {
+    "straw-brain08-06_baseline": {
+     "camera": {
+      "frames": 995,
+      "rate_hz": 16.583333333333332,
+      "interval_ms": {
+       "p50": 62.52485000004526,
+       "p95": 77.45379000152752
+      },
+      "capture_ms": {
+       "p50": 20.42519999668002,
+       "p95": 20.690840001770994,
+       "max": 21.178399998461828
+      },
+      "preprocess_ms": {
+       "p50": 1.750800001900643,
+       "p95": 2.191279998078244,
+       "max": 2.6143999930354767
+      },
+      "inference_ms": {
+       "p50": 29.156399999919813,
+       "p95": 42.95479000356862,
+       "max": 102.57090000231983
+      },
+      "publish_ms": {
+       "p50": 0.1807000007829629,
+       "p95": 1.2188499997137114,
+       "max": 1.9195999993826263
+      },
+      "looming_ms": {
+       "p50": 10.595100000500679,
+       "p95": 13.383970003633294,
+       "max": 15.235999999276828
+      },
+      "gap_ms": {
+       "p50": 0.0045000051613897085,
+       "p95": 0.009399998816661537,
+       "max": 0.023699998564552516
+      },
+      "total_ms": {
+       "p50": 62.52449999738019,
+       "p95": 77.42751000187127,
+       "max": 136.7491000055452
+      },
+      "cue_latency_ms": {
+       "p50": 51.57829999370733,
+       "p95": 65.68830999749478,
+       "max": 125.11320000339765
+      }
+     },
+     "cue": {
+      "age_at_tick_ms": {
+       "p50": 79.02844999989611,
+       "p95": 125.53939500576236,
+       "max": 198.0249000043841
+      },
+      "latency_ms": {
+       "p50": 51.57829999370733,
+       "p95": 65.68830999749478,
+       "max": 125.11320000339765
+      }
+     }
+    }
+   },
+   "conditions": {
+    "straw-brain08-06_process": {
+     "condition": "process",
+     "flight": "straw-brain08-06",
+     "baseline": "baseline",
+     "checks": {
+      "camera_loop_p95_ms": {
+       "value": 70.7941299995582,
+       "passed": true
+      },
+      "camera_rate_hz": {
+       "value": 17.65,
+       "passed": true
+      },
+      "gap_age_p95_ms": {
+       "value": 117.43585999865901,
+       "passed": true
+      },
+      "cue_latency_increase_ms": {
+       "value": -6.65642999520059,
+       "passed": true
+      },
+      "fp16_relative_error_p95": {
+       "value": 0.001351070182467634,
+       "passed": true
+      }
+     },
+     "passed": true
+    }
+   },
+   "scored_at": "2026-09-26T02:23:24"
+  },
+  "runs": {
+   "straw-brain08-06_baseline": {
+    "schema": "haltere.obstacles.gap_bench_run.v1",
+    "condition": "baseline",
+    "placement": null,
+    "flight": "straw-brain08-06",
+    "start_s": 30.0,
+    "seconds": 60.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "protocol": {
+     "video": "runs/fast-stack-20260923/<flight>.mp4 (1928 x 720 composite; the 1280 x 720 gameplay crop is served), decoded in real time by haltere.liftoff.camera_replay",
+     "flight": "straw-brain08-06",
+     "start_s": 30.0,
+     "seconds": 60.0,
+     "warmup_s": 3.0,
+     "camera_fps": 48.0,
+     "capture_pad_ms": 20.0,
+     "brain_load_ms": 6.0,
+     "gpu": "one ChunkGuard chunk per run (<= 300 s): pause above 70 C until 65 C, hard stop at 80 C, temperature polled every 2 s during a run",
+     "conditions": "baseline (looming on, gap off), camera (gap in the camera process, every frame), process (separate depth process fed by a frame slot, every frame); camera2/process2 (every other frame) only if both every-frame placements fail",
+     "declared_from": "capture_pad_ms: live mss capture stage p50 18.2-22.1 ms (minus-brain08-loom-01, pine-brain08-loom-01, minus-fast6-cur-01, straw-brain08-06); brain_load_ms: live controller step p50 5.5-7.1 ms; camera_fps 48: the runner default",
+     "limits": "Liftoff does not run during the bench, so its GPU and CPU load are absent; the replayed frames are the H.264 recording of the capture; the controller is emulated (motion publish, camera polls, a CPU load), not the brain itself"
+    },
+    "gap_spec": null,
+    "priorities": {
+     "parent": {
+      "inherited": 32,
+      "launched_at": 16384,
+      "raised_after_spawn": {
+       "applied": true,
+       "previous": 16384,
+       "current": 32768
+      }
+     },
+     "camera": {
+      "applied": true,
+      "previous": 16384,
+      "current": 32768
+     },
+     "depth_process": null,
+     "launch": "below-normal"
+    },
+    "camera_skips": null,
+    "offset_s": -0.06999999999999951,
+    "offset_source": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m2impl\\gapcue\\flights\\straw-brain08-06.npz",
+    "ready_s": 3.6,
+    "gpu_peak_c": 41.0,
+    "gpu_hard_stop": false,
+    "chunk": {
+     "chunks": 1,
+     "flight_lock_wait_s": 0.0,
+     "gpu_heat_wait_s": 0.1,
+     "gpu": true,
+     "flight_lock": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\FLIGHT_LOCK"
+    },
+    "camera_diagnostics": {
+     "phase": "inference",
+     "phase_age_ms": 35.066500000539236,
+     "frames": 1035,
+     "timing_samples": 1035,
+     "missing_frames": 0,
+     "error": null,
+     "detector_device": "cuda",
+     "stages_ms": {
+      "capture": {
+       "p50": 20.426900002348702,
+       "p95": 20.708709999598796,
+       "max": 21.490200000698678
+      },
+      "preprocess": {
+       "p50": 1.748900001985021,
+       "p95": 2.1945599975879304,
+       "max": 2.6143999930354767
+      },
+      "inference": {
+       "p50": 29.346600000280887,
+       "p95": 42.77252000465523,
+       "max": 102.57090000231983
+      },
+      "publish": {
+       "p50": 0.17939999816007912,
+       "p95": 1.1949700005061448,
+       "max": 1.9195999993826263
+      },
+      "looming": {
+       "p50": 10.621700006595347,
+       "p95": 13.416110000980552,
+       "max": 15.235999999276828
+      },
+      "gap": {
+       "p50": 0.0045000051613897085,
+       "p95": 0.009400000999448821,
+       "max": 0.02939999831141904
+      },
+      "total": {
+       "p50": 62.851700000464916,
+       "p95": 77.37396000084118,
+       "max": 136.7491000055452
+      },
+      "cue_latency": {
+       "p50": 51.79119999957038,
+       "p95": 65.5179200002749,
+       "max": 125.11320000339765
+      }
+     },
+     "stage_note": "publish = cue/retina shared-memory write only (looming split out since the gap wiring)",
+     "priority": {
+      "applied": true,
+      "previous": 16384,
+      "current": 32768
+     },
+     "process_isolated": true,
+     "worker_pid": 19980
+    },
+    "live_camera_reference": {
+     "capture": {
+      "p50": 20.605199999863544,
+      "p95": 30.660250000437372,
+      "max": 105.02970000015921
+     },
+     "preprocess": {
+      "p50": 4.8593999999866355,
+      "p95": 5.82295000049271,
+      "max": 8.03520000044955
+     },
+     "inference": {
+      "p50": 31.585199999881297,
+      "p95": 38.82009999983893,
+      "max": 49.32879999978468
+     },
+     "publish": {
+      "p50": 0.21340000012060045,
+      "p95": 1.9590249996781495,
+      "max": 4.122299999835377
+     },
+     "total": {
+      "p50": 58.515349999652244,
+      "p95": 73.0295250002655,
+      "max": 135.44610000008106
+     }
+    },
+    "finished_at": "2026-09-26T02:21:17",
+    "camera": {
+     "frames": 995,
+     "rate_hz": 16.583333333333332,
+     "interval_ms": {
+      "p50": 62.52485000004526,
+      "p95": 77.45379000152752
+     },
+     "capture_ms": {
+      "p50": 20.42519999668002,
+      "p95": 20.690840001770994,
+      "max": 21.178399998461828
+     },
+     "preprocess_ms": {
+      "p50": 1.750800001900643,
+      "p95": 2.191279998078244,
+      "max": 2.6143999930354767
+     },
+     "inference_ms": {
+      "p50": 29.156399999919813,
+      "p95": 42.95479000356862,
+      "max": 102.57090000231983
+     },
+     "publish_ms": {
+      "p50": 0.1807000007829629,
+      "p95": 1.2188499997137114,
+      "max": 1.9195999993826263
+     },
+     "looming_ms": {
+      "p50": 10.595100000500679,
+      "p95": 13.383970003633294,
+      "max": 15.235999999276828
+     },
+     "gap_ms": {
+      "p50": 0.0045000051613897085,
+      "p95": 0.009399998816661537,
+      "max": 0.023699998564552516
+     },
+     "total_ms": {
+      "p50": 62.52449999738019,
+      "p95": 77.42751000187127,
+      "max": 136.7491000055452
+     },
+     "cue_latency_ms": {
+      "p50": 51.57829999370733,
+      "p95": 65.68830999749478,
+      "max": 125.11320000339765
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 79.02844999989611,
+      "p95": 125.53939500576236,
+      "max": 198.0249000043841
+     },
+     "latency_ms": {
+      "p50": 51.57829999370733,
+      "p95": 65.68830999749478,
+      "max": 125.11320000339765
+     }
+    },
+    "gap": null
+   },
+   "straw-brain08-06_process": {
+    "schema": "haltere.obstacles.gap_bench_run.v1",
+    "condition": "process",
+    "placement": [
+     "process",
+     1
+    ],
+    "flight": "straw-brain08-06",
+    "start_s": 30.0,
+    "seconds": 60.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "protocol": {
+     "video": "runs/fast-stack-20260923/<flight>.mp4 (1928 x 720 composite; the 1280 x 720 gameplay crop is served), decoded in real time by haltere.liftoff.camera_replay",
+     "flight": "straw-brain08-06",
+     "start_s": 30.0,
+     "seconds": 60.0,
+     "warmup_s": 3.0,
+     "camera_fps": 48.0,
+     "capture_pad_ms": 20.0,
+     "brain_load_ms": 6.0,
+     "gpu": "one ChunkGuard chunk per run (<= 300 s): pause above 70 C until 65 C, hard stop at 80 C, temperature polled every 2 s during a run",
+     "conditions": "baseline (looming on, gap off), camera (gap in the camera process, every frame), process (separate depth process fed by a frame slot, every frame); camera2/process2 (every other frame) only if both every-frame placements fail",
+     "declared_from": "capture_pad_ms: live mss capture stage p50 18.2-22.1 ms (minus-brain08-loom-01, pine-brain08-loom-01, minus-fast6-cur-01, straw-brain08-06); brain_load_ms: live controller step p50 5.5-7.1 ms; camera_fps 48: the runner default",
+     "limits": "Liftoff does not run during the bench, so its GPU and CPU load are absent; the replayed frames are the H.264 recording of the capture; the controller is emulated (motion publish, camera polls, a CPU load), not the brain itself"
+    },
+    "gap_spec": {
+     "placement": "process",
+     "stride": 1,
+     "device": "cuda",
+     "gap_cue_config": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_d7499ca4-9b2-6\\configs\\obstacles\\gap_cue.json",
+     "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+     "gap_cue_version": 2,
+     "gap_cue_file_sha256": "bedfc85257ad01488ef31ef49635e3c7700a24bd5edf1ec7f1daddb6be47d683",
+     "response_models": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_d7499ca4-9b2-6\\configs\\obstacles\\response_models.json",
+     "response_models_file_sha256": "63f0fd79e39da75bf4de91f30b0b9642dd23f5af3da4ec59214954c9d2820d2e",
+     "motor": "brain08",
+     "motor_contract": "fast_velocity_brain_v1",
+     "input_hw": [
+      336,
+      602
+     ],
+     "focal_320": 100.0,
+     "tilt_deg": 30.0,
+     "gap_pilot_config": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_d7499ca4-9b2-6\\configs\\obstacles\\gap_pilot.json",
+     "gap_pilot_sha256": "67ec1f140a312256f205bbe444268fabb5d023df70cec9e5591d61876f08c7d6",
+     "gap_pilot_version": 2
+    },
+    "priorities": {
+     "parent": {
+      "inherited": 32,
+      "launched_at": 16384,
+      "raised_after_spawn": {
+       "applied": true,
+       "previous": 16384,
+       "current": 32768
+      }
+     },
+     "camera": {
+      "applied": true,
+      "previous": 16384,
+      "current": 32768
+     },
+     "depth_process": {
+      "applied": true,
+      "previous": 16384,
+      "current": 32768
+     },
+     "launch": "below-normal"
+    },
+    "camera_skips": {
+     "frames": 0,
+     "cues": 0
+    },
+    "offset_s": -0.06999999999999951,
+    "offset_source": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m2impl\\gapcue\\flights\\straw-brain08-06.npz",
+    "ready_s": 7.0,
+    "gpu_peak_c": 42.0,
+    "gpu_hard_stop": false,
+    "chunk": {
+     "chunks": 1,
+     "flight_lock_wait_s": 0.0,
+     "gpu_heat_wait_s": 0.1,
+     "gpu": true,
+     "flight_lock": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\FLIGHT_LOCK"
+    },
+    "camera_diagnostics": {
+     "phase": "inference",
+     "phase_age_ms": 5.145300005096942,
+     "frames": 1154,
+     "timing_samples": 1154,
+     "missing_frames": 0,
+     "error": null,
+     "detector_device": "cuda",
+     "stages_ms": {
+      "capture": {
+       "p50": 20.411699999385746,
+       "p95": 20.693969998683315,
+       "max": 21.664800005964935
+      },
+      "preprocess": {
+       "p50": 1.7465499986428767,
+       "p95": 2.1679300007235724,
+       "max": 2.4469999989378266
+      },
+      "inference": {
+       "p50": 27.747399999498157,
+       "p95": 36.18064000038429,
+       "max": 93.12250000220956
+      },
+      "publish": {
+       "p50": 0.1389499957440421,
+       "p95": 1.2692699994659031,
+       "max": 78.82950000202982
+      },
+      "looming": {
+       "p50": 10.406249995867256,
+       "p95": 13.375550002820091,
+       "max": 15.056700001878198
+      },
+      "gap": {
+       "p50": 0.15564999921480194,
+       "p95": 0.21407000022009012,
+       "max": 0.8837999994284473
+      },
+      "total": {
+       "p50": 59.890700002142694,
+       "p95": 70.75511000075494,
+       "max": 124.23520000447752
+      },
+      "cue_latency": {
+       "p50": 50.334749998000916,
+       "p95": 58.98468999876059,
+       "max": 116.52709999907529
+      }
+     },
+     "stage_note": "publish = cue/retina shared-memory write only (looming split out since the gap wiring)",
+     "priority": {
+      "applied": true,
+      "previous": 16384,
+      "current": 32768
+     },
+     "process_isolated": true,
+     "worker_pid": 66880,
+     "gap": {
+      "ready": true,
+      "frames": 1101,
+      "depth_frames": 1101,
+      "provenance": {
+       "model": "depth-anything/Depth-Anything-V2-Small-hf",
+       "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+       "model_dir": "C:/DEV/Haltere/runs/dense-depth-probe-20260923/model",
+       "weights_sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70",
+       "licence": "apache-2.0",
+       "device": "cuda",
+       "precision": "fp16",
+       "input_hw": [
+        336,
+        602
+       ],
+       "frame_hw": [
+        252,
+        448
+       ],
+       "block_px": 7,
+       "masked_input": false,
+       "output": "relative inverse depth (affine-invariant), block mean",
+       "gap_cue_config_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+       "mask_layers": [
+        "hud",
+        "ring",
+        "ghost"
+       ],
+       "motor": "brain08"
+      },
+      "timings_ms": {
+       "frame": {
+        "p50": 3.2044000035966747,
+        "p95": 4.178600000159349,
+        "max": 6.3669000010122545
+       },
+       "overlay": {
+        "p50": 3.8266999981715344,
+        "p95": 4.780299997946713,
+        "max": 22.964399999182206
+       },
+       "depth": {
+        "p50": 16.945199997280724,
+        "p95": 23.96240000234684,
+        "max": 97.23169999779202
+       },
+       "decide": {
+        "p50": 0.6059000006644055,
+        "p95": 0.836300001537893,
+        "max": 1.1203000030945987
+       },
+       "latency": {
+        "p50": 51.48149999877205,
+        "p95": 61.206000005768146,
+        "max": 126.49339999916265
+       }
+      },
+      "placement": "process",
+      "priority": {
+       "applied": true,
+       "previous": 16384,
+       "current": 32768
+      },
+      "camera_skips": {
+       "frames": 0,
+       "cues": 0
+      },
+      "skipped_frames": 0,
+      "cue_missed": 2,
+      "cue_wait_ms": {
+       "p50": 2.0875000045634806,
+       "p95": 12.812599998142105
+      },
+      "stride": 1,
+      "depth_worker_pid": 62708
+     }
+    },
+    "live_camera_reference": {
+     "capture": {
+      "p50": 20.605199999863544,
+      "p95": 30.660250000437372,
+      "max": 105.02970000015921
+     },
+     "preprocess": {
+      "p50": 4.8593999999866355,
+      "p95": 5.82295000049271,
+      "max": 8.03520000044955
+     },
+     "inference": {
+      "p50": 31.585199999881297,
+      "p95": 38.82009999983893,
+      "max": 49.32879999978468
+     },
+     "publish": {
+      "p50": 0.21340000012060045,
+      "p95": 1.9590249996781495,
+      "max": 4.122299999835377
+     },
+     "total": {
+      "p50": 58.515349999652244,
+      "p95": 73.0295250002655,
+      "max": 135.44610000008106
+     }
+    },
+    "finished_at": "2026-09-26T02:22:51",
+    "camera": {
+     "frames": 1059,
+     "rate_hz": 17.65,
+     "interval_ms": {
+      "p50": 60.243500000069616,
+      "p95": 70.8225449994643
+     },
+     "capture_ms": {
+      "p50": 20.416599996678997,
+      "p95": 20.69511999943643,
+      "max": 21.664800005964935
+     },
+     "preprocess_ms": {
+      "p50": 1.760799998010043,
+      "p95": 2.1711200002755504,
+      "max": 2.4469999989378266
+     },
+     "inference_ms": {
+      "p50": 27.225899997574743,
+      "p95": 36.354739999660524,
+      "max": 93.12250000220956
+     },
+     "publish_ms": {
+      "p50": 0.14280000323196873,
+      "p95": 1.3155999949958637,
+      "max": 78.82950000202982
+     },
+     "looming_ms": {
+      "p50": 10.503500001505017,
+      "p95": 13.371500003995607,
+      "max": 15.056700001878198
+     },
+     "gap_ms": {
+      "p50": 0.15580000763293356,
+      "p95": 0.21329999508452602,
+      "max": 0.31289999606087804
+     },
+     "total_ms": {
+      "p50": 60.21929999405984,
+      "p95": 70.7941299995582,
+      "max": 124.23520000447752
+     },
+     "cue_latency_ms": {
+      "p50": 49.781600006099325,
+      "p95": 59.031880002294194,
+      "max": 115.3277999983402
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 73.55674999780604,
+      "p95": 114.37055500064164,
+      "max": 174.919700002647
+     },
+     "latency_ms": {
+      "p50": 49.781600006099325,
+      "p95": 59.031880002294194,
+      "max": 115.3277999983402
+     }
+    },
+    "gap": {
+     "samples": 1059,
+     "depth_samples": 1059,
+     "rate_hz": 17.65,
+     "depth_rate_hz": 17.65,
+     "kinds": {
+      "clear": 346,
+      "gap": 224,
+      "no_ring": 463,
+      "occluded": 26
+     },
+     "age_at_tick_ms": {
+      "p50": 79.1419000015594,
+      "p95": 117.43585999865901,
+      "max": 182.73169999883976
+     },
+     "age_at_tick_depth_ms": {
+      "p50": 79.1419000015594,
+      "p95": 117.43585999865901,
+      "max": 182.73169999883976
+     },
+     "latency_ms": {
+      "p50": 51.25830000179121,
+      "p95": 60.90134999540168
+     },
+     "frame_ms_ms": {
+      "p50": 3.204200002073776,
+      "p95": 4.174819997570012
+     },
+     "overlay_ms_ms": {
+      "p50": 3.8229999991017394,
+      "p95": 4.780669998581288
+     },
+     "depth_ms_ms": {
+      "p50": 17.220699999597855,
+      "p95": 24.02299000023049
+     },
+     "decide_ms_ms": {
+      "p50": 0.5973000006633811,
+      "p95": 0.8355799960554576
+     },
+     "active_share": 0.061378659112370164
+    }
+   }
+  }
+ }
+}

@@ -114,6 +114,25 @@ class BrainLoad:
             self.a = self.torch.tanh(self.a @ self.a*1e-3)
 
 
+BELOW_NORMAL_PRIORITY_CLASS = 0x4000
+
+
+def priority_class(value=None):
+    """This process's Windows priority class, set to `value` first when given (None elsewhere)."""
+    import sys
+    if sys.platform != 'win32':
+        return None
+    import ctypes
+    kernel = ctypes.windll.kernel32
+    kernel.GetCurrentProcess.restype = ctypes.c_void_p
+    kernel.GetPriorityClass.argtypes = [ctypes.c_void_p]
+    kernel.SetPriorityClass.argtypes = [ctypes.c_void_p, ctypes.c_ulong]
+    handle = kernel.GetCurrentProcess()
+    if value is not None and not kernel.SetPriorityClass(handle, value):
+        raise ctypes.WinError()
+    return int(kernel.GetPriorityClass(handle))
+
+
 class GpuWatch(threading.Thread):
     """Polls the GPU temperature every 2 s off the timing loop; `hot` once it reaches the hard stop."""
 
@@ -160,6 +179,11 @@ def cmd_run(args):
     watch = GpuWatch()
     watch.start()
     backend = f"replay:{inputs['video']}?start={start}&pad={protocol['capture_pad_ms']}&anchor={anchor}"
+    launch = None
+    if args.parent_priority == 'below-normal':
+        # As visual_brain.run launched in Anode: the runner starts below normal, spawns the camera (and the depth
+        # process) and only then raises its own class; each child sets its own.
+        launch = dict(inherited=priority_class(), launched_at=priority_class(BELOW_NORMAL_PRIORITY_CLASS))
     t_launch = time.monotonic()
     camera = ProcessRetinaCamera(title='bench', fps=protocol['camera_fps'], gate_sensor=inputs['sensor'],
                                  backend=backend, race_cues=True, detector_device='cuda', looming=True, gap=spec)
@@ -168,6 +192,9 @@ def cmd_run(args):
     status = None
     try:
         camera.start()
+        if launch is not None:
+            from ..liftoff.scheduling import flight_process_priority
+            launch['raised_after_spawn'] = flight_process_priority()
         camera.wait_ready(timeout=180.)
         while camera.latest is None:
             if camera.error:
@@ -219,8 +246,13 @@ def cmd_run(args):
     stage_rows = [s for k, s in stages.items() if k >= window]
     gap_rows = [g for (k, _), g in gaps.items() if k >= window]
     summary = summarize(tick, frames, stage_rows, gap_rows, seconds)
+    gap_status = (status or {}).get('gap') or {}
+    priorities = dict(parent=launch if launch is not None else dict(current=priority_class()),
+                      camera=(status or {}).get('priority'), depth_process=gap_status.get('priority'),
+                      launch=args.parent_priority)
     result = dict(schema='haltere.obstacles.gap_bench_run.v1', condition=cond, placement=placement, flight=args.flight,
                   start_s=start, seconds=seconds, gates_sha256=gates_sha, protocol=protocol, gap_spec=spec,
+                  priorities=priorities, camera_skips=gap_status.get('camera_skips'),
                   offset_s=inputs['offset'], offset_source=inputs['offset_source'], ready_s=round(ready_s, 1),
                   gpu_peak_c=watch.peak, gpu_hard_stop=watch.hot, chunk=guard.summary(),
                   camera_diagnostics=status, live_camera_reference=inputs['sidecar_camera'].get('stages_ms'),
@@ -415,6 +447,9 @@ def main(argv=None):
     p.add_argument('--align-npz', default=None, help='gap-cue evaluation flight npz with the video offset_s')
     p.add_argument('--eval-dir', default=None, help='gap-cue evaluation output (flights/, depth/) for parity')
     p.add_argument('--tag', default=None)
+    p.add_argument('--parent-priority', choices=['inherit', 'below-normal'], default='inherit',
+                   help='below-normal: start the bench below normal and raise it after spawning the camera, as the '
+                        'flight runner launched in Anode (recorded in the run with each process\'s class)')
     args = p.parse_args(argv)
     dict(run=cmd_run, fp16=cmd_fp16, parity=cmd_parity, score=cmd_score)[args.cmd](args)
 
