@@ -99,3 +99,29 @@ Open-loop replays of the logs (development evidence):
 3. Then Minus Two again (PD and brain), a Straw Bale regression lap and Pine
    Valley with the stack on.
 
+## Round 3: graded vertical guard (branch m2-vertical) and a braking brain
+
+The 2-D free-space planner v1 (branches m3-freespace/m3-pilot) failed 6 of 9 frozen
+offline gates (wrong side at pillar A on 5/5 approaches, 7.8 false blocked episodes
+per minute on clean Straw Bale, floor height 1.85x) and was not flown; a diagnosis
+recommends extending the gap cue instead. A scale-free vertical guard on the
+looming below-path time to contact (v2, frozen `configs/obstacles/vertical_guard.json`)
+passed the Minus ceiling replays but not Straw Bale or Pine: on the Straw downhill the
+flight path points 5-15 degrees below the bottom of the (30-degree up-tilted) camera
+image, so no camera cue sees the ground there; its verifier found upslope and Straw
+uphill risks, so it is not for Straw or Pine yet. brain-09 (branch m3-brain09): 22
+candidates, none passed all frozen gates; the best (`fast-brain-09b-caps-r0001m100`,
+synthetic governor caps in DAgger, only readout rows 0-2 changed) brakes on straight
+legs and was flown as a disclosed development deviation.
+
+| Run | Mode | Outcome |
+|---|---|---|
+| `minus-fast6-vg-01` | fast PD | Not flown: preflight refused (an orphaned worker from an agent run used 1.15 cores; stopped) |
+| `minus-fast6-vg-02` | fast PD, stack + vertical guard | Pillar A (y 5.22), **through the hairpin** at (80,19), max height 1.4 m (no ceiling climb); impact at pillar C (78.3, 31.0), 23.4 s: the ring sits at the pillar's edge, the gap cue shifted left for 0.5 s, decayed, then flipped right 0.2 s before impact |
+| `minus-brain08-vg-01` | brain-08, stack + vertical guard | Pillar A (y 4.51, 6 cm clear); no ceiling climb; at the hairpin it did not slow (caps 3.9, flew ~6.4 m/s) and hit the wall at (78.1, 19.2), 18.5 s |
+| `minus-brain09b-vg-01` | brain-09 candidate, stack + vertical guard | Pillar A (y 5.68, 1.2 m clear); **braked to 2-4 m/s** into the hairpin; grazed the wall at (81.8, 19.9) at ~2.7 m/s, 21.9 s: turn-first only engages below 1.5 m/s caps (here ~3 m/s). Stick change 0.0056/tick (brain-08 0.0031) |
+
+Next: gap cue side commitment near an obstacle (pillar C); turn-first for side-clamped
+rings at a wall at governor caps up to ~3.5 m/s; smoother brain-09 (chatter); keep
+descents inside the camera's view on Straw Bale (fly the downhill with the nose down
+and speed kept, as the user suggested).
