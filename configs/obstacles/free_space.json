@@ -165,5 +165,8 @@
   "cue_timeout_s": 0.15,
   "pose_max_lag_s": 0.05,
   "offline_age_s": 0.1
- }
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-26T12:35:03",
+ "sha256": "532c2eddd37e72f12862b70551a80668f04f3fba7e8713905d397c6f3b13dd8d"
 }

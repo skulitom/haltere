@@ -21,55 +21,222 @@
  },
  "splits": {
   "dev_report_only": {
-   "store_runs": [4, 6, 7, 8, 9, 13, 14, 15, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 132, 133, 134, 135, 136, 137, 138],
-   "flights": ["minus-brain08-01", "straw-brain08-04", "pine-fast6-ttc-01"]
+   "store_runs": [
+    4,
+    6,
+    7,
+    8,
+    9,
+    13,
+    14,
+    15,
+    117,
+    118,
+    119,
+    120,
+    121,
+    122,
+    123,
+    124,
+    125,
+    126,
+    127,
+    128,
+    129,
+    132,
+    133,
+    134,
+    135,
+    136,
+    137,
+    138
+   ],
+   "flights": [
+    "minus-brain08-01",
+    "straw-brain08-04",
+    "pine-fast6-ttc-01"
+   ]
   },
-  "held_out": ["minus-brain07-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "minus-brain08-gapshadow-01", "minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01", "pine-brain08-loom-01", "straw-brain07-02", "straw-brain07-03", "straw-brain08-06"],
-  "store_envs_report_only": ["The Pit", "Hannover", "Paris", "Hangar C03"],
-  "sealed": ["The Green", "Hall 26"]
+  "held_out": [
+   "minus-brain07-01",
+   "minus-fast6-cur-01",
+   "minus-brain08-slow35-01",
+   "minus-brain08-loom-01",
+   "minus-brain08-gapshadow-01",
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-fast6-gapon-01",
+   "minus-fast6-wall-01",
+   "pine-brain08-loom-01",
+   "straw-brain07-02",
+   "straw-brain07-03",
+   "straw-brain08-06"
+  ],
+  "store_envs_report_only": [
+   "The Pit",
+   "Hannover",
+   "Paris",
+   "Hangar C03"
+  ],
+  "sealed": [
+   "The Green",
+   "Hall 26"
+  ]
  },
  "flights": {
-  "minus-brain07-01": {"env": "Minus Two", "motor": "brain"},
-  "minus-fast6-cur-01": {"env": "Minus Two", "motor": "fast_pd"},
-  "minus-brain08-slow35-01": {"env": "Minus Two", "motor": "brain"},
-  "minus-brain08-loom-01": {"env": "Minus Two", "motor": "brain"},
-  "minus-brain08-gapshadow-01": {"env": "Minus Two", "motor": "brain"},
-  "minus-brain08-gapon-01": {"env": "Minus Two", "motor": "brain"},
-  "minus-brain08-gapon-02": {"env": "Minus Two", "motor": "brain"},
-  "minus-fast6-gapon-01": {"env": "Minus Two", "motor": "fast_pd"},
-  "minus-fast6-wall-01": {"env": "Minus Two", "motor": "fast_pd"},
-  "pine-brain08-loom-01": {"env": "Pine Valley", "motor": "brain"},
-  "straw-brain07-02": {"env": "Straw Bale", "motor": "brain"},
-  "straw-brain07-03": {"env": "Straw Bale", "motor": "brain"},
-  "straw-brain08-06": {"env": "Straw Bale", "motor": "brain"},
-  "minus-brain08-01": {"env": "Minus Two", "motor": "brain"},
-  "straw-brain08-04": {"env": "Straw Bale", "motor": "brain"},
-  "pine-fast6-ttc-01": {"env": "Pine Valley", "motor": "fast_pd"}
+  "minus-brain07-01": {
+   "env": "Minus Two",
+   "motor": "brain"
+  },
+  "minus-fast6-cur-01": {
+   "env": "Minus Two",
+   "motor": "fast_pd"
+  },
+  "minus-brain08-slow35-01": {
+   "env": "Minus Two",
+   "motor": "brain"
+  },
+  "minus-brain08-loom-01": {
+   "env": "Minus Two",
+   "motor": "brain"
+  },
+  "minus-brain08-gapshadow-01": {
+   "env": "Minus Two",
+   "motor": "brain"
+  },
+  "minus-brain08-gapon-01": {
+   "env": "Minus Two",
+   "motor": "brain"
+  },
+  "minus-brain08-gapon-02": {
+   "env": "Minus Two",
+   "motor": "brain"
+  },
+  "minus-fast6-gapon-01": {
+   "env": "Minus Two",
+   "motor": "fast_pd"
+  },
+  "minus-fast6-wall-01": {
+   "env": "Minus Two",
+   "motor": "fast_pd"
+  },
+  "pine-brain08-loom-01": {
+   "env": "Pine Valley",
+   "motor": "brain"
+  },
+  "straw-brain07-02": {
+   "env": "Straw Bale",
+   "motor": "brain"
+  },
+  "straw-brain07-03": {
+   "env": "Straw Bale",
+   "motor": "brain"
+  },
+  "straw-brain08-06": {
+   "env": "Straw Bale",
+   "motor": "brain"
+  },
+  "minus-brain08-01": {
+   "env": "Minus Two",
+   "motor": "brain"
+  },
+  "straw-brain08-04": {
+   "env": "Straw Bale",
+   "motor": "brain"
+  },
+  "pine-fast6-ttc-01": {
+   "env": "Pine Valley",
+   "motor": "fast_pd"
+  }
  },
- "new_flights": ["minus-brain08-gapshadow-01", "minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01", "pine-fast6-ttc-01"],
+ "new_flights": [
+  "minus-brain08-gapshadow-01",
+  "minus-brain08-gapon-01",
+  "minus-brain08-gapon-02",
+  "minus-fast6-gapon-01",
+  "minus-fast6-wall-01",
+  "pine-fast6-ttc-01"
+ ],
  "store_runs": {
-  "123": {"name": "matched-full-races-20260923/03-minus-pd", "motor": "pd"},
-  "127": {"name": "motor10-transfer-20260922/minus", "motor": "brain"}
+  "123": {
+   "name": "matched-full-races-20260923/03-minus-pd",
+   "motor": "pd"
+  },
+  "127": {
+   "name": "motor10-transfer-20260922/minus",
+   "motor": "brain"
+  }
  },
  "pillar_a": {
-  "box": {"x": [54.7, 55.5], "y": [3.65, 4.45], "z": [0.0, 2.2]},
-  "distance_to": [54.7, 4.05],
-  "approach_region": {"x": [42.0, 54.7], "y": [0.0, 6.0]},
+  "box": {
+   "x": [
+    54.7,
+    55.5
+   ],
+   "y": [
+    3.65,
+    4.45
+   ],
+   "z": [
+    0.0,
+    2.2
+   ]
+  },
+  "distance_to": [
+   54.7,
+   4.05
+  ],
+  "approach_region": {
+   "x": [
+    42.0,
+    54.7
+   ],
+   "y": [
+    0.0,
+    6.0
+   ]
+  },
   "source": "m2design impact anatomy (triangulated pillar edges; the gap-cue gates' G1 box) and the garage ceiling height 2.2 m"
  },
  "minus_floor_z_m": 0.0,
  "minus_floor_note": "launch-relative z of the resting drone (every Minus Two log starts at z = 0 on the garage floor); the body origin sits a few centimetres above the floor, not measured",
  "S1": {
   "what": "floor scale: h_floor / telemetry height (z - minus_floor_z_m)",
-  "approaches": ["minus-brain07-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "minus-brain08-gapshadow-01"],
+  "approaches": [
+   "minus-brain07-01",
+   "minus-fast6-cur-01",
+   "minus-brain08-slow35-01",
+   "minus-brain08-loom-01",
+   "minus-brain08-gapshadow-01"
+  ],
   "approaches_note": "the five held-out Minus Two flights that flew the ring line into pillar A without an applied aim shift; the gap-cue-on flights and minus-fast6-wall-01 are reported, not gated",
-  "reported_not_gated": ["minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01"],
-  "region": {"x": [5.0, 51.0], "y": [-2.0, 6.0]},
+  "reported_not_gated": [
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-fast6-gapon-01",
+   "minus-fast6-wall-01"
+  ],
+  "region": {
+   "x": [
+    5.0,
+    51.0
+   ],
+   "y": [
+    -2.0,
+    6.0
+   ]
+  },
   "region_note": "the flat garage floor between the launch and 3.7 m before pillar A's face (no pillar in the 0.5-3 m floor bins)",
   "min_speed_mps": 2.0,
   "samples": "every processed frame (any kind) with a finite h_floor, telemetry valid and speed above min_speed_mps inside the region",
-  "median_range": [0.8, 1.25],
-  "band": [0.67, 1.5],
+  "median_range": [
+   0.8,
+   1.25
+  ],
+  "band": [
+   0.67,
+   1.5
+  ],
   "min_band_fraction": 0.7
  },
  "S2": {
@@ -77,10 +244,19 @@
   "approaches": "S1.approaches",
   "coverage_min": 0.5,
   "coverage_rule": "7 x 7 pixel-centre rays per block; coverage = share of rays hitting pillar A's box before anything else modelled (the box only); true depth = mean optical depth of the hitting rays",
-  "true_depth_m": [3.0, 8.0],
+  "true_depth_m": [
+   3.0,
+   8.0
+  ],
   "blocks": "valid blocks (planner masks) of frames with a scale (valid or held)",
-  "pooled_median_range": [0.8, 1.25],
-  "frame_band": [0.67, 1.5],
+  "pooled_median_range": [
+   0.8,
+   1.25
+  ],
+  "frame_band": [
+   0.67,
+   1.5
+  ],
   "min_frame_fraction": 0.7
  },
  "S3": {
@@ -88,9 +264,25 @@
   "frames": "held-out flight frames with telemetry, horizontal speed above 2 m/s and the ring in view (kind not no_ring / no_pose)",
   "min_speed_mps": 2.0,
   "environments": {
-   "Minus Two": ["minus-brain07-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "minus-brain08-gapshadow-01", "minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01"],
-   "Straw Bale": ["straw-brain07-02", "straw-brain07-03", "straw-brain08-06"],
-   "Pine Valley": ["pine-brain08-loom-01"]
+   "Minus Two": [
+    "minus-brain07-01",
+    "minus-fast6-cur-01",
+    "minus-brain08-slow35-01",
+    "minus-brain08-loom-01",
+    "minus-brain08-gapshadow-01",
+    "minus-brain08-gapon-01",
+    "minus-brain08-gapon-02",
+    "minus-fast6-gapon-01",
+    "minus-fast6-wall-01"
+   ],
+   "Straw Bale": [
+    "straw-brain07-02",
+    "straw-brain07-03",
+    "straw-brain08-06"
+   ],
+   "Pine Valley": [
+    "pine-brain08-loom-01"
+   ]
   },
   "min_valid_fraction": 0.85
  },
@@ -110,8 +302,14 @@
  },
  "B1": {
   "what": "pillar B: a confirmed shift away from the pillar (world -x) at least 1 s before impact on both runs (dev-flagged by the graft; gated anyway)",
-  "store_runs": ["123", "127"],
-  "window_tti_s": [0.1, 3.0],
+  "store_runs": [
+   "123",
+   "127"
+  ],
+  "window_tti_s": [
+   0.1,
+   3.0
+  ],
   "min_lead_s": 1.0,
   "rule": "the first confirmed class L/R in the window whose intended aim change points to world -x (intended az * -sin(ring azimuth) < 0) has time to impact (confirming sample) >= min_lead_s; confirmed +x before it reported"
  },
@@ -125,7 +323,11 @@
  },
  "Q1": {
   "what": "clean Straw Bale laps: few, small, quiet planner episodes",
-  "flights": ["straw-brain07-02", "straw-brain07-03", "straw-brain08-06"],
+  "flights": [
+   "straw-brain07-02",
+   "straw-brain07-03",
+   "straw-brain08-06"
+  ],
   "minutes": "sum of frame gaps < 0.3 s over kept frames",
   "max_episodes_per_min": 6.0,
   "max_vertical_episodes_per_min": 2.0,
@@ -145,7 +347,18 @@
  },
  "L1": {
   "what": "leak tests",
-  "flights": ["minus-brain07-01", "minus-brain08-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "pine-brain08-loom-01", "straw-brain08-04", "straw-brain08-06", "straw-brain07-02", "straw-brain07-03"],
+  "flights": [
+   "minus-brain07-01",
+   "minus-brain08-01",
+   "minus-fast6-cur-01",
+   "minus-brain08-slow35-01",
+   "minus-brain08-loom-01",
+   "pine-brain08-loom-01",
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-brain07-02",
+   "straw-brain07-03"
+  ],
   "sample": "the G4 perturbation set (configs/obstacles/gap_cue_gates.json G4: every 10th kept frame with an overlay-detected ring marker, ring painted or removed, masks recomputed on the perturbed frame); the LK pair is the unperturbed previous frame (the planner's state before the frame is restored), same pose and ring cue",
   "same_rule": "same kind and |daz| <= 2 deg and |del| <= 2 deg (NaN equal to NaN)",
   "max_dangle_deg": 2.0,
@@ -153,11 +366,62 @@
   "non_clear": "either decision's kind is aperture, shift or blocked",
   "min_same_fraction_non_clear": 0.9,
   "hud_only": "every kept frame of these flights: block disparity 1 + 9 f_hud (10 on HUD pixels, 1 elsewhere), validity from that frame's masks, fixed scale a = 1/60, b = 0 (d = 1 lies beyond 30 m, d = 10 at 6 m), the frame's pose and ring cue: no frame may be blocked or shift",
-  "hud_scale": [0.016666666666666666, 0.0]
+  "hud_scale": [
+   0.016666666666666666,
+   0.0
+  ]
  },
- "V1": {"what": "ceiling (pilot replay, variant on, PLAN_STREAM)", "flights": ["minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-wall-01"], "window": "0.5 s before the logged governor climb onset to the ceiling impact", "max_vz_mps": 1.0, "low_ceiling_m": 0.8, "max_vz_low_ceiling_mps": 0.3, "no_class_v_into_ceiling": true},
- "V2": {"what": "floor sink", "windows": {"minus-fast6-wall-01": "last 3 s", "minus-brain08-gapon-01": [16.5, 19.0]}, "max_vz_mps": 1.0, "flat_floor_max_vz_mps": 0.3, "flat_floor_min_height_m": 0.5, "low_descending_min_vz_mps": 0.0, "min_displaced_fraction": 0.9},
- "V3": {"what": "mound (dev-flagged, no regression)", "flight": "pine-fast6-ttc-01", "min_vz_mps": 1.0, "min_lateral_deg": 8.0, "min_fraction": 0.8, "no_descent_last_s": 2.0},
- "R1": {"what": "runtime and parity (G8 protocol, straw-brain08-06 30-90 s, Liftoff idle)", "min_camera_hz": 15.0, "max_plan_age_p95_ms": 150.0, "max_cue_latency_increase_p95_ms": 3.0, "max_lk_ms_p95": 8.0, "max_plan_ms_p95": 6.0, "max_camera_waits": 0, "parity_min_same_kind": 0.95, "parity_max_dangle_p95_deg": 1.0},
- "I1": {"what": "off and shadow bitwise identity; label isolation (unit tests)"}
+ "V1": {
+  "what": "ceiling (pilot replay, variant on, PLAN_STREAM)",
+  "flights": [
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-fast6-wall-01"
+  ],
+  "window": "0.5 s before the logged governor climb onset to the ceiling impact",
+  "max_vz_mps": 1.0,
+  "low_ceiling_m": 0.8,
+  "max_vz_low_ceiling_mps": 0.3,
+  "no_class_v_into_ceiling": true
+ },
+ "V2": {
+  "what": "floor sink",
+  "windows": {
+   "minus-fast6-wall-01": "last 3 s",
+   "minus-brain08-gapon-01": [
+    16.5,
+    19.0
+   ]
+  },
+  "max_vz_mps": 1.0,
+  "flat_floor_max_vz_mps": 0.3,
+  "flat_floor_min_height_m": 0.5,
+  "low_descending_min_vz_mps": 0.0,
+  "min_displaced_fraction": 0.9
+ },
+ "V3": {
+  "what": "mound (dev-flagged, no regression)",
+  "flight": "pine-fast6-ttc-01",
+  "min_vz_mps": 1.0,
+  "min_lateral_deg": 8.0,
+  "min_fraction": 0.8,
+  "no_descent_last_s": 2.0
+ },
+ "R1": {
+  "what": "runtime and parity (G8 protocol, straw-brain08-06 30-90 s, Liftoff idle)",
+  "min_camera_hz": 15.0,
+  "max_plan_age_p95_ms": 150.0,
+  "max_cue_latency_increase_p95_ms": 3.0,
+  "max_lk_ms_p95": 8.0,
+  "max_plan_ms_p95": 6.0,
+  "max_camera_waits": 0,
+  "parity_min_same_kind": 0.95,
+  "parity_max_dangle_p95_deg": 1.0
+ },
+ "I1": {
+  "what": "off and shadow bitwise identity; label isolation (unit tests)"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-26T12:35:03",
+ "sha256": "8c2ccf247bc7b88d5ea500fb51e60f0a1eb26c83b7a2d4111a9f99ab20570305"
 }
