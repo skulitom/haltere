@@ -590,6 +590,78 @@ def wall_pilot_configs(declaration):
                 ceiling_guard=CeilingGuardConfig(**declaration['ceiling_guard']))
 
 
+# The vertical-guard declaration version whose rules this code implements (VerticalGuardConfig); runners refuse others.
+VERTICAL_GUARD_VERSION = 1
+
+
+@dataclass(frozen=True)
+class VerticalGuardConfig:
+    """Scale-free graded vertical guard of the TTC governor and the fast pilot. Off unless a runner passes it (the
+    vertical-guard declaration in configs/obstacles; obstacle stack only); TTC policy only.
+
+    It reads only the looming samples the governor already receives (below_fraction; ttc_lower, the time to contact
+    with the surface fitted below the flight path; the alarm ttc) and the measured vertical speed: no height above
+    ground, no metric distance. Descending means a measured vertical speed below -level_band, climbing above
+    +level_band, level in between.
+    1. Sink margin: the latest known ttc_lower (aged by the time since its capture, kept memory_s after receipt)
+       scales the pilot's own requested sink by clip((ttc - margin_zero_s) / (margin_full_s - margin_zero_s), 0, 1):
+       all of it at margin_full_s or more, none at margin_zero_s or less. The factor moves at up to factor_down_rate
+       (falling) and factor_up_rate (recovering) per second, so the request changes without a jump. While the guard
+       limits the pilot's sink (or arrests a descent), the descent-path shortfall is not fed (the horizontal request
+       is not cut for a sink it withheld): the drone keeps its speed and follows the terrain instead of sinking.
+    2. Descent first: a below-path alarm (a terrain sample: below_fraction >= the policy's terrain_fraction, whose
+       below-path TTC, ttc_lower aged by odometry, is under climb_on_s) received while descending arrests the
+       descent: the vertical request is at least level (never a climb the pilot did not ask for) for arrest_hold_s,
+       brought there at up to arrest_acceleration m/s^2. It starts no climb. While the drone descends, no terrain
+       climb is applied at all.
+    3. Terrain climb only for rising ground: a climb needs `confirm` below-path alarms received while level or
+       climbing within confirm_window_s. Its rate is graded by urgency, vertical_up * clip((climb_on_s - ttc) /
+       (climb_on_s - climb_full_s), 0, 1) on the below-path TTC, and bounded to gentle_climb (and to gentle_max_m
+       above where the episode began) until rising ground is confirmed: `rising_confirm` below-path alarms received
+       while already climbing faster than rising_min_rise within rising_window_s (the ground keeps looming although
+       the drone climbs). Then the graded rate applies up to vertical_up, bounded by the policy's climb_max_m. The
+       policy's climb hold and release are unchanged. The ceiling guard, when declared, still cuts climbs under
+       overhead evidence.
+    Declaration version 1.
+    """
+    margin_full_s: float = 1.5
+    margin_zero_s: float = .6
+    memory_s: float = 1.
+    factor_down_rate: float = 4.
+    factor_up_rate: float = 1.
+    level_band: float = .3
+    arrest_hold_s: float = .5
+    arrest_acceleration: float = 10.
+    climb_on_s: float = 1.2
+    climb_full_s: float = .6
+    confirm: int = 2
+    confirm_window_s: float = .3
+    gentle_climb: float = 1.
+    gentle_max_m: float = 1.
+    rising_confirm: int = 2
+    rising_window_s: float = .5
+    rising_min_rise: float = .5
+
+    def __post_init__(self):
+        values = list(asdict(self).values())
+        if not np.isfinite(values).all() or min(values) <= 0:
+            raise ValueError('Use finite positive vertical-guard parameters')
+        for name in ('confirm', 'rising_confirm'):
+            if int(getattr(self, name)) != getattr(self, name):
+                raise ValueError(f'{name} counts samples')
+        if not self.margin_zero_s < self.margin_full_s or not self.climb_full_s < self.climb_on_s:
+            raise ValueError('Use margin_zero_s < margin_full_s and climb_full_s < climb_on_s')
+
+
+def vertical_guard_config(declaration):
+    """The VerticalGuardConfig of a vertical-guard declaration already parsed (and hash-checked) by the runner;
+    refuses another rule version. This module reads no files."""
+    if (declaration or {}).get('version') != VERTICAL_GUARD_VERSION:
+        raise ValueError(f'The vertical-guard declaration is version {(declaration or {}).get("version")}; the fast '
+                         f'pilot implements version {VERTICAL_GUARD_VERSION}')
+    return VerticalGuardConfig(**declaration['vertical_guard'])
+
+
 class TtcClearanceGovernor:
     """Graded speed cap along the looming ray and a terrain climb from TTC samples.
 
@@ -598,13 +670,29 @@ class TtcClearanceGovernor:
     reaches `limits`, with the TTC aged to that moment by odometry.
     `ceiling` (a `CeilingGuardConfig`, off by default) adds the ceiling guard;
     `vertical_cap` is then the bound on the whole vertical request (None: none).
+    `vertical` (a `VerticalGuardConfig`, off by default) adds the graded vertical guard: its terrain climb replaces
+    the policy's, and `sink_factor` / `arrest` tell the pilot how much of its own sink to keep and whether to hold
+    at least level (1. / False without it).
     """
 
-    def __init__(self, config=None, ceiling=None):
+    def __init__(self, config=None, ceiling=None, vertical=None):
         self.config = config or TtcClearanceConfig()
         if ceiling is not None and not isinstance(ceiling, CeilingGuardConfig):
             raise ValueError('Pass a CeilingGuardConfig (or None) for the ceiling guard')
+        if vertical is not None and not isinstance(vertical, VerticalGuardConfig):
+            raise ValueError('Pass a VerticalGuardConfig (or None) for the vertical guard')
         self.ceiling = ceiling
+        self.vertical = vertical
+        # Vertical guard state (unused without it)
+        self.sink_factor = 1.
+        self.arrest = False
+        self.arrest_until = -np.inf
+        self.lower_evidence = None      # (capture time, ttc_lower, receipt time) of the latest known below-path TTC
+        self.alarms = []                # (receipt time, measured vertical speed) of below-path alarms while not descending
+        self.escalated = False          # rising ground confirmed in this climb episode
+        if vertical is not None:
+            self.vertical_counts = dict(sink_limited_samples=0, descent_first=0, arrest_engagements=0,
+                                        unconfirmed_alarms=0, gentle_climbs=0, escalations=0, topped=0)
         self.samples = []
         self.last_time = self.last_evidence = self.first_input = None
         self.cap = self.cap_ray = self.target = None
@@ -651,10 +739,53 @@ class TtcClearanceGovernor:
         left = reach-float((np.asarray(position, float)-sample['position']) @ sample['ray'])
         return max(0., left)/max(closing, .3)
 
+    def _climb_bound(self):
+        """Height above the episode base at which the terrain climb is topped (the vertical guard's gentle bound
+        until rising ground is confirmed)."""
+        v = self.vertical
+        return self.config.climb_max_m if v is None or self.escalated else v.gentle_max_m
+
+    def _guard_request(self, s, lower, ttc, rise, now, vertical_up):
+        """The vertical guard's climb request for one terrain sample (VerticalGuardConfig rules 2 and 3)."""
+        v, c = self.vertical, self.config
+        below_ttc = lower if lower is not None else ttc
+        graded = vertical_up*float(np.clip((v.climb_on_s-below_ttc)/(v.climb_on_s-v.climb_full_s), 0, 1))
+        if graded <= 0:
+            return 0.
+        below_path = s['below'] is not None and s['below'] >= c.terrain_fraction
+        if rise < -v.level_band:
+            # descent first: the ground looms because the drone descends; stop the descent, start no climb
+            if below_path:
+                if now > self.arrest_until:
+                    self.vertical_counts['arrest_engagements'] += 1
+                self.vertical_counts['descent_first'] += 1
+                self.arrest_until = now+v.arrest_hold_s
+            return 0.
+        if not below_path:
+            # no below-path evidence (the ceiling guard's explained alarms, or none): sustains a climb, gently
+            return min(graded, v.gentle_climb) if self.climb > 0 else 0.
+        horizon = max(v.confirm_window_s, v.rising_window_s)
+        self.alarms = [(t, r) for t, r in self.alarms if s['received']-t <= horizon]+[(s['received'], rise)]
+        confirmed = sum(s['received']-t <= v.confirm_window_s for t, _ in self.alarms) >= v.confirm
+        rising = sum(s['received']-t <= v.rising_window_s and r > v.rising_min_rise
+                     for t, r in self.alarms) >= v.rising_confirm
+        if confirmed and rising and not self.escalated:
+            self.escalated = True               # the ground keeps looming although the drone climbs: rising ground
+            self.vertical_counts['escalations'] += 1
+        if self.escalated:
+            return graded
+        if confirmed:
+            if self.climb == 0:
+                self.vertical_counts['gentle_climbs'] += 1
+            return min(graded, v.gentle_climb)
+        self.vertical_counts['unconfirmed_alarms'] += 1
+        return 0.
+
     def limits(self, position, velocity, now, dt, vertical_up):
         """Return (cap or None, ray or None, climb request) for the current tick."""
         c = self.config
         g = self.ceiling
+        v = self.vertical
         position, velocity = np.asarray(position, float), np.asarray(velocity, float)
         keep = max(c.memory_s, c.confirm_window_s)
         self.samples = [s for s in self.samples if now-s['received'] <= keep]
@@ -664,12 +795,18 @@ class TtcClearanceGovernor:
         if not climbing and now-self.terrain_at > c.climb_hold_s:
             self.climb_base = None                  # a new climb episode may start from the present height
             self.strong_height = None
-        topped = self.climb_base is not None and height-self.climb_base >= c.climb_max_m
+            self.escalated = False
+        topped = self.climb_base is not None and height-self.climb_base >= (
+            c.climb_max_m if v is None else self._climb_bound())
         overhead = g is not None and now <= self.overhead_until
         for s in self.samples:
             if not s['new']:
                 continue
             s['new'] = False
+            if v is not None and s['ttc_lower'] is not None:
+                self.lower_evidence = (s['time'], s['ttc_lower'], s['received'])
+                self.vertical_counts['sink_limited_samples'] += int(
+                    s['ttc_lower']-(now-s['time']) < v.margin_full_s)
             if now-s['received'] > c.memory_s:
                 continue
             closing = float(velocity @ s['ray'])
@@ -711,6 +848,12 @@ class TtcClearanceGovernor:
                              min(ttc, lower) if c.climb_ttc_source == 'either' else max(ttc, lower))
                 votes = sum(r['below'] is not None and r['below'] >= c.terrain_fraction for r in recent)
                 request = vertical_up*float(np.clip((c.climb_on_s-climb_ttc)/(c.climb_on_s-c.climb_full_s), 0, 1))
+                confirmed = votes >= c.terrain_confirm or climbing
+                if v is not None:
+                    # vertical guard: descent first, confirmed and graded climbs on the below-path TTC
+                    request = self._guard_request(s, lower, ttc, rise, now, vertical_up)
+                    confirmed = True                    # the guard confirms on its own
+                    topped = self.climb_base is not None and height-self.climb_base >= self._climb_bound()
                 if weak and request > 0:
                     self.counts['weak_climb_samples'] += 1
                     request = min(request, g.weak_climb)
@@ -719,10 +862,12 @@ class TtcClearanceGovernor:
                 if overhead and request > 0:
                     self.counts['suppressed_climb_samples'] += 1
                     request = 0.
-                if request > 0 and (votes >= c.terrain_confirm or climbing):
+                if request > 0 and confirmed:
                     self.terrain_at = now
                     self.climb_base = height if self.climb_base is None else self.climb_base
-                if request > 0 and (votes >= c.terrain_confirm or climbing) and not topped:
+                if v is not None and request > 0 and topped:
+                    self.vertical_counts['topped'] += 1
+                if request > 0 and confirmed and not topped:
                     if self.climb == 0:
                         self.counts['climb_engagements'] += 1
                     if not weak or request >= self.climb:
@@ -769,6 +914,15 @@ class TtcClearanceGovernor:
         if overhead:
             self.climb = 0.
         self.vertical_cap = g.vertical_cap if overhead else None
+        if v is not None:
+            # sink margin: the latest known below-path TTC, aged since its capture, ramps the allowed sink
+            target = 1.
+            if self.lower_evidence is not None and now-self.lower_evidence[2] <= v.memory_s:
+                aged = self.lower_evidence[1]-(now-self.lower_evidence[0])
+                target = float(np.clip((aged-v.margin_zero_s)/(v.margin_full_s-v.margin_zero_s), 0, 1))
+            rate = v.factor_down_rate if target < self.sink_factor else v.factor_up_rate
+            self.sink_factor = float(self.sink_factor+np.clip(target-self.sink_factor, -rate*dt, rate*dt))
+            self.arrest = now <= self.arrest_until
         fresh = any(now-s['received'] <= c.memory_s for s in self.samples)
         self.status = ('overhead' if overhead else 'climb' if self.climb > 0
                        else 'standoff' if now <= self.standoff_until and self.cap is not None
@@ -789,7 +943,7 @@ class FastRaceCue:
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
-                 ceiling_guard=None, wall_apply=True):
+                 ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -879,6 +1033,18 @@ class FastRaceCue:
         self.turn_first_active = False
         self.turn_first_counts = dict(episodes=0, aligned=0, handoff=0, timeout=0)
         self.turn_first_time = 0.
+        # Vertical guard (off unless declared; obstacle stack only): see VerticalGuardConfig. vertical_apply False
+        # computes and logs it without applying it: the flown governor then has no vertical guard and a guarded copy
+        # fed the same samples reports the vertical request it would make (vertical_target).
+        if vertical_guard is not None and not isinstance(vertical_guard, VerticalGuardConfig):
+            raise ValueError('Pass a VerticalGuardConfig (or None) for the vertical guard')
+        if vertical_guard is not None and not isinstance(self.clearance_config, TtcClearanceConfig):
+            raise ValueError('The vertical guard is part of the TTC clearance policy')
+        self.vertical_guard, self.vertical_apply = vertical_guard, bool(vertical_apply)
+        self.pilot_vertical = float('nan')     # the pilot's own vertical request this tick (before governor and guard)
+        self.vertical_target = float('nan')    # the vertical request the guard makes (applied or, in shadow, intended)
+        self.vertical_limiting = False         # the applied guard withheld part of the pilot's sink this tick
+        self.vertical_time = dict(limiting=0., arrest=0., climb=0.)
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -886,13 +1052,16 @@ class FastRaceCue:
         if stamp is None or not np.isfinite(stamp):
             raise ValueError('A clearance sample needs its capture time')
         if self.clearance is None:
-            guard = self.ceiling_guard
-            if guard is not None and self.wall_apply:
-                self.clearance = TtcClearanceGovernor(c, ceiling=guard)
+            guard, vertical = self.ceiling_guard, self.vertical_guard
+            flown = dict(ceiling=guard if self.wall_apply else None,
+                         vertical=vertical if self.vertical_apply else None)
+            if flown['ceiling'] is not None or flown['vertical'] is not None:
+                self.clearance = TtcClearanceGovernor(c, **flown)
             else:
                 self.clearance = clearance_governor(c)
-                if guard is not None:
-                    self.clearance_shadow = TtcClearanceGovernor(c, ceiling=guard)
+            if (guard is not None and not self.wall_apply) or (vertical is not None and not self.vertical_apply):
+                # shadow: a copy with every declared rule, fed the same samples, reports what the rules would do
+                self.clearance_shadow = TtcClearanceGovernor(c, ceiling=guard, vertical=vertical)
         if not (0 <= now-stamp <= c.max_age_s
                 and (self.clearance.last_time is None or stamp > self.clearance.last_time)):
             return
@@ -1285,7 +1454,9 @@ class FastRaceCue:
         # proportion so the flight path keeps the requested slope. A vehicle
         # that tracks its descents is unaffected.
         shortfall = 0.
-        if self.velocity_command is not None and self.velocity_command[2] < -c.descent_sink and not self.launching:
+        if (self.velocity_command is not None and self.velocity_command[2] < -c.descent_sink and not self.launching
+                and not self.vertical_limiting):
+            # (a sink the vertical guard withheld is no shortfall: the horizontal request is not cut for it)
             shortfall = max(0., float(velocity[2]-self.velocity_command[2]))
         self.descent_shortfall += (1-np.exp(-dt/c.descent_time_constant))*(shortfall-self.descent_shortfall)
         self.descent_scale = float(np.clip(1-(self.descent_shortfall-c.descent_free)/c.descent_span,
@@ -1317,19 +1488,44 @@ class FastRaceCue:
             self.support_since = self.slope_support_since = None
         cap = ray = vertical_cap = None
         climb = 0.
+        self.pilot_vertical = float(desired[2])
+        self.vertical_limiting = False
+        arrest = False
         if clearance is not None and not self.launching:
             self._ingest_clearance(clearance, velocity, yaw, now)
         if self.clearance is not None:
             cap, ray, climb = self.clearance.limits(position, velocity, now, dt, c.vertical_up)
+            shadow_climb = 0.
             if self.clearance_shadow is not None:
-                self.clearance_shadow.limits(position, velocity, now, dt, c.vertical_up)
-            if climb > 0:
+                shadow_climb = self.clearance_shadow.limits(position, velocity, now, dt, c.vertical_up)[2]
+            if getattr(self.clearance, 'vertical', None) is not None:
+                # Vertical guard: sink margin, descent first, terrain climb only for rising ground.
+                desired[2] = self._guard_vertical(self.clearance, desired[2], climb, velocity)
+                arrest = self.clearance.arrest
+                # the guard withholds sink, arrests a descent or withholds a climb while descending (ground below)
+                withheld = climb > 0 and float(velocity[2]) < -self.clearance.vertical.level_band
+                self.vertical_limiting = bool((self.pilot_vertical < 0 and desired[2] > self.pilot_vertical)
+                                              or arrest or withheld)
+            elif climb > 0:
                 # Expansion below the flight path: rise over it rather than stop.
                 desired[2] = max(desired[2], climb)
             vertical_cap = getattr(self.clearance, 'vertical_cap', None)
             if vertical_cap is not None:
                 # Ceiling guard: overhead evidence during a climb bounds the whole vertical request.
                 desired[2] = min(desired[2], vertical_cap)
+            guard = self._vertical_governor()
+            if guard is not None:
+                if guard is self.clearance:
+                    self.vertical_target = float(desired[2])
+                else:
+                    # shadow: the request the guard would make, logged and not applied
+                    intended = self._guard_vertical(guard, self.pilot_vertical, shadow_climb, velocity)
+                    self.vertical_target = float(intended if guard.vertical_cap is None
+                                                 else min(intended, guard.vertical_cap))
+                self.vertical_time['limiting'] += dt*(self.pilot_vertical < 0
+                                                      and self.vertical_target > self.pilot_vertical)
+                self.vertical_time['arrest'] += dt*guard.arrest
+                self.vertical_time['climb'] += dt*(guard.climb > 0)
             along = float(desired @ ray) if cap is not None else 0.
             braking = cap is not None and along > cap
             if braking:
@@ -1365,6 +1561,8 @@ class FastRaceCue:
             if norm > c.search_deceleration*dt:
                 step[:2] *= c.search_deceleration*dt/norm
         up = max(c.vertical_command_acceleration, self.clearance_config.terrain_climb_acceleration if climb > 0 else 0.)
+        if arrest:
+            up = max(up, self.clearance.vertical.arrest_acceleration)
         down = (c.vertical_command_acceleration if vertical_cap is None
                 else max(c.vertical_command_acceleration, self.clearance.ceiling.vertical_slew))
         step[2] = np.clip(step[2], -down*dt, up*dt)
@@ -1425,9 +1623,70 @@ class FastRaceCue:
 
     def _guarded_governor(self):
         """The governor that runs the ceiling guard: the flown one, or its shadow copy; None without the guard."""
-        if self.clearance_shadow is not None:
+        if getattr(self.clearance, 'ceiling', None) is not None:
+            return self.clearance
+        if self.clearance_shadow is not None and self.clearance_shadow.ceiling is not None:
             return self.clearance_shadow
-        return self.clearance if getattr(self.clearance, 'ceiling', None) is not None else None
+        return None
+
+    def _vertical_governor(self):
+        """The governor that runs the vertical guard: the flown one, or its shadow copy; None without the guard."""
+        if getattr(self.clearance, 'vertical', None) is not None:
+            return self.clearance
+        if self.clearance_shadow is not None and self.clearance_shadow.vertical is not None:
+            return self.clearance_shadow
+        return None
+
+    @staticmethod
+    def _guard_vertical(governor, pilot, climb, velocity):
+        """The vertical request under the vertical guard (VerticalGuardConfig): the pilot's own sink scaled by the
+        sink margin, at least level during an arrest, and the terrain climb only while the drone is not descending
+        (descent first)."""
+        v = governor.vertical
+        z = pilot*governor.sink_factor if pilot < 0 else pilot
+        if governor.arrest:
+            z = max(z, 0.)
+        if climb > 0 and float(velocity[2]) >= -v.level_band:
+            z = max(z, climb)
+        return float(z)
+
+    def vertical_log(self):
+        """Per-tick vertical-guard values for logs (NaN without the guard or before the first clearance sample):
+        the pilot's own vertical request, the guard's vertical request (applied, or intended in shadow), the sink
+        factor, arrest (1/0), the climb stage (0 none, 1 gentle, 2 rising ground confirmed) and the guard's climb."""
+        nan = float('nan')
+        guard = self._vertical_governor()
+        if guard is None:
+            return dict(vertical_pilot=nan, vertical_target=nan, vertical_factor=nan, vertical_arrest=nan,
+                        vertical_stage=nan, vertical_climb=nan)
+        return dict(vertical_pilot=self.pilot_vertical, vertical_target=self.vertical_target,
+                    vertical_factor=float(guard.sink_factor), vertical_arrest=float(guard.arrest),
+                    vertical_stage=float(0 if guard.climb <= 0 else 2 if guard.escalated else 1),
+                    vertical_climb=float(guard.climb))
+
+    def _vertical_metadata(self):
+        if self.vertical_guard is None:
+            return None
+        guard = self._vertical_governor()
+        return dict(
+            version=VERTICAL_GUARD_VERSION, applied=self.vertical_apply,
+            rule='sink margin: the pilot\'s own requested sink x clip((ttc_lower_aged - margin_zero_s)/(margin_full_s - '
+                 'margin_zero_s), 0, 1), the factor ramped at factor_down_rate/factor_up_rate per s, the latest known '
+                 'ttc_lower kept memory_s; while it withholds sink the descent-path shortfall is not fed (no horizontal '
+                 'cut); descent first: a below-path alarm (below_fraction >= terrain_fraction, below-path TTC < '
+                 'climb_on_s) while descending (vz < -level_band) holds the request at least level for arrest_hold_s '
+                 '(slew arrest_acceleration) and starts no climb, and no terrain climb is applied while descending; '
+                 'terrain climb: confirm alarms while level or climbing within confirm_window_s, rate graded by the '
+                 'below-path TTC (climb_on_s -> 0, climb_full_s -> vertical_up), bounded to gentle_climb and '
+                 'gentle_max_m until rising_confirm alarms arrive while climbing faster than rising_min_rise within '
+                 'rising_window_s (rising ground), then up to vertical_up and the policy\'s climb_max_m; the policy\'s '
+                 'climb hold and release; the ceiling guard still cuts climbs',
+            input='causal looming samples (below_fraction, ttc_lower, ttc) and the measured vertical speed; no height '
+                  'above ground, no metric distance',
+            parameters=asdict(self.vertical_guard),
+            governor='flown' if self.vertical_apply else 'shadow copy fed the same samples',
+            counts=None if guard is None else dict(guard.vertical_counts),
+            seconds={k: round(v, 3) for k, v in self.vertical_time.items()})
 
     def wall_log(self):
         """Per-tick wall-pilot values for logs: turn_first (1 while an episode is active, also in shadow; NaN when
@@ -1563,6 +1822,7 @@ class FastRaceCue:
                              'never changes the requested speed; with lag-aware turns the lead is computed on the '
                              'bearing without the shift and the shift is added after it (not amplified)'),
                     wall_pilot=self._wall_metadata(),
+                    vertical_guard=self._vertical_metadata(),
                     clearance_response=None if self.clearance is None else dict(
                         self._clearance_policy(),
                         parameters={k: (None if isinstance(v, float) and not np.isfinite(v) else v)
