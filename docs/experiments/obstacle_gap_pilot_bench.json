@@ -1,0 +1,1534 @@
+{
+ "schema": "haltere.obstacles.obstacle_gap_pilot_bench.v1",
+ "gates": {
+  "schema": "haltere.obstacles.gap_bench_gates_result.v1",
+  "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+  "gates": {
+   "camera_loop_p95_ms": 95.0,
+   "camera_rate_hz_min": 15.0,
+   "gap_age_p95_ms": 150.0,
+   "cue_latency_increase_ms": 6.0,
+   "fp16_rel_error_max": 0.01
+  },
+  "baselines": {
+   "straw-brain08-06_baseline": {
+    "camera": {
+     "frames": 1070,
+     "rate_hz": 17.833333333333332,
+     "interval_ms": {
+      "p50": 60.39830000008806,
+      "p95": 68.29700000016601
+     },
+     "capture_ms": {
+      "p50": 20.43434999723104,
+      "p95": 20.69005999928777,
+      "max": 21.411300000181654
+     },
+     "preprocess_ms": {
+      "p50": 1.687700001639314,
+      "p95": 2.12148500031617,
+      "max": 2.4176000006264076
+     },
+     "inference_ms": {
+      "p50": 27.135049998832983,
+      "p95": 33.87389999952575,
+      "max": 79.85570000164444
+     },
+     "publish_ms": {
+      "p50": 0.1141499997174833,
+      "p95": 1.1647600002106626,
+      "max": 1.9007000009878539
+     },
+     "looming_ms": {
+      "p50": 10.765050001282361,
+      "p95": 13.437995000094816,
+      "max": 15.12910000019474
+     },
+     "gap_ms": {
+      "p50": 0.004300000000512227,
+      "p95": 0.009400002454640344,
+      "max": 0.0518000015290454
+     },
+     "total_ms": {
+      "p50": 60.37724999987404,
+      "p95": 68.32658000093943,
+      "max": 112.1558000013465
+     },
+     "cue_latency_ms": {
+      "p50": 49.45514999963052,
+      "p95": 56.3565300004484,
+      "max": 102.55730000062613
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 72.55700000132492,
+      "p95": 111.15501999993285,
+      "max": 165.18389999691863
+     },
+     "latency_ms": {
+      "p50": 49.45514999963052,
+      "p95": 56.3565300004484,
+      "max": 102.55730000062613
+     }
+    }
+   }
+  },
+  "conditions": {
+   "straw-brain08-06_camera": {
+    "condition": "camera",
+    "flight": "straw-brain08-06",
+    "baseline": "baseline",
+    "checks": {
+     "camera_loop_p95_ms": {
+      "value": 93.23856000046362,
+      "passed": true
+     },
+     "camera_rate_hz": {
+      "value": 14.633333333333333,
+      "passed": false
+     },
+     "gap_age_p95_ms": {
+      "value": 172.72531999842613,
+      "passed": false
+     },
+     "cue_latency_increase_ms": {
+      "value": -1.7974100015635486,
+      "passed": true
+     },
+     "fp16_relative_error_p95": {
+      "value": 0.001351070182467634,
+      "passed": true
+     }
+    },
+    "passed": false
+   },
+   "straw-brain08-06_process": {
+    "condition": "process",
+    "flight": "straw-brain08-06",
+    "baseline": "baseline",
+    "checks": {
+     "camera_loop_p95_ms": {
+      "value": 68.32245000041439,
+      "passed": true
+     },
+     "camera_rate_hz": {
+      "value": 17.916666666666668,
+      "passed": true
+     },
+     "gap_age_p95_ms": {
+      "value": 113.27402999868356,
+      "passed": true
+     },
+     "cue_latency_increase_ms": {
+      "value": 0.0960499985012575,
+      "passed": true
+     },
+     "fp16_relative_error_p95": {
+      "value": 0.001351070182467634,
+      "passed": true
+     }
+    },
+    "passed": true
+   }
+  },
+  "scored_at": "2026-09-26T00:38:51"
+ },
+ "runs": {
+  "straw-brain08-06_baseline": {
+   "condition": "baseline",
+   "placement": null,
+   "flight": "straw-brain08-06",
+   "start_s": 30.0,
+   "seconds": 60.0,
+   "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+   "offset_s": -0.06999999999999951,
+   "ready_s": 3.5,
+   "gpu_peak_c": 42.0,
+   "camera": {
+    "frames": 1070,
+    "rate_hz": 17.833333333333332,
+    "interval_ms": {
+     "p50": 60.39830000008806,
+     "p95": 68.29700000016601
+    },
+    "capture_ms": {
+     "p50": 20.43434999723104,
+     "p95": 20.69005999928777,
+     "max": 21.411300000181654
+    },
+    "preprocess_ms": {
+     "p50": 1.687700001639314,
+     "p95": 2.12148500031617,
+     "max": 2.4176000006264076
+    },
+    "inference_ms": {
+     "p50": 27.135049998832983,
+     "p95": 33.87389999952575,
+     "max": 79.85570000164444
+    },
+    "publish_ms": {
+     "p50": 0.1141499997174833,
+     "p95": 1.1647600002106626,
+     "max": 1.9007000009878539
+    },
+    "looming_ms": {
+     "p50": 10.765050001282361,
+     "p95": 13.437995000094816,
+     "max": 15.12910000019474
+    },
+    "gap_ms": {
+     "p50": 0.004300000000512227,
+     "p95": 0.009400002454640344,
+     "max": 0.0518000015290454
+    },
+    "total_ms": {
+     "p50": 60.37724999987404,
+     "p95": 68.32658000093943,
+     "max": 112.1558000013465
+    },
+    "cue_latency_ms": {
+     "p50": 49.45514999963052,
+     "p95": 56.3565300004484,
+     "max": 102.55730000062613
+    }
+   },
+   "cue": {
+    "age_at_tick_ms": {
+     "p50": 72.55700000132492,
+     "p95": 111.15501999993285,
+     "max": 165.18389999691863
+    },
+    "latency_ms": {
+     "p50": 49.45514999963052,
+     "p95": 56.3565300004484,
+     "max": 102.55730000062613
+    }
+   },
+   "gap": null,
+   "depth_worker": null,
+   "gap_spec": null
+  },
+  "straw-brain08-06_camera": {
+   "condition": "camera",
+   "placement": [
+    "camera",
+    1
+   ],
+   "flight": "straw-brain08-06",
+   "start_s": 30.0,
+   "seconds": 60.0,
+   "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+   "offset_s": -0.06999999999999951,
+   "ready_s": 7.4,
+   "gpu_peak_c": 43.0,
+   "camera": {
+    "frames": 878,
+    "rate_hz": 14.633333333333333,
+    "interval_ms": {
+     "p50": 78.6149999985355,
+     "p95": 93.28127999833669
+    },
+    "capture_ms": {
+     "p50": 20.42490000167163,
+     "p95": 20.676900002581533,
+     "max": 21.333100001356797
+    },
+    "preprocess_ms": {
+     "p50": 1.692699999694014,
+     "p95": 2.115220000996487,
+     "max": 2.2653999985777773
+    },
+    "inference_ms": {
+     "p50": 24.696200001926627,
+     "p95": 31.68079999886686,
+     "max": 36.16650000185473
+    },
+    "publish_ms": {
+     "p50": 0.11819999781437218,
+     "p95": 2.0059200018295087,
+     "max": 2.9556999979831744
+    },
+    "looming_ms": {
+     "p50": 10.567000001174165,
+     "p95": 13.34955999845988,
+     "max": 14.823800000158371
+    },
+    "gap_ms": {
+     "p50": 17.709299998386996,
+     "p95": 28.782379999029214,
+     "max": 39.21910000281059
+    },
+    "total_ms": {
+     "p50": 78.58929999929387,
+     "p95": 93.23856000046362,
+     "max": 101.36730000158423
+    },
+    "cue_latency_ms": {
+     "p50": 46.90470000059577,
+     "p95": 54.55911999888485,
+     "max": 58.624900000722846
+    }
+   },
+   "cue": {
+    "age_at_tick_ms": {
+     "p50": 76.78669999950216,
+     "p95": 132.18103000072006,
+     "max": 152.71950000169454
+    },
+    "latency_ms": {
+     "p50": 46.90470000059577,
+     "p95": 54.55911999888485,
+     "max": 58.624900000722846
+    }
+   },
+   "gap": {
+    "samples": 877,
+    "depth_samples": 449,
+    "rate_hz": 14.616666666666667,
+    "depth_rate_hz": 7.483333333333333,
+    "kinds": {
+     "clear": 264,
+     "gap": 165,
+     "no_ring": 428,
+     "occluded": 20
+    },
+    "age_at_tick_ms": {
+     "p50": 108.1103999986226,
+     "p95": 168.93927500077552,
+     "max": 194.36899999709567
+    },
+    "age_at_tick_depth_ms": {
+     "p50": 130.99250000232132,
+     "p95": 172.72531999842613,
+     "max": 194.36899999709567
+    },
+    "latency_ms": {
+     "p50": 87.90890000091167,
+     "p95": 94.76438000056076
+    },
+    "frame_ms_ms": {
+     "p50": 3.3030999984475784,
+     "p95": 4.550159999052994
+    },
+    "overlay_ms_ms": {
+     "p50": 3.489599999738857,
+     "p95": 4.400079999322769
+    },
+    "depth_ms_ms": {
+     "p50": 16.668799999024486,
+     "p95": 21.82399999874178
+    },
+    "decide_ms_ms": {
+     "p50": 0.7384000018646475,
+     "p95": 0.939419997303048
+    },
+    "active_share": 0.111358574610245
+   },
+   "depth_worker": {
+    "frames": 915,
+    "depth_frames": 485
+   },
+   "gap_spec": {
+    "placement": "camera",
+    "stride": 1,
+    "input_hw": [
+     336,
+     602
+    ],
+    "motor": "brain08",
+    "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+    "gap_pilot_sha256": "184d83e4ad4b2812432fec2221861bdef14c6719416c3d8f32e3d4f2ff544fb7"
+   }
+  },
+  "straw-brain08-06_process": {
+   "condition": "process",
+   "placement": [
+    "process",
+    1
+   ],
+   "flight": "straw-brain08-06",
+   "start_s": 30.0,
+   "seconds": 60.0,
+   "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+   "offset_s": -0.06999999999999951,
+   "ready_s": 6.8,
+   "gpu_peak_c": 45.0,
+   "camera": {
+    "frames": 1075,
+    "rate_hz": 17.916666666666668,
+    "interval_ms": {
+     "p50": 60.61684999986028,
+     "p95": 68.30966499819624
+    },
+    "capture_ms": {
+     "p50": 20.411400000739377,
+     "p95": 20.66064999999071,
+     "max": 21.01039999979548
+    },
+    "preprocess_ms": {
+     "p50": 1.8924999967566691,
+     "p95": 2.243829999497393,
+     "max": 2.492399999027839
+    },
+    "inference_ms": {
+     "p50": 27.22660000290489,
+     "p95": 33.24312999975518,
+     "max": 90.28179999950225
+    },
+    "publish_ms": {
+     "p50": 0.11539999832166359,
+     "p95": 1.262079998195986,
+     "max": 2.1524000003410038
+    },
+    "looming_ms": {
+     "p50": 10.769500000606058,
+     "p95": 13.480700002764934,
+     "max": 15.605000000505242
+    },
+    "gap_ms": {
+     "p50": 0.20370000129332766,
+     "p95": 0.2665600048203487,
+     "max": 0.3580999982659705
+    },
+    "total_ms": {
+     "p50": 60.61760000011418,
+     "p95": 68.32245000041439,
+     "max": 125.84910000077798
+    },
+    "cue_latency_ms": {
+     "p50": 49.9113000005309,
+     "p95": 56.45257999894966,
+     "max": 112.95640000025742
+    }
+   },
+   "cue": {
+    "age_at_tick_ms": {
+     "p50": 72.20840000263706,
+     "p95": 111.29190499887045,
+     "max": 154.9827999988338
+    },
+    "latency_ms": {
+     "p50": 49.9113000005309,
+     "p95": 56.45257999894966,
+     "max": 112.95640000025742
+    }
+   },
+   "gap": {
+    "samples": 1075,
+    "depth_samples": 1075,
+    "rate_hz": 17.916666666666668,
+    "depth_rate_hz": 17.916666666666668,
+    "kinds": {
+     "clear": 350,
+     "gap": 232,
+     "no_ring": 468,
+     "occluded": 25
+    },
+    "age_at_tick_ms": {
+     "p50": 76.13230000060867,
+     "p95": 113.27402999868356,
+     "max": 164.98259999934817
+    },
+    "age_at_tick_depth_ms": {
+     "p50": 76.13230000060867,
+     "p95": 113.27402999868356,
+     "max": 164.98259999934817
+    },
+    "latency_ms": {
+     "p50": 51.32709999816143,
+     "p95": 58.038460001625936
+    },
+    "frame_ms_ms": {
+     "p50": 3.3903000003192574,
+     "p95": 4.150629998548537
+    },
+    "overlay_ms_ms": {
+     "p50": 4.007100000308128,
+     "p95": 4.908669998985715
+    },
+    "depth_ms_ms": {
+     "p50": 12.396899997838773,
+     "p95": 17.49042000046756
+    },
+    "decide_ms_ms": {
+     "p50": 0.5987000004097354,
+     "p95": 0.8355299993127119
+    },
+    "active_share": 0.06046511627906977
+   },
+   "depth_worker": {
+    "skipped_frames": 0,
+    "cue_missed": 0,
+    "cue_wait_ms": {
+     "p50": 8.634199999505654,
+     "p95": 15.12598000008438
+    },
+    "frames": 1124,
+    "depth_frames": 1124
+   },
+   "gap_spec": {
+    "placement": "process",
+    "stride": 1,
+    "input_hw": [
+     336,
+     602
+    ],
+    "motor": "brain08",
+    "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+    "gap_pilot_sha256": "184d83e4ad4b2812432fec2221861bdef14c6719416c3d8f32e3d4f2ff544fb7"
+   }
+  }
+ },
+ "fp16": {
+  "schema": "haltere.obstacles.gap_bench_fp16.v1",
+  "flight": "straw-brain08-06",
+  "frames": 120,
+  "input_hw": [
+   336,
+   602
+  ],
+  "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+  "gap_cue_config_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+  "relative_error": {
+   "definition": "per frame mean|fp16 - fp32| / mean|fp32| over the 36 x 64 block means",
+   "p50": 0.000572977077125376,
+   "p95": 0.001351070182467634,
+   "max": 0.0026392409017803858
+  },
+  "block_max_relative_error": {
+   "p50": 0.008992159478213463,
+   "p95": 0.025264806878213517,
+   "max": 0.0604667565772832
+  },
+  "correlation": {
+   "min": 0.9999929747924854,
+   "p50": 0.9999998501198555
+  },
+  "provenance": {
+   "fp16": {
+    "model": "depth-anything/Depth-Anything-V2-Small-hf",
+    "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+    "model_dir": "C:/DEV/Haltere/runs/dense-depth-probe-20260923/model",
+    "weights_sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70",
+    "licence": "apache-2.0",
+    "device": "cuda",
+    "precision": "fp16",
+    "input_hw": [
+     336,
+     602
+    ],
+    "frame_hw": [
+     252,
+     448
+    ],
+    "block_px": 7,
+    "masked_input": false,
+    "output": "relative inverse depth (affine-invariant), block mean"
+   },
+   "fp32": {
+    "model": "depth-anything/Depth-Anything-V2-Small-hf",
+    "revision": "5426e4f0f36572d16453bbda7a8389317b1bef99",
+    "model_dir": "C:/DEV/Haltere/runs/dense-depth-probe-20260923/model",
+    "weights_sha256": "3152477ce0d8d6978d76b995120de97cb5b928701fd0f817769f59e249a16b70",
+    "licence": "apache-2.0",
+    "device": "cuda",
+    "precision": "fp32",
+    "input_hw": [
+     336,
+     602
+    ],
+    "frame_hw": [
+     252,
+     448
+    ],
+    "block_px": 7,
+    "masked_input": false,
+    "output": "relative inverse depth (affine-invariant), block mean"
+   }
+  },
+  "chunk": {
+   "chunks": 1,
+   "flight_lock_wait_s": 0.0,
+   "gpu_heat_wait_s": 0.1,
+   "gpu": true,
+   "flight_lock": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\FLIGHT_LOCK"
+  }
+ },
+ "smoke_before_scoring": {
+  "note": "process placement, 10 s each, gates already frozen. smoke_process handed the 448 x 252 frame to the depth process after the cue and looming: gap sample age p95 150 ms and 14.9 Hz, i.e. at or past the gates; the hand-off was moved to right after capture (full frame copy; resize, masks and depth in the depth process while the camera computes the cue) before the scored runs (smoke_process2).",
+  "runs": {
+   "post_change_smoke": {
+    "condition": "process",
+    "placement": [
+     "process",
+     1
+    ],
+    "flight": "straw-brain08-06",
+    "start_s": 30.0,
+    "seconds": 10.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "offset_s": -0.06999999999999951,
+    "ready_s": 6.8,
+    "gpu_peak_c": 42.0,
+    "camera": {
+     "frames": 152,
+     "rate_hz": 15.2,
+     "interval_ms": {
+      "p50": 64.76489999840851,
+      "p95": 72.07904999995662
+     },
+     "capture_ms": {
+      "p50": 20.42269999947166,
+      "p95": 20.696364999457728,
+      "max": 21.04989999861573
+     },
+     "preprocess_ms": {
+      "p50": 1.921150002090144,
+      "p95": 2.2208800004591467,
+      "max": 2.362900002481183
+     },
+     "inference_ms": {
+      "p50": 29.902350001066225,
+      "p95": 36.89714499869296,
+      "max": 72.45590000093216
+     },
+     "publish_ms": {
+      "p50": 0.14040000132808927,
+      "p95": 0.9776449982382465,
+      "max": 1.3111000007484108
+     },
+     "looming_ms": {
+      "p50": 12.002749999737716,
+      "p95": 13.769330000104674,
+      "max": 14.426499998080544
+     },
+     "gap_ms": {
+      "p50": 0.20640000002458692,
+      "p95": 0.25258500099880615,
+      "max": 0.29830000494257547
+     },
+     "total_ms": {
+      "p50": 64.72084999768413,
+      "p95": 72.04337499988469,
+      "max": 107.23399999915273
+     },
+     "cue_latency_ms": {
+      "p50": 52.547699997376185,
+      "p95": 59.90753499972924,
+      "max": 94.7864000008849
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 85.62055000038526,
+      "p95": 116.517159997602,
+      "max": 158.69770000063
+     },
+     "latency_ms": {
+      "p50": 52.547699997376185,
+      "p95": 59.90753499972924,
+      "max": 94.7864000008849
+     }
+    },
+    "gap": {
+     "samples": 152,
+     "depth_samples": 152,
+     "rate_hz": 15.2,
+     "depth_rate_hz": 15.2,
+     "kinds": {
+      "clear": 143,
+      "gap": 9
+     },
+     "age_at_tick_ms": {
+      "p50": 86.7658000006486,
+      "p95": 117.9857599987372,
+      "max": 158.69770000063
+     },
+     "age_at_tick_depth_ms": {
+      "p50": 86.7658000006486,
+      "p95": 117.9857599987372,
+      "max": 158.69770000063
+     },
+     "latency_ms": {
+      "p50": 54.29569999978412,
+      "p95": 61.364120000507675
+     },
+     "frame_ms_ms": {
+      "p50": 3.287600002295221,
+      "p95": 3.9139000007708087
+     },
+     "overlay_ms_ms": {
+      "p50": 3.788600000916631,
+      "p95": 4.387779999524355
+     },
+     "depth_ms_ms": {
+      "p50": 19.168400000125985,
+      "p95": 24.55217499991704
+     },
+     "decide_ms_ms": {
+      "p50": 0.6941500014363555,
+      "p95": 0.8502949984176665
+     },
+     "active_share": 0.0
+    },
+    "depth_worker": {
+     "skipped_frames": 0,
+     "cue_missed": 0,
+     "cue_wait_ms": {
+      "p50": 9.448900000279536,
+      "p95": 15.878580002026856
+     },
+     "frames": 197,
+     "depth_frames": 197
+    },
+    "gap_spec": {
+     "placement": "process",
+     "stride": 1,
+     "input_hw": [
+      336,
+      602
+     ],
+     "motor": "brain08",
+     "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+     "gap_pilot_sha256": "e704a3ba0d3d88018a91f18b68659f0046de9da105de0f60916dc4c6b4efc0db"
+    }
+   },
+   "smoke_process": {
+    "condition": "process",
+    "placement": [
+     "process",
+     1
+    ],
+    "flight": "straw-brain08-06",
+    "start_s": 30.0,
+    "seconds": 10.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "offset_s": -0.06999999999999951,
+    "ready_s": 6.9,
+    "gpu_peak_c": 43.0,
+    "camera": {
+     "frames": 149,
+     "rate_hz": 14.9,
+     "interval_ms": {
+      "p50": 66.83335000161605,
+      "p95": 71.08453500040923
+     },
+     "capture_ms": {
+      "p50": 20.385199997690506,
+      "p95": 20.657240000582533,
+      "max": 20.83389999825158
+     },
+     "preprocess_ms": {
+      "p50": 1.682099999015918,
+      "p95": 2.1181399999477435,
+      "max": 2.2023999990778975
+     },
+     "inference_ms": {
+      "p50": 28.67340000011609,
+      "p95": 32.059159998607356,
+      "max": 35.67209999891929
+     },
+     "publish_ms": {
+      "p50": 0.12240000069141388,
+      "p95": 1.042540000344161,
+      "max": 1.208600002428284
+     },
+     "looming_ms": {
+      "p50": 12.07549999890034,
+      "p95": 14.063919996988261,
+      "max": 14.461700000538258
+     },
+     "gap_ms": {
+      "p50": 3.3140000014100224,
+      "p95": 4.590499999903841,
+      "max": 4.874499998550164
+     },
+     "total_ms": {
+      "p50": 66.76100000186125,
+      "p95": 71.04198000015458,
+      "max": 72.6394999983313
+     },
+     "cue_latency_ms": {
+      "p50": 51.231299999926705,
+      "p95": 54.59153999836417,
+      "max": 58.569500000885455
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 83.67680000083055,
+      "p95": 113.86307999946439,
+      "max": 123.68119999882765
+     },
+     "latency_ms": {
+      "p50": 51.231299999926705,
+      "p95": 54.59153999836417,
+      "max": 58.569500000885455
+     }
+    },
+    "gap": {
+     "samples": 149,
+     "depth_samples": 149,
+     "rate_hz": 14.9,
+     "depth_rate_hz": 14.9,
+     "kinds": {
+      "clear": 141,
+      "gap": 8
+     },
+     "age_at_tick_ms": {
+      "p50": 118.74354999781644,
+      "p95": 149.8241200009943,
+      "max": 161.87669999999343
+     },
+     "age_at_tick_depth_ms": {
+      "p50": 118.74354999781644,
+      "p95": 149.8241200009943,
+      "max": 161.87669999999343
+     },
+     "latency_ms": {
+      "p50": 85.49109999876237,
+      "p95": 91.84868000011193
+     },
+     "frame_ms_ms": {
+      "p50": null,
+      "p95": null
+     },
+     "overlay_ms_ms": {
+      "p50": 3.7618999995174818,
+      "p95": 4.5158599998103455
+     },
+     "depth_ms_ms": {
+      "p50": 14.246700000512647,
+      "p95": 17.254780000803294
+     },
+     "decide_ms_ms": {
+      "p50": 0.7541999984823633,
+      "p95": 0.9373800043249503
+     },
+     "active_share": 0.0
+    },
+    "depth_worker": {
+     "skipped_frames": 0,
+     "frames": 192,
+     "depth_frames": 189
+    },
+    "gap_spec": {
+     "placement": "process",
+     "stride": 1,
+     "input_hw": [
+      336,
+      602
+     ],
+     "motor": "brain08",
+     "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+     "gap_pilot_sha256": "184d83e4ad4b2812432fec2221861bdef14c6719416c3d8f32e3d4f2ff544fb7"
+    }
+   },
+   "smoke_process2": {
+    "condition": "process",
+    "placement": [
+     "process",
+     1
+    ],
+    "flight": "straw-brain08-06",
+    "start_s": 30.0,
+    "seconds": 10.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "offset_s": -0.06999999999999951,
+    "ready_s": 6.7,
+    "gpu_peak_c": 43.0,
+    "camera": {
+     "frames": 155,
+     "rate_hz": 15.5,
+     "interval_ms": {
+      "p50": 64.06520000200544,
+      "p95": 68.96516000015254
+     },
+     "capture_ms": {
+      "p50": 20.42789999904926,
+      "p95": 20.679590001236647,
+      "max": 20.916999998007668
+     },
+     "preprocess_ms": {
+      "p50": 1.8593000022519846,
+      "p95": 2.196339998408803,
+      "max": 2.3140000012062956
+     },
+     "inference_ms": {
+      "p50": 29.252899999846704,
+      "p95": 33.701709999513696,
+      "max": 37.53299999880255
+     },
+     "publish_ms": {
+      "p50": 0.12710000009974465,
+      "p95": 0.9635600014007644,
+      "max": 1.1468000011518598
+     },
+     "looming_ms": {
+      "p50": 11.841299998195609,
+      "p95": 13.960080001197637,
+      "max": 14.433299998927396
+     },
+     "gap_ms": {
+      "p50": 0.20630000290111639,
+      "p95": 0.2547499996580882,
+      "max": 0.3446000009716954
+     },
+     "total_ms": {
+      "p50": 64.05660000018543,
+      "p95": 68.9577899989672,
+      "max": 71.49040000149398
+     },
+     "cue_latency_ms": {
+      "p50": 51.90709999806131,
+      "p95": 56.87194000238378,
+      "max": 60.33880000177305
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 83.04739999948652,
+      "p95": 112.69904000255337,
+      "max": 122.15009999999893
+     },
+     "latency_ms": {
+      "p50": 51.90709999806131,
+      "p95": 56.87194000238378,
+      "max": 60.33880000177305
+     }
+    },
+    "gap": {
+     "samples": 155,
+     "depth_samples": 155,
+     "rate_hz": 15.5,
+     "depth_rate_hz": 15.5,
+     "kinds": {
+      "clear": 137,
+      "no_pose": 7,
+      "gap": 11
+     },
+     "age_at_tick_ms": {
+      "p50": 84.53090000148222,
+      "p95": 114.14122999885876,
+      "max": 123.59099999957834
+     },
+     "age_at_tick_depth_ms": {
+      "p50": 84.53090000148222,
+      "p95": 114.14122999885876,
+      "max": 123.59099999957834
+     },
+     "latency_ms": {
+      "p50": 53.46750000171596,
+      "p95": 58.00808000094548
+     },
+     "frame_ms_ms": {
+      "p50": 3.2716000023356173,
+      "p95": 4.072480000104404
+     },
+     "overlay_ms_ms": {
+      "p50": 3.8752000000386033,
+      "p95": 4.553580000720103
+     },
+     "depth_ms_ms": {
+      "p50": 12.993399999686517,
+      "p95": 17.25764000075287
+     },
+     "decide_ms_ms": {
+      "p50": 0.6904000001668464,
+      "p95": 0.8470099990518062
+     },
+     "active_share": 0.0
+    },
+    "depth_worker": {
+     "skipped_frames": 0,
+     "cue_missed": 0,
+     "cue_wait_ms": {
+      "p50": 11.91359999938868,
+      "p95": 16.34816000005229
+     },
+     "frames": 205,
+     "depth_frames": 205
+    },
+    "gap_spec": {
+     "placement": "process",
+     "stride": 1,
+     "input_hw": [
+      336,
+      602
+     ],
+     "motor": "brain08",
+     "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+     "gap_pilot_sha256": "184d83e4ad4b2812432fec2221861bdef14c6719416c3d8f32e3d4f2ff544fb7"
+    }
+   }
+  },
+  "post_change_smoke": "after the scored runs: the frame slot gained the mss BGRA fast path and an oversized-window resize (the replay frames are contiguous 1280 x 720, so the benched path is unchanged); a 10 s smoke of the final code on the first 10 s of the scored window: 15.2 Hz, gap age p95 118 ms, no no_pose samples"
+ },
+ "minus_two_clips": {
+  "note": "report only (not G8): 10 s of two Minus Two flights from their start, process placement vs a matched baseline; the process runs also feed the parity check",
+  "runs": {
+   "baseline_minus-brain08-01": {
+    "condition": "baseline",
+    "placement": null,
+    "flight": "minus-brain08-01",
+    "start_s": 0.0,
+    "seconds": 10.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "offset_s": -0.0599999999999995,
+    "ready_s": 3.0,
+    "gpu_peak_c": 43.0,
+    "camera": {
+     "frames": 156,
+     "rate_hz": 15.6,
+     "interval_ms": {
+      "p50": 63.64669999675243,
+      "p95": 75.24791000214462
+     },
+     "capture_ms": {
+      "p50": 20.412550000401097,
+      "p95": 20.665374999225605,
+      "max": 21.108499997353647
+     },
+     "preprocess_ms": {
+      "p50": 1.61744999968505,
+      "p95": 2.055124998150859,
+      "max": 2.2186000023793895
+     },
+     "inference_ms": {
+      "p50": 29.003500001635985,
+      "p95": 41.233774998545414,
+      "max": 80.9077999983856
+     },
+     "publish_ms": {
+      "p50": 0.1797500008251518,
+      "p95": 0.9868250017461833,
+      "max": 1.3039000004937407
+     },
+     "looming_ms": {
+      "p50": 11.411400000724825,
+      "p95": 13.736650001192174,
+      "max": 15.751099999761209
+     },
+     "gap_ms": {
+      "p50": 0.004499997885432094,
+      "p95": 0.00990000171441352,
+      "max": 0.0473000000056345
+     },
+     "total_ms": {
+      "p50": 63.63085000157298,
+      "p95": 75.17687500057946,
+      "max": 114.43610000060289
+     },
+     "cue_latency_ms": {
+      "p50": 51.590549999673385,
+      "p95": 63.77142500059563,
+      "max": 103.19220000019413
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 83.6858000002394,
+      "p95": 119.16968500227085,
+      "max": 165.08969999995315
+     },
+     "latency_ms": {
+      "p50": 51.590549999673385,
+      "p95": 63.77142500059563,
+      "max": 103.19220000019413
+     }
+    },
+    "gap": null,
+    "depth_worker": null,
+    "gap_spec": null
+   },
+   "baseline_minus-fast6-cur-01": {
+    "condition": "baseline",
+    "placement": null,
+    "flight": "minus-fast6-cur-01",
+    "start_s": 0.0,
+    "seconds": 10.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "offset_s": -0.04999999999999949,
+    "ready_s": 3.1,
+    "gpu_peak_c": 43.0,
+    "camera": {
+     "frames": 151,
+     "rate_hz": 15.1,
+     "interval_ms": {
+      "p50": 64.07664999824192,
+      "p95": 73.45606499966378
+     },
+     "capture_ms": {
+      "p50": 20.426300001417985,
+      "p95": 20.653249999668333,
+      "max": 20.87530000062543
+     },
+     "preprocess_ms": {
+      "p50": 1.6150000010384247,
+      "p95": 1.9978000018454622,
+      "max": 2.169100000173785
+     },
+     "inference_ms": {
+      "p50": 29.80539999771281,
+      "p95": 40.332350001335726,
+      "max": 104.81530000106432
+     },
+     "publish_ms": {
+      "p50": 0.14860000010230578,
+      "p95": 1.054849997672136,
+      "max": 1.2613999970199075
+     },
+     "looming_ms": {
+      "p50": 11.717800000042189,
+      "p95": 13.573550000728574,
+      "max": 14.112500000919681
+     },
+     "gap_ms": {
+      "p50": 0.004500001523410901,
+      "p95": 0.010350000593462028,
+      "max": 0.01179999890155159
+     },
+     "total_ms": {
+      "p50": 64.0242000008584,
+      "p95": 73.371849999603,
+      "max": 138.8912000002165
+     },
+     "cue_latency_ms": {
+      "p50": 52.22430000139866,
+      "p95": 62.89180000021588,
+      "max": 128.35510000149952
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 86.23925000028976,
+      "p95": 125.35641499816846,
+      "max": 188.40869999985443
+     },
+     "latency_ms": {
+      "p50": 52.22430000139866,
+      "p95": 62.89180000021588,
+      "max": 128.35510000149952
+     }
+    },
+    "gap": null,
+    "depth_worker": null,
+    "gap_spec": null
+   },
+   "parity_minus-brain08-01": {
+    "condition": "process",
+    "placement": [
+     "process",
+     1
+    ],
+    "flight": "minus-brain08-01",
+    "start_s": 0.0,
+    "seconds": 10.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "offset_s": -0.0599999999999995,
+    "ready_s": 6.6,
+    "gpu_peak_c": 43.0,
+    "camera": {
+     "frames": 155,
+     "rate_hz": 15.5,
+     "interval_ms": {
+      "p50": 64.77780000204802,
+      "p95": 71.00587500190159
+     },
+     "capture_ms": {
+      "p50": 20.416999999724794,
+      "p95": 20.701860000554007,
+      "max": 21.156700000574347
+     },
+     "preprocess_ms": {
+      "p50": 1.8044999997073319,
+      "p95": 2.0642399998905603,
+      "max": 2.1955000011075754
+     },
+     "inference_ms": {
+      "p50": 30.741300000954652,
+      "p95": 36.008329998730915,
+      "max": 62.20430000030319
+     },
+     "publish_ms": {
+      "p50": 0.15270000221789815,
+      "p95": 1.0169500004849394,
+      "max": 1.3445000004139729
+     },
+     "looming_ms": {
+      "p50": 11.579300000448711,
+      "p95": 13.786599999730242,
+      "max": 14.768199998798082
+     },
+     "gap_ms": {
+      "p50": 0.2102999969793018,
+      "p95": 0.2614999990328215,
+      "max": 0.32499999724677764
+     },
+     "total_ms": {
+      "p50": 64.74800000069081,
+      "p95": 70.93750999920302,
+      "max": 97.82819999963976
+     },
+     "cue_latency_ms": {
+      "p50": 53.33080000127666,
+      "p95": 58.96448999992572,
+      "max": 84.68580000044312
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 84.20325000042794,
+      "p95": 116.54843999986042,
+      "max": 155.956899998273
+     },
+     "latency_ms": {
+      "p50": 53.33080000127666,
+      "p95": 58.96448999992572,
+      "max": 84.68580000044312
+     }
+    },
+    "gap": {
+     "samples": 155,
+     "depth_samples": 155,
+     "rate_hz": 15.5,
+     "depth_rate_hz": 15.5,
+     "kinds": {
+      "clear": 77,
+      "gap": 61,
+      "no_ring": 13,
+      "occluded": 4
+     },
+     "age_at_tick_ms": {
+      "p50": 87.04340000076627,
+      "p95": 118.42895999761822,
+      "max": 160.62369999781367
+     },
+     "age_at_tick_depth_ms": {
+      "p50": 87.04340000076627,
+      "p95": 118.42895999761822,
+      "max": 160.62369999781367
+     },
+     "latency_ms": {
+      "p50": 54.86829999790643,
+      "p95": 61.0256699983438
+     },
+     "frame_ms_ms": {
+      "p50": 3.2844000015757047,
+      "p95": 4.065980000814304
+     },
+     "overlay_ms_ms": {
+      "p50": 3.6174000015307683,
+      "p95": 4.454860001351334
+     },
+     "depth_ms_ms": {
+      "p50": 17.070300000341376,
+      "p95": 23.40283999983512
+     },
+     "decide_ms_ms": {
+      "p50": 0.7006999985605944,
+      "p95": 0.8427000004303408
+     },
+     "active_share": 0.08387096774193549
+    },
+    "depth_worker": {
+     "skipped_frames": 0,
+     "cue_missed": 1,
+     "cue_wait_ms": {
+      "p50": 11.035799998353468,
+      "p95": 17.207699999562465
+     },
+     "frames": 205,
+     "depth_frames": 205
+    },
+    "gap_spec": {
+     "placement": "process",
+     "stride": 1,
+     "input_hw": [
+      336,
+      602
+     ],
+     "motor": "brain08",
+     "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+     "gap_pilot_sha256": "184d83e4ad4b2812432fec2221861bdef14c6719416c3d8f32e3d4f2ff544fb7"
+    }
+   },
+   "parity_minus-fast6-cur-01": {
+    "condition": "process",
+    "placement": [
+     "process",
+     1
+    ],
+    "flight": "minus-fast6-cur-01",
+    "start_s": 0.0,
+    "seconds": 10.0,
+    "gates_sha256": "db551b8813a3c4da61610cb429afba26b57ff5bb8ea48b3eb0a9761b18ec2455",
+    "offset_s": -0.04999999999999949,
+    "ready_s": 6.8,
+    "gpu_peak_c": 44.0,
+    "camera": {
+     "frames": 149,
+     "rate_hz": 14.9,
+     "interval_ms": {
+      "p50": 66.28745000125491,
+      "p95": 72.0015950013476
+     },
+     "capture_ms": {
+      "p50": 20.52630000252975,
+      "p95": 20.76840000154334,
+      "max": 21.031699998275144
+     },
+     "preprocess_ms": {
+      "p50": 1.7695999995339662,
+      "p95": 2.0719599997391924,
+      "max": 2.232700000604382
+     },
+     "inference_ms": {
+      "p50": 32.030399997893255,
+      "p95": 37.30068000004394,
+      "max": 56.63090000234661
+     },
+     "publish_ms": {
+      "p50": 0.149200001033023,
+      "p95": 1.088700001128018,
+      "max": 1.273800000490155
+     },
+     "looming_ms": {
+      "p50": 11.458400000265101,
+      "p95": 13.683580000360962,
+      "max": 14.490900000964757
+     },
+     "gap_ms": {
+      "p50": 0.2099999983329326,
+      "p95": 0.24616000155219808,
+      "max": 0.2752999971562531
+     },
+     "total_ms": {
+      "p50": 66.24240000019199,
+      "p95": 71.97088000248186,
+      "max": 89.62009999959264
+     },
+     "cue_latency_ms": {
+      "p50": 54.78360000051907,
+      "p95": 60.07764000023599,
+      "max": 80.14269999694079
+     }
+    },
+    "cue": {
+     "age_at_tick_ms": {
+      "p50": 88.21844999874884,
+      "p95": 118.48765999930038,
+      "max": 138.56469999882393
+     },
+     "latency_ms": {
+      "p50": 54.78360000051907,
+      "p95": 60.07764000023599,
+      "max": 80.14269999694079
+     }
+    },
+    "gap": {
+     "samples": 149,
+     "depth_samples": 149,
+     "rate_hz": 14.9,
+     "depth_rate_hz": 14.9,
+     "kinds": {
+      "clear": 69,
+      "gap": 76,
+      "no_ring": 1,
+      "occluded": 3
+     },
+     "age_at_tick_ms": {
+      "p50": 89.72210000138148,
+      "p95": 120.53914999723929,
+      "max": 147.6769000000786
+     },
+     "age_at_tick_depth_ms": {
+      "p50": 89.72210000138148,
+      "p95": 120.53914999723929,
+      "max": 147.6769000000786
+     },
+     "latency_ms": {
+      "p50": 56.39499999961117,
+      "p95": 61.867080000956776
+     },
+     "frame_ms_ms": {
+      "p50": 3.371599999809405,
+      "p95": 3.971119999914663
+     },
+     "overlay_ms_ms": {
+      "p50": 3.7160000028961804,
+      "p95": 4.470240000227931
+     },
+     "depth_ms_ms": {
+      "p50": 15.352499998698477,
+      "p95": 23.7533200008329
+     },
+     "decide_ms_ms": {
+      "p50": 0.7162000001699198,
+      "p95": 0.8391799994569737
+     },
+     "active_share": 0.09395973154362416
+    },
+    "depth_worker": {
+     "skipped_frames": 0,
+     "cue_missed": 0,
+     "cue_wait_ms": {
+      "p50": 13.47880000321311,
+      "p95": 18.145499998354353
+     },
+     "frames": 201,
+     "depth_frames": 201
+    },
+    "gap_spec": {
+     "placement": "process",
+     "stride": 1,
+     "input_hw": [
+      336,
+      602
+     ],
+     "motor": "fast_pd",
+     "gap_cue_sha256": "284b3c46a819f80139a15a03af3a444d3d2f2b6876e15f2dc727208ee8b483fc",
+     "gap_pilot_sha256": "184d83e4ad4b2812432fec2221861bdef14c6719416c3d8f32e3d4f2ff544fb7"
+    }
+   }
+  },
+  "parity": {
+   "parity_parity_minus-brain08-01": {
+    "schema": "haltere.obstacles.gap_bench_parity.v1",
+    "flight": "minus-brain08-01",
+    "run": "parity_minus-brain08-01",
+    "matched": 195,
+    "ring_bearing_diff_deg": {
+     "p50": 0.021222827682237266,
+     "p95": 0.48534926960709557
+    },
+    "shift_diff_deg": {
+     "p50": 0.0,
+     "p95": 0.2751451922040811
+    },
+    "kind_agreement": 0.9641025641025641,
+    "active_frames": 14,
+    "active_side_agreement": 0.9285714285714286,
+    "note": "the bench frame is the video frame shown at the capture time and its pose is the telemetry at that time; the offline frame time is its last repeat in the video (up to a frame or two later), the offline cue is the logged one and its disparity the 336 x 602 teacher basis of the same recorded frame"
+   },
+   "parity_parity_minus-fast6-cur-01": {
+    "schema": "haltere.obstacles.gap_bench_parity.v1",
+    "flight": "minus-fast6-cur-01",
+    "run": "parity_minus-fast6-cur-01",
+    "matched": 199,
+    "ring_bearing_diff_deg": {
+     "p50": 0.003102625479840526,
+     "p95": 0.3119273641815481
+    },
+    "shift_diff_deg": {
+     "p50": 0.0,
+     "p95": 0.010882011766518204
+    },
+    "kind_agreement": 0.964824120603015,
+    "active_frames": 17,
+    "active_side_agreement": 0.8823529411764706,
+    "note": "the bench frame is the video frame shown at the capture time and its pose is the telemetry at that time; the offline frame time is its last repeat in the video (up to a frame or two later), the offline cue is the logged one and its disparity the 336 x 602 teacher basis of the same recorded frame"
+   }
+  }
+ },
+ "pillar_a_wired_pilot": {
+  "gap_pilot_sha256": "e704a3ba0d3d88018a91f18b68659f0046de9da105de0f60916dc4c6b4efc0db",
+  "g1_region": {
+   "x": [
+    42.0,
+    54.7
+   ],
+   "y": [
+    0.0,
+    6.0
+   ]
+  },
+  "pillar": [
+   54.7,
+   4.05
+  ],
+  "results": {
+   "minus-brain08-01": {
+    "first_confirmed_left": {
+     "distance_m": 5.78,
+     "target_deg": 6.132057134109148,
+     "t_s": 12.31
+    },
+    "first_raw_left_sample": {
+     "distance_m": 6.22,
+     "shift_deg": 3.62300784965161,
+     "t_s": 12.24
+    },
+    "approach_ticks": 189,
+    "confirmed_right_ticks": 0,
+    "max_applied_deg": 12.0,
+    "closest_distance_m": 1.84,
+    "counts": {
+     "samples": 210,
+     "stale": 0,
+     "repeated": 0,
+     "obstacle_votes": 13,
+     "terrain_votes": 0,
+     "obstacle_episodes": 1,
+     "terrain_episodes": 0,
+     "latch_blocks": 0,
+     "ring_conflicts": 0,
+     "flag_conflicts": 0
+    }
+   },
+   "minus-fast6-cur-01": {
+    "first_confirmed_left": {
+     "distance_m": 5.95,
+     "target_deg": 5.140880731856781,
+     "t_s": 11.87
+    },
+    "first_raw_left_sample": {
+     "distance_m": 9.02,
+     "shift_deg": 4.0,
+     "t_s": 11.34
+    },
+    "approach_ticks": 230,
+    "confirmed_right_ticks": 0,
+    "max_applied_deg": 12.0,
+    "closest_distance_m": 0.41,
+    "counts": {
+     "samples": 204,
+     "stale": 0,
+     "repeated": 0,
+     "obstacle_votes": 14,
+     "terrain_votes": 0,
+     "obstacle_episodes": 2,
+     "terrain_episodes": 0,
+     "latch_blocks": 0,
+     "ring_conflicts": 0,
+     "flag_conflicts": 0
+    }
+   }
+  },
+  "note": "report only, no gate: haltere.liftoff.gap_aim (frozen gap_pilot.json) replayed at the 100 Hz ticks of the bench over the live-wired gap samples of the two Minus Two clips, each sample taken when the bench first saw it; first confirmed LEFT target inside the G1 approach region and its distance to pillar A (gap_cue_gates.json G1 box, hindsight used for scoring only). The recorded flights hit the pillar; the shift never flew."
+ },
+ "straw_bale_wired_pilot": {
+  "gap_pilot_sha256": "e704a3ba0d3d88018a91f18b68659f0046de9da105de0f60916dc4c6b4efc0db",
+  "minutes": 1.0,
+  "pilot_episodes": 6,
+  "pilot_episodes_per_min": 6.0,
+  "engaged_share": 0.08,
+  "applied_p90_deg": 0.0,
+  "applied_p99_deg": 9.501000000000026,
+  "cue_own_confirmed_episodes_per_min": 10.0,
+  "counts": {
+   "samples": 1124,
+   "stale": 0,
+   "repeated": 0,
+   "obstacle_votes": 65,
+   "terrain_votes": 0,
+   "obstacle_episodes": 6,
+   "terrain_episodes": 0,
+   "latch_blocks": 2,
+   "ring_conflicts": 0,
+   "flag_conflicts": 0
+  },
+  "note": "report only: straw-brain08-06 30-90 s (a clean finished lap), bench samples of the process placement; the gap cue's own two-consecutive confirmation (the G3 rule) is counted from its published flag"
+ }
+}

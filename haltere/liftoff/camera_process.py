@@ -178,7 +178,11 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
             np.frombuffer(data.get_obj(),dtype=np.float64)[LOOMING_SLOTS] = values
 
     def hand_off(capture_time, rgb):
-        # process placement: the depth process gets the frame right after capture (a copy, no resize here)
+        # process placement: the depth process gets the frame right after capture (a copy, no resize here;
+        # a window larger than the slot is resized to the 448 x 252 model frame first)
+        if not frame_slot.fits(rgb):
+            from ..obstacles.overlays import to_model_frame
+            rgb = to_model_frame(rgb)
         frame_slot.write(rgb, capture_time)
 
     def measure_gap(capture_time, rgb, detection):
@@ -274,7 +278,7 @@ class ProcessRetinaCamera:
         while self.gap_spec and not self._gap_status.get('ready'):
             self._poll()
             if self._error:
-                raise RuntimeError(f'Gap cue failed to start: {self._error}')
+                raise RuntimeError(f'Camera or gap cue failed to start: {self._error}')
             if time.monotonic() > end:
                 raise RuntimeError('Gap cue depth model not ready in time')
             time.sleep(.05)

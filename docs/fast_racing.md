@@ -82,3 +82,8 @@ Under the current pilot (arc turns, downhill fix, slope support, gentle search),
 `fast-brain-08` finished Straw Bale twice (5:17.898, 5:17.805;
 [release](fast_brain_08_release.md)). The PD and brain-06 results above used the
 2026-09-23 pilot; the PD has not been flown with the current one.
+
+The obstacle stack (`--obstacle-stack on|shadow`: gap cue plus lag-aware turns) is
+wired and passes its runtime bench with the depth model in its own process, but it
+has not been flown and the gap cue still fails three of its four offline gates; see
+[obstacle_gap_pilot.md](obstacle_gap_pilot.md).

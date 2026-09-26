@@ -363,6 +363,11 @@ def test_frame_slot_hands_over_the_newest_frame_and_the_cue_follows():
     assert np.array_equal(slot.read(seq)[1], small)
     with pytest.raises(ValueError):
         slot.write(np.zeros((1200, 1280, 3), np.uint8), 3.4)
+    assert not slot.fits(np.zeros((1440, 2560, 3), np.uint8)) and slot.fits(frame)
+    bgra = np.random.default_rng(1).integers(0, 255, (720, 1280, 4), dtype=np.uint8)
+    view = bgra[:, :, :3][:, :, ::-1]                      # as a screen grab arrives: a strided view
+    slot.write(view, 3.5)
+    assert np.array_equal(slot.read(0)[1], view)
     data = mp.get_context('spawn').Array('d', cp.SHARED_SIZE, lock=True)
     shared = np.frombuffer(data.get_obj(), dtype=np.float64)
     done = SimpleNamespace(is_set=lambda: False)
@@ -475,7 +480,7 @@ def test_log_columns_and_rows():
 def test_repository_gap_pilot_declaration_parses_and_points_at_frozen_configs():
     from haltere.liftoff.gap_stack import GAP_PILOT_PATH, REPO_ROOT, config_sha256, load_gap_pilot
     from haltere.vision import gap_cue as gc
-    declaration, digest = load_gap_pilot(GAP_PILOT_PATH, require_frozen=False)
+    declaration, digest = load_gap_pilot(GAP_PILOT_PATH)          # flights refuse an unfrozen or edited file
     assert GapAimConfig.from_dict(declaration['pilot']) == CFG      # the declared values are the defaults
     runtime = declaration['runtime']
     assert runtime['placement'] in ('camera', 'process') and runtime['stride'] in (1, 2)
@@ -483,9 +488,38 @@ def test_repository_gap_pilot_declaration_parses_and_points_at_frozen_configs():
     assert cue_config['relative_depth']['input_hw'] == [336, 602] and cue_config['version'] == 2
     models = gc.load_response_models(REPO_ROOT/runtime['response_models'])
     assert set(runtime['response_model_for_contract'].values()) <= set(models)
-    assert config_sha256(declaration) == digest
-    if declaration.get('frozen'):
-        assert declaration['sha256'] == digest
+    assert config_sha256(declaration) == digest and declaration['frozen'] is True and declaration['sha256'] == digest
+    assert runtime['placement'] == 'process' and runtime['stride'] == 1       # chosen by the G8 bench
+
+
+def test_gap_pilot_declaration_edits_are_refused(tmp_path):
+    from haltere.liftoff.gap_stack import GAP_PILOT_PATH, load_gap_pilot
+    declaration = json.loads(GAP_PILOT_PATH.read_text(encoding='utf-8'))
+    declaration['pilot']['slew_deg_s'] = 80.
+    path = tmp_path/'edited.json'
+    path.write_text(json.dumps(declaration))
+    with pytest.raises(ValueError, match='changed'):
+        load_gap_pilot(path)
+    for key in ('frozen', 'frozen_at', 'sha256'):
+        declaration.pop(key)
+    path.write_text(json.dumps(declaration))
+    with pytest.raises(ValueError, match='not frozen'):
+        load_gap_pilot(path)
+
+
+def test_gap_spec_maps_each_fast_contract_to_its_response_model():
+    from haltere.liftoff.gap_stack import GAP_PILOT_PATH, gap_spec, load_gap_pilot
+    declaration, digest = load_gap_pilot(GAP_PILOT_PATH)
+    sensor = dict(focal_320=100., tilt_deg=30.)
+    brain = gap_spec(declaration, 'fast_velocity_brain_v1', sensor, digest=digest)
+    pd = gap_spec(declaration, 'fast_velocity_pd_v1', sensor, digest=digest)
+    assert (brain['motor'], pd['motor']) == ('brain08', 'fast_pd') and brain['input_hw'] == [336, 602]
+    assert brain['gap_cue_version'] == 2 and brain['placement'] == 'process' and brain['gap_pilot_sha256'] == digest
+    json.dumps(brain)                                                   # picklable, loggable
+    with pytest.raises(ValueError, match='response model'):
+        gap_spec(declaration, 'motor_tracking_teacher_v1', sensor)
+    with pytest.raises(ValueError, match='calibrated camera'):
+        gap_spec(declaration, 'fast_velocity_pd_v1', None)
 
 
 def test_gap_cue_v2_only_changes_the_depth_input_of_v1():
@@ -499,3 +533,23 @@ def test_gap_cue_v2_only_changes_the_depth_input_of_v1():
     assert (r1.pop('input_hw'), r2.pop('input_hw')) == ([252, 448], [336, 602])
     assert {k: v for k, v in r1.items() if k != 'precision'} == \
         {k: v for k, v in r2.items() if k not in ('precision', 'preprocessing')}
+
+
+def test_replay_capture_serves_the_gameplay_crop_in_real_time(tmp_path):
+    import cv2
+    from haltere.liftoff.camera_replay import ReplayCapture
+    path = tmp_path/'clip.avi'
+    writer = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*'MJPG'), 18., (1928, 720))
+    for k in range(20):
+        frame = np.zeros((720, 1928, 3), np.uint8)
+        frame[:, 648:] = 10*k              # gameplay part changes per frame; the panel stays black
+        writer.write(frame)
+    writer.release()
+    anchor = tmp_path/'anchor.txt'
+    capture = ReplayCapture.from_spec(f'{path}?start=0.5&pad=0&anchor={anchor}')
+    with capture:
+        t, first = capture.read()
+        assert first.shape == (720, 1280, 3) and capture.video_time(t) == .5    # no anchor yet: the start frame
+        anchor.write_text(repr(t-.3))
+        t2, later = capture.read()
+        assert capture.video_time(t2) >= .8 and later.mean() > first.mean()

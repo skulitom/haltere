@@ -215,6 +215,19 @@ def _pct(values, q):
     return float(np.percentile(values, q)) if len(values) else None
 
 
+def _bgra_base(frame):
+    """The contiguous BGRA buffer behind an mss screen grab's RGB view (``grab[:, :, :3][:, :, ::-1]``), or None.
+
+    That view reads each 4-byte pixel backwards, so a plain copy is a slow strided one; reversing it back gives
+    the B byte of pixel 0 at the buffer start, and the (h, w, 4) layout with 4-byte pixels is the grab itself."""
+    h, w, _ = frame.shape
+    if frame.strides != (4*w, 4, -1):
+        return None
+    from numpy.lib.stride_tricks import as_strided
+    bgra = as_strided(frame[:, :, ::-1], shape=(h, w, 4), strides=(4*w, 4, 1), writeable=False)
+    return bgra if bgra.flags.c_contiguous else None
+
+
 class FrameSlot:
     """A one-frame shared slot: the camera process writes the newest captured frame (any size up to 1920 x 1080
     RGB) right after capture, the depth process copies it. Neither side waits for the other: a busy slot skips
@@ -230,16 +243,25 @@ class FrameSlot:
         self.lock = context.Lock()
         self.ready = context.Event()
 
+    def fits(self, frame):
+        frame = np.asarray(frame)
+        return (frame.ndim == 3 and frame.shape[2] == 3 and frame.dtype == np.uint8
+                and frame.shape[0] <= self.MAX_SHAPE[0] and frame.shape[1] <= self.MAX_SHAPE[1])
+
     def write(self, frame, capture_time, now=None):
         frame = np.asarray(frame)
-        if (frame.ndim != 3 or frame.shape[2] != 3 or frame.dtype != np.uint8 or frame.shape[0] > self.MAX_SHAPE[0]
-                or frame.shape[1] > self.MAX_SHAPE[1]):
+        if not self.fits(frame):
             raise ValueError('expected an RGB uint8 frame of at most 1920 x 1080')
         if not self.lock.acquire(timeout=.002):
             return False
         try:
-            n = frame.size
-            np.frombuffer(self.pixels, np.uint8, count=n)[:] = frame.reshape(-1)
+            target = np.frombuffer(self.pixels, np.uint8, count=frame.size).reshape(frame.shape)
+            bgra = _bgra_base(frame)
+            if bgra is not None:
+                import cv2
+                cv2.cvtColor(bgra, cv2.COLOR_BGRA2RGB, dst=target)      # 0.04 ms instead of a 2 ms strided copy
+            else:
+                target[:] = frame
             header = np.frombuffer(self.header)
             header[1:] = [capture_time, frame.shape[0], frame.shape[1], time.monotonic() if now is None else now]
             header[0] += 1

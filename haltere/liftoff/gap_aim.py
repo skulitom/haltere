@@ -8,7 +8,7 @@ per-frame free-interval aim shift of `haltere.vision.gap_cue.decide` relative to
 frame (positive = LEFT, the FLU yaw sense), NOT confirmed; ``ring_deg`` is that ring's world azimuth and ``lr``
 the terrain side statistic ln(median band disparity left / right) (> 0: the left side is nearer).
 
-Rule (`GapAimConfig`, declared in configs/obstacles/gap_pilot.json):
+Rule (`GapAimConfig`; the runner reads its frozen values from the gap pilot declaration in configs/obstacles):
 
 - A sample is accepted once (capture times strictly increase) and only while it is at most ``max_age_s`` old.
 - Obstacle vote: a valid sample with |shift| >= ``active_deg`` votes for sign(shift).

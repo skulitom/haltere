@@ -513,7 +513,8 @@ def test_fast_cue_reads_no_files_and_imports_no_course_or_route_module():
             imported |= {alias.name for alias in node.names}
         elif isinstance(node, ast.ImportFrom):
             imported.add('.' * node.level + (node.module or ''))
-    assert imported == {'dataclasses', 'types', 'numpy', 'torch', '..vision.camera', '..brain.motor_baseline'}, imported
+    assert imported == {'dataclasses', 'types', 'numpy', 'torch', '..vision.camera', '..brain.motor_baseline',
+                        '.gap_aim'}, imported
     called = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Call):
@@ -522,6 +523,18 @@ def test_fast_cue_reads_no_files_and_imports_no_course_or_route_module():
     forbidden = called & {'open', 'load', 'safe_load', 'loads', 'read_text', 'read_bytes', 'Path', '__import__',
                           'import_module'}
     assert not forbidden, f'FastRaceCue calls {forbidden}'
+    # The gap aim it imports is held to the same rule (its declaration is read by the runner, not here).
+    aim = (SOURCE.parent/'gap_aim.py').read_text(encoding='utf-8')
+    for token in ('open(', 'read_text', 'read_bytes', 'Path(', 'json', 'yaml', 'np.load', 'torch.load'):
+        assert token not in aim, f'gap_aim.py contains {token!r}'
+    assert not [name for name in COURSE_NAMES if name in aim]
+    aim_imports = set()
+    for node in ast.walk(ast.parse(aim)):
+        if isinstance(node, ast.Import):
+            aim_imports |= {alias.name for alias in node.names}
+        elif isinstance(node, ast.ImportFrom):
+            aim_imports.add('.' * node.level + (node.module or ''))
+    assert aim_imports == {'__future__', 'collections', 'dataclasses', 'numpy'}, aim_imports
 
 
 def test_fast_brain_contract_scales_goal_and_velocity_senses():
