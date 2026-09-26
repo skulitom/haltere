@@ -1,0 +1,938 @@
+{
+ "A": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree",
+ "B": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5",
+ "variants": {
+  "none": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457
+   }
+  },
+  "flown": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457
+   }
+  },
+  "flown-wall": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457
+   }
+  },
+  "flown-wallshadow": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457
+   }
+  },
+  "on": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457
+   }
+  },
+  "on-gapoff": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457
+   }
+  },
+  "shadow": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457
+   }
+  }
+ },
+ "planner_shadow": {
+  "on-plan": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapshadow-01.npz",
+     "sha256": "b2f38a619b32134f46577efd9901e2bfee620776ae6285aef9962833ed56ad4b",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 84,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapon-01.npz",
+     "sha256": "b4d91fcf6d18516261429fbb7aa839a9f44a7afdcb4104623e181afa77a0439d",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 130,
+    "displaced_would_be_ticks": 42
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapon-02.npz",
+     "sha256": "ba76ce150c98c36ea96f6452527ceac655b5ac4851276be3978d138e3fad9954",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 182,
+    "displaced_would_be_ticks": 23
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-gapon-01.npz",
+     "sha256": "6659ca1ef31ff3568a6b81433b43014001c410e876ac1bb4e04824f6c5be26dc",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 151,
+    "displaced_would_be_ticks": 191
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-wall-01.npz",
+     "sha256": "e93014f2b729954ad679055013326072760a73303357b215ff8d78f1e3dea7a6",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 85,
+    "displaced_would_be_ticks": 55
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-loom-01.npz",
+     "sha256": "e293e51a750d698d7d0ed2f30178f83c2a73e0d57cdb784b40e09029a0040bf3",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 86,
+    "displaced_would_be_ticks": 0
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_pine-brain08-loom-01.npz",
+     "sha256": "5759c80084a077b2d698ee0041b616a0c383c81ca7bd101791e045cac5be9e20",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 0,
+    "displaced_would_be_ticks": 9
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_pine-fast6-ttc-01.npz",
+     "sha256": "ad1f83f321038fc793b5372280b62c4c624eabd203be307322184a837e63b172",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 0,
+    "displaced_would_be_ticks": 513
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-01.npz",
+     "sha256": "e991bdfd80bf911e8d5e208f871fea6a423c6076107f1fe102a1a802ff2c356b",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 94,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-cur-01.npz",
+     "sha256": "d8db6c413d8ea387f9ff2ed893b9cd09e950a78f12aab5eb26e8c29fe37e279f",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 55,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain07-01.npz",
+     "sha256": "4109d56336747e32ca1e5e0eb1113bef887ef0691119d60ed69cfbde8d9268fd",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 101,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-slow35-01.npz",
+     "sha256": "0c47a5acacaa8a56b9b644eb9ee53a4d0261f6ed213c20fd0d23cc1e8198ead1",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 132,
+    "displaced_would_be_ticks": 0
+   }
+  },
+  "shadow-plan": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapshadow-01.npz",
+     "sha256": "b2f38a619b32134f46577efd9901e2bfee620776ae6285aef9962833ed56ad4b",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 84,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapon-01.npz",
+     "sha256": "b4d91fcf6d18516261429fbb7aa839a9f44a7afdcb4104623e181afa77a0439d",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 130,
+    "displaced_would_be_ticks": 60
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapon-02.npz",
+     "sha256": "ba76ce150c98c36ea96f6452527ceac655b5ac4851276be3978d138e3fad9954",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 182,
+    "displaced_would_be_ticks": 23
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-gapon-01.npz",
+     "sha256": "6659ca1ef31ff3568a6b81433b43014001c410e876ac1bb4e04824f6c5be26dc",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 151,
+    "displaced_would_be_ticks": 195
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-wall-01.npz",
+     "sha256": "e93014f2b729954ad679055013326072760a73303357b215ff8d78f1e3dea7a6",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 85,
+    "displaced_would_be_ticks": 55
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-loom-01.npz",
+     "sha256": "e293e51a750d698d7d0ed2f30178f83c2a73e0d57cdb784b40e09029a0040bf3",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 86,
+    "displaced_would_be_ticks": 0
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_pine-brain08-loom-01.npz",
+     "sha256": "5759c80084a077b2d698ee0041b616a0c383c81ca7bd101791e045cac5be9e20",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 0,
+    "displaced_would_be_ticks": 9
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_pine-fast6-ttc-01.npz",
+     "sha256": "ad1f83f321038fc793b5372280b62c4c624eabd203be307322184a837e63b172",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 0,
+    "displaced_would_be_ticks": 513
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-01.npz",
+     "sha256": "e991bdfd80bf911e8d5e208f871fea6a423c6076107f1fe102a1a802ff2c356b",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 94,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-cur-01.npz",
+     "sha256": "d8db6c413d8ea387f9ff2ed893b9cd09e950a78f12aab5eb26e8c29fe37e279f",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 55,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain07-01.npz",
+     "sha256": "4109d56336747e32ca1e5e0eb1113bef887ef0691119d60ed69cfbde8d9268fd",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 101,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-slow35-01.npz",
+     "sha256": "0c47a5acacaa8a56b9b644eb9ee53a4d0261f6ed213c20fd0d23cc1e8198ead1",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 132,
+    "displaced_would_be_ticks": 0
+   }
+  },
+  "flown-plan": {
+   "minus-brain08-gapshadow-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1310,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapshadow-01.npz",
+     "sha256": "b2f38a619b32134f46577efd9901e2bfee620776ae6285aef9962833ed56ad4b",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 84,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain08-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1906,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapon-01.npz",
+     "sha256": "b4d91fcf6d18516261429fbb7aa839a9f44a7afdcb4104623e181afa77a0439d",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 130,
+    "displaced_would_be_ticks": 60
+   },
+   "minus-brain08-gapon-02": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1857,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-gapon-02.npz",
+     "sha256": "ba76ce150c98c36ea96f6452527ceac655b5ac4851276be3978d138e3fad9954",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 182,
+    "displaced_would_be_ticks": 23
+   },
+   "minus-fast6-gapon-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2159,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-gapon-01.npz",
+     "sha256": "6659ca1ef31ff3568a6b81433b43014001c410e876ac1bb4e04824f6c5be26dc",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 151,
+    "displaced_would_be_ticks": 195
+   },
+   "minus-fast6-wall-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1339,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-wall-01.npz",
+     "sha256": "e93014f2b729954ad679055013326072760a73303357b215ff8d78f1e3dea7a6",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 85,
+    "displaced_would_be_ticks": 55
+   },
+   "minus-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1288,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-loom-01.npz",
+     "sha256": "e293e51a750d698d7d0ed2f30178f83c2a73e0d57cdb784b40e09029a0040bf3",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 86,
+    "displaced_would_be_ticks": 0
+   },
+   "pine-brain08-loom-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 953,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_pine-brain08-loom-01.npz",
+     "sha256": "5759c80084a077b2d698ee0041b616a0c383c81ca7bd101791e045cac5be9e20",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 0,
+    "displaced_would_be_ticks": 9
+   },
+   "pine-fast6-ttc-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 2112,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_pine-fast6-ttc-01.npz",
+     "sha256": "ad1f83f321038fc793b5372280b62c4c624eabd203be307322184a837e63b172",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 0,
+    "displaced_would_be_ticks": 513
+   },
+   "minus-brain08-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1336,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-01.npz",
+     "sha256": "e991bdfd80bf911e8d5e208f871fea6a423c6076107f1fe102a1a802ff2c356b",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 94,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-fast6-cur-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1278,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-fast6-cur-01.npz",
+     "sha256": "d8db6c413d8ea387f9ff2ed893b9cd09e950a78f12aab5eb26e8c29fe37e279f",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 55,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain07-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1390,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain07-01.npz",
+     "sha256": "4109d56336747e32ca1e5e0eb1113bef887ef0691119d60ed69cfbde8d9268fd",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 101,
+    "displaced_would_be_ticks": 0
+   },
+   "minus-brain08-slow35-01": {
+    "identical": true,
+    "differs": [],
+    "ticks": 1457,
+    "plan_stream": {
+     "path": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\streams\\synth_plan_minus-brain08-slow35-01.npz",
+     "sha256": "0c47a5acacaa8a56b9b644eb9ee53a4d0261f6ed213c20fd0d23cc1e8198ead1",
+     "source": "synthetic-anatomy-plumbing"
+    },
+    "intended_offset_ticks": 132,
+    "displaced_would_be_ticks": 0
+   }
+  }
+ },
+ "provenance": {
+  "A:none": {
+   "haltere": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree\\haltere",
+   "seconds": 15.7
+  },
+  "B:none": {
+   "haltere": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5\\haltere",
+   "seconds": 14.7
+  },
+  "A:flown": {
+   "haltere": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree\\haltere",
+   "seconds": 15.2
+  },
+  "B:flown": {
+   "haltere": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5\\haltere",
+   "seconds": 14.9
+  },
+  "A:flown-wall": {
+   "haltere": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree\\haltere",
+   "seconds": 15.2
+  },
+  "B:flown-wall": {
+   "haltere": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5\\haltere",
+   "seconds": 15.1
+  },
+  "A:flown-wallshadow": {
+   "haltere": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree\\haltere",
+   "seconds": 15.1
+  },
+  "B:flown-wallshadow": {
+   "haltere": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5\\haltere",
+   "seconds": 15.0
+  },
+  "A:on": {
+   "haltere": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree\\haltere",
+   "seconds": 15.4
+  },
+  "B:on": {
+   "haltere": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5\\haltere",
+   "seconds": 15.4
+  },
+  "A:on-gapoff": {
+   "haltere": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree\\haltere",
+   "seconds": 15.3
+  },
+  "B:on-gapoff": {
+   "haltere": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5\\haltere",
+   "seconds": 15.6
+  },
+  "A:shadow": {
+   "haltere": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m3\\impl-b\\m2-hairpin-tree\\haltere",
+   "seconds": 15.9
+  },
+  "B:shadow": {
+   "haltere": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_2993e681-3cf-5\\haltere",
+   "seconds": 15.9
+  }
+ }
+}

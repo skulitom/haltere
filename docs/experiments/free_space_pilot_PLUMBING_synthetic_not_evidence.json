@@ -1,0 +1,333 @@
+{
+ "label": "PLUMBING CHECK: synthetic anatomy-derived planner samples, open loop; not evidence",
+ "flights": {
+  "minus-brain08-gapon-01": {
+   "ticks": 1906,
+   "fresh_fraction": 0.769,
+   "left_ticks": 37,
+   "right_ticks": 38,
+   "blocked_ticks": 55,
+   "max_abs_applied_az": 20.0,
+   "cap_applied_ticks": 39,
+   "displaced_ticks": 42,
+   "max_cvz_last3s": {
+    "on": 0.79,
+    "shadow": 0.79,
+    "no_planner": 0.79
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 3.4,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88",
+    "V1": {
+     "scored": true,
+     "window": [
+      17.11,
+      19.07
+     ],
+     "ticks": 197,
+     "max_vz": 0.786,
+     "low_ceiling_ticks": 42,
+     "max_vz_low_ceiling": 0.0,
+     "v_class_into_ceiling_ticks": 0,
+     "passed": true
+    },
+    "V2": {
+     "ticks": 251,
+     "max_vz": 0.786,
+     "max_vz_flat_high": 0.786,
+     "min_vz_low_descending": null,
+     "logged_climb_ticks": 141,
+     "displaced_fraction": 0.426,
+     "passed": false
+    }
+   }
+  },
+  "minus-brain08-gapon-02": {
+   "ticks": 1857,
+   "fresh_fraction": 0.802,
+   "left_ticks": 24,
+   "right_ticks": 121,
+   "blocked_ticks": 37,
+   "max_abs_applied_az": 20.0,
+   "cap_applied_ticks": 28,
+   "displaced_ticks": 23,
+   "max_cvz_last3s": {
+    "on": 1.54,
+    "shadow": 3.46,
+    "no_planner": 3.46
+   },
+   "max_cvz": {
+    "on": 1.54,
+    "no_planner": 3.46
+   },
+   "max_horizontal_change": 4.58,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88",
+    "V1": {
+     "scored": true,
+     "window": [
+      17.24,
+      18.58
+     ],
+     "ticks": 135,
+     "max_vz": 1.543,
+     "low_ceiling_ticks": 26,
+     "max_vz_low_ceiling": 0.0,
+     "v_class_into_ceiling_ticks": 0,
+     "passed": false
+    }
+   }
+  },
+  "minus-fast6-wall-01": {
+   "ticks": 1339,
+   "fresh_fraction": 0.718,
+   "left_ticks": 85,
+   "right_ticks": 0,
+   "blocked_ticks": 0,
+   "max_abs_applied_az": 8.0,
+   "cap_applied_ticks": 1,
+   "displaced_ticks": 55,
+   "max_cvz_last3s": {
+    "on": 2.98,
+    "shadow": 3.44,
+    "no_planner": 3.44
+   },
+   "max_cvz": {
+    "on": 2.98,
+    "no_planner": 3.44
+   },
+   "max_horizontal_change": 0.49,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88",
+    "V1": {
+     "scored": true,
+     "window": [
+      12.02,
+      13.41
+     ],
+     "ticks": 140,
+     "max_vz": 2.978,
+     "low_ceiling_ticks": 35,
+     "max_vz_low_ceiling": 2.978,
+     "v_class_into_ceiling_ticks": 0,
+     "passed": false
+    },
+    "V2": {
+     "ticks": 301,
+     "max_vz": 2.978,
+     "max_vz_flat_high": 2.978,
+     "min_vz_low_descending": null,
+     "logged_climb_ticks": 90,
+     "displaced_fraction": 0.6,
+     "passed": false
+    }
+   }
+  },
+  "minus-fast6-gapon-01": {
+   "ticks": 2159,
+   "fresh_fraction": 0.723,
+   "left_ticks": 151,
+   "right_ticks": 0,
+   "blocked_ticks": 0,
+   "max_abs_applied_az": 8.0,
+   "cap_applied_ticks": 0,
+   "displaced_ticks": 191,
+   "max_cvz_last3s": {
+    "on": 0.06,
+    "shadow": 0.06,
+    "no_planner": 0.06
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 0.55,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+   }
+  },
+  "minus-brain08-gapshadow-01": {
+   "ticks": 1310,
+   "fresh_fraction": 0.779,
+   "left_ticks": 31,
+   "right_ticks": 34,
+   "blocked_ticks": 19,
+   "max_abs_applied_az": 20.0,
+   "cap_applied_ticks": 35,
+   "displaced_ticks": 0,
+   "max_cvz_last3s": {
+    "on": 1.24,
+    "shadow": 1.24,
+    "no_planner": 1.24
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 3.99,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+   }
+  },
+  "minus-brain07-01": {
+   "ticks": 1390,
+   "fresh_fraction": 0.766,
+   "left_ticks": 47,
+   "right_ticks": 30,
+   "blocked_ticks": 24,
+   "max_abs_applied_az": 20.0,
+   "cap_applied_ticks": 43,
+   "displaced_ticks": 0,
+   "max_cvz_last3s": {
+    "on": 0.18,
+    "shadow": 0.18,
+    "no_planner": 0.18
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 4.95,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+   }
+  },
+  "minus-fast6-cur-01": {
+   "ticks": 1278,
+   "fresh_fraction": 0.755,
+   "left_ticks": 36,
+   "right_ticks": 9,
+   "blocked_ticks": 10,
+   "max_abs_applied_az": 18.38,
+   "cap_applied_ticks": 21,
+   "displaced_ticks": 0,
+   "max_cvz_last3s": {
+    "on": 0.09,
+    "shadow": 0.09,
+    "no_planner": 0.09
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 2.86,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+   }
+  },
+  "minus-brain08-slow35-01": {
+   "ticks": 1457,
+   "fresh_fraction": 0.759,
+   "left_ticks": 110,
+   "right_ticks": 0,
+   "blocked_ticks": 22,
+   "max_abs_applied_az": 20.0,
+   "cap_applied_ticks": 51,
+   "displaced_ticks": 0,
+   "max_cvz_last3s": {
+    "on": 1.14,
+    "shadow": 1.14,
+    "no_planner": 1.14
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 2.49,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+   }
+  },
+  "minus-brain08-loom-01": {
+   "ticks": 1288,
+   "fresh_fraction": 0.783,
+   "left_ticks": 29,
+   "right_ticks": 42,
+   "blocked_ticks": 15,
+   "max_abs_applied_az": 17.77,
+   "cap_applied_ticks": 29,
+   "displaced_ticks": 0,
+   "max_cvz_last3s": {
+    "on": 1.25,
+    "shadow": 1.26,
+    "no_planner": 1.26
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 4.36,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+   }
+  },
+  "pine-fast6-ttc-01": {
+   "ticks": 2112,
+   "fresh_fraction": 0.681,
+   "left_ticks": 0,
+   "right_ticks": 0,
+   "blocked_ticks": 0,
+   "max_abs_applied_az": 0.0,
+   "cap_applied_ticks": 0,
+   "displaced_ticks": 513,
+   "max_cvz_last3s": {
+    "on": 2.88,
+    "shadow": 3.19,
+    "no_planner": 3.19
+   },
+   "max_cvz": {
+    "on": 2.88,
+    "no_planner": 3.5
+   },
+   "max_horizontal_change": 3.05,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88",
+    "V3": {
+     "logged_climb_s": 6.34,
+     "answered_s": 0.79,
+     "answered_fraction": 0.125,
+     "late_min_vz": -0.739,
+     "passed": false
+    }
+   }
+  },
+  "pine-brain08-loom-01": {
+   "ticks": 953,
+   "fresh_fraction": 0.701,
+   "left_ticks": 0,
+   "right_ticks": 0,
+   "blocked_ticks": 0,
+   "max_abs_applied_az": 0.0,
+   "cap_applied_ticks": 0,
+   "displaced_ticks": 9,
+   "max_cvz_last3s": {
+    "on": 0.35,
+    "shadow": 1.27,
+    "no_planner": 1.27
+   },
+   "max_cvz": {
+    "on": 1.5,
+    "no_planner": 1.5
+   },
+   "max_horizontal_change": 0.0,
+   "v_scores_plumbing": {
+    "label": "PLUMBING CHECK (synthetic stream): not a gate result, not evidence",
+    "gates_sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+   }
+  }
+ }
+}
