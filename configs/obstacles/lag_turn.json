@@ -1,8 +1,10 @@
 {
  "schema": "haltere.liftoff.lag_turn.v1",
- "version": 1,
- "note": "Lag-aware turns after a checkpoint switch for the fast race-cue pilot (FastRaceCue lag_turn=LagTurnConfig). Off unless the runner is given --lag-turn; then the entry for the active motor contract applies (null = off for that contract, and the runner refuses --lag-turn for it). Lead, clip, heading time constant and window are the a-priori M2 plan values (course_lead 0.6 clipped to 15 deg, heading time constant 0.10 s, first second after a switch), not fitted to any course; trigger_deg/trigger_span_s follow the anatomy study's switch detector (bearing jump within two frames). The hash covers everything except frozen/frozen_at/sha256; a changed file needs a new version and a new freeze, and every frozen version used for scoring is reported.",
- "rule": "trigger: a fresh in-view (not edge-clamped) cue whose azimuth differs by >= trigger_deg from the filtered bearing or from an in-view cue captured within trigger_span_s; for window_s after it, while the ring is in view (pilot state cue): aim course_lead*(bearing - flown course) beyond the bearing, clipped to course_lead_max_deg (no lead below min_course_speed or beyond max_lead_angle_deg), and taper the request heading with heading_time_constant instead of command_time_constant; both fade out over the last fade_s; turn_acceleration still bounds the heading rate and the speed schedule is unchanged",
+ "version": 2,
+ "note": "Lag-aware turns after a checkpoint switch for the fast race-cue pilot (FastRaceCue lag_turn=LagTurnConfig). Off unless the runner is given --lag-turn (on by default inside --obstacle-stack); then the entry for the active motor contract applies (null = off for that contract, and the runner refuses --lag-turn for it). The runner refuses a declaration of another version than the rule the code implements (fast_race_cue.LAG_TURN_VERSION). Lead, clip, heading time constant and window are the a-priori M2 plan values (course_lead 0.6 clipped to 15 deg, heading time constant 0.10 s, first second after a switch), not fitted to any course; trigger_deg/trigger_span_s follow the anatomy study's switch detector (bearing jump within two frames). The parameters are version 1's; version 2 changes the trigger ray and declares the interaction with the gap aim (see 'change'). The hash covers everything except frozen/frozen_at/sha256; a changed file needs a new version and a new freeze, and every frozen version used for scoring is reported.",
+ "rule": "trigger: a fresh in-view (not edge-clamped) cue whose ring-centre azimuth (the marker centre u, v; not the flag-clearance aim aim_u, not the gap-shifted aim) differs by >= trigger_deg from the filtered ring-centre bearing (filtered like the flown bearing: blend direction_blend, a jump > new_target_deg adopted) or from the ring centre of an in-view cue captured within trigger_span_s; for window_s after it, while the ring is in view (pilot state cue): aim course_lead*(bearing - flown course) beyond the bearing, clipped to course_lead_max_deg (no lead below min_course_speed or beyond max_lead_angle_deg), and taper the request heading with heading_time_constant instead of command_time_constant; both fade out over the last fade_s; turn_acceleration still bounds the heading rate and the speed schedule is unchanged. The bearing is the ring cue's filtered aim bearing (with its flag clearance).",
+ "interaction_with_gap_aim": "With the gap aim (configs/obstacles/gap_pilot.json version 2) the flown bearing carries the applied gap shift. The lead is computed on the bearing with that shift removed and the shift is added after the lead: the lead never amplifies the gap shift and each keeps its own bound (lead <= course_lead_max_deg from the ring cue's aim, gap shift <= max_shift_deg beside the ring), so during a lag-turn window the flown aim is at most course_lead_max_deg + max_shift_deg (15 + 12 = 27 deg) from the ring cue's own aim, and outside a window at most max_shift_deg. In shadow (lag_turn_apply false) the logged lead is the one this rule would fly for the same course.",
+ "change": "v2 (review of m2-wire): (1) the trigger read the flown aim ray (aim_u, the flag clearance beside the ring), so a flag clearance appearing, disappearing or flickering for one frame opened a window with no ring change; a replay of the fast-stack-20260923 ticks found 22 of 28 triggers on pine-brain08-01 and 8 of 13 on minus-brain08-01 without a ring-centre jump. The trigger now reads the ring-centre ray; the flown aim is unchanged. (2) the lead was computed from the gap-shifted bearing, so a 12 deg gap shift was amplified up to about 12 + 15 deg; the lead is now computed without the shift and the shift added after it. With aim_u = u and no gap shift (the G5 surrogate) both rules are identical.",
  "response_models": {
   "note": "Declared motor response to a horizontal velocity request (documentation of why a lead is needed and the kinematic models used for offline replays; the pilot does not read these). Delay plus first-order lag fitted on fast-stack-20260923 logs: brain-08 0.14-0.16 s plus 0.20-0.58 s (0.32-0.39 s overall on Straw Bale), fast PD 0.08-0.10 s plus about 0.04 s (0.11-0.14 s overall).",
   "fast_velocity_brain_v1": {
@@ -40,7 +42,17 @@
    "max_lead_angle_deg": 90.0
   }
  },
+ "previous_versions": [
+  {
+   "version": 1,
+   "sha256": "94315b4ddc4a1750137e1856dd40d1be0d2823d0ef359961eda0d29937271aad",
+   "frozen_at": "2026-09-25T23:49:35",
+   "file": "configs/obstacles/lag_turn_v1.json",
+   "scored": "G5 surrogate (16 courses, sim seeds 17 and 23), Minus Two pillar A kinematic replay, Straw Bale switch replays (m2-lagturn); never flown",
+   "superseded_because": "trigger on the flag-clearance aim ray; lead amplified an applied gap shift (see change)"
+  }
+ ],
  "frozen": true,
- "frozen_at": "2026-09-25T23:49:35",
- "sha256": "94315b4ddc4a1750137e1856dd40d1be0d2823d0ef359961eda0d29937271aad"
+ "frozen_at": "2026-09-26T01:50:59",
+ "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860"
 }

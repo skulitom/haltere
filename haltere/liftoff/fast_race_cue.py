@@ -146,6 +146,8 @@ class FastCueConfig:
 
 # The state in which lag-aware turns act: the ring is in view (not clamped to an edge).
 LAG_TURN_STATES = ('cue',)
+# The lag-turn declaration version whose rule this code implements (see LagTurnConfig); runners refuse others.
+LAG_TURN_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -156,19 +158,26 @@ class LagTurnConfig:
     velocity request late (brain-08 by 0.3-0.4 s, the fast PD by 0.1-0.15 s), so after
     a checkpoint switch the flown path swings outside the line to the new ring.
 
-    Trigger (a new checkpoint): a fresh in-view (not edge-clamped) cue whose bearing
-    azimuth differs by at least trigger_deg from the filtered bearing or from any fresh
-    in-view cue captured within the last trigger_span_s (the HUD marker can take two
-    frames to move to the new ring). Clamped markers never trigger: their azimuth is
-    not reliable. For window_s after the triggering capture, while the ring is in view:
+    Trigger (a new checkpoint): a fresh in-view (not edge-clamped) cue whose ring-centre
+    azimuth (marker u, v) differs by at least trigger_deg from the filtered ring-centre
+    bearing or from the ring centre of any fresh in-view cue captured within the last
+    trigger_span_s (the HUD marker can take two frames to move to the new ring). The flown
+    aim beside the ring (aim_u, the flag clearance) and an applied gap shift are not part
+    of the trigger: a flag clearance that appears, disappears or flickers is no switch.
+    Clamped markers never trigger: their azimuth is not reliable. For window_s after the
+    triggering capture, while the ring is in view:
     - the horizontal goal aims beyond the bearing by course_lead times the angle from
       the flown course (measured horizontal velocity) to the bearing, clipped to
-      course_lead_max_deg; no lead below min_course_speed or beyond max_lead_angle_deg;
+      course_lead_max_deg; no lead below min_course_speed or beyond max_lead_angle_deg.
+      The bearing is the ring cue's filtered aim bearing; an applied gap shift is removed
+      before the lead is computed and added after it (never amplified by the lead);
     - the request heading rotates toward the goal with heading_time_constant instead
       of command_time_constant (turn_acceleration still bounds the rotation rate, and
       the speed change keeps command_time_constant).
     Both fade out linearly over the last fade_s of the window. The speed schedule
     still uses the angle to the bearing itself, so no extra braking is requested.
+    Lag-turn declaration version 2 (read by the runner from configs/obstacles); version 1
+    triggered on the flown aim ray and led the gap-shifted bearing.
     """
     course_lead: float = .6
     course_lead_max_deg: float = 15.
@@ -655,7 +664,8 @@ class FastRaceCue:
         self.lag_turn = lag_turn
         # False: the trigger, weight and lead are computed and logged but not applied (shadow control).
         self.lag_turn_apply = bool(lag_turn_apply)
-        self.lag_turn_recent = []      # (capture time, azimuth) of recent fresh in-view cues
+        self.lag_turn_recent = []      # (capture time, ring-centre azimuth) of recent fresh in-view cues
+        self.lag_turn_centre = None    # filtered ring-centre bearing (the trigger's reference; never flown)
         self.lag_turn_since = None
         self.lag_turn_weight = 0.
         self.lag_turn_lead_deg = 0.
@@ -713,18 +723,17 @@ class FastRaceCue:
         ray = quat_wxyz_to_mat(q) @ ray
         ray = ray/max(np.linalg.norm(ray), 1e-9)
         if self.lag_turn is not None:
-            self._lag_turn_trigger(ray, bool(cue['edge']), capture_time)
+            # A new checkpoint moves the ring marker itself: the trigger reads the ring-centre ray (u, v), never the
+            # flown aim beside it (aim_u, the flag clearance), whose appearance or one-frame flicker is no switch.
+            centre = self.camera.unproject_body(np.array([[cue['u']*320, cue['v']*180]]))[0]
+            centre = quat_wxyz_to_mat(q) @ centre
+            centre = centre/max(np.linalg.norm(centre), 1e-9)
+            self._lag_turn_trigger(centre, bool(cue['edge']), capture_time)
+            self.lag_turn_centre, _ = self._blend(self.lag_turn_centre, centre)
         if self.gap_aim is not None:
             ray = self._gap_ray(ray, cue, q, now)
-        switched = False
-        if self.direction is None or np.degrees(np.arccos(np.clip(ray @ self.direction, -1, 1))) > self.config.new_target_deg:
-            if self.direction is not None:
-                self.target_switches += 1
-                switched = True
-            self.direction = ray
-        else:
-            blended = self.direction+self.config.direction_blend*(ray-self.direction)
-            self.direction = blended/max(np.linalg.norm(blended), 1e-9)
+        self.direction, switched = self._blend(self.direction, ray)
+        self.target_switches += int(switched)
         self.last_seen, self.edge = capture_time, bool(cue['edge'])
         # Corner clamps stay lateral: Liftoff clamps a marker behind the drone
         # to a top corner, so a corner is not evidence of a target above/below.
@@ -755,6 +764,14 @@ class FastRaceCue:
         elif self.vertical_clip_since is None:
             self.vertical_clip_since = capture_time
         self.frames += 1
+
+    def _blend(self, previous, ray):
+        """(filtered bearing after one more cue ray, whether it was a new target): a ray more than new_target_deg
+        from the previous bearing is adopted as is (a checkpoint switch), a closer one is blended in."""
+        if previous is None or np.degrees(np.arccos(np.clip(ray @ previous, -1, 1))) > self.config.new_target_deg:
+            return ray, previous is not None
+        blended = previous+self.config.direction_blend*(ray-previous)
+        return blended/max(np.linalg.norm(blended), 1e-9), False
 
     def _desired(self, position, velocity, yaw, now):
         c = self.config
@@ -842,17 +859,22 @@ class FastRaceCue:
             self.direction = rotate_z(self.direction, offset-self.gap_offset_deg)
         self.gap_offset_deg = offset
 
-    def _lag_turn_trigger(self, ray, edge, capture_time):
-        """Open a lag-turn window when a fresh in-view bearing jumps (see LagTurnConfig)."""
+    def _lag_turn_trigger(self, centre, edge, capture_time):
+        """Open a lag-turn window when a fresh in-view ring-centre bearing jumps (see LagTurnConfig).
+
+        `centre` is the world ray to the ring marker's centre; the references are the in-view centre azimuths
+        of the last trigger_span_s and the filtered centre bearing (`lag_turn_centre`, filtered like the flown
+        direction but from centre rays), so neither the flag-clearance aim nor an applied gap shift can look
+        like a new checkpoint."""
         lt = self.lag_turn
-        if edge or np.linalg.norm(ray[:2]) < 1e-6:
+        if edge or np.linalg.norm(centre[:2]) < 1e-6:
             return
-        azimuth = float(np.arctan2(ray[1], ray[0]))
+        azimuth = float(np.arctan2(centre[1], centre[0]))
         recent = [(t, a) for t, a in self.lag_turn_recent if capture_time-t <= lt.trigger_span_s]
         references = [a for _, a in recent]
-        if self.direction is not None and np.linalg.norm(self.direction[:2]) > 1e-6:
-            # compare with the ring bearing itself: remove an applied gap shift from the filtered direction
-            references.append(float(np.arctan2(self.direction[1], self.direction[0]))-np.radians(self.gap_offset_deg))
+        filtered = self.lag_turn_centre
+        if filtered is not None and np.linalg.norm(filtered[:2]) > 1e-6:
+            references.append(float(np.arctan2(filtered[1], filtered[0])))
         jump = max((abs((azimuth-a+np.pi) % (2*np.pi)-np.pi) for a in references), default=0.)
         if jump >= np.radians(lt.trigger_deg):
             self.lag_turn_since = capture_time
@@ -875,7 +897,11 @@ class FastRaceCue:
 
         The lead is course_lead times the angle from the flown course to the bearing,
         clipped, so it shrinks to zero as the lagging motor's course catches up and turns
-        back if the course overshoots."""
+        back if the course overshoots. With the gap aim, `dh` carries the applied gap shift:
+        the lead is computed on the ring cue's own bearing (the shift removed) and the shift
+        is added after it, so the lead never amplifies the shift and each keeps its own
+        declared bound (course_lead_max_deg, max_shift_deg); in shadow the logged lead is the
+        one this rule would fly."""
         lt = self.lag_turn
         if lt is None or self.lag_turn_weight <= 0:
             return dh
@@ -883,7 +909,10 @@ class FastRaceCue:
         if horizontal_speed < lt.min_course_speed:
             return dh
         course = velocity[:2]/horizontal_speed
-        angle = float(np.arctan2(course[0]*dh[1]-course[1]*dh[0], course @ dh))
+        shift = np.radians(self.gap_offset_deg)
+        bearing = dh if shift == 0. else np.array([np.cos(-shift)*dh[0]-np.sin(-shift)*dh[1],
+                                                   np.sin(-shift)*dh[0]+np.cos(-shift)*dh[1]])
+        angle = float(np.arctan2(course[0]*bearing[1]-course[1]*bearing[0], course @ bearing))
         if abs(angle) > np.radians(lt.max_lead_angle_deg):
             return dh
         limit = np.radians(lt.course_lead_max_deg)
@@ -891,8 +920,9 @@ class FastRaceCue:
         self.lag_turn_lead_deg = float(np.degrees(lead))
         if not self.lag_turn_apply:
             return dh                  # shadow: the lead is logged, not flown
-        cos, sin = np.cos(lead), np.sin(lead)
-        return np.array([cos*dh[0]-sin*dh[1], sin*dh[0]+cos*dh[1]])
+        turn = lead+shift
+        cos, sin = np.cos(turn), np.sin(turn)
+        return np.array([cos*bearing[0]-sin*bearing[1], sin*bearing[0]+cos*bearing[1]])
 
     def _horizontal_step(self, current, goal, dt, heading_time_constant=None):
         """Change of the horizontal request this tick: a coordinated turn.
@@ -1167,12 +1197,15 @@ class FastRaceCue:
                     state_seconds={k: round(v, 3) for k, v in self.state_time.items()},
                     estimated_passages=None,
                     lag_turn=None if self.lag_turn is None else dict(
-                        rule='for window_s after a fresh in-view cue azimuth differs >= trigger_deg from the filtered '
-                             'bearing or from an in-view cue of the last trigger_span_s (clamped markers never trigger): '
-                             'with the ring in view (state cue) aim course_lead*(bearing - flown course) beyond the '
-                             'bearing (clipped to course_lead_max_deg; none below min_course_speed or beyond '
-                             'max_lead_angle_deg) and taper the request heading with heading_time_constant; both fade '
-                             'out over the last fade_s; the speed schedule keeps the bearing itself',
+                        rule='for window_s after a fresh in-view cue\'s ring-centre azimuth (marker u, v; not the '
+                             'flag-clearance aim) differs >= trigger_deg from the filtered ring-centre bearing or from '
+                             'the ring centre of an in-view cue of the last trigger_span_s (clamped markers never '
+                             'trigger): with the ring in view (state cue) aim course_lead*(bearing - flown course) '
+                             'beyond the bearing (clipped to course_lead_max_deg; none below min_course_speed or beyond '
+                             'max_lead_angle_deg; an applied gap shift is removed before and added after the lead) and '
+                             'taper the request heading with heading_time_constant; both fade out over the last fade_s; '
+                             'the speed schedule keeps the bearing itself',
+                        version=LAG_TURN_VERSION,
                         parameters=asdict(self.lag_turn), triggers=self.lag_turn_triggers,
                         active_seconds=round(self.lag_turn_time, 3), applied=self.lag_turn_apply),
                     gap_aim=None if self.gap_aim is None else dict(
@@ -1187,7 +1220,8 @@ class FastRaceCue:
                              '<= slew_deg_s and decays to 0 over decay_s; rotates the ring ray about world z in '
                              '_ingest; gap evidence of another ring bearing or against the ring cue\'s flag '
                              'clearance is a conflict: dropped, the ring cue\'s own aim is held for side_latch_s; '
-                             'never changes the requested speed'),
+                             'never changes the requested speed; with lag-aware turns the lead is computed on the '
+                             'bearing without the shift and the shift is added after it (not amplified)'),
                     clearance_response=None if self.clearance is None else dict(
                         self._clearance_policy(),
                         parameters={k: (None if isinstance(v, float) and not np.isfinite(v) else v)

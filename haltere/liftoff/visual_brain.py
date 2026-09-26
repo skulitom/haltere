@@ -43,11 +43,16 @@ def lag_turn_declaration_sha256(declaration):
 
 
 def load_lag_turn_declaration(path):
-    """A frozen lag-turn declaration and its content hash; refuses an unfrozen or edited file."""
+    """A frozen lag-turn declaration and its content hash; refuses an unfrozen or edited file and a declaration
+    of another rule version than the one FastRaceCue implements (fast_race_cue.LAG_TURN_VERSION)."""
+    from .fast_race_cue import LAG_TURN_VERSION
     declaration = json.loads(Path(path).read_text(encoding='utf-8'))
     digest = lag_turn_declaration_sha256(declaration)
     if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
         raise ValueError(f'{path} is not a frozen lag-turn declaration, or it changed after the freeze')
+    if declaration.get('version') != LAG_TURN_VERSION:
+        raise ValueError(f'{path} declares lag-turn rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {LAG_TURN_VERSION}')
     return declaration, digest
 
 

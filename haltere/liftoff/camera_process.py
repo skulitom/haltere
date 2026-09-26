@@ -58,25 +58,6 @@ def gap_sample(values):
     return sample
 
 
-def cue_for(data, capture_time):
-    """The camera's published race cue for one capture time: ('published', cue dict or None) once the camera
-    process has published that frame, ('pending', None) before, ('replaced', None) when a later frame is there."""
-    lock = data.get_lock()
-    if not lock.acquire(timeout=.002):
-        return 'pending', None
-    try:
-        shared = np.frombuffer(data.get_obj(), dtype=np.float64)
-        stamp, row = float(shared[0]), shared[727:732].copy()
-    finally:
-        lock.release()
-    if stamp < capture_time:
-        return 'pending', None
-    if stamp > capture_time:
-        return 'replaced', None
-    return 'published', (dict(u=float(row[1]), v=float(row[2]), edge=bool(row[3]), aim_u=float(row[4]))
-                         if row[0] else None)
-
-
 def stage_sample(values):
     """Latest camera stage timings (ms) with the capture time they belong to, or None."""
     raw = dict(zip(STAGE_FIELDS, (float(v) for v in values)))
@@ -155,6 +136,10 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
             shared[727:732] = [cue is not None, cue['u'] if cue else 0.,
                             cue['v'] if cue else 0., cue['edge'] if cue else 0.,
                             cue.get('aim_u',cue['u']) if cue else 0.]
+        if frame_slot is not None:
+            # process placement: the depth process reads this frame's cue from the slot (never from `data`,
+            # whose lock this process takes blocking); a busy slot skips the cue instead of waiting
+            frame_slot.publish_cue(stamp,cue)
         if time.monotonic()-last_diagnostics>.5:
             put_latest(queue,dict(diagnostics=diagnostics(),error=camera.error))
             last_diagnostics = time.monotonic()
@@ -179,7 +164,8 @@ def camera_worker(queue, data, done, phase, title, fps, gate_sensor, backend, ra
 
     def hand_off(capture_time, rgb):
         # process placement: the depth process gets the frame right after capture (a copy, no resize here;
-        # a window larger than the slot is resized to the 448 x 252 model frame first)
+        # a window larger than the slot is resized to the 448 x 252 model frame first); never waits: a slot
+        # the depth process is still reading skips this frame
         if not frame_slot.fits(rgb):
             from ..obstacles.overlays import to_model_frame
             rgb = to_model_frame(rgb)
@@ -251,13 +237,17 @@ class ProcessRetinaCamera:
         self._gap = None
         self._stages = None
         self._gap_status = {}
-        self.frame_slot = self.gap_process = self.gap_queue = None
+        self.frame_slot = self.gap_process = self.gap_queue = self.gap_out = self.gap_stop = None
         if self.gap_spec and self.gap_spec['placement'] == 'process':
             from .gap_stack import FrameSlot, gap_process_worker
             self.frame_slot = FrameSlot()
             self.gap_queue = context.Queue(maxsize=2)
+            # The depth process's own sample array and stop event: it never takes the camera's `data` lock or
+            # `done` event, which the camera process takes blocking (no priority inversion through them).
+            self.gap_out = context.Array('d',len(GAP_FIELDS),lock=True)
+            self.gap_stop = context.Event()
             self.gap_process = context.Process(target=gap_process_worker,
-                args=(self.frame_slot,self.data,self.motion,self.done,self.gap_queue,self.gap_spec),daemon=True)
+                args=(self.frame_slot,self.gap_out,self.motion,self.gap_stop,self.gap_queue,self.gap_spec),daemon=True)
         self.process = context.Process(target=camera_worker,
             args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend,race_cues,detector_device,
                   self.motion,self.looming,self.gap_spec,self.frame_slot),daemon=True)
@@ -305,15 +295,22 @@ class ProcessRetinaCamera:
                     if sample is not None and (self._clearance is None or sample['time'] != self._clearance['time']):
                         self._clearance = sample
                 if len(shared) >= SHARED_SIZE:
-                    if getattr(self,'gap_spec',None) and shared[GAP_SLOTS.start] and (
-                            self._gap is None or shared[GAP_SLOTS.start+GAP_FIELDS.index('seq')] != self._gap['seq']
-                            or shared[GAP_SLOTS.start] != self._gap['time']):
-                        self._gap = gap_sample(shared[GAP_SLOTS])
+                    if getattr(self,'gap_spec',None) and getattr(self,'gap_out',None) is None:
+                        self._take_gap(shared[GAP_SLOTS])
                     if shared[STAGE_SLOTS.start] and (getattr(self,'_stages',None) is None
                                                       or shared[STAGE_SLOTS.start] != self._stages['frame_time']):
                         self._stages = stage_sample(shared[STAGE_SLOTS])
             finally:
                 lock.release()
+        gap_out = getattr(self,'gap_out',None)
+        if gap_out is not None:
+            # the depth process's samples (process placement): the same nonblocking snapshot
+            gap_lock = gap_out.get_lock()
+            if gap_lock.acquire(False):
+                try:
+                    self._take_gap(np.frombuffer(gap_out.get_obj(),dtype=np.float64).copy())
+                finally:
+                    gap_lock.release()
         for queue in (self.queue, getattr(self,'gap_queue',None)):
             while queue is not None:
                 try:
@@ -334,6 +331,11 @@ class ProcessRetinaCamera:
         if (gap_process is not None and gap_process.exitcode is not None and not self.done.is_set()
                 and self._error is None):
             self._error = f'Gap depth process exited ({gap_process.exitcode})'
+
+    def _take_gap(self, values):
+        if values[0] and (self._gap is None or values[GAP_FIELDS.index('seq')] != self._gap['seq']
+                          or values[0] != self._gap['time']):
+            self._gap = gap_sample(values)
 
     @property
     def gap(self):
@@ -379,6 +381,8 @@ class ProcessRetinaCamera:
 
     def stop(self):
         self.done.set()
+        if getattr(self,'gap_stop',None) is not None:
+            self.gap_stop.set()
         for process in (self.process, getattr(self,'gap_process',None)):
             if process is None or process.pid is None:
                 continue

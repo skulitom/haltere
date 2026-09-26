@@ -266,6 +266,50 @@ def test_a_marker_that_moves_over_two_frames_still_opens_the_window():
     assert slow.lag_turn_triggers == 0
 
 
+def flag_cue(ring_deg, aim_deg):
+    """In-view ring cue at ring_deg whose flown aim beside the ring (flag clearance, aim_u) points at aim_deg."""
+    return dict(azimuth_cue(ring_deg), aim_u=azimuth_cue(aim_deg)['u'])
+
+
+@pytest.mark.parametrize('case', ['flicker', 'appears', 'disappears'])
+def test_a_flag_clearance_that_appears_or_flickers_does_not_open_a_window(case):
+    """The trigger reads the ring centre (u, v), not the flown aim beside it (aim_u): a 15 deg flag clearance that
+    flickers for one frame, appears or disappears moves the flown aim but is no checkpoint switch (declaration
+    version 2; version 1 triggered on it, e.g. 22 of 28 triggers on pine-brain08-01)."""
+    cues = dict(flicker=[flag_cue(0., 0.)]*6+[flag_cue(0., 15.)]+[flag_cue(0., 0.)]*6,
+                appears=[flag_cue(0., 0.)]*6+[flag_cue(0., 15.)]*10,
+                disappears=[flag_cue(0., -15.)]*6+[flag_cue(0., 0.)]*10)[case]
+    history = CameraPoseHistory()
+    pilot = frames(FastRaceCue(SENSOR, history, 6., lag_turn=LAG), history, cues)
+    assert pilot.lag_turn_triggers == 0 and pilot.lag_turn_time == 0.
+    flown = heading_deg(pilot.direction)                   # the flown aim still follows the flag clearance
+    assert flown == pytest.approx(dict(flicker=0., appears=15., disappears=0.)[case], abs=.5)
+    assert heading_deg(pilot.lag_turn_centre) == pytest.approx(0., abs=.1)
+
+
+def test_a_ring_jump_under_a_constant_flag_clearance_still_opens_one_window():
+    history = CameraPoseHistory()
+    cues = [flag_cue(0., 8.)]*6+[flag_cue(16., 24.)]*6
+    pilot = frames(FastRaceCue(SENSOR, history, 6., lag_turn=LAG), history, cues)
+    assert pilot.lag_turn_triggers == 1
+    assert pilot.lag_turn_since == pytest.approx(10.+6*.06-.05)
+    assert heading_deg(pilot.direction) == pytest.approx(24., abs=.5)
+
+
+def test_without_a_flag_clearance_or_gap_shift_the_centre_trigger_equals_the_flown_bearing_trigger():
+    """With aim_u = u (the G5 surrogate's synthetic marker) the filtered ring-centre bearing is the flown bearing,
+    so declaration version 2 behaves exactly as version 1 there."""
+    azimuths = [0.]*5+[25.]*5+[27., 29., 31.]+[-10.]*4+[12.]*3
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6., lag_turn=LAG)
+    for i, a in enumerate(azimuths):
+        for j in range(6):
+            drive(pilot, history, azimuth_cue(a), 1, start=10.+(i*6+j)*DT, velocity=(6., 0., 0.), plant='perfect',
+                  camera=j == 0)
+            np.testing.assert_array_equal(pilot.lag_turn_centre, pilot.direction)
+    assert pilot.lag_turn_triggers >= 3
+
+
 def test_edge_clamped_markers_never_trigger_and_get_no_lead():
     """A bottom-clamped marker's azimuth is unreliable (it jumps as the clamp point moves): no trigger,
     and a window opened in view does not lead the bottom-edge descent."""

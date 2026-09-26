@@ -301,6 +301,75 @@ def test_lag_turn_shadow_logs_the_lead_without_flying_it():
     assert runs['shadow'][2].metadata()['lag_turn']['applied'] is False
 
 
+@pytest.mark.parametrize('ring, shift', [(12.7, 12.), (12.7, -12.), (30., 12.), (-5., 8.), (0., 12.), (40., -3.)])
+@pytest.mark.parametrize('apply', [True, False])
+def test_the_lag_turn_lead_is_computed_without_the_gap_shift_and_the_shift_added_after_it(ring, shift, apply):
+    """Declared interaction (lag_turn.json and gap_pilot.json version 2): the lead is course_lead x the angle from
+    the flown course to the ring cue's bearing WITHOUT the applied gap shift (clipped), and the shift is added after
+    it, so the lead never amplifies the shift. In shadow the same lead is logged and the bearing flown unchanged."""
+    lag = LagTurnConfig()
+    pilot = FastRaceCue(SENSOR, CameraPoseHistory(), 6., gap_aim=CFG, lag_turn=lag, lag_turn_apply=apply)
+    pilot.lag_turn_weight = 1.
+    pilot.gap_offset_deg = shift
+    dh = np.array([np.cos(np.radians(ring+shift)), np.sin(np.radians(ring+shift))])
+    goal = pilot._lead(dh, np.array([6., 0., 0.]))                  # flown course 0 deg
+    lead = float(np.clip(lag.course_lead*ring, -lag.course_lead_max_deg, lag.course_lead_max_deg))
+    assert pilot.lag_turn_lead_deg == pytest.approx(lead)
+    assert heading(goal) == pytest.approx(ring+shift+lead if apply else ring+shift)
+    assert abs(heading(goal)-ring) <= lag.course_lead_max_deg+CFG.max_shift_deg+1e-9
+
+
+def ring_switch_with_gap(gap, lag, apply=True, seconds=1.2):
+    """Static course 0 deg (a lagging motor that has not turned yet): the ring marker jumps from 0 to 12.7 deg left
+    at 10.3 s (as at Minus Two pillar A in minus-brain08-01) and gap samples of +12 deg for that ring arrive from
+    10.45 s. Rows per tick: (now, goal heading or None, lead, gap offset, command heading, lag weight)."""
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., gap_aim=CFG if gap else None, gap_apply=apply,
+                        lag_turn=LagTurnConfig() if lag else None, lag_turn_apply=apply)
+    goals = []
+    lead = pilot._lead
+    pilot._lead = lambda dh, v: goals.append(lead(dh, v)) or goals[-1]
+    ring = lambda t: 0. if t < 10.3 else 12.7
+    rows, latest, captures = [], None, np.arange(10.45, 10.+seconds, 1/15)
+    for k in range(int(round(seconds/DT))):
+        now = 10.+k*DT
+        s = senses(position=(0., 0., 5.), velocity=(6., 0., 0.), yaw=0.)
+        history.append(now, [0., 0., 5.], s['quat'][0].numpy())
+        ready = captures[captures+.05 <= now+1e-9]
+        if len(ready):
+            latest = sample(float(ready[-1]), 12., ring=12.7)
+        a = np.radians(ring(now-.05))
+        detection = dict(race_cue=cue_toward([20.*np.cos(a), 20.*np.sin(a), 0.]))
+        count = len(goals)
+        pilot.update(s, [0., 0., 0.], detection, now-.05, now, gap=latest if gap else None)
+        rows.append((now, heading(goals[-1]) if len(goals) > count else None, pilot.lag_turn_lead_deg,
+                     pilot.gap_offset_deg, heading(pilot.velocity_command), pilot.lag_turn_weight))
+    return pilot, rows
+
+
+def test_with_both_components_the_lead_equals_the_lag_turn_alone_and_the_shift_is_added():
+    """Both stack components on (the --obstacle-stack on default): per tick the lead equals the lag turn's alone and
+    the goal is the lag-turn goal rotated by the applied gap shift; the flown aim stays within course_lead_max_deg +
+    max_shift_deg of the ring. Shadow logs the same lead. (Version 1 led the shifted bearing: about 15 deg of lead
+    and 24 deg beyond the ring in this case.)"""
+    lag_pilot, lag = ring_switch_with_gap(gap=False, lag=True)
+    both_pilot, both = ring_switch_with_gap(gap=True, lag=True)
+    shadow_pilot, shadow = ring_switch_with_gap(gap=True, lag=True, apply=False)
+    assert lag_pilot.lag_turn_triggers == both_pilot.lag_turn_triggers == shadow_pilot.lag_turn_triggers >= 1
+    assert max(r[3] for r in both) == pytest.approx(12.) and all(r[3] == 0. for r in shadow)
+    assert both_pilot.gap_aim.counts['ring_conflicts'] == 0 and both_pilot.gap_aim.counts['flag_conflicts'] == 0
+    led = 0
+    for a, b, c in zip(lag, both, shadow):
+        assert b[2] == pytest.approx(a[2], abs=1e-9) and c[2] == pytest.approx(a[2], abs=1e-9)
+        if a[1] is not None and b[1] is not None:
+            assert b[1] == pytest.approx(a[1]+b[3], abs=1e-6)
+            assert b[1]-12.7 <= LagTurnConfig().course_lead_max_deg+CFG.max_shift_deg+1e-6
+            led += b[3] > 11.9 and b[2] > 5.
+    assert led > 10, 'the window and the full shift overlap'
+    check = [r for r in both if r[0] >= 11.1-1e-9][0]
+    assert check[1] == pytest.approx(12.7+check[2]+12., abs=1e-6) and check[2] < 12.7*.6+1e-6
+
+
 def test_terrain_side_steer_follows_the_looming_governor():
     history = CameraPoseHistory()
     pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., gap_aim=CFG)
@@ -348,15 +417,15 @@ def test_shared_slots_are_contiguous_and_carry_gap_and_stage_samples():
 
 
 def test_frame_slot_hands_over_the_newest_frame_and_the_cue_follows():
-    from haltere.liftoff import camera_process as cp
     from haltere.liftoff.gap_stack import FrameSlot, wait_for_cue
     slot = FrameSlot()
-    assert slot.read(0) is None
+    assert slot.read(0) is None and not slot.wait_frame(.001)
     frame = np.random.default_rng(0).integers(0, 255, (720, 1280, 3), dtype=np.uint8)
     assert slot.write(frame, 3.25, now=3.27)
+    assert slot.wait_frame(.01) and not slot.wait_frame(.001)       # one signal per written frame, then cleared
     seq, copy, stamp, written = slot.read(0)
     assert seq == 1 and stamp == 3.25 and written == 3.27
-    assert np.array_equal(copy, frame) and slot.ready.is_set()
+    assert np.array_equal(copy, frame)
     assert slot.read(seq) is None
     small = frame[:252, :448].copy()
     slot.write(small, 3.3)
@@ -368,16 +437,150 @@ def test_frame_slot_hands_over_the_newest_frame_and_the_cue_follows():
     view = bgra[:, :, :3][:, :, ::-1]                      # as a screen grab arrives: a strided view
     slot.write(view, 3.5)
     assert np.array_equal(slot.read(0)[1], view)
-    data = mp.get_context('spawn').Array('d', cp.SHARED_SIZE, lock=True)
-    shared = np.frombuffer(data.get_obj(), dtype=np.float64)
-    done = SimpleNamespace(is_set=lambda: False)
-    assert cp.cue_for(data, 3.3) == ('pending', None)
-    assert wait_for_cue(data, 3.3, done, timeout=.01) == (False, None)
-    shared[0], shared[727:732] = 3.3, [1., .4, .5, 0., .45]
-    assert wait_for_cue(data, 3.3, done) == (True, dict(u=.4, v=.5, edge=False, aim_u=.45))
-    assert cp.cue_for(data, 3.25) == ('replaced', None)
-    shared[727] = 0.
-    assert cp.cue_for(data, 3.3) == ('published', None)
+    stop = SimpleNamespace(is_set=lambda: False)
+    assert slot.cue_for(3.3) == ('pending', None)
+    assert wait_for_cue(slot, 3.3, stop, timeout=.01) == (False, None)
+    assert slot.publish_cue(3.3, dict(u=.4, v=.5, edge=False, aim_u=.45))
+    assert wait_for_cue(slot, 3.3, stop) == (True, dict(u=.4, v=.5, edge=False, aim_u=.45))
+    assert slot.cue_for(3.25) == ('replaced', None)
+    slot.publish_cue(3.3, None)
+    assert slot.cue_for(3.3) == ('published', None)
+    assert slot.skips() == dict(frames=0, cues=0)
+
+
+def test_the_camera_side_of_the_slot_never_waits_for_the_depth_process():
+    """A depth process that holds a slot lock and is not scheduled (a starved low-priority process) must not stall
+    the camera: its writes skip at once (counted) and its signals are semaphore releases, which never block."""
+    import threading
+    import time as _time
+    from haltere.liftoff.gap_stack import FrameSlot, wait_for_cue
+    slot = FrameSlot()
+    frame = np.zeros((252, 448, 3), np.uint8)
+    for lock, call in ((slot.lock, lambda: slot.write(frame, 1.)),
+                       (slot.cue_lock, lambda: slot.publish_cue(1., dict(u=.5, v=.5, edge=False)))):
+        assert lock.acquire(False)                  # the depth side holds it
+        try:
+            begin = _time.perf_counter()
+            assert call() is False
+            assert _time.perf_counter()-begin < .002
+        finally:
+            lock.release()
+    assert slot.skips() == dict(frames=1, cues=1)
+    for _ in range(50):                             # nobody waiting: signals accumulate without blocking
+        assert slot.write(frame, 2.) and slot.publish_cue(2., None)
+    assert slot.wait_frame(.01) and not slot.wait_frame(.001)
+    # a depth side waiting for a cue wakes on the camera's signal
+    result = {}
+    waiter = threading.Thread(target=lambda: result.update(
+        cue=wait_for_cue(slot, 3., SimpleNamespace(is_set=lambda: False), timeout=2.)))
+    waiter.start()
+    _time.sleep(.05)
+    slot.publish_cue(3., dict(u=.25, v=.5, edge=True))
+    waiter.join(2.)
+    assert result['cue'] == (True, dict(u=.25, v=.5, edge=True, aim_u=.25))
+
+
+def test_the_depth_process_shares_no_lock_or_event_with_the_camera():
+    """Process placement: the depth process gets the slot, its own sample array and its own stop event, never the
+    camera's shared data (whose lock the camera takes blocking) or the camera's done event; the controller reads
+    its samples without blocking."""
+    from haltere.liftoff import camera_process as cp
+    spec = dict(placement='process', stride=1)
+    camera = cp.ProcessRetinaCamera(gate_sensor=dict(focal_320=100., tilt_deg=30.), race_cues=True, gap=spec)
+    args = camera.gap_process._args
+    assert args[0] is camera.frame_slot and args[1] is camera.gap_out and args[3] is camera.gap_stop
+    assert all(a is not camera.data and a is not camera.done for a in args)
+    assert camera.frame_slot in camera.process._args          # the camera writes frames and cues into the slot
+    values = [12.5, 7.5, 5., 3.1, 1.2, 1., .4, .031, 17., 1., 0., 9., 1.1, 2.2, 8.8, .9]
+    np.frombuffer(camera.gap_out.get_obj(), dtype=np.float64)[:] = values
+    assert camera.gap == cp.gap_sample(values)
+    import threading
+    held, release = threading.Event(), threading.Event()
+
+    def hold():                                             # the depth process writing (another thread: an RLock)
+        with camera.gap_out.get_lock():
+            held.set()
+            release.wait(2.)
+    holder = threading.Thread(target=hold)
+    holder.start()
+    try:
+        assert held.wait(2.)
+        camera._gap = None
+        assert camera.gap is None                           # a held lock skips this poll, it never waits
+    finally:
+        release.set()
+        holder.join(2.)
+    assert camera.gap == cp.gap_sample(values)
+    camera.stop()
+    assert camera.done.is_set() and camera.gap_stop.is_set()
+
+
+def test_depth_worker_raises_its_priority_and_publishes_to_its_own_array(monkeypatch):
+    """gap_process_worker end to end in this process, with a fake frame worker: it sets its priority class first
+    (spawned from a below-normal runner it would inherit below normal), reads the slot's frame and cue, and
+    writes its sample to its own array; its status reports the priority."""
+    import queue
+    import threading
+    import time as _time
+    import cv2
+    from haltere.liftoff import camera_process as cp
+    from haltere.liftoff import gap_stack, scheduling
+    from haltere.liftoff.geometry_shadow import MotionBuffer
+    calls = []
+    monkeypatch.setattr(scheduling, 'flight_process_priority',
+                        lambda: calls.append(1) or dict(applied=True, previous=0x4000, current=0x8000))
+
+    class FakeWorker:
+        def __init__(self, spec):
+            self.spec = spec
+
+        def perceive(self, frame):
+            assert frame.shape == (252, 448, 3)
+            return dict(overlay_ms=1., depth_ms=2.)
+
+        def process(self, frame, capture_time, cue, pose, frame_ms, seq, perceived):
+            return [capture_time, 7.5 if cue else 0., 5., 3., 1., 1., .4, .03, 17., 1., 0., seq, frame_ms, 1., 2.,
+                    .5 if pose is not None else -1.]
+
+        def status(self):
+            return dict(ready=True)
+
+    monkeypatch.setattr(gap_stack, 'GapFrameWorker', FakeWorker)
+
+    class Status(queue.Queue):
+        def cancel_join_thread(self):
+            pass
+    threads, cv2_threads = torch.get_num_threads(), cv2.getNumThreads()
+    slot, motion, status = gap_stack.FrameSlot(), MotionBuffer(), Status(maxsize=2)
+    gap_out = mp.get_context('spawn').Array('d', len(cp.GAP_FIELDS), lock=True)
+    stop = mp.get_context('spawn').Event()
+    now = _time.monotonic()
+    for k in range(3):       # observed poses around the capture time (marked available later: never stale here)
+        motion.publish(now+60., now-.02+.01*k, 0., [0., 0., 5.], [1., 0., 0., 0.], [6., 0., 0.], [0., 0., 0.])
+    worker = threading.Thread(target=gap_stack.gap_process_worker,
+                              args=(slot, gap_out, motion, stop, status, dict(stride=1)))
+    worker.start()
+    try:
+        slot.write(np.zeros((720, 1280, 3), np.uint8), now-.01)
+        slot.publish_cue(now-.01, dict(u=.5, v=.5, edge=False, aim_u=.5))
+        shared = np.frombuffer(gap_out.get_obj(), dtype=np.float64)
+        deadline = _time.monotonic()+5.
+        while not shared[0] and _time.monotonic() < deadline:
+            _time.sleep(.01)
+    finally:
+        stop.set()
+        worker.join(5.)
+        torch.set_num_threads(threads)
+        cv2.setNumThreads(cv2_threads)
+    assert not worker.is_alive() and calls == [1]
+    sample = cp.gap_sample(shared.copy())
+    assert sample['time'] == pytest.approx(now-.01) and sample['shift'] == 7.5 and sample['seq'] == 1.
+    assert sample['decide_ms'] == .5                                 # the pose at the capture time was found
+    packets = []
+    while not status.empty():
+        packets.append(status.get_nowait())
+    assert packets and packets[-1]['gap']['priority'] == dict(applied=True, previous=0x4000, current=0x8000)
+    assert packets[-1]['gap']['camera_skips'] == dict(frames=0, cues=0) and 'error' not in packets[-1]
 
 
 class FakeDepth:
@@ -505,6 +708,32 @@ def test_gap_pilot_declaration_edits_are_refused(tmp_path):
     path.write_text(json.dumps(declaration))
     with pytest.raises(ValueError, match='not frozen'):
         load_gap_pilot(path)
+
+
+def test_version_1_declarations_are_kept_verbatim_and_refused_at_runtime():
+    """gap_pilot.json and lag_turn.json version 2 keep version 1's values; the v1 files are kept verbatim for
+    provenance (their scored results) and the runtime refuses them (their rules are no longer the code's)."""
+    from haltere.liftoff.fast_race_cue import LAG_TURN_VERSION
+    from haltere.liftoff.gap_stack import GAP_PILOT_PATH, GAP_PILOT_VERSION, REPO_ROOT, config_sha256, load_gap_pilot
+    from haltere.liftoff.visual_brain import LAG_TURN_DECLARATION, load_lag_turn_declaration
+    assert GAP_PILOT_VERSION == LAG_TURN_VERSION == 2
+    ob = REPO_ROOT/'configs'/'obstacles'
+    for current, old, loader, first in ((GAP_PILOT_PATH, ob/'gap_pilot_v1.json', load_gap_pilot, 'e704a3ba0d3d'),
+                                        (LAG_TURN_DECLARATION, ob/'lag_turn_v1.json', load_lag_turn_declaration,
+                                         '94315b4ddc4a')):
+        v1 = json.loads(old.read_text(encoding='utf-8'))
+        v2, digest = loader(current)
+        assert v1['version'] == 1 and v1['frozen'] is True and config_sha256(v1) == v1['sha256']
+        assert v1['sha256'].startswith(first) and v2['version'] == 2 and v2['frozen'] is True
+        assert v2['previous_versions'][0]['sha256'] == v1['sha256'] and v2['previous_versions'][0]['version'] == 1
+        assert v2['change'] and digest == v2['sha256']
+        for key in ('pilot', 'runtime', 'contracts', 'response_models'):
+            assert v1.get(key) == v2.get(key)                       # values unchanged
+        with pytest.raises(ValueError, match='version'):
+            loader(old)
+    assert 'interaction_with_gap_aim' in load_lag_turn_declaration(LAG_TURN_DECLARATION)[0]
+    notes = load_gap_pilot()[0]['runtime_notes']['placement']
+    assert 'above normal' in notes and 'normal priority' not in notes
 
 
 def test_gap_spec_maps_each_fast_contract_to_its_response_model():

@@ -1,7 +1,7 @@
 {
  "schema": "haltere.liftoff.gap_pilot.v1",
- "version": 1,
- "note": "The obstacle stack's gap cue in flight (visual_brain --obstacle-stack on|shadow; off by default). 'pilot': haltere.liftoff.gap_aim.GapAimConfig, how the fast pilot confirms and applies the per-frame gap-cue shift. 'runtime': where the camera stack runs the relative depth and haltere.vision.gap_cue, and which declared response model (configs/obstacles/response_models.json, near_on_path only) each fast motor contract uses. Every pilot value is the a-priori M2 plan value (GapPilot+: 2 of 3 samples of one sign within 0.25 s, side latch 0.6 s, slew <= 40 deg/s, samples older than 0.2 s rejected, decay to 0 over 0.3 s, no speed cap; conflict and terrain-side values declared here), fitted to no flight or course. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported.",
+ "version": 2,
+ "note": "The obstacle stack's gap cue in flight (visual_brain --obstacle-stack on|shadow; off by default). 'pilot': haltere.liftoff.gap_aim.GapAimConfig, how the fast pilot confirms and applies the per-frame gap-cue shift. 'runtime': where the camera stack runs the relative depth and haltere.vision.gap_cue, and which declared response model (configs/obstacles/response_models.json, near_on_path only) each fast motor contract uses. Every pilot value is the a-priori M2 plan value (GapPilot+: 2 of 3 samples of one sign within 0.25 s, side latch 0.6 s, slew <= 40 deg/s, samples older than 0.2 s rejected, decay to 0 over 0.3 s, no speed cap; conflict and terrain-side values declared here), fitted to no flight or course; they are version 1's. Version 2 declares the interaction with the lag-aware turns and corrects the depth process's priority and hand-off (see 'change'); the runtime refuses other versions (gap_stack.GAP_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported.",
  "pilot": {
   "active_deg": 2.0,
   "confirm": 2,
@@ -20,7 +20,7 @@
  },
  "pilot_notes": {
   "active_deg": "the gap cue's own episode threshold (configs/obstacles/gap_cue.json active_deg)",
-  "max_shift_deg": "the gap cue's shift clip",
+  "max_shift_deg": "the gap cue's shift clip; the bound of the gap aim's own offset beside the ring. With lag-aware turns (configs/obstacles/lag_turn.json version 2) the lead is computed on the bearing without the gap shift and the shift is added after it, never amplified: during a lag-turn window the flown aim can be up to course_lead_max_deg (15) + max_shift_deg (12) deg from the ring cue's own aim",
   "conflict_deg": "a sample whose ring azimuth differs from the ring cue's by more than this describes another ring (a checkpoint switch, or a sample from a frame before it); between consecutive frames at 6 m/s the ring bearing moves about 1 deg at 20 m and about 2.5 deg at 3 m",
   "flag_conflict_deg": "the ring cue's flag clearance (aim_u beside the ring centre, haltere.vision.race_cues.flag_clearance) counts from this offset; the opposite side to the gap shift is a conflict and the ring cue's own aim is held",
   "terrain": "terrain side steer: only while the looming TTC governor requests a climb (expansion below the flight path); |ln(L/R)| >= terrain_lr (ratio 1.5, the design study's terrain_side.py trigger) votes terrain_side_deg (half the shift clip) toward the farther side"
@@ -37,10 +37,21 @@
   "device": "cuda"
  },
  "runtime_notes": {
-  "placement": "camera: in the camera process after the checkpoint cue and looming; process: a separate depth process at normal priority fed by a one-frame slot right after capture (resize, masks and depth run while the camera computes the cue; the decision waits for that frame's cue). process was chosen by the G8 runtime bench (configs/obstacles/gap_bench_gates.json v1, sha256 db551b8813a3..., straw-brain08-06 30-90 s replayed with Liftoff idle): camera failed (14.6 Hz < 15, gap age p95 173 ms > 150), process passed (17.9 Hz, loop p95 68.3 ms, gap age p95 113 ms, checkpoint-cue latency p95 +0.1 ms over the baseline, fp16 vs fp32 0.14% p95). docs/obstacle_gap_pilot.md",
+  "placement": "camera: in the camera process after the checkpoint cue and looming; process: a separate depth process fed by a one-frame slot right after capture (resize, masks and depth run while the camera computes the cue; the decision waits for that frame's cue, which the camera copies into the slot). The depth process sets its own priority class to above normal like the camera process (spawned before the runner raises its class, it would otherwise inherit the runner's below normal under Anode), and the camera never waits for it: the camera's side of the slot takes its locks without blocking (a busy slot skips that frame or cue, counted) and signals with semaphores; the depth process writes its samples to its own shared array (read by the controller without blocking) and stops on its own event, so it takes no lock or event of the camera's. process was chosen by the G8 runtime bench (configs/obstacles/gap_bench_gates.json v1, sha256 db551b8813a3..., straw-brain08-06 30-90 s replayed with Liftoff idle, version 1 runtime: depth process at the bench parent's normal class, cue read from the camera's shared memory): camera failed (14.6 Hz < 15, gap age p95 173 ms > 150), process passed (17.9 Hz, loop p95 68.3 ms, gap age p95 113 ms, checkpoint-cue latency p95 +0.1 ms over the baseline, fp16 vs fp32 0.14% p95). The version 2 runtime is re-benched from a below-normal parent (docs/obstacle_gap_pilot.md)",
   "stride": "1: every camera frame; 2: every other frame"
  },
+ "change": "v2 (review of m2-wire): (1) runtime_notes said the depth process runs at normal priority, but nothing set it: spawned from an Anode-launched runner it inherited below normal and took the camera's shared-memory lock, the slot's Event and the camera's stop Event, all of which the above-normal camera takes blocking (an Event's set() also waits for the sleeping waiter to wake): a starved depth process could stall the checkpoint cue. Now above normal, and the camera never waits for it. (2) with lag-aware turns on, the lead amplified the gap shift (up to about 12 + 15 deg beside the ring); the interaction is now declared (pilot_notes.max_shift_deg). Pilot and runtime values are unchanged.",
+ "previous_versions": [
+  {
+   "version": 1,
+   "sha256": "e704a3ba0d3d88018a91f18b68659f0046de9da105de0f60916dc4c6b4efc0db",
+   "frozen_at": "2026-09-26T00:41:07",
+   "file": "configs/obstacles/gap_pilot_v1.json",
+   "scored": "G8 runtime bench and the report-only wiring checks (docs/obstacle_gap_pilot.md); never flown",
+   "superseded_because": "priority and hand-off wording did not match the runtime; the lag-turn interaction was not declared (see change)"
+  }
+ ],
  "frozen": true,
- "frozen_at": "2026-09-26T00:41:07",
- "sha256": "e704a3ba0d3d88018a91f18b68659f0046de9da105de0f60916dc4c6b4efc0db"
+ "frozen_at": "2026-09-26T01:50:59",
+ "sha256": "67ec1f140a312256f205bbe444268fabb5d023df70cec9e5591d61876f08c7d6"
 }

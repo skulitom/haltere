@@ -17,10 +17,15 @@ Per processed frame:
 
 Placement (configs/obstacles/gap_pilot.json ``runtime.placement``):
 - ``camera``: in the camera process, after the checkpoint cue and looming (the `RetinaCamera.on_capture` hook);
-- ``process``: a separate depth process at normal priority fed by a one-frame slot (`FrameSlot`). The camera
-  process only copies the captured frame into the slot right after capture; the resize, masks and depth run
-  while the camera process computes the checkpoint cue, and the (cheap) decision waits for that frame's cue in
-  the camera's shared memory. Depth then runs on every frame, also without an in-view ring.
+- ``process``: a separate depth process fed by a one-frame slot (`FrameSlot`). The camera process only copies
+  the captured frame into the slot right after capture; the resize, masks and depth run while the camera
+  process computes the checkpoint cue, and the (cheap) decision waits for that frame's cue, which the camera
+  also copies into the slot once published. Depth then runs on every frame, also without an in-view ring.
+  The depth process sets its own priority class to above normal (`scheduling.flight_process_priority`, as the
+  camera process does): spawned from a runner launched at below normal (Anode), it would otherwise inherit
+  below normal. The camera never waits for it: the depth process takes no lock or event of the camera's (it
+  writes its samples to its own shared array, `gap_out`, read by the controller without blocking, and stops on
+  its own event), and the camera's side of the slot uses non-blocking lock attempts and semaphore signals only.
 ``runtime.stride`` 2 processes every other frame (by frame sequence number).
 """
 from __future__ import annotations
@@ -40,6 +45,10 @@ GAP_PILOT_PATH = REPO_ROOT/'configs'/'obstacles'/'gap_pilot.json'
 FRAME_SHAPE = (252, 448, 3)
 GRID = (36, 64)
 CONFIG_META_KEYS = ('frozen', 'frozen_at', 'sha256')
+# The gap pilot declaration version this code implements (version 2: the lag-turn lead is computed on the ring
+# cue's bearing with the gap shift removed and the shift added after it; the depth process runs above normal and
+# the camera never waits for it). Other versions are refused.
+GAP_PILOT_VERSION = 2
 
 
 def _kinds():
@@ -69,13 +78,17 @@ def file_sha256(path):
 
 
 def load_gap_pilot(path=GAP_PILOT_PATH, *, require_frozen=True):
-    """The gap pilot declaration and its content sha256; refuses an unfrozen or edited file (for flights)."""
+    """The gap pilot declaration and its content sha256; refuses an unfrozen or edited file (for flights) and a
+    declaration version other than the one this code implements (`GAP_PILOT_VERSION`)."""
     obj = json.loads(Path(path).read_text(encoding='utf-8'))
     digest = config_sha256(obj)
     if obj.get('frozen') and obj.get('sha256') != digest:
         raise ValueError(f'{path} changed after the freeze (sha256 mismatch)')
     if require_frozen and obj.get('frozen') is not True:
         raise ValueError(f'{path} is not frozen')
+    if obj.get('version') != GAP_PILOT_VERSION:
+        raise ValueError(f'{path} declares gap pilot version {obj.get("version")}; this code implements version '
+                         f'{GAP_PILOT_VERSION}')
     return obj, digest
 
 
@@ -229,11 +242,18 @@ def _bgra_base(frame):
 
 
 class FrameSlot:
-    """A one-frame shared slot: the camera process writes the newest captured frame (any size up to 1920 x 1080
-    RGB) right after capture, the depth process copies it. Neither side waits for the other: a busy slot skips
-    (writer) or retries later (reader). The ring cue of that frame is read later from the camera's shared
-    memory (`camera_process.cue_for`), once the camera process has published it."""
+    """Camera -> depth process hand-off of the ``process`` placement: the newest captured frame (any size up to
+    1920 x 1080 RGB), written right after capture, and that frame's checkpoint-ring cue, written once the camera
+    has published it (`publish_cue`).
+
+    The camera side never waits for the depth process. It takes the slot's locks without blocking (a lock the
+    depth process holds skips that frame or cue, counted in ``skipped``) and signals with semaphore releases,
+    which never block. A multiprocessing Event is not used for the signals: its set() takes a lock that the
+    waiting process also takes, then waits until each sleeping waiter has woken, so a starved depth process
+    would stall the camera. The depth process waits on the signals with timeouts, and takes the locks with
+    short timeouts (the camera holds them only while it copies)."""
     HEADER = ('seq', 'capture_time', 'height', 'width', 'written_at')
+    CUE = ('capture_time', 'present', 'u', 'v', 'edge', 'aim_u')
     MAX_SHAPE = (1080, 1920, 3)
 
     def __init__(self):
@@ -241,7 +261,11 @@ class FrameSlot:
         self.pixels = context.RawArray('B', int(np.prod(self.MAX_SHAPE)))
         self.header = context.RawArray('d', len(self.HEADER))
         self.lock = context.Lock()
-        self.ready = context.Event()
+        self.frame_signal = context.Semaphore(0)
+        self.cue = context.RawArray('d', len(self.CUE))
+        self.cue_lock = context.Lock()
+        self.cue_signal = context.Semaphore(0)
+        self.skipped = context.RawArray('q', 2)     # frames, cues the camera skipped: the depth side held the lock
 
     def fits(self, frame):
         frame = np.asarray(frame)
@@ -249,10 +273,12 @@ class FrameSlot:
                 and frame.shape[0] <= self.MAX_SHAPE[0] and frame.shape[1] <= self.MAX_SHAPE[1])
 
     def write(self, frame, capture_time, now=None):
+        """Camera side: copy a captured frame into the slot (never waits; False when the slot was busy)."""
         frame = np.asarray(frame)
         if not self.fits(frame):
             raise ValueError('expected an RGB uint8 frame of at most 1920 x 1080')
-        if not self.lock.acquire(timeout=.002):
+        if not self.lock.acquire(False):
+            self.skipped[0] += 1
             return False
         try:
             target = np.frombuffer(self.pixels, np.uint8, count=frame.size).reshape(frame.shape)
@@ -267,11 +293,34 @@ class FrameSlot:
             header[0] += 1
         finally:
             self.lock.release()
-        self.ready.set()
+        self.frame_signal.release()
+        return True
+
+    def publish_cue(self, capture_time, cue):
+        """Camera side: the checkpoint-ring cue (dict or None) published for a capture time (never waits; False
+        when the depth side held the cue lock)."""
+        if not self.cue_lock.acquire(False):
+            self.skipped[1] += 1
+            return False
+        try:
+            np.frombuffer(self.cue)[:] = [capture_time, cue is not None, cue['u'] if cue else 0.,
+                                          cue['v'] if cue else 0., cue['edge'] if cue else 0.,
+                                          cue.get('aim_u', cue['u']) if cue else 0.]
+        finally:
+            self.cue_lock.release()
+        self.cue_signal.release()
+        return True
+
+    def wait_frame(self, timeout):
+        """Depth side: wait up to `timeout` s for a frame signal (then clear any further signals)."""
+        if not self.frame_signal.acquire(True, timeout):
+            return False
+        while self.frame_signal.acquire(False):
+            pass
         return True
 
     def read(self, last_seq=0):
-        """(seq, frame copy, capture time, written_at) for a newer frame, else None."""
+        """Depth side: (seq, frame copy, capture time, written_at) for a newer frame, else None."""
         if not self.lock.acquire(timeout=.005):
             return None
         try:
@@ -284,6 +333,25 @@ class FrameSlot:
             self.lock.release()
         return int(header[0]), frame, float(header[1]), float(header[4])
 
+    def cue_for(self, capture_time):
+        """Depth side: ('published', cue dict or None) once the camera has published the cue of this capture time,
+        ('pending', None) before, ('replaced', None) when a later frame's cue is there."""
+        if not self.cue_lock.acquire(timeout=.002):
+            return 'pending', None
+        try:
+            row = np.frombuffer(self.cue).copy()
+        finally:
+            self.cue_lock.release()
+        if row[0] < capture_time:
+            return 'pending', None
+        if row[0] > capture_time:
+            return 'replaced', None
+        return 'published', (dict(u=float(row[2]), v=float(row[3]), edge=bool(row[4]), aim_u=float(row[5]))
+                             if row[1] else None)
+
+    def skips(self):
+        return dict(frames=int(self.skipped[0]), cues=int(self.skipped[1]))
+
 
 def read_motion(motion, tries=4):
     """MotionBuffer rows; a read that meets the writer's lock is retried after 0.5 ms (None after `tries`)."""
@@ -295,31 +363,37 @@ def read_motion(motion, tries=4):
     return None
 
 
-def write_gap(data, values):
+def write_gap(data, values, slots=None):
+    """One gap sample into a shared array: the camera's GAP_SLOTS (camera placement) or all of the depth
+    process's own `gap_out` array (``slots=slice(None)``)."""
     from .camera_process import GAP_SLOTS
     with data.get_lock():
-        np.frombuffer(data.get_obj(), dtype=np.float64)[GAP_SLOTS] = values
+        np.frombuffer(data.get_obj(), dtype=np.float64)[GAP_SLOTS if slots is None else slots] = values
 
 
-def wait_for_cue(data, capture_time, done, timeout=.15, poll=.001):
-    """The race cue the camera process published for this capture time: (True, cue or None) once published,
-    (False, None) when a later frame replaced it first, the timeout passed or the camera stopped."""
-    from .camera_process import cue_for
+def wait_for_cue(slot, capture_time, stop, timeout=.15):
+    """Depth side: the race cue the camera published into the slot for this capture time: (True, cue or None) once
+    published, (False, None) when a later frame replaced it first, the timeout passed or the stack stopped. Waits
+    on the slot's cue signal (a semaphore), never on a lock the camera needs."""
     end = time.monotonic()+timeout
-    while not done.is_set():
-        state, cue = cue_for(data, capture_time)
+    while slot.cue_signal.acquire(False):
+        pass                       # stale signals; the state is checked before every wait
+    while not stop.is_set():
+        state, cue = slot.cue_for(capture_time)
         if state == 'published':
             return True, cue
-        if state == 'replaced' or time.monotonic() > end:
+        left = end-time.monotonic()
+        if state == 'replaced' or left <= 0:
             return False, None
-        time.sleep(poll)
+        slot.cue_signal.acquire(True, min(left, .02))
     return False, None
 
 
-def gap_process_worker(slot, data, motion, done, status, spec):
+def gap_process_worker(slot, gap_out, motion, stop, status, spec):
     """The separate depth process of the ``process`` placement: the frame arrives right after capture, so the
     resize, overlay masks and depth run while the camera process computes the checkpoint cue; the cheap
-    decision waits for that cue."""
+    decision waits for that cue. It raises its own priority class (as the camera process does), writes its
+    samples to its own shared array and stops on its own event: no lock or event of the camera's is taken."""
     import cv2
     import torch
     from ..obstacles.overlays import to_model_frame
@@ -328,22 +402,27 @@ def gap_process_worker(slot, data, motion, done, status, spec):
     cv2.setNumThreads(2)
     status.cancel_join_thread()
     worker = None
+    priority = None
     last = 0
     counts = dict(skipped_frames=0, cue_missed=0, cue_wait_ms=deque(maxlen=4096))
 
     def report():
         waits = np.asarray(counts['cue_wait_ms'], float)
         return dict(gap=dict(worker.status() if worker is not None else dict(ready=False), placement='process',
+                             priority=priority, camera_skips=slot.skips(),
                              skipped_frames=counts['skipped_frames'], cue_missed=counts['cue_missed'],
                              cue_wait_ms=dict(p50=_pct(waits, 50), p95=_pct(waits, 95)) if len(waits) else None))
     last_status = 0.
     try:
+        from .scheduling import flight_process_priority
+        # Spawned before the runner raises its own class, this process starts with the runner's inherited class
+        # (below normal when launched in Anode). Set it explicitly, as the camera process does.
+        priority = flight_process_priority()
         worker = GapFrameWorker(spec)
         put_latest(status, report())
-        while not done.is_set():
-            if not slot.ready.wait(.1):
+        while not stop.is_set():
+            if not slot.wait_frame(.1):
                 continue
-            slot.ready.clear()
             item = slot.read(last)
             if item is None:
                 continue
@@ -357,13 +436,13 @@ def gap_process_worker(slot, data, motion, done, status, spec):
             frame_ms = 1000*(time.monotonic()-t0)
             perceived = worker.perceive(frame)
             t1 = time.monotonic()
-            published, cue = wait_for_cue(data, capture_time, done)
+            published, cue = wait_for_cue(slot, capture_time, stop)
             counts['cue_wait_ms'].append(1000*(time.monotonic()-t1))
             if not published:
                 counts['cue_missed'] += 1
             pose = pose_at(read_motion(motion), capture_time, time.monotonic())
             values = worker.process(frame, capture_time, cue, pose, frame_ms=frame_ms, seq=seq, perceived=perceived)
-            write_gap(data, values)
+            write_gap(gap_out, values, slice(None))
             if time.monotonic()-last_status > .5:
                 put_latest(status, report())
                 last_status = time.monotonic()
