@@ -227,8 +227,9 @@ TURN_FIRST_BEARING_STATES = ('cue', 'below', 'below_weak', 'above')
 # States that end a turn-first episode: other rules own the request there.
 TURN_FIRST_HANDOFF_STATES = ('search', 'launch', 'wait', 'support_climb')
 # The wall-pilot declaration version whose rules this code implements (TurnFirstConfig, CeilingGuardConfig);
-# version 2 adds the ceiling guard's overhead_min_rise (version 1 is kept for provenance and refused).
-WALL_PILOT_VERSION = 2
+# version 2 added the ceiling guard's overhead_min_rise, version 3 its overhead_positive (versions 1 and 2 are
+# kept for provenance and refused).
+WALL_PILOT_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -541,13 +542,16 @@ class CeilingGuardConfig:
     - Overhead cut: during a climb (or an overhead hold) while the drone rises faster than overhead_min_rise
       (a ceiling can only cross a rising path; an alarm ahead of a sinking path is no reason to stop arresting
       the sink), a sample whose alarm TTC is below overhead_ttc_s and whose expansion lies above the path
-      (below_fraction <= overhead_fraction) or is unexplained (as above) is overhead evidence. overhead_confirm
-      such samples within the governor's confirm_window_s cut the climb to 0 at once and start an overhead hold
-      of hold_s (renewed by further overhead evidence): no terrain climb is requested, below-path samples brake
-      like walls, and the whole vertical request is bounded to vertical_cap, brought down at up to
-      vertical_slew m/s^2.
-    Below-path climbs (below_fraction >= terrain_fraction) are otherwise unchanged. Declaration version 2
-    (version 1 had no overhead_min_rise).
+      (below_fraction <= overhead_fraction) or is unexplained (as above) is overhead evidence. It is positive
+      evidence when something shows the alarm is not the surface below: below_fraction <= overhead_fraction, or
+      a lower-surface TTC that is known and longer than lower_ratio x the alarm TTC (a sample where neither
+      vertical window crosses the path says nothing either way: climbing a hill, the windows often lose it).
+      overhead_confirm overhead samples within the governor's confirm_window_s, at least overhead_positive of
+      them positive, cut the climb to 0 at once and start an overhead hold of hold_s (renewed by further
+      confirmed evidence): no terrain climb is requested, below-path samples brake like walls, and the whole
+      vertical request is bounded to vertical_cap, brought down at up to vertical_slew m/s^2.
+    Below-path climbs (below_fraction >= terrain_fraction) are otherwise unchanged. Declaration version 3
+    (version 1 had no overhead_min_rise, version 2 no overhead_positive).
     """
     lower_ratio: float = 1.
     weak_climb: float = 1.
@@ -555,6 +559,7 @@ class CeilingGuardConfig:
     overhead_fraction: float = .3
     overhead_ttc_s: float = 1.2
     overhead_confirm: int = 2
+    overhead_positive: int = 1
     overhead_min_rise: float = .3
     hold_s: float = 1.
     vertical_cap: float = 0.
@@ -565,10 +570,14 @@ class CeilingGuardConfig:
         cap = values.pop('vertical_cap')
         if not np.isfinite(list(values.values())+[cap]).all() or min(values.values()) <= 0:
             raise ValueError('Use finite positive ceiling-guard parameters (vertical_cap may be <= 0)')
-        if int(self.overhead_confirm) != self.overhead_confirm:
-            raise ValueError('overhead_confirm counts samples')
+        for name in ('overhead_confirm', 'overhead_positive'):
+            if int(getattr(self, name)) != getattr(self, name):
+                raise ValueError(f'{name} counts samples')
+        if not self.overhead_positive <= self.overhead_confirm:
+            raise ValueError('overhead_positive must not exceed overhead_confirm')
         if not self.overhead_fraction < .5 or not cap <= self.weak_climb:
-            raise ValueError('Overhead evidence lies above the path (overhead_fraction < 0.5); vertical_cap <= weak_climb')
+            raise ValueError('Overhead evidence lies above the path (overhead_fraction < 0.5); '
+                             'vertical_cap <= weak_climb')
 
 
 def wall_pilot_configs(declaration):
@@ -608,7 +617,7 @@ class TtcClearanceGovernor:
                            standoff_engagements=0)
         # Ceiling guard state (unused without it)
         self.overhead_until = -np.inf
-        self.overhead_times = []        # receipt times of recent overhead samples
+        self.overhead_times = []        # (receipt time, positive) of recent overhead samples
         self.strong_height = None       # height where the last below-path climb request was accepted
         self.vertical_cap = None
         if ceiling is not None:
@@ -680,11 +689,15 @@ class TtcClearanceGovernor:
                       and r['received'] <= s['received']]
             if (g is not None and (climbing or overhead) and rise > g.overhead_min_rise and ttc < g.overhead_ttc_s
                     and (unexplained or (s['below'] is not None and s['below'] <= g.overhead_fraction))):
-                # the alarm lies above a rising path (or is not explained by the surface below it)
+                # the alarm lies above a rising path (or is not explained by the surface below it); positive when
+                # something shows it is not the surface below (expansion above the path, or a farther lower surface)
+                positive = s['below'] is not None or (s['ttc_lower'] is not None
+                                                      and s['ttc_lower'] > g.lower_ratio*max(s['ttc'], 1e-3))
                 self.counts['overhead_samples'] += 1
-                self.overhead_times = [t for t in self.overhead_times
-                                       if s['received']-t <= c.confirm_window_s]+[s['received']]
-                if len(self.overhead_times) >= g.overhead_confirm:
+                self.overhead_times = [(t, p) for t, p in self.overhead_times
+                                       if s['received']-t <= c.confirm_window_s]+[(s['received'], positive)]
+                if (len(self.overhead_times) >= g.overhead_confirm
+                        and sum(p for _, p in self.overhead_times) >= g.overhead_positive):
                     if now > self.overhead_until:
                         self.counts['overhead_engagements'] += 1
                     self.overhead_until, overhead = now+g.hold_s, True
@@ -1422,10 +1435,11 @@ class FastRaceCue:
         in shadow; NaN / '' without the guard or before the first clearance sample)."""
         nan = float('nan')
         guard = self._guarded_governor()
+        cap = None if guard is None else guard.vertical_cap
         return dict(turn_first=float(self.turn_first_active) if self.turn_first is not None else nan,
                     ceiling_status=guard.status if guard is not None else '',
                     ceiling_climb=float(guard.climb) if guard is not None else nan,
-                    ceiling_vertical_cap=nan if guard is None or guard.vertical_cap is None else float(guard.vertical_cap))
+                    ceiling_vertical_cap=nan if cap is None else float(cap))
 
     def _wall_metadata(self):
         if self.turn_first is None and self.ceiling_guard is None:
@@ -1450,9 +1464,10 @@ class FastRaceCue:
                      'lower_ratio x its alarm TTC (else a wall); such weak terrain climbs <= weak_climb and not beyond '
                      'weak_climb_max_m above the last below-path climb request; while climbing faster than '
                      'overhead_min_rise, overhead_confirm samples with TTC < overhead_ttc_s whose expansion lies above '
-                     'the path (below_fraction <= overhead_fraction) or is unexplained cut the climb and start an '
-                     'overhead hold of hold_s (no climb, below-path samples brake, vertical request <= vertical_cap, '
-                     'brought down at vertical_slew)',
+                     'the path (below_fraction <= overhead_fraction) or is unexplained, at least overhead_positive of '
+                     'them positive (expansion above the path, or a lower-surface TTC longer than lower_ratio x the '
+                     'alarm), cut the climb and start an overhead hold of hold_s (no climb, below-path samples brake, '
+                     'vertical request <= vertical_cap, brought down at vertical_slew)',
                 parameters=asdict(self.ceiling_guard),
                 governor='flown' if self.wall_apply else 'shadow copy fed the same samples',
                 counts=None if guard is None else {k: guard.counts.get(k, 0) for k in keys}))

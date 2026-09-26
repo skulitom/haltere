@@ -720,8 +720,9 @@ def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
     result = dict(mode=stack['mode'], applied=stack['apply'],
                   components=dict(looming=True, gap_cue=bool(stack['gap']), lag_turn=stack['lag_turn'] is not None,
                                   wall_pilot=stack.get('wall_pilot') is not None),
-                  note='shadow runs the same processes and computations and logs them; no aim shift, no lag-turn '
-                       'lead or heading change and no wall-pilot rule is applied' if stack['mode'] == 'shadow' else None)
+                  note=('shadow runs the same processes and computations and logs them; no aim shift, no lag-turn '
+                        'lead or heading change and no wall-pilot rule is applied')
+                  if stack['mode'] == 'shadow' else None)
     if gap_spec:
         path, declaration, digest = gap_declaration
         status = (camera_status or {}).get('gap') or {}

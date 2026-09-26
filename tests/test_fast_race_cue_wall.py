@@ -68,7 +68,8 @@ def test_config_validation():
         with pytest.raises(ValueError):
             TurnFirstConfig(**bad)
     for bad in (dict(overhead_fraction=.6), dict(overhead_confirm=1.5), dict(vertical_cap=2.), dict(hold_s=0.),
-                dict(weak_climb=float('inf')), dict(lower_ratio=-1.), dict(overhead_min_rise=0.)):
+                dict(weak_climb=float('inf')), dict(lower_ratio=-1.), dict(overhead_min_rise=0.),
+                dict(overhead_positive=3), dict(overhead_positive=.5)):
         with pytest.raises(ValueError):
             CeilingGuardConfig(**bad)
     assert CeilingGuardConfig(vertical_cap=-.5).vertical_cap == -.5          # a slight descent may be declared
@@ -83,7 +84,7 @@ def test_config_validation():
 def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, lag_turn_declaration_sha256, load_wall_pilot
     declaration, digest = load_wall_pilot(WALL_PILOT_DECLARATION)
-    assert declaration['version'] == WALL_PILOT_VERSION == 2 and declaration['frozen'] is True
+    assert declaration['version'] == WALL_PILOT_VERSION == 3 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     configs = wall_pilot_configs(declaration)
     assert configs == dict(turn_first=TURN, ceiling_guard=GUARD)            # the declared values are the defaults
@@ -93,7 +94,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_wall_pilot(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 3
+    other['version'] = 4
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
@@ -102,19 +103,25 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
         wall_pilot_configs(other)
 
 
-def test_version_1_is_kept_verbatim_and_refused():
-    """Version 1 (replayed, never flown) differs from version 2 only by the ceiling guard's overhead_min_rise."""
+def test_earlier_versions_are_kept_verbatim_and_refused():
+    """Versions 1 and 2 (replayed, never flown) are kept for provenance: version 2 added the ceiling guard's
+    overhead_min_rise to version 1, version 3 its overhead_positive; nothing else changed."""
     from haltere.liftoff.visual_brain import (WALL_PILOT_DECLARATION, lag_turn_declaration_sha256,
                                               load_wall_pilot)
-    v1_path = WALL_PILOT_DECLARATION.with_name('wall_pilot_v1.json')
-    v1 = json.loads(v1_path.read_text(encoding='utf-8'))
-    v2, _ = load_wall_pilot(WALL_PILOT_DECLARATION)
-    assert v1['version'] == 1 and v1['frozen'] is True and lag_turn_declaration_sha256(v1) == v1['sha256']
-    assert v1['sha256'].startswith('17fecfb1fad7') and v2['previous_versions'][0]['sha256'] == v1['sha256']
-    assert v1['turn_first'] == v2['turn_first'] and v2['change']
-    assert {k: v for k, v in v2['ceiling_guard'].items() if k != 'overhead_min_rise'} == v1['ceiling_guard']
-    with pytest.raises(ValueError, match='version'):
-        load_wall_pilot(v1_path)
+    current, _ = load_wall_pilot(WALL_PILOT_DECLARATION)
+    older = {n: json.loads(WALL_PILOT_DECLARATION.with_name(f'wall_pilot_v{n}.json').read_text(encoding='utf-8'))
+             for n in (1, 2)}
+    assert older[1]['sha256'].startswith('17fecfb1fad7') and older[2]['sha256'].startswith('095addc577c0')
+    added = {2: 'overhead_min_rise', 3: 'overhead_positive'}
+    for n, newer in ((1, older[2]), (2, current)):
+        old = older[n]
+        assert old['version'] == n and old['frozen'] is True and lag_turn_declaration_sha256(old) == old['sha256']
+        assert newer['previous_versions'][0]['sha256'] == old['sha256'] and newer['change']
+        assert old['turn_first'] == newer['turn_first']
+        assert {k: v for k, v in newer['ceiling_guard'].items() if k != added[n+1]} == old['ceiling_guard']
+        with pytest.raises(ValueError, match='version'):
+            load_wall_pilot(WALL_PILOT_DECLARATION.with_name(f'wall_pilot_v{n}.json'))
+    assert [v['version'] for v in current['previous_versions']] == [2, 1]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -122,12 +129,12 @@ def test_version_1_is_kept_verbatim_and_refused():
 # ---------------------------------------------------------------------------------------------
 def ceiling_after_a_small_climb(t):
     """The minus-brain08-gapon-01 shape: a surface below a sinking path (small climb), then a ceiling ahead of the
-    climbing path: alarms without vertical evidence, the lower window explaining none of them."""
+    climbing path: alarms without a vertical fraction, the lower window seeing the floor farther than the alarm."""
     if t < .25:
         return dict(ttc=1.1, below=1., lower=.5)
     if t < .5:
         return dict(ttc=6.)
-    return dict(ttc=max(.3, .95-.8*(t-.5)))
+    return dict(ttc=max(.3, .95-.8*(t-.5)), lower=1.5)
 
 
 def test_unexplained_alarms_during_a_climb_escalate_it_without_the_guard_and_cut_it_with_it():
@@ -149,7 +156,7 @@ def test_an_alarm_ahead_of_a_sinking_path_does_not_cut_the_climb_that_arrests_th
     for a climb, then two unexplained alarms arrive while the drone still sinks. They are braked for as walls, but a
     ceiling cannot cross a sinking path: no overhead cut (version 2's overhead_min_rise)."""
     def floor_then_unexplained(t):
-        return dict(ttc=1.1, below=1., lower=.3) if t < .2 else dict(ttc=1.1)
+        return dict(ttc=1.1, below=1., lower=.3) if t < .2 else dict(ttc=1.1, lower=2.)
     sinking = TtcClearanceGovernor(TTC, ceiling=GUARD)
     rows = run(sinking, floor_then_unexplained, .6, rise=-.8)
     assert sinking.counts['overhead_samples'] == 0 and all(r['vcap'] is None for r in rows)
@@ -158,6 +165,26 @@ def test_an_alarm_ahead_of_a_sinking_path_does_not_cut_the_climb_that_arrests_th
     rising = TtcClearanceGovernor(TTC, ceiling=GUARD)
     rows = run(rising, floor_then_unexplained, .6, rise=.8)
     assert rising.counts['overhead_engagements'] == 1 and rows[-1]['vcap'] == GUARD.vertical_cap
+
+
+def test_alarms_with_no_vertical_evidence_cannot_cut_a_hill_climb_alone():
+    """The v2 Straw Bale replay: climbing a hill, both vertical windows lost the path (below_fraction and lower TTC
+    None) while the alarm stayed short; such samples are walls but cannot confirm overhead evidence alone
+    (version 3's overhead_positive). One positive sample (expansion above the path) confirms with them."""
+    def hill_then_blind(t):
+        return dict(ttc=1.1, below=.9, lower=.4) if t < .25 else dict(ttc=.9)
+    blind = TtcClearanceGovernor(TTC, ceiling=GUARD)
+    rows = run(blind, hill_then_blind, .7)
+    assert blind.counts['overhead_samples'] >= 2 and blind.counts['overhead_engagements'] == 0
+    assert all(r['vcap'] is None for r in rows)
+
+    def hill_then_blind_and_above(t):
+        if t < .25:
+            return dict(ttc=1.1, below=.9, lower=.4)
+        return dict(ttc=.9, below=.1, lower=3.) if t < .25+FRAME else dict(ttc=.9)
+    seen = TtcClearanceGovernor(TTC, ceiling=GUARD)
+    rows = run(seen, hill_then_blind_and_above, .7)
+    assert seen.counts['overhead_engagements'] == 1 and rows[-1]['vcap'] == GUARD.vertical_cap
 
 
 def test_explained_samples_hold_only_a_weak_climb_and_not_beyond_its_height_bound():
