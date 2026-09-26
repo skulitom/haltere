@@ -56,6 +56,25 @@ def load_lag_turn_declaration(path):
     return declaration, digest
 
 
+# Declared wall-pilot rules of the obstacle stack (turn first at a wall, ceiling guard of the terrain climb).
+WALL_PILOT_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'wall_pilot.json'
+
+
+def load_wall_pilot(path=WALL_PILOT_DECLARATION):
+    """A frozen wall-pilot declaration and its content hash (same canonical hash as the lag-turn declaration);
+    refuses an unfrozen or edited file and another rule version than FastRaceCue implements
+    (fast_race_cue.WALL_PILOT_VERSION)."""
+    from .fast_race_cue import WALL_PILOT_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen wall-pilot declaration, or it changed after the freeze')
+    if declaration.get('version') != WALL_PILOT_VERSION:
+        raise ValueError(f'{path} declares wall-pilot rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {WALL_PILOT_VERSION}')
+    return declaration, digest
+
+
 CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
 
 
@@ -234,13 +253,15 @@ class VisualController:
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
-                 lag_turn_apply=True, gap_pilot=None, gap_apply=True):
+                 lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
             raise ValueError('Lag-aware turns are part of the fast pilot profile')
         if gap_pilot is not None and pilot_profile != 'fast':
             raise ValueError('The gap aim is part of the fast pilot profile')
+        if wall_pilot and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The wall-pilot rules are part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -313,6 +334,7 @@ class VisualController:
         self.camera_poses = CameraPoseHistory()
         self.assistance = None
         self.lag_turn_declaration = None
+        self.wall_pilot_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -347,6 +369,15 @@ class VisualController:
                 self.lag_turn_declaration = dict(path=str(lag_turn), sha256=digest, file_sha256=sha256(lag_turn),
                                                  schema=declaration.get('schema'), version=declaration.get('version'),
                                                  motor_contract=contract, applied=bool(lag_turn_apply))
+            wall_configs = {}
+            if wall_pilot:
+                # Declared once for every motor contract and course (obstacle stack only).
+                from .fast_race_cue import wall_pilot_configs
+                declaration, digest = load_wall_pilot(wall_pilot)
+                wall_configs = wall_pilot_configs(declaration)
+                self.wall_pilot_declaration = dict(path=str(wall_pilot), sha256=digest, file_sha256=sha256(wall_pilot),
+                                                   schema=declaration.get('schema'),
+                                                   version=declaration.get('version'), applied=bool(wall_apply))
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -354,7 +385,8 @@ class VisualController:
                                           yaw_curve=yaw_curve,calibration=self.calibration,
                                           velocity_scale=fast_brain['velocity_scale'] if fast_brain else None,
                                           lag_turn=lag_turn_config, lag_turn_apply=lag_turn_apply,
-                                          gap_aim=gap_pilot, gap_apply=gap_apply)
+                                          gap_aim=gap_pilot, gap_apply=gap_apply, wall_apply=wall_apply,
+                                          **wall_configs)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
             reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
@@ -653,27 +685,32 @@ def resolve_obstacle_stack(args):
     """Components from --obstacle-stack / --gap-cue / --lag-turn; everything is off by default.
 
     --obstacle-stack on|shadow (requires --pilot-profile fast and --looming-brake) runs the gap cue (depth
-    process or camera hook, the pilot's gap aim) and the lag-aware turns; shadow runs the same processes and
-    computations and logs them but applies no aim shift and no lag-turn (matched control). --gap-cue off and
-    --lag-turn off remove a component from the stack. Outside the stack --lag-turn [on|DECLARATION] keeps its
-    earlier meaning and --gap-cue on is refused.
-    Returns dict(mode=None|'on'|'shadow', gap=bool, lag_turn=declaration path or None, apply=bool)."""
+    process or camera hook, the pilot's gap aim), the lag-aware turns and the wall-pilot rules (turn first at a
+    wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json); shadow runs the same processes
+    and computations and logs them but applies no aim shift, no lag-turn and no wall-pilot rule (matched
+    control). --gap-cue off, --lag-turn off and --wall-pilot off remove a component from the stack. Outside the
+    stack --lag-turn [on|DECLARATION] keeps its earlier meaning and --gap-cue on / --wall-pilot on are refused.
+    Returns dict(mode=None|'on'|'shadow', gap=bool, lag_turn=declaration path or None, apply=bool,
+    wall_pilot=declaration path or None)."""
     mode = getattr(args,'obstacle_stack',None)
     gap_flag = getattr(args,'gap_cue',None)
+    wall_flag = getattr(args,'wall_pilot',None)
     lag = getattr(args,'lag_turn',None)
-    if gap_flag not in (None,'on','off'):
-        raise ValueError('--gap-cue is on or off')
+    if gap_flag not in (None,'on','off') or wall_flag not in (None,'on','off'):
+        raise ValueError('--gap-cue and --wall-pilot are on or off')
     lag_path = None if lag in (None,'off') else str(LAG_TURN_DECLARATION) if lag == 'on' else str(lag)
     if mode is None:
         if gap_flag == 'on':
             raise ValueError('The gap cue is part of the obstacle stack: use --obstacle-stack on|shadow')
-        return dict(mode=None,gap=False,lag_turn=lag_path,apply=True)
+        if wall_flag == 'on':
+            raise ValueError('The wall-pilot rules are part of the obstacle stack: use --obstacle-stack on|shadow')
+        return dict(mode=None,gap=False,lag_turn=lag_path,apply=True,wall_pilot=None)
     if mode not in ('on','shadow'):
         raise ValueError('--obstacle-stack is on or shadow')
     if getattr(args,'pilot_profile','standard') != 'fast' or not getattr(args,'looming_brake',False):
         raise ValueError('The obstacle stack requires --pilot-profile fast and --looming-brake')
     return dict(mode=mode,gap=gap_flag != 'off',lag_turn=str(LAG_TURN_DECLARATION) if lag is None else lag_path,
-                apply=mode == 'on')
+                apply=mode == 'on',wall_pilot=None if wall_flag == 'off' else str(WALL_PILOT_DECLARATION))
 
 
 def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
@@ -681,9 +718,10 @@ def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
     if stack['mode'] is None:
         return None
     result = dict(mode=stack['mode'], applied=stack['apply'],
-                  components=dict(looming=True, gap_cue=bool(stack['gap']), lag_turn=stack['lag_turn'] is not None),
+                  components=dict(looming=True, gap_cue=bool(stack['gap']), lag_turn=stack['lag_turn'] is not None,
+                                  wall_pilot=stack.get('wall_pilot') is not None),
                   note='shadow runs the same processes and computations and logs them; no aim shift, no lag-turn '
-                       'lead or heading change is applied' if stack['mode'] == 'shadow' else None)
+                       'lead or heading change and no wall-pilot rule is applied' if stack['mode'] == 'shadow' else None)
     if gap_spec:
         path, declaration, digest = gap_declaration
         status = (camera_status or {}).get('gap') or {}
@@ -695,6 +733,19 @@ def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
             depth_provenance=provenance or None,
             worker=dict((k, v) for k, v in status.items() if k != 'provenance'))
     return result
+
+
+WALL_COLUMNS = ('turn_first','ceiling_status','ceiling_climb','ceiling_vertical_cap')
+
+
+def wall_row(assistance):
+    """CSV values for WALL_COLUMNS: turn_first 1 while a turn-first episode is active (also in shadow), the ceiling
+    guard's governor status, climb request and vertical bound (its shadow copy in shadow); NaN/'' when off."""
+    log = getattr(assistance,'wall_log',None)
+    if log is None:
+        return (float('nan'),'',float('nan'),float('nan'))
+    values = log()
+    return tuple(values[k] for k in WALL_COLUMNS)
 
 
 def clearance_row(assistance):
@@ -869,7 +920,8 @@ def run(args):
                                   pd_profile=getattr(args,'pd_profile','teacher'),
                                   dynamics_profile=getattr(args,'dynamics_profile',None),
                                   lag_turn=stack['lag_turn'],lag_turn_apply=stack['apply'],
-                                  gap_pilot=gap_aim_config,gap_apply=stack['apply'])
+                                  gap_pilot=gap_aim_config,gap_apply=stack['apply'],
+                                  wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'])
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1000,7 +1052,7 @@ def run(args):
                                  'cmd_vx','cmd_vy','cmd_vz','pilot_state',
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
-                                 'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS])
+                                 'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1111,7 +1163,8 @@ def run(args):
                                  getattr(controller.assistance,'descent_scale',float('nan')),
                                  getattr(controller.assistance,'lag_turn_weight',float('nan')),
                                  getattr(controller.assistance,'lag_turn_lead_deg',float('nan')),
-                                 *gap_row(gap,controller.assistance,now),*stage_row(camera.stages)])
+                                 *gap_row(gap,controller.assistance,now),*stage_row(camera.stages),
+                                 *wall_row(controller.assistance)])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1179,6 +1232,8 @@ def run(args):
             pilot_meta['motor_control'] = 'PD throttle/roll/pitch; assisted yaw; brain runs in shadow'
         if controller.lag_turn_declaration is not None:
             pilot_meta['lag_turn_declaration'] = controller.lag_turn_declaration
+        if controller.wall_pilot_declaration is not None:
+            pilot_meta['wall_pilot_declaration'] = controller.wall_pilot_declaration
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
@@ -1327,10 +1382,15 @@ def main():
     p.add_argument('--obstacle-stack',choices=['on','shadow'],default=None,
                    help='EXPERIMENTAL obstacle stack (requires --pilot-profile fast and --looming-brake): the gap cue '
                         '(frozen relative depth -> free interval beside the ring -> confirmed aim shift, '
-                        'configs/obstacles/gap_pilot.json) and lag-aware turns; shadow runs and logs the same '
-                        'processes but applies no aim shift and no lag-turn (matched control). No speed cap')
+                        'configs/obstacles/gap_pilot.json), lag-aware turns and the wall-pilot rules (turn first at '
+                        'a wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json); shadow runs '
+                        'and logs the same processes but applies no aim shift, no lag-turn and no wall-pilot rule '
+                        '(matched control). No speed cap')
     p.add_argument('--gap-cue',choices=['on','off'],default=None,
                    help='Component override inside --obstacle-stack (default on)')
+    p.add_argument('--wall-pilot',choices=['on','off'],default=None,
+                   help='Component override inside --obstacle-stack (default on): turn before translating at a wall '
+                        'and the ceiling guard of the terrain climb (configs/obstacles/wall_pilot.json)')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

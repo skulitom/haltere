@@ -32,6 +32,15 @@ accepts causal gap-cue samples (relative-depth free interval beside the ring,
 confirmed shift rotates the ring ray about world z in `_ingest`. ``gap_apply``
 and ``lag_turn_apply`` False compute and log everything without applying it
 (the obstacle stack's matched shadow control).
+
+Optionally (``turn_first=TurnFirstConfig``, ``ceiling_guard=CeilingGuardConfig``,
+off by default; the obstacle stack's wall-pilot declaration), two wall rules:
+at a wall with the checkpoint far off the heading the pilot turns before it
+translates (no request toward the wall, a creep speed until the bearing is
+inside a cone, bounded in time), and the TTC governor's terrain climb is kept
+out of ceilings (unexplained alarms during a climb are walls, weak climbs are
+bounded, overhead evidence cuts the climb and bounds the vertical request).
+``wall_apply`` False computes and logs them without applying them.
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -210,6 +219,52 @@ def lag_turn_for_contract(declaration, contract):
     if entry is None:
         return None
     return LagTurnConfig(**entry)
+
+
+# The pilot states in which the checkpoint bearing is measured from a fresh marker (in view or clamped to the
+# bottom/top edge away from the corners); 'side' (clamped at a side edge or a corner) lies beyond the field of view.
+TURN_FIRST_BEARING_STATES = ('cue', 'below', 'below_weak', 'above')
+# States that end a turn-first episode: other rules own the request there.
+TURN_FIRST_HANDOFF_STATES = ('search', 'launch', 'wait', 'support_climb')
+# The wall-pilot declaration version whose rules this code implements (TurnFirstConfig, CeilingGuardConfig).
+WALL_PILOT_VERSION = 1
+
+
+@dataclass(frozen=True)
+class TurnFirstConfig:
+    """Turn before translating at a wall (a hairpin): what a pilot does when the next gate lies behind a wall
+    beside it. Off unless a runner passes it (the wall-pilot declaration in configs/obstacles; obstacle stack only).
+
+    Engage when both hold:
+    - near a wall: the clearance governor holds a stand-off (a wall that capped the request at its
+      standoff_speed or less is remembered), or its wall brake capped the request within the last
+      brake_recent_s while the horizontal speed is at most slow_speed;
+    - the checkpoint is far off the heading: its marker is clamped at a side edge or a corner (pilot state
+      'side'), or its bearing (the filtered aim bearing of a marker in view or clamped at the bottom/top edge)
+      lies engage_deg or more from the heading.
+    While engaged, the horizontal request loses any component toward the wall (along the looming ray that
+    capped it, taken at engagement) and is bounded to creep_speed, and the request's speed toward the wall is
+    removed at the clearance brake_slew; the vertical request and the yaw rule are unchanged, so the assisted
+    yaw keeps turning toward the checkpoint (the clamped edge ray turns with the camera). The episode ends when
+    the bearing of a marker in view (or bottom/top clamped) comes within release_deg of the heading ('aligned';
+    the ordinary speed schedule and acceleration limits then resume), when a state that owns the request takes
+    over (search, launch, support climb: 'handoff'), or after max_s ('timeout'), after which it cannot engage
+    again for rearm_s: the drone never hovers at a wall indefinitely.
+    """
+    slow_speed: float = 1.5
+    brake_recent_s: float = 1.
+    engage_deg: float = 50.
+    release_deg: float = 30.
+    creep_speed: float = .8
+    max_s: float = 2.
+    rearm_s: float = 2.
+
+    def __post_init__(self):
+        values = list(asdict(self).values())
+        if not np.isfinite(values).all() or min(values) <= 0:
+            raise ValueError('Use finite positive turn-first parameters')
+        if not self.release_deg < self.engage_deg < 90:
+            raise ValueError('Use release_deg < engage_deg < 90 degrees')
 
 
 def stopping_speed(distance, deceleration, latency, margin):
@@ -468,16 +523,74 @@ class TtcClearanceConfig:
                 raise ValueError(f'{name} counts samples')
 
 
+@dataclass(frozen=True)
+class CeilingGuardConfig:
+    """Keep the TTC governor's terrain climb out of ceilings and overhangs. Off unless a runner passes it
+    (the wall-pilot declaration in configs/obstacles; obstacle stack only); TTC policy only.
+
+    Without it, a sample without vertical evidence (below_fraction None) counts as terrain while a climb is
+    active, so an alarm from a ceiling ahead of a climbing path raised the climb to vertical_up. With it:
+    - Unexplained alarms are walls: during a climb such a sample counts as terrain only when the lower window
+      explains it (its lower-surface TTC is known and at most lower_ratio x its alarm TTC); otherwise it is a
+      wall sample (it may brake, it never climbs).
+    - Weak climbs are bounded: a climb request from such an explained sample (terrain seen by the lower window
+      only) is at most weak_climb, it refreshes the climb hold only at that level (a stronger climb decays after
+      its own hold), and it is ignored once the drone is weak_climb_max_m above where the last below-path
+      (below_fraction >= terrain_fraction) climb request was accepted.
+    - Overhead cut: during a climb (or an overhead hold), a sample whose alarm TTC is below overhead_ttc_s and
+      whose expansion lies above the path (below_fraction <= overhead_fraction) or is unexplained (as above)
+      is overhead evidence. overhead_confirm such samples within the governor's confirm_window_s cut the climb
+      to 0 at once and start an overhead hold of hold_s (renewed by further overhead evidence): no terrain climb
+      is requested, below-path samples brake like walls, and the whole vertical request is bounded to
+      vertical_cap, brought down at up to vertical_slew m/s^2.
+    Below-path climbs (below_fraction >= terrain_fraction) are otherwise unchanged.
+    """
+    lower_ratio: float = 1.
+    weak_climb: float = 1.
+    weak_climb_max_m: float = 1.
+    overhead_fraction: float = .3
+    overhead_ttc_s: float = 1.2
+    overhead_confirm: int = 2
+    hold_s: float = 1.
+    vertical_cap: float = 0.
+    vertical_slew: float = 15.
+
+    def __post_init__(self):
+        values = asdict(self)
+        cap = values.pop('vertical_cap')
+        if not np.isfinite(list(values.values())+[cap]).all() or min(values.values()) <= 0:
+            raise ValueError('Use finite positive ceiling-guard parameters (vertical_cap may be <= 0)')
+        if int(self.overhead_confirm) != self.overhead_confirm:
+            raise ValueError('overhead_confirm counts samples')
+        if not self.overhead_fraction < .5 or not cap <= self.weak_climb:
+            raise ValueError('Overhead evidence lies above the path (overhead_fraction < 0.5); vertical_cap <= weak_climb')
+
+
+def wall_pilot_configs(declaration):
+    """dict(turn_first=TurnFirstConfig, ceiling_guard=CeilingGuardConfig) from a wall-pilot declaration already
+    parsed (and hash-checked) by the runner; refuses another rule version. This module reads no files."""
+    if (declaration or {}).get('version') != WALL_PILOT_VERSION:
+        raise ValueError(f'The wall-pilot declaration is version {(declaration or {}).get("version")}; the fast pilot '
+                         f'implements version {WALL_PILOT_VERSION}')
+    return dict(turn_first=TurnFirstConfig(**declaration['turn_first']),
+                ceiling_guard=CeilingGuardConfig(**declaration['ceiling_guard']))
+
+
 class TtcClearanceGovernor:
     """Graded speed cap along the looming ray and a terrain climb from TTC samples.
 
     Same interface as `ClearanceGovernor`. Pure and causal: each sample carries
     its capture time, capture position and ray; it acts once, when it first
     reaches `limits`, with the TTC aged to that moment by odometry.
+    `ceiling` (a `CeilingGuardConfig`, off by default) adds the ceiling guard;
+    `vertical_cap` is then the bound on the whole vertical request (None: none).
     """
 
-    def __init__(self, config=None):
+    def __init__(self, config=None, ceiling=None):
         self.config = config or TtcClearanceConfig()
+        if ceiling is not None and not isinstance(ceiling, CeilingGuardConfig):
+            raise ValueError('Pass a CeilingGuardConfig (or None) for the ceiling guard')
+        self.ceiling = ceiling
         self.samples = []
         self.last_time = self.last_evidence = self.first_input = None
         self.cap = self.cap_ray = self.target = None
@@ -488,6 +601,14 @@ class TtcClearanceGovernor:
         self.blind = False
         self.counts = dict(samples=0, no_evidence=0, brake_engagements=0, climb_engagements=0, blind_engagements=0,
                            standoff_engagements=0)
+        # Ceiling guard state (unused without it)
+        self.overhead_until = -np.inf
+        self.overhead_times = []        # receipt times of recent overhead samples
+        self.strong_height = None       # height where the last below-path climb request was accepted
+        self.vertical_cap = None
+        if ceiling is not None:
+            self.counts.update(overhead_samples=0, overhead_engagements=0, unexplained_walls=0, weak_climb_samples=0,
+                               suppressed_climb_samples=0)
 
     def ingest(self, time, ttc, distance, below_fraction, position, ray, closing_speed, received=None, ttc_lower=None):
         """Add one fresh sample captured at `time` at `position` and received at `received`
@@ -519,6 +640,7 @@ class TtcClearanceGovernor:
     def limits(self, position, velocity, now, dt, vertical_up):
         """Return (cap or None, ray or None, climb request) for the current tick."""
         c = self.config
+        g = self.ceiling
         position, velocity = np.asarray(position, float), np.asarray(velocity, float)
         keep = max(c.memory_s, c.confirm_window_s)
         self.samples = [s for s in self.samples if now-s['received'] <= keep]
@@ -526,7 +648,9 @@ class TtcClearanceGovernor:
         height = float(position[2]) if position.size > 2 else 0.
         if not climbing and now-self.terrain_at > c.climb_hold_s:
             self.climb_base = None                  # a new climb episode may start from the present height
+            self.strong_height = None
         topped = self.climb_base is not None and height-self.climb_base >= c.climb_max_m
+        overhead = g is not None and now <= self.overhead_until
         for s in self.samples:
             if not s['new']:
                 continue
@@ -535,9 +659,30 @@ class TtcClearanceGovernor:
                 continue
             closing = float(velocity @ s['ray'])
             ttc = self._aged(s, s['reach'], position, closing)
-            terrain = s['below'] >= c.terrain_fraction if s['below'] is not None else climbing
+            weak = unexplained = False
+            if s['below'] is not None:
+                terrain = s['below'] >= c.terrain_fraction
+            elif g is None:
+                terrain = climbing
+            else:
+                # ceiling guard: without vertical evidence a climb continues only on what the lower window explains
+                weak = terrain = (climbing and s['ttc_lower'] is not None
+                                  and s['ttc_lower'] <= g.lower_ratio*max(s['ttc'], 1e-3))
+                unexplained = not terrain
+                self.counts['unexplained_walls'] += int(climbing and unexplained)
             recent = [r for r in self.samples if s['received']-r['received'] <= c.confirm_window_s
                       and r['received'] <= s['received']]
+            if g is not None and (climbing or overhead) and ttc < g.overhead_ttc_s and (
+                    unexplained or (s['below'] is not None and s['below'] <= g.overhead_fraction)):
+                # the alarm lies above a climbing path (or is not explained by the surface below it)
+                self.counts['overhead_samples'] += 1
+                self.overhead_times = [t for t in self.overhead_times
+                                       if s['received']-t <= c.confirm_window_s]+[s['received']]
+                if len(self.overhead_times) >= g.overhead_confirm:
+                    if now > self.overhead_until:
+                        self.counts['overhead_engagements'] += 1
+                    self.overhead_until, overhead = now+g.hold_s, True
+                    self.climb, self.climb_hold_until = 0., -np.inf
             # climb: expansion below the path
             if terrain:
                 lower = None if s['ttc_lower'] is None else self._aged(
@@ -547,35 +692,48 @@ class TtcClearanceGovernor:
                              min(ttc, lower) if c.climb_ttc_source == 'either' else max(ttc, lower))
                 votes = sum(r['below'] is not None and r['below'] >= c.terrain_fraction for r in recent)
                 request = vertical_up*float(np.clip((c.climb_on_s-climb_ttc)/(c.climb_on_s-c.climb_full_s), 0, 1))
+                if weak and request > 0:
+                    self.counts['weak_climb_samples'] += 1
+                    request = min(request, g.weak_climb)
+                    if self.strong_height is not None and height-self.strong_height >= g.weak_climb_max_m:
+                        request = 0.
+                if overhead and request > 0:
+                    self.counts['suppressed_climb_samples'] += 1
+                    request = 0.
                 if request > 0 and (votes >= c.terrain_confirm or climbing):
                     self.terrain_at = now
                     self.climb_base = height if self.climb_base is None else self.climb_base
                 if request > 0 and (votes >= c.terrain_confirm or climbing) and not topped:
                     if self.climb == 0:
                         self.counts['climb_engagements'] += 1
+                    if not weak or request >= self.climb:
+                        self.climb_hold_until = now+c.climb_hold_s
                     self.climb = max(self.climb, request)
-                    self.climb_hold_until = now+c.climb_hold_s
-            # graded slow-down
+                    if g is not None and not weak:
+                        self.strong_height = height
+            # graded slow-down; during an overhead hold a surface below the path is braked for like a wall
+            brake_terrain = terrain and not overhead
             active = self.cap is not None and self.cap < max(closing, 0.)+1.
-            if self.target is not None and not terrain and ttc < c.hold_ttc_s:
+            if self.target is not None and not brake_terrain and ttc < c.hold_ttc_s:
                 self.lowered_at = now               # a wall still in view: hold the cap
             threshold = c.ttc_target if active else c.ttc_on
             votes = sum(r['ttc'] < threshold for r in recent)
             if not (votes >= c.confirm or ttc < c.urgent_ttc_s) or closing <= 0:
                 continue
             fraction = float(np.clip((ttc-c.ttc_min)/(c.ttc_target-c.ttc_min), c.floor_fraction, 1.))
-            if terrain:
+            if brake_terrain:
                 fraction = 1.-c.terrain_brake*(1.-fraction)
             if fraction >= 1.:
                 continue
-            target = closing*fraction if (ttc < c.stop_ttc_s and not terrain) else max(c.min_speed, closing*fraction)
+            target = (closing*fraction if (ttc < c.stop_ttc_s and not brake_terrain)
+                      else max(c.min_speed, closing*fraction))
             self.lowered_at = now                   # TTC has not recovered to ttc_target: keep holding
             if self.target is None or target < self.target:
                 if self.cap is None or not active:
                     self.counts['brake_engagements'] += 1
                 self.target, self.cap_ray = target, s['ray']
                 self.cap = closing if self.cap is None else min(self.cap, max(closing, target))
-            if not terrain and self.target <= c.standoff_speed:
+            if not brake_terrain and self.target <= c.standoff_speed:
                 if now > self.standoff_until:
                     self.counts['standoff_engagements'] += 1
                 self.standoff_until = now+c.standoff_s
@@ -589,8 +747,12 @@ class TtcClearanceGovernor:
                 self.cap = self.cap_ray = self.target = None
         if now > self.climb_hold_until or topped:
             self.climb = max(0., self.climb-c.climb_release*dt)
+        if overhead:
+            self.climb = 0.
+        self.vertical_cap = g.vertical_cap if overhead else None
         fresh = any(now-s['received'] <= c.memory_s for s in self.samples)
-        self.status = ('climb' if self.climb > 0 else 'standoff' if now <= self.standoff_until and self.cap is not None
+        self.status = ('overhead' if overhead else 'climb' if self.climb > 0
+                       else 'standoff' if now <= self.standoff_until and self.cap is not None
                        else 'armed' if self.cap is not None else 'clear' if fresh else 'no_evidence')
         return self.cap, self.cap_ray, self.climb
 
@@ -607,7 +769,8 @@ class FastRaceCue:
 
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
-                 lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True):
+                 lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
+                 ceiling_guard=None, wall_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -680,6 +843,23 @@ class FastRaceCue:
         self.gap_flag_deg = 0.         # the last in-view ring cue's flag-clearance offset from its centre
         self.gap_conflict = ''         # conflict found this tick ('ring', 'flag' or '')
         self.gap_ring_deg = float('nan')
+        # Wall-pilot rules (off unless declared; obstacle stack only): see TurnFirstConfig and CeilingGuardConfig.
+        # wall_apply False computes and logs them without applying them (the stack's shadow control): the flown
+        # governor then has no ceiling guard and a guarded copy fed the same samples reports what it would do.
+        if turn_first is not None and not isinstance(turn_first, TurnFirstConfig):
+            raise ValueError('Pass a TurnFirstConfig (or None) for the turn-first rule')
+        if ceiling_guard is not None and not isinstance(ceiling_guard, CeilingGuardConfig):
+            raise ValueError('Pass a CeilingGuardConfig (or None) for the ceiling guard')
+        if ceiling_guard is not None and not isinstance(self.clearance_config, TtcClearanceConfig):
+            raise ValueError('The ceiling guard is part of the TTC clearance policy')
+        self.turn_first, self.ceiling_guard, self.wall_apply = turn_first, ceiling_guard, bool(wall_apply)
+        self.clearance_shadow = None   # the guarded governor copy in shadow
+        self.wall_brake_at = -np.inf   # last tick at which the clearance cap bound the request (a wall brake)
+        self.turn_first_since = self.turn_first_ray = None
+        self.turn_first_block_until = -np.inf
+        self.turn_first_active = False
+        self.turn_first_counts = dict(episodes=0, aligned=0, handoff=0, timeout=0)
+        self.turn_first_time = 0.
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -687,7 +867,13 @@ class FastRaceCue:
         if stamp is None or not np.isfinite(stamp):
             raise ValueError('A clearance sample needs its capture time')
         if self.clearance is None:
-            self.clearance = clearance_governor(c)
+            guard = self.ceiling_guard
+            if guard is not None and self.wall_apply:
+                self.clearance = TtcClearanceGovernor(c, ceiling=guard)
+            else:
+                self.clearance = clearance_governor(c)
+                if guard is not None:
+                    self.clearance_shadow = TtcClearanceGovernor(c, ceiling=guard)
         if not (0 <= now-stamp <= c.max_age_s
                 and (self.clearance.last_time is None or stamp > self.clearance.last_time)):
             return
@@ -703,6 +889,9 @@ class FastRaceCue:
         ray = velocity/speed if speed > .5 else np.array([np.cos(yaw), np.sin(yaw), 0.])
         extra = dict(ttc_lower=lower) if isinstance(self.clearance, TtcClearanceGovernor) else {}
         self.clearance.ingest(float(stamp), ttc, distance, below, position, ray, speed, received=now, **extra)
+        if self.clearance_shadow is not None:
+            self.clearance_shadow.ingest(float(stamp), ttc, distance, below, position, ray, speed, received=now,
+                                         ttc_lower=lower)
 
     def _ingest(self, detection, capture_time, now):
         cue = detection.get('race_cue') if detection else None
@@ -924,6 +1113,73 @@ class FastRaceCue:
         cos, sin = np.cos(turn), np.sin(turn)
         return np.array([cos*bearing[0]-sin*bearing[1], sin*bearing[0]+cos*bearing[1]])
 
+    def _bearing_off_deg(self, yaw):
+        """Horizontal angle (deg) between the filtered checkpoint bearing and the heading, or None."""
+        if self.direction is None or np.linalg.norm(self.direction[:2]) < 1e-6:
+            return None
+        bearing = float(np.arctan2(self.direction[1], self.direction[0]))
+        return float(abs(np.degrees((bearing-yaw+np.pi) % (2*np.pi)-np.pi)))
+
+    def _near_wall(self, speed, now):
+        """The turn-first wall condition (see TurnFirstConfig): a stand-off, or a recent wall brake at low speed."""
+        gov, tf = self.clearance, self.turn_first
+        if gov is None or gov.cap_ray is None:
+            return False
+        if isinstance(gov, TtcClearanceGovernor):
+            standoff = now <= gov.standoff_until and gov.cap is not None
+        else:
+            standoff = bool(gov.sustained and gov.cap is not None and gov.cap < gov.config.standoff_speed)
+        return standoff or (now-self.wall_brake_at <= tf.brake_recent_s and speed <= tf.slow_speed)
+
+    def _turn_first(self, state, desired, velocity, yaw, now):
+        """Turn before translating at a wall (TurnFirstConfig): the limited horizontal request while an episode
+        is active (also computed in shadow), else None. Updates the episode state and its counts."""
+        tf = self.turn_first
+        off = self._bearing_off_deg(yaw)
+        if self.turn_first_since is not None:
+            end = ('handoff' if state in TURN_FIRST_HANDOFF_STATES or self.launching else
+                   'aligned' if state in TURN_FIRST_BEARING_STATES and off is not None and off <= tf.release_deg else
+                   'timeout' if now-self.turn_first_since >= tf.max_s else None)
+            if end is not None:
+                self.turn_first_counts[end] += 1
+                self.turn_first_since = self.turn_first_ray = None
+                if end == 'timeout':
+                    self.turn_first_block_until = now+tf.rearm_s
+        speed = float(np.linalg.norm(velocity[:2]))
+        if (self.turn_first_since is None and not self.launching and now >= self.turn_first_block_until
+                and state not in TURN_FIRST_HANDOFF_STATES and self._near_wall(speed, now)
+                and (state == 'side' or (state in TURN_FIRST_BEARING_STATES and off is not None
+                                         and off >= tf.engage_deg))):
+            ray = np.asarray(self.clearance.cap_ray, float)[:2]
+            if np.linalg.norm(ray) > 1e-6:
+                self.turn_first_since, self.turn_first_ray = now, ray/np.linalg.norm(ray)
+                self.turn_first_counts['episodes'] += 1
+        self.turn_first_active = self.turn_first_since is not None
+        if not self.turn_first_active:
+            return None
+        horizontal = np.array(desired[:2], dtype=float)
+        horizontal -= self.turn_first_ray*max(0., float(horizontal @ self.turn_first_ray))
+        norm = float(np.linalg.norm(horizontal))
+        if norm > tf.creep_speed:
+            horizontal *= tf.creep_speed/norm
+        return horizontal
+
+    @staticmethod
+    def _cap_command(previous, command, cap, ray, dt, rate, top, vertical_limits):
+        """The command with its component along `ray` brought down to `cap` at up to `rate` m/s^2 (beyond the
+        taper), the total change bounded as the clearance cap bounds it."""
+        before, after = float(previous @ ray), float(command @ ray)
+        if after <= cap:
+            return command
+        room = max(0., rate*dt-max(0., before-after))
+        command = command-ray*min(after-cap, room)
+        change = command-previous
+        norm = float(np.linalg.norm(change[:2]))
+        if norm > top:
+            change[:2] *= top/norm
+        change[2] = np.clip(change[2], *vertical_limits)
+        return previous+change
+
     def _horizontal_step(self, current, goal, dt, heading_time_constant=None):
         """Change of the horizontal request this tick: a coordinated turn.
 
@@ -1040,24 +1296,41 @@ class FastRaceCue:
                 self.climb_until, self.slope_support_since = now+c.support_climb_s, None
         else:
             self.support_since = self.slope_support_since = None
-        cap = ray = None
+        cap = ray = vertical_cap = None
         climb = 0.
         if clearance is not None and not self.launching:
             self._ingest_clearance(clearance, velocity, yaw, now)
         if self.clearance is not None:
             cap, ray, climb = self.clearance.limits(position, velocity, now, dt, c.vertical_up)
+            if self.clearance_shadow is not None:
+                self.clearance_shadow.limits(position, velocity, now, dt, c.vertical_up)
             if climb > 0:
                 # Expansion below the flight path: rise over it rather than stop.
                 desired[2] = max(desired[2], climb)
+            vertical_cap = getattr(self.clearance, 'vertical_cap', None)
+            if vertical_cap is not None:
+                # Ceiling guard: overhead evidence during a climb bounds the whole vertical request.
+                desired[2] = min(desired[2], vertical_cap)
             along = float(desired @ ray) if cap is not None else 0.
             braking = cap is not None and along > cap
             if braking:
                 desired = desired-ray*(along-cap)
                 if not self.clearance_braking:
                     self.clearance.counts['blind_engagements' if self.clearance.blind else 'brake_engagements'] += 1
+                self.wall_brake_at = now
             self.clearance_braking = braking
             status = ('blind' if self.clearance.blind else 'brake') if braking else self.clearance.status
             self.clearance_time[status] = self.clearance_time.get(status, 0.)+dt
+        turn_first = None
+        if self.turn_first is not None:
+            # Turn before translating at a wall (computed in shadow too, applied only with wall_apply).
+            turn_first = self._turn_first(state, desired, velocity, yaw, now)
+            if turn_first is not None:
+                self.turn_first_time += dt
+                if self.wall_apply:
+                    desired[:2] = turn_first
+                else:
+                    turn_first = None
         if self.velocity_command is None:
             self.velocity_command = velocity.copy()
         step = desired-self.velocity_command
@@ -1073,22 +1346,21 @@ class FastRaceCue:
             if norm > c.search_deceleration*dt:
                 step[:2] *= c.search_deceleration*dt/norm
         up = max(c.vertical_command_acceleration, self.clearance_config.terrain_climb_acceleration if climb > 0 else 0.)
-        step[2] = np.clip(step[2], -c.vertical_command_acceleration*dt, up*dt)
+        down = (c.vertical_command_acceleration if vertical_cap is None
+                else max(c.vertical_command_acceleration, self.clearance.ceiling.vertical_slew))
+        step[2] = np.clip(step[2], -down*dt, up*dt)
         previous = self.velocity_command.copy()
         self.velocity_command = self.velocity_command+step
+        slew = self.clearance_config.brake_slew
+        top, vertical_limits = max(c.command_acceleration, slew)*dt, (-down*dt, up*dt)
         if cap is not None:
             # The cap acts on the request itself, without the taper, at up to brake_slew.
-            before, after = float(previous @ ray), float(self.velocity_command @ ray)
-            if after > cap:
-                room = max(0., self.clearance_config.brake_slew*dt-max(0., before-after))
-                self.velocity_command = self.velocity_command-ray*min(after-cap, room)
-                change = self.velocity_command-previous
-                top = max(c.command_acceleration, self.clearance_config.brake_slew)*dt
-                norm = float(np.linalg.norm(change[:2]))
-                if norm > top:
-                    change[:2] *= top/norm
-                change[2] = np.clip(change[2], -c.vertical_command_acceleration*dt, up*dt)
-                self.velocity_command = previous+change
+            self.velocity_command = self._cap_command(previous, self.velocity_command, cap, ray, dt, slew, top,
+                                                      vertical_limits)
+        if turn_first is not None:
+            # ... and so does turn-first: no speed toward the wall that capped it.
+            self.velocity_command = self._cap_command(previous, self.velocity_command, 0.,
+                                                      np.r_[self.turn_first_ray, 0.], dt, slew, top, vertical_limits)
         raw_ff = (self.velocity_command-previous)/max(dt, 1e-3)
         alpha = 1-np.exp(-dt/c.feedforward_time_constant)
         self.feedforward = self.feedforward+alpha*(raw_ff-self.feedforward)
@@ -1131,6 +1403,52 @@ class FastRaceCue:
                                                                  device=scaled_velocity.device)}
         # Body-frame one-second lead for goal-point motor contracts and logs.
         return rotation.T @ self.velocity_command, modified
+
+    def _guarded_governor(self):
+        """The governor that runs the ceiling guard: the flown one, or its shadow copy; None without the guard."""
+        if self.clearance_shadow is not None:
+            return self.clearance_shadow
+        return self.clearance if getattr(self.clearance, 'ceiling', None) is not None else None
+
+    def wall_log(self):
+        """Per-tick wall-pilot values for logs: turn_first (1 while an episode is active, also in shadow; NaN when
+        not declared) and the ceiling guard's governor status, climb request and vertical bound (the guarded copy's
+        in shadow; NaN / '' without the guard or before the first clearance sample)."""
+        nan = float('nan')
+        guard = self._guarded_governor()
+        return dict(turn_first=float(self.turn_first_active) if self.turn_first is not None else nan,
+                    ceiling_status=guard.status if guard is not None else '',
+                    ceiling_climb=float(guard.climb) if guard is not None else nan,
+                    ceiling_vertical_cap=nan if guard is None or guard.vertical_cap is None else float(guard.vertical_cap))
+
+    def _wall_metadata(self):
+        if self.turn_first is None and self.ceiling_guard is None:
+            return None
+        guard = self._guarded_governor()
+        keys = ('overhead_samples', 'overhead_engagements', 'unexplained_walls', 'weak_climb_samples',
+                'suppressed_climb_samples', 'climb_engagements')
+        return dict(
+            version=WALL_PILOT_VERSION, applied=self.wall_apply,
+            turn_first=None if self.turn_first is None else dict(
+                rule='near a wall (a clearance stand-off, or a wall brake within brake_recent_s at <= slow_speed) with '
+                     'the checkpoint clamped at a side edge/corner or its bearing >= engage_deg off the heading: the '
+                     'horizontal request loses its component toward the wall (the capping looming ray) and is bounded '
+                     'to creep_speed, the speed toward the wall is removed at brake_slew, yaw keeps turning to the '
+                     'checkpoint; ends when an in-view (or bottom/top clamped) bearing is within release_deg '
+                     '(aligned), on search/launch/support climb (handoff) or after max_s (timeout, then rearm_s '
+                     'without an episode)',
+                parameters=asdict(self.turn_first), counts=dict(self.turn_first_counts),
+                active_seconds=round(self.turn_first_time, 3)),
+            ceiling_guard=None if self.ceiling_guard is None else dict(
+                rule='during a climb a sample without vertical evidence is terrain only if its lower-surface TTC <= '
+                     'lower_ratio x its alarm TTC (else a wall); such weak terrain climbs <= weak_climb and not beyond '
+                     'weak_climb_max_m above the last below-path climb request; overhead_confirm samples with TTC < '
+                     'overhead_ttc_s whose expansion lies above the path (below_fraction <= overhead_fraction) or is '
+                     'unexplained cut the climb and start an overhead hold of hold_s (no climb, below-path samples '
+                     'brake, vertical request <= vertical_cap, brought down at vertical_slew)',
+                parameters=asdict(self.ceiling_guard),
+                governor='flown' if self.wall_apply else 'shadow copy fed the same samples',
+                counts=None if guard is None else {k: guard.counts.get(k, 0) for k in keys}))
 
     def command(self, action):
         result = np.array(action, copy=True)
@@ -1222,6 +1540,7 @@ class FastRaceCue:
                              'clearance is a conflict: dropped, the ring cue\'s own aim is held for side_latch_s; '
                              'never changes the requested speed; with lag-aware turns the lead is computed on the '
                              'bearing without the shift and the shift is added after it (not amplified)'),
+                    wall_pilot=self._wall_metadata(),
                     clearance_response=None if self.clearance is None else dict(
                         self._clearance_policy(),
                         parameters={k: (None if isinstance(v, float) and not np.isfinite(v) else v)

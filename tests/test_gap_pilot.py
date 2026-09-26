@@ -633,24 +633,32 @@ def test_worker_turns_a_near_column_right_of_the_ring_into_a_left_shift():
 # Runner flags, logs and declarations
 # ---------------------------------------------------------------------------------------------
 def args(**kw):
-    base = dict(obstacle_stack=None, gap_cue=None, lag_turn=None, pilot_profile='fast', looming_brake=True)
+    base = dict(obstacle_stack=None, gap_cue=None, lag_turn=None, wall_pilot=None, pilot_profile='fast',
+                looming_brake=True)
     base.update(kw)
     return SimpleNamespace(**base)
 
 
 def test_obstacle_stack_flags_resolve_to_off_by_default_components():
-    from haltere.liftoff.visual_brain import LAG_TURN_DECLARATION, resolve_obstacle_stack
-    default = str(LAG_TURN_DECLARATION)
-    assert resolve_obstacle_stack(args()) == dict(mode=None, gap=False, lag_turn=None, apply=True)
+    from haltere.liftoff.visual_brain import LAG_TURN_DECLARATION, WALL_PILOT_DECLARATION, resolve_obstacle_stack
+    default, wall = str(LAG_TURN_DECLARATION), str(WALL_PILOT_DECLARATION)
+    assert resolve_obstacle_stack(args()) == dict(mode=None, gap=False, lag_turn=None, apply=True, wall_pilot=None)
     assert resolve_obstacle_stack(args(lag_turn='on'))['lag_turn'] == default
     assert resolve_obstacle_stack(args(lag_turn='x.json'))['lag_turn'] == 'x.json'
-    assert resolve_obstacle_stack(args(obstacle_stack='on')) == dict(mode='on', gap=True, lag_turn=default, apply=True)
+    assert resolve_obstacle_stack(args(obstacle_stack='on')) == dict(mode='on', gap=True, lag_turn=default, apply=True,
+                                                                     wall_pilot=wall)
     assert resolve_obstacle_stack(args(obstacle_stack='shadow')) == dict(mode='shadow', gap=True, lag_turn=default,
-                                                                         apply=False)
+                                                                         apply=False, wall_pilot=wall)
     assert resolve_obstacle_stack(args(obstacle_stack='on', gap_cue='off'))['gap'] is False
     assert resolve_obstacle_stack(args(obstacle_stack='on', lag_turn='off'))['lag_turn'] is None
+    assert resolve_obstacle_stack(args(obstacle_stack='on', wall_pilot='off'))['wall_pilot'] is None
+    assert resolve_obstacle_stack(args(obstacle_stack='shadow', wall_pilot='on'))['wall_pilot'] == wall
     with pytest.raises(ValueError, match='obstacle stack'):
         resolve_obstacle_stack(args(gap_cue='on'))
+    with pytest.raises(ValueError, match='obstacle stack'):
+        resolve_obstacle_stack(args(wall_pilot='on'))
+    with pytest.raises(ValueError, match='on or off'):
+        resolve_obstacle_stack(args(obstacle_stack='on', wall_pilot='maybe'))
     with pytest.raises(ValueError, match='looming'):
         resolve_obstacle_stack(args(obstacle_stack='on', looming_brake=False))
     with pytest.raises(ValueError, match='fast'):
