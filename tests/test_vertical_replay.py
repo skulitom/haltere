@@ -26,10 +26,13 @@ def arrays(n=400, dt=.01, **columns):
 
 def test_gates_declaration_is_frozen_and_names_the_guard_version():
     gates, digest = vr.load_gates()
-    assert gates['version'] == 1 and gates['frozen'] is True and digest == gates['sha256']
+    assert gates['version'] == 2 and gates['frozen'] is True and digest == gates['sha256']
     from haltere.liftoff.visual_brain import VERTICAL_GUARD_DECLARATION, load_vertical_guard
     _, guard_digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 1
+    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 2
+    old, old_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v1.json'))
+    assert old['version'] == 1 and old['vertical_guard']['version'] == 1 and old_digest.startswith('977740fbc0f5')
+    assert gates['previous_versions'][0]['sha256'] == old_digest and old['gates'] == gates['gates']
     g = gates['gates']
     assert g['V_Minus']['max_climb'] == 1. and g['V_Pine']['min_vz'] == 1. and g['V_Pine']['climb_fraction'] == .8
     assert g['V_Straw']['limited_fraction'] == .8 and g['V_Minus']['max_height_loss_m'] == .3

@@ -591,7 +591,7 @@ def wall_pilot_configs(declaration):
 
 
 # The vertical-guard declaration version whose rules this code implements (VerticalGuardConfig); runners refuse others.
-VERTICAL_GUARD_VERSION = 1
+VERTICAL_GUARD_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -603,26 +603,34 @@ class VerticalGuardConfig:
     with the surface fitted below the flight path; the alarm ttc) and the measured vertical speed: no height above
     ground, no metric distance. Descending means a measured vertical speed below -level_band, climbing above
     +level_band, level in between.
-    1. Sink margin: the latest known ttc_lower (aged by the time since its capture, kept memory_s after receipt)
-       scales the pilot's own requested sink by clip((ttc - margin_zero_s) / (margin_full_s - margin_zero_s), 0, 1):
-       all of it at margin_full_s or more, none at margin_zero_s or less. The factor moves at up to factor_down_rate
-       (falling) and factor_up_rate (recovering) per second, so the request changes without a jump. While the guard
-       limits the pilot's sink (or arrests a descent), the descent-path shortfall is not fed (the horizontal request
-       is not cut for a sink it withheld): the drone keeps its speed and follows the terrain instead of sinking.
-    2. Descent first: a below-path alarm (a terrain sample: below_fraction >= the policy's terrain_fraction, whose
-       below-path TTC, ttc_lower aged by odometry, is under climb_on_s) received while descending arrests the
+    1. Sink margin: the path's crossing TTC with the surface below it, max(alarm ttc, ttc_lower) of the latest sample
+       that has a ttc_lower (aged by the time since its capture, kept memory_s after receipt), scales the pilot's own
+       requested sink by clip((ttc - margin_zero_s) / (margin_full_s - margin_zero_s), 0, 1): all of it at
+       margin_full_s or more, none at margin_zero_s or less. Both TTCs must be short: a surface below the path that
+       the path itself does not head into (a long alarm, e.g. a ring or arch opening ahead of a descent) limits
+       nothing. The factor moves at up to factor_down_rate (falling) and factor_up_rate (recovering) per second, so
+       the request changes without a jump.
+    Keep speed: while the guard withholds part of the pilot's sink, arrests a descent or withholds a climb because
+       the drone descends, and while the pilot's support timers run (the requested sink is not achieved: contact with
+       the terrain below), the descent-path shortfall is not fed: the horizontal request is not cut for a sink that
+       was withheld or that the terrain prevents; the drone keeps its speed instead of sinking into the hill.
+    2. Descent first: a below-path alarm (below_fraction >= the policy's terrain_fraction, with the path's crossing
+       TTC, max(alarm ttc, ttc_lower) aged by odometry, under climb_on_s) received while descending arrests the
        descent: the vertical request is at least level (never a climb the pilot did not ask for) for arrest_hold_s,
-       brought there at up to arrest_acceleration m/s^2. It starts no climb. While the drone descends, no terrain
-       climb is applied at all.
-    3. Terrain climb only for rising ground: a climb needs `confirm` below-path alarms received while level or
+       brought there at up to arrest_acceleration m/s^2. No alarm received while descending starts a climb, and while
+       the drone descends no terrain climb is applied at all.
+    3. Terrain climb only for rising ground: a climb needs `confirm` below-path alarms (below_fraction >=
+       terrain_fraction, below-path TTC = ttc_lower aged by odometry under climb_on_s) received while level or
        climbing within confirm_window_s. Its rate is graded by urgency, vertical_up * clip((climb_on_s - ttc) /
        (climb_on_s - climb_full_s), 0, 1) on the below-path TTC, and bounded to gentle_climb (and to gentle_max_m
        above where the episode began) until rising ground is confirmed: `rising_confirm` below-path alarms received
-       while already climbing faster than rising_min_rise within rising_window_s (the ground keeps looming although
-       the drone climbs). Then the graded rate applies up to vertical_up, bounded by the policy's climb_max_m. The
+       within rising_window_s while the drone already climbs faster than rising_min_rise and the guard's own climb
+       is the binding vertical request (above the pilot's own request: the drone climbs because of the guard, and the
+       ground keeps looming). Then the graded rate applies up to vertical_up, bounded by the policy's climb_max_m. The
        policy's climb hold and release are unchanged. The ceiling guard, when declared, still cuts climbs under
        overhead evidence.
-    Declaration version 1.
+    Declaration version 2 (version 1 used ttc_lower alone for rules 1 and 2, counted any climb as rising-ground
+    evidence and had no contact rule; it is kept and refused).
     """
     margin_full_s: float = 1.5
     margin_zero_s: float = .6
@@ -688,8 +696,9 @@ class TtcClearanceGovernor:
         self.arrest = False
         self.arrest_until = -np.inf
         self.lower_evidence = None      # (capture time, ttc_lower, receipt time) of the latest known below-path TTC
-        self.alarms = []                # (receipt time, measured vertical speed) of below-path alarms while not descending
+        self.alarms = []                # (receipt, measured vz, guard climb binding) of below-path alarms, not descending
         self.escalated = False          # rising ground confirmed in this climb episode
+        self.pilot_vertical = -np.inf   # the pilot's own vertical request this tick (set by the pilot)
         if vertical is not None:
             self.vertical_counts = dict(sink_limited_samples=0, descent_first=0, arrest_engagements=0,
                                         unconfirmed_alarms=0, gentle_climbs=0, escalations=0, topped=0)
@@ -748,27 +757,32 @@ class TtcClearanceGovernor:
     def _guard_request(self, s, lower, ttc, rise, now, vertical_up):
         """The vertical guard's climb request for one terrain sample (VerticalGuardConfig rules 2 and 3)."""
         v, c = self.vertical, self.config
-        below_ttc = lower if lower is not None else ttc
-        graded = vertical_up*float(np.clip((v.climb_on_s-below_ttc)/(v.climb_on_s-v.climb_full_s), 0, 1))
-        if graded <= 0:
-            return 0.
         below_path = s['below'] is not None and s['below'] >= c.terrain_fraction
         if rise < -v.level_band:
-            # descent first: the ground looms because the drone descends; stop the descent, start no climb
-            if below_path:
+            # descent first: the ground looms because the drone descends (the path itself heads into the surface
+            # below it: both the alarm and the lower-surface TTC are short); stop the descent, start no climb
+            path_ttc = ttc if lower is None else max(ttc, lower)
+            if below_path and path_ttc < v.climb_on_s:
                 if now > self.arrest_until:
                     self.vertical_counts['arrest_engagements'] += 1
                 self.vertical_counts['descent_first'] += 1
                 self.arrest_until = now+v.arrest_hold_s
             return 0.
+        below_ttc = lower if lower is not None else ttc
+        graded = vertical_up*float(np.clip((v.climb_on_s-below_ttc)/(v.climb_on_s-v.climb_full_s), 0, 1))
+        if graded <= 0:
+            return 0.
         if not below_path:
             # no below-path evidence (the ceiling guard's explained alarms, or none): sustains a climb, gently
             return min(graded, v.gentle_climb) if self.climb > 0 else 0.
+        # rising-ground evidence counts only while the guard's own climb is the binding vertical request (the drone
+        # climbs because of the guard, not because the pilot follows a ring up a hill)
+        binding = self.climb > 0 and self.climb > self.pilot_vertical
         horizon = max(v.confirm_window_s, v.rising_window_s)
-        self.alarms = [(t, r) for t, r in self.alarms if s['received']-t <= horizon]+[(s['received'], rise)]
-        confirmed = sum(s['received']-t <= v.confirm_window_s for t, _ in self.alarms) >= v.confirm
-        rising = sum(s['received']-t <= v.rising_window_s and r > v.rising_min_rise
-                     for t, r in self.alarms) >= v.rising_confirm
+        self.alarms = [a for a in self.alarms if s['received']-a[0] <= horizon]+[(s['received'], rise, binding)]
+        confirmed = sum(s['received']-t <= v.confirm_window_s for t, _, _ in self.alarms) >= v.confirm
+        rising = sum(s['received']-t <= v.rising_window_s and r > v.rising_min_rise and b
+                     for t, r, b in self.alarms) >= v.rising_confirm
         if confirmed and rising and not self.escalated:
             self.escalated = True               # the ground keeps looming although the drone climbs: rising ground
             self.vertical_counts['escalations'] += 1
@@ -804,9 +818,10 @@ class TtcClearanceGovernor:
                 continue
             s['new'] = False
             if v is not None and s['ttc_lower'] is not None:
-                self.lower_evidence = (s['time'], s['ttc_lower'], s['received'])
-                self.vertical_counts['sink_limited_samples'] += int(
-                    s['ttc_lower']-(now-s['time']) < v.margin_full_s)
+                # the path's own crossing with the surface below it: both the alarm and the lower TTC
+                crossing = max(s['ttc'], s['ttc_lower'])
+                self.lower_evidence = (s['time'], crossing, s['received'])
+                self.vertical_counts['sink_limited_samples'] += int(crossing-(now-s['time']) < v.margin_full_s)
             if now-s['received'] > c.memory_s:
                 continue
             closing = float(velocity @ s['ray'])
@@ -1454,9 +1469,12 @@ class FastRaceCue:
         # proportion so the flight path keeps the requested slope. A vehicle
         # that tracks its descents is unaffected.
         shortfall = 0.
+        # With the vertical guard applied, a sink it withheld and a sink the terrain below prevents (the support
+        # timers run: contact) are no shortfall: the horizontal request is not cut for them (keep speed).
+        contact = (self.vertical_guard is not None and self.vertical_apply
+                   and (self.support_since is not None or self.slope_support_since is not None))
         if (self.velocity_command is not None and self.velocity_command[2] < -c.descent_sink and not self.launching
-                and not self.vertical_limiting):
-            # (a sink the vertical guard withheld is no shortfall: the horizontal request is not cut for it)
+                and not self.vertical_limiting and not contact):
             shortfall = max(0., float(velocity[2]-self.velocity_command[2]))
         self.descent_shortfall += (1-np.exp(-dt/c.descent_time_constant))*(shortfall-self.descent_shortfall)
         self.descent_scale = float(np.clip(1-(self.descent_shortfall-c.descent_free)/c.descent_span,
@@ -1494,6 +1512,9 @@ class FastRaceCue:
         if clearance is not None and not self.launching:
             self._ingest_clearance(clearance, velocity, yaw, now)
         if self.clearance is not None:
+            for governor in (self.clearance, self.clearance_shadow):
+                if getattr(governor, 'vertical', None) is not None:
+                    governor.pilot_vertical = self.pilot_vertical     # the binding test of its rising-ground rule
             cap, ray, climb = self.clearance.limits(position, velocity, now, dt, c.vertical_up)
             shadow_climb = 0.
             if self.clearance_shadow is not None:
@@ -1670,17 +1691,19 @@ class FastRaceCue:
         guard = self._vertical_governor()
         return dict(
             version=VERTICAL_GUARD_VERSION, applied=self.vertical_apply,
-            rule='sink margin: the pilot\'s own requested sink x clip((ttc_lower_aged - margin_zero_s)/(margin_full_s - '
-                 'margin_zero_s), 0, 1), the factor ramped at factor_down_rate/factor_up_rate per s, the latest known '
-                 'ttc_lower kept memory_s; while it withholds sink the descent-path shortfall is not fed (no horizontal '
-                 'cut); descent first: a below-path alarm (below_fraction >= terrain_fraction, below-path TTC < '
-                 'climb_on_s) while descending (vz < -level_band) holds the request at least level for arrest_hold_s '
-                 '(slew arrest_acceleration) and starts no climb, and no terrain climb is applied while descending; '
-                 'terrain climb: confirm alarms while level or climbing within confirm_window_s, rate graded by the '
-                 'below-path TTC (climb_on_s -> 0, climb_full_s -> vertical_up), bounded to gentle_climb and '
-                 'gentle_max_m until rising_confirm alarms arrive while climbing faster than rising_min_rise within '
-                 'rising_window_s (rising ground), then up to vertical_up and the policy\'s climb_max_m; the policy\'s '
-                 'climb hold and release; the ceiling guard still cuts climbs',
+            rule='sink margin: the pilot\'s own requested sink x clip((crossing_aged - margin_zero_s)/(margin_full_s - '
+                 'margin_zero_s), 0, 1), crossing = max(alarm ttc, ttc_lower) of the latest sample with a ttc_lower, '
+                 'the factor ramped at factor_down_rate/factor_up_rate per s, kept memory_s; keep speed: while it '
+                 'withholds sink, arrests or withholds a climb while descending, or the pilot\'s support timers run '
+                 '(contact), the descent-path shortfall is not fed (no horizontal cut); descent first: a below-path '
+                 'alarm (below_fraction >= terrain_fraction, crossing < climb_on_s) while descending (vz < '
+                 '-level_band) holds the request at least level for arrest_hold_s (slew arrest_acceleration) and starts '
+                 'no climb, and no terrain climb is applied while descending; terrain climb: confirm below-path alarms '
+                 '(ttc_lower < climb_on_s) while level or climbing within confirm_window_s, rate graded by ttc_lower '
+                 '(climb_on_s -> 0, climb_full_s -> vertical_up), bounded to gentle_climb and gentle_max_m until '
+                 'rising_confirm alarms arrive within rising_window_s while climbing faster than rising_min_rise with '
+                 'the guard\'s climb above the pilot\'s own request (rising ground), then up to vertical_up and the '
+                 'policy\'s climb_max_m; the policy\'s climb hold and release; the ceiling guard still cuts climbs',
             input='causal looming samples (below_fraction, ttc_lower, ttc) and the measured vertical speed; no height '
                   'above ground, no metric distance',
             parameters=asdict(self.vertical_guard),

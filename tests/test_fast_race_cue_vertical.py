@@ -82,7 +82,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
                                               load_vertical_guard)
     declaration, digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert declaration['version'] == VERTICAL_GUARD_VERSION == 1 and declaration['frozen'] is True
+    assert declaration['version'] == VERTICAL_GUARD_VERSION == 2 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     assert vertical_guard_config(declaration) == VG                     # the declared values are the defaults
     # the declared values the task gave: full sink at 1.5 s, none at 0.6 s; about 1 m/s without rising ground
@@ -93,13 +93,28 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_vertical_guard(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 2
+    other['version'] = 3
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
         load_vertical_guard(path)
     with pytest.raises(ValueError, match='version'):
         vertical_guard_config(other)
+
+
+def test_version_1_is_kept_verbatim_and_refused():
+    """Version 1 (replayed, never flown) is kept for provenance: version 2 keeps every value and changes three rules
+    (the crossing TTC for the sink rules, the binding test of rising ground, keep speed on contact)."""
+    from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
+                                              load_vertical_guard)
+    current, _ = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
+    path = VERTICAL_GUARD_DECLARATION.with_name('vertical_guard_v1.json')
+    old = json.loads(path.read_text(encoding='utf-8'))
+    assert old['version'] == 1 and old['frozen'] is True and lag_turn_declaration_sha256(old) == old['sha256']
+    assert old['sha256'].startswith('703f60e33aa0') and old['vertical_guard'] == current['vertical_guard']
+    assert current['previous_versions'][0]['sha256'] == old['sha256'] and current['change']
+    with pytest.raises(ValueError, match='version'):
+        load_vertical_guard(path)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -110,7 +125,7 @@ def test_sink_factor_follows_the_below_path_ttc_margin(lower, expected):
     """A below-path TTC kept fresh: the factor settles at clip((ttc_aged - 0.6)/0.9, 0, 1); samples arrive 0.08 s
     after capture and are aged to the tick (about 0.09 s on average at 18 Hz)."""
     gov = TtcClearanceGovernor(TTC, vertical=VG)
-    rows = run(gov, lambda t: dict(ttc=5., below=.5, lower=lower), 2.)
+    rows = run(gov, lambda t: dict(ttc=lower, below=.5, lower=lower), 2.)     # flat ground: both TTCs agree
     tail = series(rows, 'factor')[150:]
     assert tail.mean() == pytest.approx(expected, abs=.06)
     assert not any(r['arrest'] for r in rows) and max(r['climb'] for r in rows) == 0.
@@ -137,7 +152,7 @@ def test_descent_first_arrests_and_starts_no_climb_while_descending():
     assert max(r['climb'] for r in plain) == pytest.approx(3.5)
     gov = TtcClearanceGovernor(TTC, vertical=VG)
     rows = run(gov, floor, .6, rise=-.35)
-    assert max(r['climb'] for r in rows) == 0. and rows[-1]['arrest'] and rows[-1]['factor'] == 0.
+    assert max(r['climb'] for r in rows) == 0. and rows[-1]['arrest'] and rows[-1]['factor'] < .05   # crossing 0.71 s
     assert gov.vertical_counts['descent_first'] >= 2 and gov.vertical_counts['arrest_engagements'] == 1
     # the arrest holds arrest_hold_s after the last alarm received while descending
     rows = run(TtcClearanceGovernor(TTC, vertical=VG), lambda t: floor(t) if t < .2 else None, 1.2, rise=-.35)
@@ -192,6 +207,31 @@ def test_rising_ground_escalates_the_climb_graded_by_urgency():
     # without the guard the policy climbs on the first sample, at once and fast
     plain = run(TtcClearanceGovernor(TTC), mound, .1)
     assert series(plain, 'climb').max() > 3.
+
+
+def test_a_surface_below_the_path_that_the_path_does_not_head_into_limits_nothing():
+    """The Straw Bale arch approach (v1 replay): descending toward a ring inside an arch, the lower window reads
+    0.8-1.3 s on the ground in front of it while the alarm reads 1.8-9.9 s through the opening. Neither the sink
+    margin nor descent first acts; a crossing that both TTCs see does."""
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, lambda t: dict(ttc=3., below=.9, lower=.9), 1.5, rise=-.7)
+    assert all(r['factor'] == 1. and not r['arrest'] and r['climb'] == 0. for r in rows)
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, lambda t: dict(ttc=.9, below=.9, lower=.9), 1.5, rise=-.7)
+    assert rows[-1]['factor'] < .5 and rows[-1]['arrest'] and max(r['climb'] for r in rows) == 0.
+
+
+def test_rising_ground_needs_the_guard_climb_to_bind():
+    """A pilot that follows a ring up a hill climbs 1.2 m/s by its own request: below-path alarms while it climbs do
+    not escalate the guard's gentle climb. With the pilot level they do."""
+    def uphill(t):
+        return dict(ttc=.85, below=.9, lower=.35)
+    for pilot, escalates in ((1.2, False), (.2, True)):
+        gov = TtcClearanceGovernor(TTC, vertical=VG)
+        gov.pilot_vertical = pilot
+        rows = run(gov, uphill, 1.5, rise=lambda t: 1.2)
+        assert gov.escalated is escalates
+        assert max(r['climb'] for r in rows) == (pytest.approx(3.5) if escalates else pytest.approx(VG.gentle_climb))
 
 
 def test_alarms_while_descending_never_confirm_a_climb():
@@ -255,7 +295,7 @@ def fly(sample_of, *, cue=BELOW, velocity=(6., 0., 0.), seconds=1.5, plant='stat
 
 def test_the_pilot_keeps_a_time_margin_to_the_ground_below_a_descent():
     def ground(t):
-        return dict(ttc=5., below=.5, lower=1.05+.09)                        # factor about 0.5
+        return dict(ttc=1.05+.09, below=.5, lower=1.05+.09)                  # flat ground: factor about 0.5
     _, plain = fly(ground, plant='perfect')
     guarded, rows = fly(ground, plant='perfect', vertical_guard=VG)
     pilot_sink = plain[-1][1][2]
@@ -274,13 +314,25 @@ def test_a_withheld_sink_does_not_cut_the_horizontal_speed():
     """Resting on a slope (the drone cannot sink) with ground close below: without the guard the descent-path
     governor cuts the horizontal request for the unachieved sink; with it the sink is withheld and the speed kept."""
     def slope(t):
-        return dict(ttc=3., below=.6, lower=.5)
+        return dict(ttc=.5, below=.6, lower=.5)
     _, plain = fly(slope, seconds=2.)
     _, rows = fly(slope, seconds=2., vertical_guard=VG)
     assert min(r[3] for r in plain) < .6
     assert min(np.linalg.norm(r[1][:2]) for r in plain) < .7*min(np.linalg.norm(r[1][:2]) for r in rows)
     assert min(r[3] for r in rows) == 1. and rows[-1][1][2] == pytest.approx(0., abs=1e-9)
     assert rows[-1][2]['vertical_factor'] == 0. and all(r[4] != 'support_climb' for r in rows)
+
+
+def test_keep_speed_on_contact_without_looming_evidence():
+    """A contact the looming cannot see (the Straw Bale downhill: the path points below the image): the drone
+    cannot sink although the pilot asks for it. The support timers run; with the guard applied the descent-path
+    governor does not cut the horizontal request meanwhile (the support climb still follows), in shadow it does."""
+    _, plain = fly(lambda t: None, seconds=.9)
+    _, rows = fly(lambda t: None, seconds=.9, vertical_guard=VG)
+    _, shadow = fly(lambda t: None, seconds=.9, vertical_guard=VG, vertical_apply=False)
+    assert min(r[3] for r in plain) < .9 and min(r[3] for r in rows) == 1.
+    assert any(r[4] == 'support_climb' for r in rows) and any(r[4] == 'support_climb' for r in plain)
+    np.testing.assert_array_equal(np.array([r[1] for r in shadow]), np.array([r[1] for r in plain]))
 
 
 def test_the_pilot_arrests_a_sink_instead_of_climbing_into_the_ceiling():
@@ -309,7 +361,7 @@ def test_the_pilot_climbs_a_mound_once_rising_ground_is_confirmed():
 
 def test_shadow_flies_the_unguarded_pilot_and_logs_the_guard():
     def floor(t):
-        return dict(ttc=.71, below=.78, lower=.24) if t < .6 else dict(ttc=5., below=.5, lower=1.)
+        return dict(ttc=.71, below=.78, lower=.24) if t < .6 else dict(ttc=1., below=.5, lower=1.)
     _, plain = fly(floor, velocity=(6., 0., -.35), seconds=1.2)
     _, shadow = fly(floor, velocity=(6., 0., -.35), seconds=1.2, vertical_guard=VG, vertical_apply=False)
     np.testing.assert_array_equal(np.array([r[1] for r in shadow]), np.array([r[1] for r in plain]))

@@ -1,11 +1,11 @@
 {
  "schema": "haltere.obstacles.vertical_guard_gates.v1",
- "version": 2,
+ "version": 1,
  "note": "Offline gates of the vertical guard (configs/obstacles/vertical_guard.json version 1), scored by open-loop replays of logged flights through FastRaceCue (haltere/obstacles/vertical_replay.py). The thresholds are the task's; the definitions below make them computable and were fixed with the guard version they score, before any replay of the guard. The replays are open loop: the recorded motion does not respond to the replayed requests, so a gate shows the request a variant would have made at the recorded states, not a flight. Every flight named here was inspected while the guard was designed (development evidence, not held out). Each gate is scored once per guard version and every version is reported. The hash covers everything except frozen/frozen_at/sha256.",
  "vertical_guard": {
   "file": "configs/obstacles/vertical_guard.json",
-  "version": 2,
-  "sha256": "e06b690d0d4f1a416695cffbf5900e0942df70138db57f7b9f7a8c113fee417f"
+  "version": 1,
+  "sha256": "703f60e33aa0a08ca5af809cdaa84e0e2681e560bd8545ff15b03db3e227cf38"
  },
  "baseline_tree": {
   "branch": "m2-hairpin",
@@ -112,18 +112,7 @@
    "pass": "every flight and variant identical"
   }
  },
- "change": "v2 scores the vertical guard version 2 with the definitions and thresholds of v1 unchanged (every gate, window, tolerance and input is v1's); v1 scored guard version 1",
- "previous_versions": [
-  {
-   "version": 1,
-   "sha256": "977740fbc0f5c0852c18deee0a1c24d2ddc3fbd8d57e60cd13059cb7ae8b715e",
-   "frozen_at": "2026-09-26T20:16:44",
-   "file": "configs/obstacles/vertical_guard_gates_v1.json",
-   "scored_guard_version": 1,
-   "result": "docs/experiments/vertical_guard_v1_scores.json"
-  }
- ],
  "frozen": true,
- "frozen_at": "2026-09-26T20:40:32",
- "sha256": "53926ceada1062b4497fc7df1d2f435192dda8d2a58eda7e1037decbef0f291a"
+ "frozen_at": "2026-09-26T20:16:44",
+ "sha256": "977740fbc0f5c0852c18deee0a1c24d2ddc3fbd8d57e60cd13059cb7ae8b715e"
 }
