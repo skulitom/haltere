@@ -50,11 +50,34 @@ results, not a pass of the frozen gates.
 
 First time any brain run passed pillar A at 6 m/s.
 
-## Next
+## Round 2: wall pilot rules and brain braking
 
-1. Pilot: turn toward the ring before translating after a stand-off stop; a ceiling
-   guard on the terrain climb.
-2. brain-08 does not slow down live when asked (sustained 3.5 m/s requests and
-   governor caps), although the surrogate says it tracks slow requests: diagnose,
-   then a brain-09 that brakes.
-3. Straw Bale regression with the stack on; Pine Valley with the stack on.
+Branch `m2-hairpin` adds two rules inside the stack (`--wall-pilot`, frozen
+`configs/obstacles/wall_pilot.json` v3): turn toward the ring before translating
+after a stand-off stop, and a ceiling guard on the governor's terrain climb. Open
+-loop replays of the logs: the PD's push into the hairpin wall and brain-08's 3.5
+m/s ceiling climb are removed, the Pine mound climbs are unchanged, and nothing
+changes with the stack off or in shadow.
+
+| Run | Mode | Outcome |
+|---|---|---|
+| `minus-fast6-wall-01` | fast PD, stack + wall pilot | Crashed before pillar A at (54.0, 4.8, 2.25): the governor false-braked on the arch, then the PD, sinking at 0.37 m/s from 0.7 m, saw the floor loom (below-path TTC 0.24 s) and the governor climbed at 3.5 m/s for 0.8 s into the ceiling. The ceiling guard leaves climbs with below-path evidence alone (for the Pine mound). |
+
+Brain braking diagnosis: brain-08 does not brake for 3-4.5 m/s requests in the
+surrogate either (the slow-request metric hid it). Its pitch response to the
+speed error is 1-6% of the teacher's between 3 and 7 m/s; it brakes hard only for
+requests below about 2 m/s. Its distillation data had 0.13% of samples in that
+regime and no sustained governor-like caps. brain-09 recipe: synthetic governor
+caps and slow legs in the DAgger rollouts, a braking weight, and a
+ridge/smoothing refit sweep, with cap-step, sustained-request and live-state
+swap gates frozen first.
+
+## Next (revised)
+
+1. Graded terrain climb: when the floor looms because the drone is descending,
+   stop the descent first; climb hard only if the below-path TTC stays short while
+   level (rising ground).
+2. brain-09 with the braking recipe above.
+3. Then Minus Two again (PD and brain), a Straw Bale regression lap and Pine
+   Valley with the stack on.
+
