@@ -1,0 +1,310 @@
+{
+ "schema": "haltere.obstacles.free_space_gates.v1",
+ "version": 1,
+ "note": "Offline gates of the free-space corridor planner v1 (perception: haltere.vision.free_space on the depth process; pilot: haltere.liftoff.corridor_aim in FastRaceCue; docs/free_space_planner.md). Thresholds are the judged specification's section 9 values, fixed before any held-out frame of the planner is scored. Each gate is scored once and every version is reported. Offline replays are open loop and are not flight evidence. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze.",
+ "free_space_config": {
+  "file": "configs/obstacles/free_space.json",
+  "version": 1,
+  "note": "frozen separately (perception side) with its own sha256 before any held-out scoring; the gates below score that version only"
+ },
+ "splits": {
+  "dev_report_only": {
+   "store_runs": {
+    "straw": [
+     4,
+     6,
+     7,
+     8,
+     9,
+     13,
+     14,
+     15
+    ],
+    "minus": [
+     117,
+     118,
+     119,
+     120,
+     121,
+     122,
+     123,
+     124,
+     125,
+     126,
+     127,
+     128,
+     129
+    ],
+    "pine": [
+     132,
+     133,
+     134,
+     135,
+     136,
+     137,
+     138
+    ]
+   },
+   "flights": [
+    "minus-brain08-01",
+    "straw-brain08-04",
+    "pine-fast6-ttc-01"
+   ],
+   "note": "the union of both designs' development data (ScaledCorridor and RSCP-2D); numbers on it are reported, never gated, except where a gate below is marked dev-flagged"
+  },
+  "held_out": {
+   "flights": [
+    "minus-brain07-01",
+    "minus-fast6-cur-01",
+    "minus-brain08-slow35-01",
+    "minus-brain08-loom-01",
+    "minus-brain08-gapshadow-01",
+    "minus-brain08-gapon-01",
+    "minus-brain08-gapon-02",
+    "minus-fast6-gapon-01",
+    "minus-fast6-wall-01",
+    "pine-brain08-loom-01",
+    "straw-brain07-02",
+    "straw-brain07-03",
+    "straw-brain08-06"
+   ],
+   "store_environments_report_only": [
+    "The Pit",
+    "Hannover",
+    "Paris",
+    "Hangar C03"
+   ]
+  },
+  "sealed": {
+   "environments": [
+    "The Green",
+    "Hall 26"
+   ],
+   "rule": "never read"
+  }
+ },
+ "scoring": {
+  "offline_age_s": 0.1,
+  "publication": "offline samples are published at capture + offline_age_s (the live gap-sample age p50 was 96 ms)",
+  "confirmation": "the real haltere.liftoff.corridor_aim.CorridorAim (and VerticalGuard) with the frozen free_space.json pilot/vertical values",
+  "clock": "distances and times use the confirming sample's capture time",
+  "hindsight": "the M2 failure anatomy (obstacle coordinates, impacts) and telemetry are used for scoring only, never as an input",
+  "decode_first": [
+   "minus-brain08-gapshadow-01",
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-fast6-gapon-01",
+   "minus-fast6-wall-01",
+   "pine-fast6-ttc-01"
+  ],
+  "decode_note": "decoded with gap_cue_eval extract (CPU), then relative depth in one GPU chunk"
+ },
+ "anatomy": {
+  "pillar_a_box_xy": {
+   "x": [
+    54.7,
+    55.5
+   ],
+   "y": [
+    3.65,
+    4.45
+   ]
+  },
+  "pillar_a_inflate_m": 0.2,
+  "pillar_a_approach_region": {
+   "x": [
+    42.0,
+    54.7
+   ],
+   "y": [
+    0.0,
+    6.0
+   ]
+  },
+  "pillar_b_side": "-x",
+  "pine_trunk_impact_phase_s": 9.56
+ },
+ "gates": {
+  "S1": {
+   "what": "floor scale: h_floor / telemetry height over the flat garage floor",
+   "approaches": [
+    "minus-brain07-01",
+    "minus-fast6-cur-01",
+    "minus-brain08-slow35-01",
+    "minus-brain08-loom-01",
+    "minus-brain08-gapshadow-01"
+   ],
+   "approaches_note": "the five held-out Minus Two approaches to pillar A flown without gap-cue authority (the gap-on and wall flights changed their paths; reported, not gated)",
+   "min_speed_mps": 2.0,
+   "median_ratio": [
+    0.8,
+    1.25
+   ],
+   "band_ratio": [
+    0.67,
+    1.5
+   ],
+   "min_fraction_in_band": 0.7
+  },
+  "S2": {
+   "what": "pillar range: planner range / true range over pillar-A blocks (projected pillar box covering >= 50% of the block) at 3-8 m",
+   "approaches": "as S1",
+   "min_block_cover": 0.5,
+   "range_m": [
+    3.0,
+    8.0
+   ],
+   "pooled_median_ratio": [
+    0.8,
+    1.25
+   ],
+   "frame_median_ratio": [
+    0.67,
+    1.5
+   ],
+   "min_fraction_frames": 0.7
+  },
+  "S3": {
+   "what": "coverage: valid planner samples on frames with speed > 2 m/s and the ring in view",
+   "min_speed_mps": 2.0,
+   "min_valid_fraction": 0.85,
+   "per_environment": [
+    "Minus Two (held-out Minus flights pooled)",
+    "Straw Bale (held-out Straw flights pooled)",
+    "Pine Valley (pine-brain08-loom-01)"
+   ]
+  },
+  "A1": {
+   "what": "pillar A: confirmed LEFT (the ring side) early, never RIGHT far out, never an applied aim inside the pillar",
+   "approaches": "as S1",
+   "min_passing": 4,
+   "pass_rule": "first confirmed class L (or confirmed blocked with the L option urgent) at distance >= min(6.0 m, d_switch - 0.5 m), d_switch = distance to the pillar face when the pillar-A ring enters the cue",
+   "max_distance_m": 6.0,
+   "switch_margin_m": 0.5,
+   "no_right_beyond_m": 2.0,
+   "no_applied_aim_inside": "no applied aim ray inside the pillar's azimuth extent (box inflated by pillar_a_inflate_m) while the ring ray is outside it",
+   "report": "the pillar_sim clearance for both response models (brain08, fast_pd)"
+  },
+  "B1": {
+   "what": "pillar B (dev-flagged because of the graft, gated anyway): a confirmed shift away from the pillar (-x) at least 1.0 s before impact",
+   "store_runs": [
+    123,
+    127
+   ],
+   "min_lead_s": 1.0,
+   "side": "-x",
+   "required_runs": 2
+  },
+  "T1": {
+   "what": "Pine trunk: first confirmed RIGHT early enough for brain-08 to move 0.5 m sideways",
+   "flight": "pine-brain08-loom-01",
+   "min_lead_s": 0.95,
+   "lead_note": "brain-08's 0.55 s delay plus 0.39 s to move 0.5 m sideways at 6.5 m/s^2",
+   "no_left_last_s": 2.0,
+   "report": "the first raw R sample and the brain-08 kinematic clearance; the gap cue scored 0.66 s"
+  },
+  "Q1": {
+   "what": "clean Straw Bale laps: few, small, quiet episodes",
+   "flights": [
+    "straw-brain07-02",
+    "straw-brain07-03",
+    "straw-brain08-06"
+   ],
+   "episode": "intended offset != 0 or confirmed blocked; gaps < 0.3 s merged",
+   "merge_gap_s": 0.3,
+   "max_episodes_per_min": 6.0,
+   "max_vertical_episodes_per_min": 2.0,
+   "max_blocked_or_urgent_episodes_per_min": 1.0,
+   "max_terrain_climbs_per_min": 1.0,
+   "p90_abs_applied_az_max_deg": 10.0,
+   "switch_window_s": 0.5,
+   "switch_abs_offset_max_deg": 4.0,
+   "switch_min_fraction": 0.95,
+   "report": "the floor-bound activation rate and the per-environment rates of the four report-only store environments"
+  },
+  "L1": {
+   "what": "leaks: the G4 perturbation set (ring painted or removed on every 10th frame; masks recomputed; LK pair taken from the unperturbed previous frame)",
+   "max_delta_deg": 2.0,
+   "min_same_kind_fraction": 0.97,
+   "min_same_kind_fraction_non_clear": 0.9,
+   "hud_only": "disparity 10 on HUD pixels and 1 elsewhere: 0 frames blocked or shifted"
+  },
+  "V1": {
+   "what": "ceiling: no climb into the garage ceiling (pilot_replay --stack on --planner on with the perception plan stream)",
+   "flights": [
+    "minus-brain08-gapon-01",
+    "minus-brain08-gapon-02",
+    "minus-fast6-wall-01"
+   ],
+   "before_onset_s": 0.5,
+   "window": "from before_onset_s before the last logged governor climb onset before the impact to the ceiling impact",
+   "max_vz": 1.0,
+   "h_ceil_low_m": 0.8,
+   "max_vz_low_ceiling": 0.3,
+   "r_vert_m": 0.35,
+   "no_v_class_into_ceiling": "no confirmed class-V aim whose corridor (intended el over d_h, plus r_vert_m) reaches the sample's h_ceil"
+  },
+  "V2": {
+   "what": "floor sink: slowed and stopped, never a hard climb from a flat floor",
+   "windows": {
+    "minus-fast6-wall-01": "last_3s",
+    "minus-brain08-gapon-01": [
+     16.5,
+     19.0
+    ]
+   },
+   "max_vz": 1.0,
+   "max_vz_flat": 0.3,
+   "floor_clear_m": 0.5,
+   "descending_mps": 0.0,
+   "flat_rule": "requested vz <= max_vz_flat whenever the telemetry height >= floor_clear_m and rise is not confirmed",
+   "low_rule": "requested vz >= 0 whenever the telemetry height < floor_clear_m while descending (measured vz < -descending_mps)",
+   "displaced_fraction": 0.9,
+   "displaced_rule": "the governor climb is displaced on >= displaced_fraction of the ticks where it was active in the log"
+  },
+  "V3": {
+   "what": "Pine mound (dev-flagged, no-regression): climb or side-step while the logged governor climbed; no late descent",
+   "flights": [
+    "pine-fast6-ttc-01"
+   ],
+   "min_vz": 1.0,
+   "min_az_deg": 8.0,
+   "answered_fraction": 0.8,
+   "last_s": 2.0
+  },
+  "R1": {
+   "what": "runtime and parity: G8 protocol, straw-brain08-06 30-90 s replayed with Liftoff idle, one GPU chunk",
+   "flight": "straw-brain08-06",
+   "window_s": [
+    30,
+    90
+   ],
+   "min_camera_hz": 15.0,
+   "max_plan_age_p95_ms": 150.0,
+   "max_cue_latency_p95_increase_ms": 3.0,
+   "max_lk_ms_p95": 8.0,
+   "max_plan_ms_p95": 6.0,
+   "max_camera_waits": 0,
+   "parity_min_same_kind": 0.95,
+   "parity_max_delta_p95_deg": 1.0
+  },
+  "I1": {
+   "what": "identity: planner off and shadow are bitwise identical (FastRaceCue section 6) and label isolation passes",
+   "tests": [
+    "tests/test_fast_race_cue_planner.py",
+    "tests/test_obstacle_label_isolation.py"
+   ],
+   "replay": "haltere/obstacles/pilot_replay.py identity runs against m2-hairpin (report)"
+  }
+ },
+ "consequences": {
+  "S1-S3": "no authority flights, only shadow flights",
+  "A1 or V1-V2": "no authority flights on Minus Two",
+  "T1": "no authority flights on Pine Valley",
+  "Q1": "v2 adds RSCP's expansion veto under a new version and a new freeze",
+  "deviation": "any flight with authority after a gate failure is a deviation: it needs the user's explicit go-ahead in chat and is reported as a deviation"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-26T12:27:24",
+ "sha256": "626c4b7606ee522eeab0a56c5602d17b3616136bc03fc9bef0c38eb7007e5f88"
+}
