@@ -797,7 +797,8 @@ def cmd_run(args):
         r = run_sequence(seq, config, motor, offline_age=float(gates['offline_age_s']), leak_tests=leak,
                          hud_scale=tuple(gates['L1']['hud_scale']) if leak else None, log=_log)
         extra = dict(pos=seq['pos'], vel=seq['vel'], quat=seq['quat'], cue_uv=seq['cue'], tel_valid=seq['tel'],
-                     config_sha256=np.asarray(cfg_sha), gates_sha256=np.asarray(gates_sha), motor=np.asarray(motor))
+                     config_sha256=np.asarray(cfg_sha), gates_sha256=np.asarray(gates_sha),
+                     motor_name=np.asarray(motor))
         if 'tti' in seq:
             extra['tti'] = seq['tti']
         if np.isfinite(seq['impact']):
@@ -1089,9 +1090,47 @@ def cmd_dev(args):
     (out / f'dev_{args.tag}.json').write_text(json.dumps(res, indent=1, default=_json_default) + '\n', encoding='utf-8')
 
 
+def cmd_r1(args):
+    """R1 from the runtime bench (haltere.obstacles.gap_bench run --condition baseline / plan, plan_parity) against
+    the frozen thresholds -> DIR/r1.json."""
+    gates, gates_sha = load_gates(require_frozen=True)
+    g = gates['R1']
+    bench = Path(args.bench)
+    base = json.loads((bench / f'{args.flight}_baseline.json').read_text(encoding='utf-8'))
+    run = json.loads((bench / f'{args.flight}_plan.json').read_text(encoding='utf-8'))
+    par = json.loads((bench / f'plan_parity_{args.flight}_plan.json').read_text(encoding='utf-8'))
+    plan, cam = run['plan'], run['camera']
+    inc = cam['cue_latency_ms']['p95'] - base['camera']['cue_latency_ms']['p95']
+    skips = run.get('camera_skips') or {}
+    waits = int(skips.get('frames', 0)) + int(skips.get('cues', 0))
+    checks = dict(camera_hz=(cam['rate_hz'], cam['rate_hz'] >= g['min_camera_hz']),
+                  plan_age_p95_ms=(plan['age_at_tick_ms']['p95'], plan['age_at_tick_ms']['p95'] <= g['max_plan_age_p95_ms']),
+                  cue_latency_increase_p95_ms=(inc, inc <= g['max_cue_latency_increase_p95_ms']),
+                  lk_ms_p95=(plan['lk_ms']['p95'], plan['lk_ms']['p95'] <= g['max_lk_ms_p95']),
+                  plan_ms_p95=(plan['plan_ms']['p95'], plan['plan_ms']['p95'] <= g['max_plan_ms_p95']),
+                  camera_waits=(waits, waits <= g['max_camera_waits']),
+                  parity_same_kind=(par.get('same_kind'), par.get('same_kind') is not None
+                                    and par['same_kind'] >= g['parity_min_same_kind']),
+                  parity_dangle_p95_deg=(max(par['dangle_deg']['az_p95'], par['dangle_deg']['el_p95']),
+                                         max(par['dangle_deg']['az_p95'], par['dangle_deg']['el_p95'])
+                                         <= g['parity_max_dangle_p95_deg']))
+    res = dict(schema='haltere.obstacles.free_space_r1.v1', gates_sha256=gates_sha, flight=args.flight,
+               protocol=dict(start_s=run['start_s'], seconds=run['seconds'], parent=run['priorities'].get('launch'),
+                             gpu_peak_c=run.get('gpu_peak_c')),
+               checks={k: dict(value=v, passed=bool(ok)) for k, (v, ok) in checks.items()},
+               passes=bool(all(ok for _, ok in checks.values())))
+    Path(args.out).mkdir(parents=True, exist_ok=True)
+    (Path(args.out) / 'r1.json').write_text(json.dumps(res, indent=1, default=_json_default) + '\n', encoding='utf-8')
+    _log(json.dumps(res, default=_json_default))
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='python -m haltere.obstacles.free_space_eval')
     sub = ap.add_subparsers(dest='cmd', required=True)
+    a = sub.add_parser('r1')
+    a.add_argument('--out', required=True)
+    a.add_argument('--bench', required=True, help='the gap_bench output directory')
+    a.add_argument('--flight', default='straw-brain08-06')
     for name in ('frames', 'depth', 'run', 'score', 'dev'):
         a = sub.add_parser(name)
         a.add_argument('--out', required=True)
@@ -1108,7 +1147,7 @@ def main(argv=None):
     sub.add_parser('freeze')
     args = ap.parse_args(argv)
     {'frames': cmd_frames, 'depth': cmd_depth, 'freeze': cmd_freeze, 'run': cmd_run, 'score': cmd_score,
-     'dev': cmd_dev}[args.cmd](args)
+     'dev': cmd_dev, 'r1': cmd_r1}[args.cmd](args)
 
 
 if __name__ == '__main__':

@@ -1,0 +1,1229 @@
+{
+ "schema": "haltere.obstacles.free_space_results.v1",
+ "scored_at": "2026-09-26T12:43:11",
+ "free_space_sha256": "532c2eddd37e72f12862b70551a80668f04f3fba7e8713905d397c6f3b13dd8d",
+ "free_space_version": 1,
+ "gates_sha256": "8c2ccf247bc7b88d5ea500fb51e60f0a1eb26c83b7a2d4111a9f99ab20570305",
+ "gates_version": 1,
+ "aim_implementation": "SpecCorridorAim (section-6 replica); haltere.liftoff.corridor_aim is not on this branch",
+ "S1": {
+  "total": {
+   "n": 40,
+   "median": 1.849,
+   "p10": 1.026,
+   "p90": 2.309,
+   "band_fraction": 0.3,
+   "passes": false
+  },
+  "per_flight": {
+   "minus-brain07-01": {
+    "n": 0,
+    "median": null,
+    "band_fraction": null,
+    "passes": false,
+    "valid_kind_samples": 0,
+    "frames_in_region_fast": 120
+   },
+   "minus-fast6-cur-01": {
+    "n": 0,
+    "median": null,
+    "band_fraction": null,
+    "passes": false,
+    "valid_kind_samples": 0,
+    "frames_in_region_fast": 129
+   },
+   "minus-brain08-slow35-01": {
+    "n": 33,
+    "median": 1.937,
+    "p10": 1.447,
+    "p90": 2.405,
+    "band_fraction": 0.152,
+    "passes": false,
+    "valid_kind_samples": 33,
+    "frames_in_region_fast": 105
+   },
+   "minus-brain08-loom-01": {
+    "n": 3,
+    "median": 1.118,
+    "p10": 1.044,
+    "p90": 1.383,
+    "band_fraction": 1.0,
+    "passes": true,
+    "valid_kind_samples": 3,
+    "frames_in_region_fast": 99
+   },
+   "minus-brain08-gapshadow-01": {
+    "n": 4,
+    "median": 0.927,
+    "p10": 0.891,
+    "p90": 1.003,
+    "band_fraction": 1.0,
+    "passes": true,
+    "valid_kind_samples": 4,
+    "frames_in_region_fast": 118
+   }
+  },
+  "passes": false
+ },
+ "S2": {
+  "frames": 81,
+  "blocks": 2159,
+  "pooled_median": 0.929,
+  "frame_band_fraction": 0.951,
+  "frame_median_p10_p50_p90": [
+   0.748,
+   0.875,
+   1.224
+  ],
+  "per_flight": {
+   "minus-brain07-01": {
+    "frames": 18,
+    "blocks": 449,
+    "pooled_median": 0.89
+   },
+   "minus-fast6-cur-01": {
+    "frames": 19,
+    "blocks": 517,
+    "pooled_median": 1.239
+   },
+   "minus-brain08-slow35-01": {
+    "frames": 14,
+    "blocks": 382,
+    "pooled_median": 0.843
+   },
+   "minus-brain08-loom-01": {
+    "frames": 14,
+    "blocks": 369,
+    "pooled_median": 0.876
+   },
+   "minus-brain08-gapshadow-01": {
+    "frames": 16,
+    "blocks": 442,
+    "pooled_median": 1.002
+   }
+  },
+  "passes": true
+ },
+ "A1": {
+  "approaches": {
+   "minus-brain07-01": {
+    "d_switch_m": 6.71,
+    "d_switch_source": "switch",
+    "required_m": 6.0,
+    "first_left_d_m": null,
+    "first_left_kind": null,
+    "passes": false,
+    "confirmed_right_beyond_2m_d_m": [
+     6.41
+    ],
+    "confirmed_right_ticks": 71,
+    "aim_into_pillar_ticks": 0,
+    "aim_into_pillar_d_m": [],
+    "ticks": 145,
+    "closest_d_m": 0.77,
+    "sample_kinds_in_region": {
+     "no_ring": 3,
+     "clear": 11,
+     "shift": 16,
+     "blocked": 4
+    },
+    "first_raw_left_d_m": 8.58
+   },
+   "minus-fast6-cur-01": {
+    "d_switch_m": 6.82,
+    "d_switch_source": "switch",
+    "required_m": 6.0,
+    "first_left_d_m": 3.56,
+    "first_left_kind": "L",
+    "passes": false,
+    "confirmed_right_beyond_2m_d_m": [
+     8.11
+    ],
+    "confirmed_right_ticks": 7,
+    "aim_into_pillar_ticks": 0,
+    "aim_into_pillar_d_m": [],
+    "ticks": 137,
+    "closest_d_m": 0.51,
+    "sample_kinds_in_region": {
+     "clear": 8,
+     "aperture": 2,
+     "shift": 23,
+     "blocked": 3
+    },
+    "first_raw_left_d_m": 5.51,
+    "pillar_sim_clearance_m": {
+     "brain08": 0.0,
+     "fast_pd": 0.021
+    },
+    "pillar_sim_note": "from the confirmation tick (x 51.78, y 3.33), 5.80 m/s, aim 41.1 deg"
+   },
+   "minus-brain08-slow35-01": {
+    "d_switch_m": 6.9,
+    "d_switch_source": "switch",
+    "required_m": 6.0,
+    "first_left_d_m": 13.71,
+    "first_left_kind": "L",
+    "passes": true,
+    "confirmed_right_beyond_2m_d_m": [
+     3.82
+    ],
+    "confirmed_right_ticks": 39,
+    "aim_into_pillar_ticks": 12,
+    "aim_into_pillar_d_m": [
+     8.19,
+     8.3,
+     8.41,
+     11.95,
+     12.05,
+     12.15,
+     12.25,
+     12.36,
+     12.46,
+     12.56,
+     12.66,
+     12.76
+    ],
+    "ticks": 167,
+    "closest_d_m": 0.55,
+    "sample_kinds_in_region": {
+     "no_ring": 5,
+     "no_scale": 3,
+     "clear": 3,
+     "shift": 12,
+     "blocked": 8
+    },
+    "first_raw_left_d_m": 10.86,
+    "pillar_sim_clearance_m": {
+     "brain08": 2.014,
+     "fast_pd": 2.35
+    },
+    "pillar_sim_note": "from the confirmation tick (x 42.01, y 2.68), 5.11 m/s, aim 20.6 deg"
+   },
+   "minus-brain08-loom-01": {
+    "d_switch_m": 6.92,
+    "d_switch_source": "switch",
+    "required_m": 6.0,
+    "first_left_d_m": null,
+    "first_left_kind": null,
+    "passes": false,
+    "confirmed_right_beyond_2m_d_m": [
+     4.04
+    ],
+    "confirmed_right_ticks": 45,
+    "aim_into_pillar_ticks": 0,
+    "aim_into_pillar_d_m": [],
+    "ticks": 135,
+    "closest_d_m": 0.67,
+    "sample_kinds_in_region": {
+     "clear": 9,
+     "shift": 8,
+     "blocked": 11
+    },
+    "first_raw_left_d_m": null
+   },
+   "minus-brain08-gapshadow-01": {
+    "d_switch_m": 6.68,
+    "d_switch_source": "switch",
+    "required_m": 6.0,
+    "first_left_d_m": null,
+    "first_left_kind": null,
+    "passes": false,
+    "confirmed_right_beyond_2m_d_m": [
+     4.13
+    ],
+    "confirmed_right_ticks": 44,
+    "aim_into_pillar_ticks": 0,
+    "aim_into_pillar_d_m": [],
+    "ticks": 138,
+    "closest_d_m": 0.37,
+    "sample_kinds_in_region": {
+     "no_ring": 1,
+     "clear": 5,
+     "aperture": 3,
+     "shift": 14,
+     "blocked": 8
+    },
+    "first_raw_left_d_m": 2.04
+   }
+  },
+  "passing": 1,
+  "required": 4,
+  "confirmed_right_beyond_2m_ticks": 206,
+  "aim_into_pillar_ticks": 12,
+  "passes": false
+ },
+ "A1_reported_not_gated": {
+  "minus-brain08-gapon-01": {
+   "d_switch_m": 6.83,
+   "d_switch_source": "switch",
+   "required_m": 6.0,
+   "first_left_d_m": null,
+   "first_left_kind": null,
+   "passes": false,
+   "confirmed_right_beyond_2m_d_m": [
+    6.19
+   ],
+   "confirmed_right_ticks": 52,
+   "aim_into_pillar_ticks": 1,
+   "aim_into_pillar_d_m": [
+    0.64
+   ],
+   "ticks": 114,
+   "closest_d_m": 0.63,
+   "sample_kinds_in_region": {
+    "clear": 13,
+    "aperture": 1,
+    "shift": 12,
+    "blocked": 9
+   },
+   "first_raw_left_d_m": 5.27
+  },
+  "minus-brain08-gapon-02": {
+   "d_switch_m": 5.9,
+   "d_switch_source": "anatomy default (no switch detected)",
+   "required_m": 5.4,
+   "first_left_d_m": 4.05,
+   "first_left_kind": "L",
+   "passes": false,
+   "confirmed_right_beyond_2m_d_m": [
+    2.8
+   ],
+   "confirmed_right_ticks": 21,
+   "aim_into_pillar_ticks": 1,
+   "aim_into_pillar_d_m": [
+    0.73
+   ],
+   "ticks": 113,
+   "closest_d_m": 0.72,
+   "sample_kinds_in_region": {
+    "no_ring": 2,
+    "clear": 13,
+    "aperture": 2,
+    "shift": 16,
+    "blocked": 5
+   },
+   "first_raw_left_d_m": 5.27,
+   "pillar_sim_clearance_m": {
+    "brain08": 0.0,
+    "fast_pd": 0.0
+   },
+   "pillar_sim_note": "from the confirmation tick (x 51.64, y 3.19), 5.70 m/s, aim 21.5 deg"
+  },
+  "minus-fast6-gapon-01": {
+   "d_switch_m": 5.9,
+   "d_switch_source": "anatomy default (no switch detected)",
+   "required_m": 5.4,
+   "first_left_d_m": 5.86,
+   "first_left_kind": "L",
+   "passes": true,
+   "confirmed_right_beyond_2m_d_m": [],
+   "confirmed_right_ticks": 0,
+   "aim_into_pillar_ticks": 0,
+   "aim_into_pillar_d_m": [],
+   "ticks": 131,
+   "closest_d_m": 1.16,
+   "sample_kinds_in_region": {
+    "no_ring": 5,
+    "clear": 18,
+    "shift": 18,
+    "blocked": 1
+   },
+   "first_raw_left_d_m": 6.08,
+   "pillar_sim_clearance_m": {
+    "brain08": 0.796,
+    "fast_pd": 1.308
+   },
+   "pillar_sim_note": "from the confirmation tick (x 49.35, y 2.76), 3.50 m/s, aim 39.2 deg"
+  },
+  "minus-fast6-wall-01": {
+   "d_switch_m": 5.9,
+   "d_switch_source": "anatomy default (no switch detected)",
+   "required_m": 5.4,
+   "first_left_d_m": 4.74,
+   "first_left_kind": "L",
+   "passes": false,
+   "confirmed_right_beyond_2m_d_m": [],
+   "confirmed_right_ticks": 0,
+   "aim_into_pillar_ticks": 0,
+   "aim_into_pillar_d_m": [],
+   "ticks": 166,
+   "closest_d_m": 1.05,
+   "sample_kinds_in_region": {
+    "no_ring": 12,
+    "no_scale": 5,
+    "clear": 11,
+    "aperture": 2,
+    "shift": 12,
+    "blocked": 2
+   },
+   "first_raw_left_d_m": 6.16,
+   "pillar_sim_clearance_m": {
+    "brain08": 1.26,
+    "fast_pd": 1.496
+   },
+   "pillar_sim_note": "from the confirmation tick (x 50.50, y 3.28), 4.24 m/s, aim 40.2 deg"
+  }
+ },
+ "S3": {
+  "environments": {
+   "Minus Two": {
+    "frames": 1507,
+    "valid": 1491,
+    "valid_fraction": 0.9894,
+    "per_flight": {
+     "minus-brain07-01": {
+      "frames": 141,
+      "valid": 141,
+      "kinds": {
+       "clear": 111,
+       "aperture": 1,
+       "shift": 24,
+       "blocked": 5
+      }
+     },
+     "minus-fast6-cur-01": {
+      "frames": 148,
+      "valid": 148,
+      "kinds": {
+       "clear": 119,
+       "aperture": 2,
+       "shift": 24,
+       "blocked": 3
+      }
+     },
+     "minus-brain08-slow35-01": {
+      "frames": 119,
+      "valid": 116,
+      "kinds": {
+       "no_scale": 3,
+       "clear": 83,
+       "shift": 22,
+       "blocked": 11
+      }
+     },
+     "minus-brain08-loom-01": {
+      "frames": 121,
+      "valid": 121,
+      "kinds": {
+       "clear": 87,
+       "aperture": 4,
+       "shift": 15,
+       "blocked": 15
+      }
+     },
+     "minus-brain08-gapshadow-01": {
+      "frames": 142,
+      "valid": 142,
+      "kinds": {
+       "clear": 82,
+       "aperture": 12,
+       "shift": 27,
+       "blocked": 21
+      }
+     },
+     "minus-brain08-gapon-01": {
+      "frames": 225,
+      "valid": 225,
+      "kinds": {
+       "clear": 162,
+       "aperture": 7,
+       "shift": 26,
+       "blocked": 30
+      }
+     },
+     "minus-brain08-gapon-02": {
+      "frames": 240,
+      "valid": 240,
+      "kinds": {
+       "clear": 156,
+       "aperture": 10,
+       "shift": 39,
+       "blocked": 35
+      }
+     },
+     "minus-fast6-gapon-01": {
+      "frames": 229,
+      "valid": 221,
+      "kinds": {
+       "no_scale": 8,
+       "clear": 172,
+       "aperture": 4,
+       "shift": 41,
+       "blocked": 4
+      }
+     },
+     "minus-fast6-wall-01": {
+      "frames": 142,
+      "valid": 137,
+      "kinds": {
+       "no_scale": 5,
+       "clear": 117,
+       "aperture": 3,
+       "shift": 15,
+       "blocked": 2
+      }
+     }
+    },
+    "passes": true
+   },
+   "Straw Bale": {
+    "frames": 12486,
+    "valid": 11688,
+    "valid_fraction": 0.9361,
+    "per_flight": {
+     "straw-brain07-02": {
+      "frames": 4435,
+      "valid": 4109,
+      "kinds": {
+       "no_scale": 326,
+       "clear": 3558,
+       "aperture": 39,
+       "shift": 315,
+       "blocked": 197
+      }
+     },
+     "straw-brain07-03": {
+      "frames": 4303,
+      "valid": 4017,
+      "kinds": {
+       "no_scale": 286,
+       "clear": 3421,
+       "aperture": 30,
+       "shift": 337,
+       "blocked": 229
+      }
+     },
+     "straw-brain08-06": {
+      "frames": 3748,
+      "valid": 3562,
+      "kinds": {
+       "no_scale": 186,
+       "clear": 3088,
+       "aperture": 36,
+       "shift": 265,
+       "blocked": 173
+      }
+     }
+    },
+    "passes": true
+   },
+   "Pine Valley": {
+    "frames": 77,
+    "valid": 77,
+    "valid_fraction": 1.0,
+    "per_flight": {
+     "pine-brain08-loom-01": {
+      "frames": 77,
+      "valid": 77,
+      "kinds": {
+       "clear": 64,
+       "shift": 13
+      }
+     }
+    },
+    "passes": true
+   }
+  },
+  "passes": true
+ },
+ "B1": {
+  "runs": {
+   "123": {
+    "first_minus_x_tti_s": 1.07,
+    "passes": true,
+    "plus_x_before_tti_s": [],
+    "kinds_in_window": {
+     "blocked": 3,
+     "clear": 22,
+     "shift": 11
+    }
+   },
+   "127": {
+    "first_minus_x_tti_s": 1.15,
+    "passes": true,
+    "plus_x_before_tti_s": [],
+    "kinds_in_window": {
+     "blocked": 5,
+     "clear": 25,
+     "no_ring": 1,
+     "shift": 11
+    }
+   }
+  },
+  "passes": true
+ },
+ "T1": {
+  "first_confirmed_right_tti_s": 0.11,
+  "confirmed_left_last_2s_ticks": 39,
+  "first_raw_right_tti_s": 0.55,
+  "brain08_kinematic_clearance_m": 0.0,
+  "last_2s_samples": [
+   {
+    "tti_s": 2.0,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 2.0,
+    "r_az": -2.0,
+    "d_free_ring": 8.78
+   },
+   {
+    "tti_s": 1.88,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 0.0,
+    "r_az": 0.0,
+    "d_free_ring": 8.68
+   },
+   {
+    "tti_s": 1.83,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 0.0,
+    "r_az": 0.0,
+    "d_free_ring": 8.62
+   },
+   {
+    "tti_s": 1.72,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 8.0,
+    "r_az": -20.0,
+    "d_free_ring": 8.47
+   },
+   {
+    "tti_s": 1.66,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 4.0,
+    "r_az": -2.0,
+    "d_free_ring": 8.41
+   },
+   {
+    "tti_s": 1.55,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 8.0,
+    "r_az": -20.0,
+    "d_free_ring": 8.31
+   },
+   {
+    "tti_s": 1.5,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 4.0,
+    "r_az": -20.0,
+    "d_free_ring": 8.28
+   },
+   {
+    "tti_s": 1.38,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 2.0,
+    "r_az": -2.0,
+    "d_free_ring": 8.24
+   },
+   {
+    "tti_s": 1.33,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 2.0,
+    "r_az": -2.0,
+    "d_free_ring": 8.23
+   },
+   {
+    "tti_s": 1.27,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 2.0,
+    "r_az": -8.0,
+    "d_free_ring": 8.23
+   },
+   {
+    "tti_s": 1.16,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 4.0,
+    "r_az": -20.0,
+    "d_free_ring": 8.23
+   },
+   {
+    "tti_s": 1.11,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 14.0,
+    "r_az": -20.0,
+    "d_free_ring": 8.24
+   },
+   {
+    "tti_s": 1.0,
+    "kind": "clear",
+    "cls": 0,
+    "az": 0.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 8.25
+   },
+   {
+    "tti_s": 0.94,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 5.93
+   },
+   {
+    "tti_s": 0.88,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 5.59
+   },
+   {
+    "tti_s": 0.83,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 4.25
+   },
+   {
+    "tti_s": 0.77,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 3.81
+   },
+   {
+    "tti_s": 0.66,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 4.03
+   },
+   {
+    "tti_s": 0.61,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 3.71
+   },
+   {
+    "tti_s": 0.55,
+    "kind": "shift",
+    "cls": -1,
+    "az": -20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 3.54
+   },
+   {
+    "tti_s": 0.44,
+    "kind": "shift",
+    "cls": -1,
+    "az": -20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 3.55
+   },
+   {
+    "tti_s": 0.38,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": -20.0,
+    "d_free_ring": 3.24
+   },
+   {
+    "tti_s": 0.33,
+    "kind": "shift",
+    "cls": 1,
+    "az": 20.0,
+    "l_az": 20.0,
+    "r_az": null,
+    "d_free_ring": 2.43
+   },
+   {
+    "tti_s": 0.22,
+    "kind": "shift",
+    "cls": -1,
+    "az": -20.0,
+    "l_az": null,
+    "r_az": -20.0,
+    "d_free_ring": 2.32
+   },
+   {
+    "tti_s": 0.16,
+    "kind": "shift",
+    "cls": -1,
+    "az": -20.0,
+    "l_az": null,
+    "r_az": -20.0,
+    "d_free_ring": 2.07
+   },
+   {
+    "tti_s": 0.11,
+    "kind": "shift",
+    "cls": -1,
+    "az": -20.0,
+    "l_az": null,
+    "r_az": -20.0,
+    "d_free_ring": 1.51
+   }
+  ],
+  "reference": "gap cue: 0.66 s",
+  "passes": false
+ },
+ "Q1": {
+  "flights": {
+   "straw-brain07-02": {
+    "minutes": 5.888,
+    "episodes": 46,
+    "vertical_episodes": 4,
+    "urgent_episodes": 43,
+    "terrain_climbs": 40,
+    "switches": 31,
+    "switches_quiet": 29,
+    "floor_bound_active_s": 0.58,
+    "kinds": {
+     "no_ring": 1078,
+     "slow": 4,
+     "no_scale": 326,
+     "clear": 3561,
+     "aperture": 39,
+     "shift": 315,
+     "blocked": 197
+    },
+    "aim_counts": {
+     "samples": 4112,
+     "stale": 0,
+     "invalid": 1408,
+     "repeated": 0,
+     "episodes_l": 22,
+     "episodes_r": 349,
+     "episodes_v": 10,
+     "blocked_episodes": 20,
+     "flips": 0,
+     "conflicts": 17,
+     "engaged_s": 50.24
+    }
+   },
+   "straw-brain07-03": {
+    "minutes": 5.872,
+    "episodes": 55,
+    "vertical_episodes": 4,
+    "urgent_episodes": 51,
+    "terrain_climbs": 41,
+    "switches": 30,
+    "switches_quiet": 27,
+    "floor_bound_active_s": 0.5,
+    "kinds": {
+     "no_ring": 1020,
+     "slow": 6,
+     "no_scale": 286,
+     "clear": 3424,
+     "aperture": 30,
+     "shift": 337,
+     "blocked": 229
+    },
+    "aim_counts": {
+     "samples": 4020,
+     "stale": 0,
+     "invalid": 1312,
+     "repeated": 0,
+     "episodes_l": 16,
+     "episodes_r": 18,
+     "episodes_v": 662,
+     "blocked_episodes": 24,
+     "flips": 0,
+     "conflicts": 19,
+     "engaged_s": 61.1
+    }
+   },
+   "straw-brain08-06": {
+    "minutes": 5.399,
+    "episodes": 48,
+    "vertical_episodes": 5,
+    "urgent_episodes": 40,
+    "terrain_climbs": 34,
+    "switches": 28,
+    "switches_quiet": 27,
+    "floor_bound_active_s": 0.06,
+    "kinds": {
+     "no_ring": 1042,
+     "slow": 6,
+     "no_scale": 186,
+     "clear": 3089,
+     "aperture": 36,
+     "shift": 265,
+     "blocked": 173
+    },
+    "aim_counts": {
+     "samples": 3563,
+     "stale": 0,
+     "invalid": 1234,
+     "repeated": 0,
+     "episodes_l": 14,
+     "episodes_r": 32,
+     "episodes_v": 101,
+     "blocked_episodes": 49,
+     "flips": 1,
+     "conflicts": 15,
+     "engaged_s": 43.56
+    }
+   }
+  },
+  "total": {
+   "minutes": 17.16,
+   "episodes_per_min": 8.68,
+   "vertical_per_min": 0.76,
+   "urgent_per_min": 7.81,
+   "terrain_climbs_per_min": 6.7,
+   "applied_abs_az_p90": 20.0,
+   "switches": 89,
+   "switch_quiet_fraction": 0.9326,
+   "floor_bound_active_s_per_min": 0.07
+  },
+  "checks": {
+   "episodes": false,
+   "vertical": true,
+   "urgent": false,
+   "terrain": false,
+   "p90": false,
+   "switches": false
+  },
+  "passes": false
+ },
+ "L1": {
+  "n": 4158,
+  "same_fraction": 0.9625,
+  "non_clear": 483,
+  "same_fraction_non_clear": 0.6853,
+  "by_perturbation": {
+   "ring_painted": 0.9716,
+   "ring_removed": 0.9533
+  },
+  "hud_only": {
+   "frames": 21837,
+   "blocked_or_shift": 0
+  },
+  "per_flight": {
+   "minus-brain07-01": {
+    "n": 32,
+    "same": 32,
+    "non_clear": 2,
+    "same_non_clear": 2,
+    "hud_frames": 154,
+    "hud_bad": 0
+   },
+   "minus-brain08-01": {
+    "n": 36,
+    "same": 35,
+    "non_clear": 10,
+    "same_non_clear": 9,
+    "hud_frames": 179,
+    "hud_bad": 0
+   },
+   "minus-fast6-cur-01": {
+    "n": 34,
+    "same": 32,
+    "non_clear": 6,
+    "same_non_clear": 4,
+    "hud_frames": 169,
+    "hud_bad": 0
+   },
+   "minus-brain08-slow35-01": {
+    "n": 28,
+    "same": 27,
+    "non_clear": 6,
+    "same_non_clear": 5,
+    "hud_frames": 134,
+    "hud_bad": 0
+   },
+   "minus-brain08-loom-01": {
+    "n": 26,
+    "same": 24,
+    "non_clear": 6,
+    "same_non_clear": 4,
+    "hud_frames": 127,
+    "hud_bad": 0
+   },
+   "pine-brain08-loom-01": {
+    "n": 16,
+    "same": 13,
+    "non_clear": 3,
+    "same_non_clear": 0,
+    "hud_frames": 84,
+    "hud_bad": 0
+   },
+   "straw-brain08-04": {
+    "n": 1006,
+    "same": 977,
+    "non_clear": 110,
+    "same_non_clear": 82,
+    "hud_frames": 5341,
+    "hud_bad": 0
+   },
+   "straw-brain08-06": {
+    "n": 900,
+    "same": 862,
+    "non_clear": 96,
+    "same_non_clear": 60,
+    "hud_frames": 4797,
+    "hud_bad": 0
+   },
+   "straw-brain07-02": {
+    "n": 1056,
+    "same": 1015,
+    "non_clear": 123,
+    "same_non_clear": 82,
+    "hud_frames": 5520,
+    "hud_bad": 0
+   },
+   "straw-brain07-03": {
+    "n": 1024,
+    "same": 985,
+    "non_clear": 121,
+    "same_non_clear": 83,
+    "hud_frames": 5332,
+    "hud_bad": 0
+   }
+  },
+  "passes": false
+ },
+ "offline_timing_ms": {
+  "lk_p50": 8.08,
+  "lk_p95": 13.51,
+  "plan_p50": 2.35,
+  "plan_p95": 3.85
+ },
+ "aim_counts": {
+  "minus-brain07-01": {
+   "samples": 143,
+   "stale": 0,
+   "invalid": 11,
+   "repeated": 0,
+   "episodes_l": 0,
+   "episodes_r": 2,
+   "episodes_v": 0,
+   "blocked_episodes": 12,
+   "flips": 0,
+   "conflicts": 0,
+   "engaged_s": 2.56
+  },
+  "minus-fast6-cur-01": {
+   "samples": 158,
+   "stale": 0,
+   "invalid": 11,
+   "repeated": 0,
+   "episodes_l": 10,
+   "episodes_r": 1,
+   "episodes_v": 0,
+   "blocked_episodes": 1,
+   "flips": 0,
+   "conflicts": 1,
+   "engaged_s": 1.38
+  },
+  "minus-brain08-slow35-01": {
+   "samples": 117,
+   "stale": 0,
+   "invalid": 17,
+   "repeated": 0,
+   "episodes_l": 14,
+   "episodes_r": 4,
+   "episodes_v": 0,
+   "blocked_episodes": 0,
+   "flips": 1,
+   "conflicts": 1,
+   "engaged_s": 3.22
+  },
+  "minus-brain08-loom-01": {
+   "samples": 122,
+   "stale": 0,
+   "invalid": 5,
+   "repeated": 0,
+   "episodes_l": 0,
+   "episodes_r": 1,
+   "episodes_v": 2,
+   "blocked_episodes": 9,
+   "flips": 0,
+   "conflicts": 1,
+   "engaged_s": 3.0
+  },
+  "minus-brain08-gapshadow-01": {
+   "samples": 144,
+   "stale": 0,
+   "invalid": 8,
+   "repeated": 0,
+   "episodes_l": 1,
+   "episodes_r": 2,
+   "episodes_v": 1,
+   "blocked_episodes": 12,
+   "flips": 0,
+   "conflicts": 1,
+   "engaged_s": 5.54
+  },
+  "minus-brain08-gapon-01": {
+   "samples": 227,
+   "stale": 0,
+   "invalid": 31,
+   "repeated": 0,
+   "episodes_l": 2,
+   "episodes_r": 1,
+   "episodes_v": 0,
+   "blocked_episodes": 23,
+   "flips": 0,
+   "conflicts": 2,
+   "engaged_s": 5.16
+  },
+  "minus-brain08-gapon-02": {
+   "samples": 241,
+   "stale": 0,
+   "invalid": 24,
+   "repeated": 0,
+   "episodes_l": 48,
+   "episodes_r": 1,
+   "episodes_v": 2,
+   "blocked_episodes": 4,
+   "flips": 1,
+   "conflicts": 3,
+   "engaged_s": 7.16
+  },
+  "minus-fast6-gapon-01": {
+   "samples": 232,
+   "stale": 0,
+   "invalid": 68,
+   "repeated": 0,
+   "episodes_l": 1,
+   "episodes_r": 3,
+   "episodes_v": 0,
+   "blocked_episodes": 56,
+   "flips": 0,
+   "conflicts": 0,
+   "engaged_s": 5.44
+  },
+  "minus-fast6-wall-01": {
+   "samples": 141,
+   "stale": 0,
+   "invalid": 29,
+   "repeated": 0,
+   "episodes_l": 19,
+   "episodes_r": 13,
+   "episodes_v": 1,
+   "blocked_episodes": 6,
+   "flips": 0,
+   "conflicts": 1,
+   "engaged_s": 3.22
+  },
+  "straw-brain07-02": {
+   "samples": 4112,
+   "stale": 0,
+   "invalid": 1408,
+   "repeated": 0,
+   "episodes_l": 22,
+   "episodes_r": 349,
+   "episodes_v": 10,
+   "blocked_episodes": 20,
+   "flips": 0,
+   "conflicts": 17,
+   "engaged_s": 50.24
+  },
+  "straw-brain07-03": {
+   "samples": 4020,
+   "stale": 0,
+   "invalid": 1312,
+   "repeated": 0,
+   "episodes_l": 16,
+   "episodes_r": 18,
+   "episodes_v": 662,
+   "blocked_episodes": 24,
+   "flips": 0,
+   "conflicts": 19,
+   "engaged_s": 61.1
+  },
+  "straw-brain08-06": {
+   "samples": 3563,
+   "stale": 0,
+   "invalid": 1234,
+   "repeated": 0,
+   "episodes_l": 14,
+   "episodes_r": 32,
+   "episodes_v": 101,
+   "blocked_episodes": 49,
+   "flips": 1,
+   "conflicts": 15,
+   "engaged_s": 43.56
+  },
+  "pine-brain08-loom-01": {
+   "samples": 79,
+   "stale": 0,
+   "invalid": 5,
+   "repeated": 0,
+   "episodes_l": 1,
+   "episodes_r": 9,
+   "episodes_v": 0,
+   "blocked_episodes": 0,
+   "flips": 1,
+   "conflicts": 0,
+   "engaged_s": 1.28
+  },
+  "store:123": {
+   "samples": 73,
+   "stale": 0,
+   "invalid": 339,
+   "repeated": 0,
+   "episodes_l": 0,
+   "episodes_r": 1,
+   "episodes_v": 0,
+   "blocked_episodes": 9,
+   "flips": 0,
+   "conflicts": 0,
+   "engaged_s": 1.5
+  },
+  "store:127": {
+   "samples": 85,
+   "stale": 0,
+   "invalid": 335,
+   "repeated": 0,
+   "episodes_l": 0,
+   "episodes_r": 1,
+   "episodes_v": 0,
+   "blocked_episodes": 12,
+   "flips": 0,
+   "conflicts": 0,
+   "engaged_s": 1.62
+  }
+ },
+ "verdict": {
+  "S1": false,
+  "S2": true,
+  "S3": true,
+  "A1": false,
+  "B1": true,
+  "T1": false,
+  "Q1": false,
+  "L1": false
+ }
+}

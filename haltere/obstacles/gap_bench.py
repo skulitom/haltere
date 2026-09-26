@@ -35,7 +35,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 GATES_PATH = REPO_ROOT/'configs'/'obstacles'/'gap_bench_gates.json'
 FLIGHT_DIR = Path('runs')/'fast-stack-20260923'
 CONDITIONS = dict(baseline=None, camera=('camera', 1), process=('process', 1), camera2=('camera', 2),
-                  process2=('process', 2))
+                  process2=('process', 2), plan=('process', 1))
+# ``plan``: the process placement with the free-space planner in shadow (R1 of configs/obstacles/free_space_gates.json)
 PAUSE_C, RESUME_C, HARD_STOP_C, CHUNK_S = 70., 65., 80., 300.
 
 
@@ -170,6 +171,9 @@ def cmd_run(args):
         declaration = json.loads(json.dumps(declaration))
         declaration['runtime'].update(placement=placement[0], stride=placement[1])
         spec = gap_spec(declaration, inputs['contract'], inputs['sensor'], digest=digest)
+        if cond == 'plan':
+            from ..liftoff.gap_stack import plan_spec
+            spec['plan'] = plan_spec(inputs['contract'], mode='shadow')
     anchor = out/f'anchor_{tag}.txt'
     anchor.unlink(missing_ok=True)
     start, seconds = float(args.start), float(args.seconds)
@@ -189,6 +193,7 @@ def cmd_run(args):
                                  backend=backend, race_cues=True, detector_device='cuda', looming=True, gap=spec)
     load = BrainLoad(protocol['brain_load_ms'])
     ticks, gaps, stages, cues = [], {}, {}, {}
+    plans, plan_ticks = {}, []
     status = None
     try:
         camera.start()
@@ -232,6 +237,11 @@ def cmd_run(args):
             ticks.append((now, latest[0] if latest else np.nan, gap['time'] if gap else np.nan,
                           (gap.get('depth_ms') if gap and gap.get('depth_ms') is not None else np.nan),
                           clearance['time'] if clearance else np.nan))
+            if spec and spec.get('plan'):
+                plan = camera.plan
+                if plan is not None:
+                    plans.setdefault((plan['time'], plan['seq']), dict(plan, received=now))
+                plan_ticks.append((now, plan['time'] if plan else np.nan))
             if camera.error:
                 raise RuntimeError(camera.error)
         status = camera.diagnostics()
@@ -246,6 +256,10 @@ def cmd_run(args):
     stage_rows = [s for k, s in stages.items() if k >= window]
     gap_rows = [g for (k, _), g in gaps.items() if k >= window]
     summary = summarize(tick, frames, stage_rows, gap_rows, seconds)
+    if spec and spec.get('plan'):
+        pt = np.asarray(plan_ticks, float).reshape(-1, 2)
+        summary['plan'] = summarize_plan(pt[pt[:, 0] >= window], [p for (k, _), p in plans.items() if k >= window],
+                                         seconds)
     gap_status = (status or {}).get('gap') or {}
     priorities = dict(parent=launch if launch is not None else dict(current=priority_class()),
                       camera=(status or {}).get('priority'), depth_process=gap_status.get('priority'),
@@ -261,8 +275,9 @@ def cmd_run(args):
     np.savez_compressed(out/f'{tag}.npz', ticks=ticks, t0=t0, anchor=t0, start=start,
                         frames=np.array(sorted(cues)), stages=np.array([[s[k] for k in s] for s in stages.values()]),
                         stage_fields=np.array(list(next(iter(stages.values())).keys())) if stages else np.array([]),
-                        gaps=json.dumps([{k: v for k, v in g.items()} for g in gaps.values()], default=float))
-    _log(f"{tag}: {json.dumps({k: result[k] for k in ('camera', 'gap', 'cue')}, default=float)[:1500]}")
+                        gaps=json.dumps([{k: v for k, v in g.items()} for g in gaps.values()], default=float),
+                        plans=json.dumps([{k: v for k, v in p.items()} for p in plans.values()], default=float))
+    _log(f"{tag}: {json.dumps({k: result.get(k) for k in ('camera', 'gap', 'cue', 'plan')}, default=float)[:2500]}")
     if watch.hot:
         raise SystemExit(f'GPU reached {watch.peak} C: stopped')
 
@@ -301,6 +316,67 @@ def summarize(tick, frames, stage_rows, gap_rows, seconds):
                       for k in ('frame_ms', 'overlay_ms', 'depth_ms', 'decide_ms')},
                    active_share=float(np.mean([abs(g['shift']) >= 2 for g in depth])) if depth else None)
     return dict(camera=camera, cue=cue, gap=gap)
+
+
+def summarize_plan(plan_tick, rows, seconds):
+    """Free-space planner samples at the controller: age of the newest sample at each tick, the depth process's own
+    publication latency, stage timings and kinds (R1)."""
+    age = (plan_tick[:, 0]-plan_tick[:, 1])*1000 if len(plan_tick) else np.zeros(0)
+    kinds = {}
+    for p in rows:
+        kinds[p['kind']] = kinds.get(p['kind'], 0)+1
+    val = lambda key: [p.get(key) for p in rows]
+    return dict(samples=len(rows), rate_hz=len(rows)/seconds, kinds=kinds,
+                valid_share=float(np.mean([p['valid'] for p in rows])) if rows else None,
+                age_at_tick_ms=dict(p50=_p(age, 50), p95=_p(age, 95), max=_p(age, 100)),
+                latency_ms=dict(p50=_p([1000*a for a in val('age') if a is not None], 50),
+                                p95=_p([1000*a for a in val('age') if a is not None], 95)),
+                **{f'{k}': dict(p50=_p(val(k), 50), p95=_p(val(k), 95), max=_p(val(k), 100))
+                   for k in ('lk_ms', 'plan_ms', 'depth_ms', 'overlay_ms', 'frame_ms', 'scale_n', 'n_tracks')})
+
+
+def cmd_plan_parity(args):
+    """R1 parity: bench planner samples vs the offline plan stream of the same recorded frames (free_space_eval run on
+    the flight): share of the same kind and |daz|, |del| over frames both published."""
+    from ..vision.free_space import kind_name
+    run = np.load(Path(args.out)/f'{args.tag}.npz', allow_pickle=True)
+    plans = json.loads(str(run['plans']))
+    t0, start = float(run['t0']), float(run['start'])
+    rec = np.load(Path(args.eval_dir)/'flights'/f'{args.flight}.npz', allow_pickle=True)
+    stream = np.load(Path(args.stream))
+    sel = np.flatnonzero(rec['keep'])
+    sel = sel[np.argsort(rec['t_wall'][sel], kind='stable')]
+    pos = {int(j): i for i, j in enumerate(sel)}
+    fps = float(rec['fps'])
+    idx = rec['frame_idx']
+    rows = []
+    for p in plans:
+        frame = int((start+p['time']-t0)*fps)
+        j = int(np.searchsorted(idx, frame, side='right')-1)
+        if j < 0 or j not in pos:
+            continue
+        i = pos[j]
+        ok = kind_name(stream['kind'][i])
+        az = lambda v: np.nan if v is None else float(v)
+        rows.append((p['kind'], ok, az(p.get('az')), float(stream['az'][i]), az(p.get('el')), float(stream['el'][i]),
+                     bool(p['valid']), bool(stream['valid'][i] == 1.)))
+    result = dict(schema='haltere.obstacles.free_space_parity.v1', flight=args.flight, run=args.tag, matched=len(rows),
+                  note='bench frame = the video frame shown at the capture time (live pose from telemetry, live checkpoint '
+                       'cue, the tracks paired with the previous processed bench frame); offline = the plan stream of the '
+                       'same recorded frame (logged cue, previous recorded frame, 336 x 602 disparity of the stored frame)')
+    if rows:
+        kb, ko = np.array([r[0] for r in rows]), np.array([r[1] for r in rows])
+        daz = np.array([abs(r[2]-r[3]) for r in rows])
+        de = np.array([abs(r[4]-r[5]) for r in rows])
+        both = np.isfinite(daz) & np.isfinite(de)
+        result.update(same_kind=float(np.mean(kb == ko)),
+                      same_kind_both_valid=float(np.mean((kb == ko)[[r[6] and r[7] for r in rows]]))
+                      if any(r[6] and r[7] for r in rows) else None,
+                      dangle_deg=dict(n=int(both.sum()), az_p95=_p(daz[both], 95), el_p95=_p(de[both], 95)),
+                      kinds_bench={k: int((kb == k).sum()) for k in np.unique(kb)},
+                      kinds_offline={k: int((ko == k).sum()) for k in np.unique(ko)})
+    (Path(args.out)/f'plan_parity_{args.tag}.json').write_text(json.dumps(result, indent=1, default=float), encoding='utf-8')
+    _log(json.dumps(result, default=float))
 
 
 def cmd_fp16(args):
@@ -436,7 +512,8 @@ def cmd_score(args):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('cmd', choices=['run', 'fp16', 'parity', 'score'])
+    p.add_argument('cmd', choices=['run', 'fp16', 'parity', 'plan_parity', 'score'])
+    p.add_argument('--stream', default=None, help='plan_parity: the offline plan stream (free_space_eval run) of the flight')
     p.add_argument('--out', required=True)
     p.add_argument('--flight-lock', default=None)
     p.add_argument('--flight', default='straw-brain08-06')
@@ -451,7 +528,7 @@ def main(argv=None):
                    help='below-normal: start the bench below normal and raise it after spawning the camera, as the '
                         'flight runner launched in Anode (recorded in the run with each process\'s class)')
     args = p.parse_args(argv)
-    dict(run=cmd_run, fp16=cmd_fp16, parity=cmd_parity, score=cmd_score)[args.cmd](args)
+    dict(run=cmd_run, fp16=cmd_fp16, parity=cmd_parity, plan_parity=cmd_plan_parity, score=cmd_score)[args.cmd](args)
 
 
 if __name__ == '__main__':

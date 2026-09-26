@@ -1,0 +1,46 @@
+{
+ "schema": "haltere.obstacles.free_space_r1.v1",
+ "gates_sha256": "8c2ccf247bc7b88d5ea500fb51e60f0a1eb26c83b7a2d4111a9f99ab20570305",
+ "flight": "straw-brain08-06",
+ "protocol": {
+  "start_s": 30.0,
+  "seconds": 60.0,
+  "parent": "below-normal",
+  "gpu_peak_c": 50.0
+ },
+ "checks": {
+  "camera_hz": {
+   "value": 16.65,
+   "passed": true
+  },
+  "plan_age_p95_ms": {
+   "value": 130.81150999787496,
+   "passed": true
+  },
+  "cue_latency_increase_p95_ms": {
+   "value": -0.1803499966626987,
+   "passed": true
+  },
+  "lk_ms_p95": {
+   "value": 15.520810001180504,
+   "passed": false
+  },
+  "plan_ms_p95": {
+   "value": 3.3789000008255243,
+   "passed": true
+  },
+  "camera_waits": {
+   "value": 0,
+   "passed": true
+  },
+  "parity_same_kind": {
+   "value": 0.8109404990403071,
+   "passed": false
+  },
+  "parity_dangle_p95_deg": {
+   "value": 20.0,
+   "passed": false
+  }
+ },
+ "passes": false
+}

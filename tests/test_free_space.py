@@ -76,6 +76,9 @@ FLOOR = dict(floor=-0.8)
 
 def test_config_is_the_declared_v1():
     assert CFG.version == 1 and RAW['schema'] == fs.SCHEMA and RAW['enabled'] is False
+    # the repository file is the frozen v1 (the runner refuses anything else)
+    assert RAW.get('frozen') is True and RAW['sha256'] == fs.config_sha256(RAW) == SHA
+    assert SHA == '532c2eddd37e72f12862b70551a80668f04f3fba7e8713905d397c6f3b13dd8d'
     assert fs.horizon_s(fs.load_response_models(CFG.response_models)['brain08'], CFG.plan) == pytest.approx(1.53, abs=.01)
     assert fs.horizon_s(fs.load_response_models(CFG.response_models)['fast_pd'], CFG.plan) == pytest.approx(1.21, abs=.01)
     pl = fs.FreeSpacePlanner(CFG, 'brain08', enabled=True)
@@ -357,7 +360,7 @@ def test_plan_stage_and_pose_lag(tmp_path):
     with pytest.raises(ValueError):
         gap_stack.plan_spec('fast_velocity_brain_v1', mode='off', path=p)
     draft = tmp_path / 'draft.json'
-    draft.write_text(json.dumps(RAW), encoding='utf-8')
+    draft.write_text(json.dumps({k: v for k, v in RAW.items() if k not in fs.CONFIG_META_KEYS}), encoding='utf-8')
     with pytest.raises(ValueError, match='not frozen'):
         gap_stack.plan_spec('fast_velocity_pd_v1', mode='shadow', path=draft)
     stage = gap_stack.PlanStage(spec)

@@ -1,0 +1,31 @@
+{
+ "schema": "haltere.obstacles.free_space_parity.v1",
+ "flight": "straw-brain08-06",
+ "run": "straw-brain08-06_plan",
+ "matched": 1042,
+ "note": "bench frame = the video frame shown at the capture time (live pose from telemetry, live checkpoint cue, the tracks paired with the previous processed bench frame); offline = the plan stream of the same recorded frame (logged cue, previous recorded frame, 336 x 602 disparity of the stored frame)",
+ "same_kind": 0.8109404990403071,
+ "same_kind_both_valid": 0.8122270742358079,
+ "dangle_deg": {
+  "n": 458,
+  "az_p95": 20.0,
+  "el_p95": 3.449999999999932
+ },
+ "kinds_bench": {
+  "aperture": 1,
+  "blocked": 33,
+  "clear": 415,
+  "no_pose": 2,
+  "no_ring": 443,
+  "no_scale": 105,
+  "shift": 43
+ },
+ "kinds_offline": {
+  "aperture": 4,
+  "blocked": 49,
+  "clear": 429,
+  "no_ring": 435,
+  "no_scale": 80,
+  "shift": 45
+ }
+}
