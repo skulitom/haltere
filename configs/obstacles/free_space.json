@@ -1,0 +1,169 @@
+{
+ "schema": "haltere.obstacles.free_space.v1",
+ "version": 1,
+ "enabled": false,
+ "note": "FreeSpace Corridor Planner v1 (judged merge: ScaledCorridor base with RSCP-2D grafts; docs/free_space_planner.md). Perception: haltere.vision.free_space (FreeSpacePlanner.process) in the depth process of the obstacle stack (haltere.liftoff.gap_stack), published as camera_process.PLAN_FIELDS. Off by default; valid only inside --obstacle-stack on; the runner refuses any other version or an edited file (sha256 of everything except frozen/frozen_at/sha256, canonical JSON, as gap_pilot.json). Every value is a priori or dev-derived (the ScaledCorridor and RSCP-2D design studies on store dev runs and minus-brain08-01 / straw-brain08-04), none fitted to held-out data. Runtime inputs: the current frame, its DA-V2-Small block disparity, overlay masks, attitude and world velocity at capture, the checkpoint-ring cue of the same frame and the declared motor; no course, route, label or bench input.",
+ "camera": {
+  "width": 448,
+  "height": 252,
+  "focal_px": 140.0,
+  "cx": 224.0,
+  "cy": 126.0,
+  "uptilt_deg": 30.0,
+  "blocks": [
+   36,
+   64
+  ],
+  "block_px": 7
+ },
+ "depth": {
+  "model": "DA-V2-Small",
+  "weights": "runs/dense-depth-probe-20260923/model",
+  "weights_sha256_prefix": "3152477c",
+  "input_hw": [
+   336,
+   602
+  ],
+  "dtype": "fp16",
+  "pool": "block_mean"
+ },
+ "masks": {
+  "layers": [
+   "hud",
+   "ring",
+   "ghost",
+   "propeller"
+  ],
+  "block_mask_max_fraction": 0.0
+ },
+ "tracks": {
+  "max_corners": 600,
+  "quality": 0.005,
+  "min_distance_px": 5,
+  "lk_window_px": 21,
+  "lk_levels": 4,
+  "fb_max_px": 0.5,
+  "perp_max_px": 1.0,
+  "min_foe_px": 30.0,
+  "min_tz_mps": 1.0,
+  "inv_z_range": [
+   0.0333,
+   2.0
+  ],
+  "pair_dt_s": [
+   0.03,
+   0.15
+  ]
+ },
+ "scale": {
+  "huber_k": 1.345,
+  "irls_iters": 4,
+  "sigma_floor": 0.01,
+  "forget": 0.85,
+  "reset_gap_s": 0.3,
+  "reset_speed_mps": 1.0,
+  "min_anchors": 60,
+  "min_spread": 0.05,
+  "spread_pct": [
+   10,
+   90
+  ],
+  "hold_s": 0.3,
+  "max_range_m": 30.0
+ },
+ "plan": {
+  "min_speed_mps": 1.5,
+  "az_offsets_deg": [
+   -30,
+   30,
+   2
+  ],
+  "el_offsets_deg": [
+   0,
+   12,
+   3
+  ],
+  "cost_el_weight": 2.0,
+  "max_az_deg": 20.0,
+  "max_el_deg": 12.0,
+  "path_step_m": 0.25,
+  "horizon_lateral_m": 1.5,
+  "horizon_extra_s": 0.3,
+  "min_horizon_m": 2.0,
+  "a_vert_mps2": 5.0,
+  "r_lat_m": 0.75,
+  "r_vert_m": 0.35,
+  "x_min_m": 0.3,
+  "min_points": 2,
+  "footprint_x_m": 4.0,
+  "footprint_valid": 0.6,
+  "image_margin_deg": 2.0,
+  "aperture_ratio": 1.3,
+  "aperture_gap_m": 0.7,
+  "aperture_edge_m": 0.25,
+  "brake_mps2": 8.0,
+  "stop_margin_m": 0.5,
+  "cloud_beyond_horizon_m": 1.5
+ },
+ "profile": {
+  "bin_m": 0.5,
+  "near_x_m": [
+   0.5,
+   3.0
+  ],
+  "lateral_m": 0.75,
+  "min_bins": 2,
+  "ceil_min_m": 0.3,
+  "rise_level_m": 0.35,
+  "rise_bins": 2,
+  "rise_max_step_m": 0.5
+ },
+ "response_models": "configs/obstacles/response_models.json",
+ "response_model_for_contract": {
+  "fast_velocity_brain_v1": "brain08",
+  "fast_velocity_pd_v1": "fast_pd"
+ },
+ "pilot": {
+  "max_age_s": 0.2,
+  "confirm": 2,
+  "window": 3,
+  "confirm_window_s": 0.25,
+  "side_latch_s": 0.6,
+  "flip_after": 3,
+  "release_after": 2,
+  "slew_az_deg_s": 40.0,
+  "slew_el_deg_s": 20.0,
+  "decay_s": 0.3,
+  "conflict_deg": 6.0,
+  "flag_conflict_deg": 1.0,
+  "conflict_hold_s": 0.6,
+  "v_cap_floor_mps": 1.0,
+  "cap_slew_mps2": 15.0
+ },
+ "vertical": {
+  "floor_clear_m": 0.5,
+  "ceil_clear_m": 0.5,
+  "tau_s": 0.5,
+  "gentle_up_mps": 1.0,
+  "gentle_down_mps": 1.0,
+  "level_band_mps": 0.3,
+  "rise_lag_s": 0.3,
+  "rise_min_t_s": 0.3,
+  "climb_max_mps": 3.5,
+  "climb_hold_s": 0.5,
+  "climb_release_mps2": 3.0,
+  "climb_max_rise_m": 2.5,
+  "climb_accel_mps2": 10.0,
+  "floor_accel_mps2": 5.0,
+  "ceil_accel_mps2": 15.0,
+  "fallback_descent_first": true
+ },
+ "runtime": {
+  "placement": "process",
+  "stride": 1,
+  "device": "cuda",
+  "cue_timeout_s": 0.15,
+  "pose_max_lag_s": 0.05,
+  "offline_age_s": 0.1
+ }
+}

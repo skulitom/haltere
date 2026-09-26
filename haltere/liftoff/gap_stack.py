@@ -27,6 +27,14 @@ Placement (configs/obstacles/gap_pilot.json ``runtime.placement``):
   writes its samples to its own shared array, `gap_out`, read by the controller without blocking, and stops on
   its own event), and the camera's side of the slot uses non-blocking lock attempts and semaphore signals only.
 ``runtime.stride`` 2 processes every other frame (by frame sequence number).
+
+FreeSpace corridor planner (``--obstacle-planner shadow|on``, off by default; `plan_spec` attaches it to a gap spec as
+``spec['plan']``, process placement only): after the gap decision the depth process runs
+`haltere.vision.free_space.FreeSpacePlanner` on the same frame, depth and cue with its own block validity (mask
+layers of configs/obstacles/free_space.json, incl. the propeller zone) and a pose whose nearest observed row lies
+within ``runtime.pose_max_lag_s`` of the capture (`pose_for_plan`); a cue that did not arrive within the cue
+timeout gives kind ``stale``. One `camera_process.PLAN_FIELDS` sample per frame goes to the process's own shared
+array ``plan_out`` (same non-blocking pattern as ``gap_out``).
 """
 from __future__ import annotations
 
@@ -42,6 +50,8 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 GAP_PILOT_PATH = REPO_ROOT/'configs'/'obstacles'/'gap_pilot.json'
+FREE_SPACE_PATH = REPO_ROOT/'configs'/'obstacles'/'free_space.json'
+PLAN_MODES = ('shadow', 'on')
 FRAME_SHAPE = (252, 448, 3)
 GRID = (36, 64)
 CONFIG_META_KEYS = ('frozen', 'frozen_at', 'sha256')
@@ -122,6 +132,93 @@ def gap_camera(spec):
     return Camera(FRAME_SHAPE[1], FRAME_SHAPE[0], spec['focal_320']*FRAME_SHAPE[1]/320., spec['tilt_deg'])
 
 
+def load_free_space(path=FREE_SPACE_PATH, *, require_frozen=True):
+    """The free-space planner declaration (configs/obstacles/free_space.json) and its content sha256; refuses an
+    unfrozen or edited file (for flights) and any version other than the one haltere.vision.free_space implements."""
+    from ..vision import free_space as fs
+    _, obj, digest = fs.load_config(path, require_frozen=require_frozen)
+    return obj, digest
+
+
+def plan_spec(contract, *, mode, stack_mode='on', path=FREE_SPACE_PATH, require_frozen=True):
+    """The depth-process spec (picklable dict) of the free-space planner for a motor contract, to be attached to a
+    `gap_spec` as ``spec['plan']``. ``mode`` shadow|on (``--obstacle-planner``); ``on`` is refused under an obstacle
+    stack in shadow. Refuses any free_space config that is not the frozen version this code implements."""
+    from ..vision import free_space as fs
+    if mode not in PLAN_MODES:
+        raise ValueError(f'--obstacle-planner is off, shadow or on (got {mode!r}); off attaches no planner')
+    if stack_mode != 'on' and mode == 'on':
+        raise ValueError('--obstacle-planner on needs --obstacle-stack on')
+    config, obj, digest = fs.load_config(path, require_frozen=require_frozen)
+    motor = obj['response_model_for_contract'].get(contract)
+    if motor is None:
+        raise ValueError(f'free_space.json declares no response model for the {contract} motor contract')
+    runtime = obj['runtime']
+    if runtime['placement'] != 'process' or int(runtime['stride']) != 1:
+        raise ValueError('The free-space planner runs in the separate depth process on every frame')
+    models_path = REPO_ROOT/obj['response_models']
+    if motor not in fs.load_response_models(models_path):
+        raise ValueError(f'{models_path} has no {motor} response model')
+    return dict(mode=mode, config=str(path), sha256=digest, version=obj.get('version'),
+                file_sha256=file_sha256(path), response_models=str(models_path),
+                response_models_file_sha256=file_sha256(models_path), motor=motor,
+                motor_index=fs.MOTORS.index(motor), motor_contract=contract,
+                weights_sha256_prefix=obj['depth']['weights_sha256_prefix'], mask_layers=list(obj['masks']['layers']),
+                cue_timeout_s=float(runtime['cue_timeout_s']), pose_max_lag_s=float(runtime['pose_max_lag_s']),
+                require_frozen=bool(require_frozen))
+
+
+def pose_for_plan(rows, capture_time, now, max_lag):
+    """The planner's pose at a capture time: `pose_at` (interpolated from already observed motion) when the
+    nearest observed pose lies within ``max_lag`` s of the capture time, else None (``no_pose``)."""
+    from .camera_process import pose_at
+    if rows is None or len(rows) < 2:
+        return None
+    if float(np.min(np.abs(rows[:, 1]-capture_time))) > max_lag:
+        return None
+    return pose_at(rows, capture_time, now)
+
+
+class PlanStage:
+    """The free-space planner inside the depth process: one PLAN_FIELDS sample per processed frame, with the
+    worker counters and timing percentiles for the flight sidecar."""
+    STATS = ('age', 'lk_ms', 'plan_ms', 'depth_ms', 'scale_n')
+
+    def __init__(self, spec):
+        from ..vision import free_space as fs
+        config, _, sha = fs.load_config(spec['config'], require_frozen=spec.get('require_frozen', True))
+        if sha != spec['sha256']:
+            raise ValueError('free_space.json changed after the planner spec was built')
+        self.spec = dict(spec)
+        self.layers = tuple(config.mask_layers)
+        self.max_fraction = float(config.masks['block_mask_max_fraction'])
+        self.planner = fs.FreeSpacePlanner(config, spec['motor'],
+                                           response_models=fs.load_response_models(spec['response_models']),
+                                           enabled=True)
+        self.frames = 0
+        self.history = deque(maxlen=4096)
+
+    def process(self, frame, capture_time, cue, pose, perceived, *, stale, seq, frame_ms, clock=time.monotonic):
+        from ..vision.free_space import PLAN_FIELDS
+        quaternion, velocity = pose if pose is not None else (None, None)
+        timings = dict(frame_ms=frame_ms, overlay_ms=perceived['overlay_ms'], depth_ms=perceived['depth_ms'])
+        values = self.planner.process(frame, perceived['disparity'], perceived['plan_valid'], quaternion, velocity,
+                                      cue, float(capture_time), stale=stale, seq=seq, timings=timings)
+        values['age'] = clock()-float(capture_time)
+        self.frames += 1
+        self.history.append(tuple(values[k] for k in ('age', 'lk_ms', 'plan_ms', 'depth_ms', 'scale_n')))
+        return [values[k] for k in PLAN_FIELDS]
+
+    def status(self):
+        rows = np.asarray(list(self.history), float)
+        out = dict(frames=self.frames, mode=self.spec['mode'], motor=self.spec['motor'], config_sha256=self.spec['sha256'],
+                   config_version=self.spec['version'], counts=dict(self.planner.counts))
+        if len(rows):
+            out['percentiles'] = {name: dict(p50=_pct(rows[:, i], 50), p95=_pct(rows[:, i], 95))
+                                  for i, name in enumerate(self.STATS)}
+        return out
+
+
 class GapFrameWorker:
     """One frame (448 x 252 RGB, capture time, ring cue, pose) -> one gap sample (`camera_process.GAP_FIELDS`)."""
 
@@ -146,9 +243,12 @@ class GapFrameWorker:
                                mask_layers=list(self.layers), motor=spec['motor'])
         self.frames = self.depth_frames = 0
         self.timings = deque(maxlen=4096)
+        # (layers, max fraction) of the free-space planner's block validity; None: no planner
+        self.plan_masks = None
 
     def perceive(self, frame, clock=time.monotonic):
-        """Overlay-mask block validity and block relative disparity of one 448 x 252 frame (no cue needed)."""
+        """Overlay-mask block validity and block relative disparity of one 448 x 252 frame (no cue needed); with
+        the planner also its own block validity (``plan_valid``, its mask layers incl. the propeller zone)."""
         from ..obstacles import overlays as ov
         from ..vision import gap_cue as gc
         t0 = clock()
@@ -157,11 +257,21 @@ class GapFrameWorker:
         for name in self.layers:
             masked |= getattr(masks, name)
         valid = gc.block_validity(masked, GRID, self.params.block_mask_max_fraction)
+        plan_valid = None
+        if self.plan_masks is not None:
+            layers, max_fraction = self.plan_masks
+            plan_masked = np.zeros(frame.shape[:2], bool)
+            for name in layers:
+                plan_masked |= getattr(masks, name)
+            plan_valid = gc.block_validity(plan_masked, GRID, max_fraction)
         t1 = clock()
         disparity = np.asarray(self.depth(frame)[0], np.float32)
         t2 = clock()
         self.depth_frames += 1
-        return dict(valid=valid, disparity=disparity, overlay_ms=1000*(t1-t0), depth_ms=1000*(t2-t1))
+        out = dict(valid=valid, disparity=disparity, overlay_ms=1000*(t1-t0), depth_ms=1000*(t2-t1))
+        if plan_valid is not None:
+            out['plan_valid'] = plan_valid
+        return out
 
     def in_view(self, cue, pose):
         """The ring cue as (u, v) when it is in view and the pose gives it a bearing, else None."""
@@ -389,11 +499,13 @@ def wait_for_cue(slot, capture_time, stop, timeout=.15):
     return False, None
 
 
-def gap_process_worker(slot, gap_out, motion, stop, status, spec):
+def gap_process_worker(slot, gap_out, motion, stop, status, spec, plan_out=None):
     """The separate depth process of the ``process`` placement: the frame arrives right after capture, so the
     resize, overlay masks and depth run while the camera process computes the checkpoint cue; the cheap
     decision waits for that cue. It raises its own priority class (as the camera process does), writes its
-    samples to its own shared array and stops on its own event: no lock or event of the camera's is taken."""
+    samples to its own shared array and stops on its own event: no lock or event of the camera's is taken.
+    With ``spec['plan']`` (and its own `plan_out` array) the free-space planner runs after the gap decision on the
+    same frame, masks, depth, cue and pose (the gap cue is still computed and logged)."""
     import cv2
     import torch
     from ..obstacles.overlays import to_model_frame
@@ -402,16 +514,20 @@ def gap_process_worker(slot, gap_out, motion, stop, status, spec):
     cv2.setNumThreads(2)
     status.cancel_join_thread()
     worker = None
+    stage = None
     priority = None
     last = 0
     counts = dict(skipped_frames=0, cue_missed=0, cue_wait_ms=deque(maxlen=4096))
 
     def report():
         waits = np.asarray(counts['cue_wait_ms'], float)
-        return dict(gap=dict(worker.status() if worker is not None else dict(ready=False), placement='process',
-                             priority=priority, camera_skips=slot.skips(),
-                             skipped_frames=counts['skipped_frames'], cue_missed=counts['cue_missed'],
-                             cue_wait_ms=dict(p50=_pct(waits, 50), p95=_pct(waits, 95)) if len(waits) else None))
+        gap = dict(worker.status() if worker is not None else dict(ready=False), placement='process',
+                   priority=priority, camera_skips=slot.skips(),
+                   skipped_frames=counts['skipped_frames'], cue_missed=counts['cue_missed'],
+                   cue_wait_ms=dict(p50=_pct(waits, 50), p95=_pct(waits, 95)) if len(waits) else None)
+        if stage is not None:
+            gap['plan'] = dict(stage.status(), camera_skips=slot.skips(), skipped_frames=counts['skipped_frames'])
+        return dict(gap=gap)
     last_status = 0.
     try:
         from .scheduling import flight_process_priority
@@ -419,6 +535,9 @@ def gap_process_worker(slot, gap_out, motion, stop, status, spec):
         # (below normal when launched in Anode). Set it explicitly, as the camera process does.
         priority = flight_process_priority()
         worker = GapFrameWorker(spec)
+        if spec.get('plan') and plan_out is not None:
+            stage = PlanStage(spec['plan'])
+            worker.plan_masks = (stage.layers, stage.max_fraction)
         put_latest(status, report())
         while not stop.is_set():
             if not slot.wait_frame(.1):
@@ -440,9 +559,14 @@ def gap_process_worker(slot, gap_out, motion, stop, status, spec):
             counts['cue_wait_ms'].append(1000*(time.monotonic()-t1))
             if not published:
                 counts['cue_missed'] += 1
-            pose = pose_at(read_motion(motion), capture_time, time.monotonic())
+            rows = read_motion(motion)
+            pose = pose_at(rows, capture_time, time.monotonic())
             values = worker.process(frame, capture_time, cue, pose, frame_ms=frame_ms, seq=seq, perceived=perceived)
             write_gap(gap_out, values, slice(None))
+            if stage is not None:
+                plan_pose = pose_for_plan(rows, capture_time, time.monotonic(), stage.spec['pose_max_lag_s'])
+                write_gap(plan_out, stage.process(frame, capture_time, cue, plan_pose, perceived, stale=not published,
+                                                  seq=seq, frame_ms=frame_ms), slice(None))
             if time.monotonic()-last_status > .5:
                 put_latest(status, report())
                 last_status = time.monotonic()

@@ -164,20 +164,69 @@ def test_label_package_refuses_runtime_processes():
     assert r.returncode == 0 and 'ok' in r.stdout, r.stderr
 
 
-@pytest.mark.parametrize('module', ['haltere.obstacles.contract', 'haltere.obstacles.model', 'haltere.obstacles.overlays',
+OFFLINE_CHECKED = {'haltere.obstacles.store', 'haltere.obstacles.splits', 'haltere.obstacles.evaluate',
+                   'haltere.obstacles.train', 'haltere.obstacles.timing', 'haltere.obstacles.store_build',
+                   'haltere.obstacles.gap_cue_eval', 'haltere.obstacles.leaks', 'haltere.obstacles.thermal',
+                   'haltere.obstacles.gap_bench', 'haltere.obstacles.free_space_eval'}
+# The free-space planner's pilot side (haltere.liftoff.corridor_aim) is checked once it exists on the branch.
+OPTIONAL_RUNTIME = ('haltere.liftoff.corridor_aim',)
+
+
+@pytest.mark.parametrize('module', ('haltere.obstacles.contract', 'haltere.obstacles.model', 'haltere.obstacles.overlays',
                                     'haltere.vision.gap_cue', 'haltere.vision.relative_depth',
+                                    'haltere.vision.free_space',
                                     'haltere.liftoff.gap_stack', 'haltere.liftoff.gap_aim',
                                     'haltere.liftoff.camera_replay', 'haltere.liftoff.camera_process',
-                                    'haltere.liftoff.fast_race_cue', 'haltere.liftoff.visual_brain'])
+                                    'haltere.liftoff.fast_race_cue', 'haltere.liftoff.visual_brain')
+                         + OPTIONAL_RUNTIME)
 def test_runtime_obstacle_modules_import_only_runtime_safe_code(module):
     graph, _ = import_graph(PACKAGE_DIR, 'haltere')
+    if module in OPTIONAL_RUNTIME and module not in graph:
+        pytest.skip(f'{module} is not on this branch')
     assert module in graph
-    offline = {'haltere.obstacles.store', 'haltere.obstacles.splits', 'haltere.obstacles.evaluate',
-               'haltere.obstacles.train', 'haltere.obstacles.timing', 'haltere.obstacles.store_build',
-               'haltere.obstacles.gap_cue_eval', 'haltere.obstacles.leaks', 'haltere.obstacles.thermal',
-               'haltere.obstacles.gap_bench'}
-    assert offline <= set(OFFLINE_MODULES)
-    assert not set(reachable(graph, [module])) & offline
+    assert OFFLINE_CHECKED <= set(OFFLINE_MODULES)
+    chain = reachable(graph, [module])
+    assert not set(chain) & OFFLINE_CHECKED
+    assert not any(m == LABEL_PACKAGE or m.startswith(LABEL_PACKAGE + '.') for m in chain)
+
+
+def test_free_space_runtime_modules_load_no_label_torch_or_offline_code():
+    """The planner is numpy only at import (OpenCV only when tracks are computed); the depth-process worker and
+    the controller-side PLAN_FIELDS reader load no label code, no torch and no offline evaluation or bench."""
+    code = ('import sys, haltere.vision.free_space, haltere.liftoff.gap_stack, haltere.liftoff.camera_process\n'
+            'from haltere.liftoff.camera_process import PLAN_FIELDS, PLAN_KINDS, plan_sample\n'
+            'assert PLAN_FIELDS == haltere.vision.free_space.PLAN_FIELDS\n'
+            f'print(sorted(m for m in sys.modules if m.startswith("{LABEL_PACKAGE}") '
+            'or m.split(".")[0] in ("torch", "cv2", "transformers") '
+            'or m in ("haltere.obstacles.free_space_eval", "haltere.obstacles.gap_cue_eval", '
+            '"haltere.obstacles.gap_bench", "haltere.obstacles.store")))')
+    r = _python(code, {RUNTIME_ENV_FLAG: '1'})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == '[]'
+
+
+def test_no_runtime_module_reaches_the_free_space_evaluation():
+    graph, _ = import_graph(PACKAGE_DIR, 'haltere')
+    assert 'haltere.obstacles.free_space_eval' in graph
+    chains = reachable(graph, runtime_roots(graph))
+    assert 'haltere.obstacles.free_space_eval' not in chains
+    assert {'haltere.vision.free_space', 'haltere.liftoff.gap_stack', 'haltere.liftoff.camera_process'} <= set(chains)
+
+
+def test_free_space_code_names_no_course_or_route_inputs():
+    """The planner's runtime modules take no course, route, gate-geometry or label inputs (source scan)."""
+    banned = ('course_pool', 'bot_routes', 'collection_route', 'qualification_route', 'challenge_courses',
+              'section_geometry', 'gate_memory', 'oracle', 'hindsight', 'tti_s', 'impact')
+    for rel in ('vision/free_space.py',):
+        src = (PACKAGE_DIR / rel).read_text(encoding='utf-8')
+        tree = ast.parse(src)
+        names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)} | \
+            {n.attr for n in ast.walk(tree) if isinstance(n, ast.Attribute)} | \
+            {a.arg for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) for a in n.args.args + n.args.kwonlyargs}
+        imports = {a.name for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names} | \
+            {n.module or '' for n in ast.walk(tree) if isinstance(n, ast.ImportFrom)}
+        for b in banned:
+            assert not any(b in x for x in names | imports), (rel, b)
 
 
 def test_gap_cue_runtime_modules_load_no_label_torch_or_offline_code():

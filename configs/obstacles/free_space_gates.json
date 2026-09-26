@@ -1,0 +1,163 @@
+{
+ "schema": "haltere.obstacles.free_space_gates.v1",
+ "version": 1,
+ "note": "Offline gates of the FreeSpace corridor planner v1 (spec section 9; haltere.obstacles.free_space_eval score for the perception gates S1-S3, A1, B1, T1, Q1, L1; the pilot replay scores V1-V3; R1 is the runtime bench; I1 the unit tests). Frozen with its sha256 together with configs/obstacles/free_space.json before any held-out frame is scored; each gate is scored once and every version is reported. Hindsight inputs (impact times, time to impact, the pillar boxes from the m2design impact anatomy, the floor height, checkpoint-switch times from the logged cue) select and score frames only; the planner sees none of them.",
+ "free_space_config": "configs/obstacles/free_space.json",
+ "offline_age_s": 0.1,
+ "disparity_basis": "DA-V2-Small, 336 x 602 bicubic input, fp16 CUDA, 7 x 7 block means: the runtime depth input (gap_cue.json v2) and the gap-cue gates' teacher basis; cached flights m2impl/gapcue depth['teacher'], new flights decoded and run through the same RelativeDepth(input_hw=(336, 602)); store runs labels/teacher/disparity.npy",
+ "motors": {
+  "brain": "brain08",
+  "fast_pd": "fast_pd",
+  "pd": "fast_pd"
+ },
+ "aim_replay": {
+  "what": "Confirmation for A1, B1, T1 and Q1: the section-6 CorridorAim (confirm 2 of 3 fresh samples within 0.25 s, latch >= 0.6 s while the ring path is blocked, flip after 3 samples without the latched option and another class confirmed, release after 2 consecutive clear/aperture samples or 0.3 s without a fresh sample, slew 40 / 20 deg/s, decay 0.3 s, ring conflict 6 deg with a 0.6 s hold), stepped on a 50 Hz tick grid; samples are published at capture + offline_age_s. haltere.liftoff.corridor_aim.CorridorAim is used when present on the branch, otherwise the section-6 replica free_space_eval.SpecCorridorAim (reported in the results).",
+  "tick_hz": 50.0,
+  "cue_latency_s": 0.03,
+  "cue_rule": "the pilot's ring azimuth at a tick: the ring cue ray of the newest frame whose capture time + cue_latency_s <= tick (the planner's ring_az of that frame); None when that frame has no ring in view",
+  "not_modelled": "flag clearance (flag_deg 0), turn-first and search/launch suspension (no pilot state offline)",
+  "episode": "a tick with a confirmed class whose intended offset is non-zero, or a confirmed blocked state; ticks less than 0.3 s apart merge into one episode",
+  "urgent": "a confirmed shift whose newest sample has feasible = 0, or a confirmed blocked state"
+ },
+ "splits": {
+  "dev_report_only": {
+   "store_runs": [4, 6, 7, 8, 9, 13, 14, 15, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 132, 133, 134, 135, 136, 137, 138],
+   "flights": ["minus-brain08-01", "straw-brain08-04", "pine-fast6-ttc-01"]
+  },
+  "held_out": ["minus-brain07-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "minus-brain08-gapshadow-01", "minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01", "pine-brain08-loom-01", "straw-brain07-02", "straw-brain07-03", "straw-brain08-06"],
+  "store_envs_report_only": ["The Pit", "Hannover", "Paris", "Hangar C03"],
+  "sealed": ["The Green", "Hall 26"]
+ },
+ "flights": {
+  "minus-brain07-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-fast6-cur-01": {"env": "Minus Two", "motor": "fast_pd"},
+  "minus-brain08-slow35-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-brain08-loom-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-brain08-gapshadow-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-brain08-gapon-01": {"env": "Minus Two", "motor": "brain"},
+  "minus-brain08-gapon-02": {"env": "Minus Two", "motor": "brain"},
+  "minus-fast6-gapon-01": {"env": "Minus Two", "motor": "fast_pd"},
+  "minus-fast6-wall-01": {"env": "Minus Two", "motor": "fast_pd"},
+  "pine-brain08-loom-01": {"env": "Pine Valley", "motor": "brain"},
+  "straw-brain07-02": {"env": "Straw Bale", "motor": "brain"},
+  "straw-brain07-03": {"env": "Straw Bale", "motor": "brain"},
+  "straw-brain08-06": {"env": "Straw Bale", "motor": "brain"},
+  "minus-brain08-01": {"env": "Minus Two", "motor": "brain"},
+  "straw-brain08-04": {"env": "Straw Bale", "motor": "brain"},
+  "pine-fast6-ttc-01": {"env": "Pine Valley", "motor": "fast_pd"}
+ },
+ "new_flights": ["minus-brain08-gapshadow-01", "minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01", "pine-fast6-ttc-01"],
+ "store_runs": {
+  "123": {"name": "matched-full-races-20260923/03-minus-pd", "motor": "pd"},
+  "127": {"name": "motor10-transfer-20260922/minus", "motor": "brain"}
+ },
+ "pillar_a": {
+  "box": {"x": [54.7, 55.5], "y": [3.65, 4.45], "z": [0.0, 2.2]},
+  "distance_to": [54.7, 4.05],
+  "approach_region": {"x": [42.0, 54.7], "y": [0.0, 6.0]},
+  "source": "m2design impact anatomy (triangulated pillar edges; the gap-cue gates' G1 box) and the garage ceiling height 2.2 m"
+ },
+ "minus_floor_z_m": 0.0,
+ "minus_floor_note": "launch-relative z of the resting drone (every Minus Two log starts at z = 0 on the garage floor); the body origin sits a few centimetres above the floor, not measured",
+ "S1": {
+  "what": "floor scale: h_floor / telemetry height (z - minus_floor_z_m)",
+  "approaches": ["minus-brain07-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "minus-brain08-gapshadow-01"],
+  "approaches_note": "the five held-out Minus Two flights that flew the ring line into pillar A without an applied aim shift; the gap-cue-on flights and minus-fast6-wall-01 are reported, not gated",
+  "reported_not_gated": ["minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01"],
+  "region": {"x": [5.0, 51.0], "y": [-2.0, 6.0]},
+  "region_note": "the flat garage floor between the launch and 3.7 m before pillar A's face (no pillar in the 0.5-3 m floor bins)",
+  "min_speed_mps": 2.0,
+  "samples": "every processed frame (any kind) with a finite h_floor, telemetry valid and speed above min_speed_mps inside the region",
+  "median_range": [0.8, 1.25],
+  "band": [0.67, 1.5],
+  "min_band_fraction": 0.7
+ },
+ "S2": {
+  "what": "pillar range: measured block depth Z = 1 / max(a d + b, 1/30) over the true optical depth of pillar A's box",
+  "approaches": "S1.approaches",
+  "coverage_min": 0.5,
+  "coverage_rule": "7 x 7 pixel-centre rays per block; coverage = share of rays hitting pillar A's box before anything else modelled (the box only); true depth = mean optical depth of the hitting rays",
+  "true_depth_m": [3.0, 8.0],
+  "blocks": "valid blocks (planner masks) of frames with a scale (valid or held)",
+  "pooled_median_range": [0.8, 1.25],
+  "frame_band": [0.67, 1.5],
+  "min_frame_fraction": 0.7
+ },
+ "S3": {
+  "what": "coverage: share of valid kinds (clear, aperture, shift, blocked)",
+  "frames": "held-out flight frames with telemetry, horizontal speed above 2 m/s and the ring in view (kind not no_ring / no_pose)",
+  "min_speed_mps": 2.0,
+  "environments": {
+   "Minus Two": ["minus-brain07-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "minus-brain08-gapshadow-01", "minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-gapon-01", "minus-fast6-wall-01"],
+   "Straw Bale": ["straw-brain07-02", "straw-brain07-03", "straw-brain08-06"],
+   "Pine Valley": ["pine-brain08-loom-01"]
+  },
+  "min_valid_fraction": 0.85
+ },
+ "A1": {
+  "what": "pillar A: the planner confirms the ring side (LEFT) early and never aims into the pillar",
+  "approaches": "S1.approaches",
+  "d_switch": "distance to distance_to when the pillar-A ring enters the cue: the last checkpoint switch (gap_cue_eval.checkpoint_switches on the per-frame ring azimuth) inside the approach region before the closest approach; 5.9 m (the anatomy value) when none is detected (reported)",
+  "pass_approach": "the first confirmed LEFT (or a confirmed blocked state whose newest sample has an urgent L option: l_ok = 0) inside the approach region at a confirming-sample distance >= min(6.0 m, d_switch - 0.5 m)",
+  "min_distance_cap_m": 6.0,
+  "switch_margin_m": 0.5,
+  "min_passing": 4,
+  "right_max_distance_m": 2.0,
+  "right_rule": "no tick inside the approach region with a confirmed RIGHT class while the confirming sample's distance > 2.0 m",
+  "aim_inflate_m": 0.2,
+  "aim_rule": "no tick inside the approach region whose applied aim azimuth (ring azimuth + applied az) lies inside the azimuth extent of pillar A's box inflated by 0.2 m seen from the drone while the ring azimuth lies outside it",
+  "pillar_sim": "report only: from the first passing confirmation, both response models (straight for delay, then turning at a_lat toward ring + intended az at the flown horizontal speed) until past the pillar's far face: minimum 2-D clearance to the box (m)"
+ },
+ "B1": {
+  "what": "pillar B: a confirmed shift away from the pillar (world -x) at least 1 s before impact on both runs (dev-flagged by the graft; gated anyway)",
+  "store_runs": ["123", "127"],
+  "window_tti_s": [0.1, 3.0],
+  "min_lead_s": 1.0,
+  "rule": "the first confirmed class L/R in the window whose intended aim change points to world -x (intended az * -sin(ring azimuth) < 0) has time to impact (confirming sample) >= min_lead_s; confirmed +x before it reported"
+ },
+ "T1": {
+  "what": "Pine Valley trunk (pine-brain08-loom-01): confirmed RIGHT early enough for brain-08",
+  "flight": "pine-brain08-loom-01",
+  "min_lead_s": 0.95,
+  "no_left_last_s": 2.0,
+  "rule": "first confirmed RIGHT with time to impact (confirming sample) >= 0.95 s; no tick with a confirmed LEFT in the last 2.0 s; report the first raw RIGHT sample and the brain-08 kinematic clearance (0.5 a_lat (tti - delay)^2 at the first confirmed RIGHT)",
+  "reference": "gap cue: 0.66 s"
+ },
+ "Q1": {
+  "what": "clean Straw Bale laps: few, small, quiet planner episodes",
+  "flights": ["straw-brain07-02", "straw-brain07-03", "straw-brain08-06"],
+  "minutes": "sum of frame gaps < 0.3 s over kept frames",
+  "max_episodes_per_min": 6.0,
+  "max_vertical_episodes_per_min": 2.0,
+  "vertical_rule": "an episode whose first confirmed class is V",
+  "max_urgent_episodes_per_min": 1.0,
+  "urgent_rule": "an episode with a confirmed blocked state or a confirmed shift whose newest sample has feasible = 0",
+  "max_terrain_climbs_per_min": 1.0,
+  "terrain_climb_rule": "VerticalGuard rule 3 trigger (section 6): rise finite in 2 of the last 3 fresh valid samples and the measured vz >= -0.3 m/s; held 0.5 s after the last confirming sample; activations less than 0.3 s apart merge",
+  "p90_abs_az_max_deg": 10.0,
+  "p90_over": "applied |az| at the ticks of episodes",
+  "switch_window_s": 0.5,
+  "switch_max_offset_deg": 4.0,
+  "switch_offset": "max(|applied az|, |applied el|)",
+  "switch_min_fraction": 0.95,
+  "switch_rule": "gap_cue_eval.checkpoint_switches on the planner's per-frame ring azimuth (jump > 8 deg within 0.25 s, next two frames within 4 / 6 deg, >= 1 s apart, horizontal speed >= 3 m/s)",
+  "report": "floor-bound activation rate (VerticalGuard rule 1: lo = -(h_floor_now - 0.5) / 0.5, capped at +1 m/s, above the logged cmd_vz), per-environment rates of the four report-only store environments (store frames at stride 3: runs without LK pairs inside 0.03-0.15 s cannot have a scale)"
+ },
+ "L1": {
+  "what": "leak tests",
+  "flights": ["minus-brain07-01", "minus-brain08-01", "minus-fast6-cur-01", "minus-brain08-slow35-01", "minus-brain08-loom-01", "pine-brain08-loom-01", "straw-brain08-04", "straw-brain08-06", "straw-brain07-02", "straw-brain07-03"],
+  "sample": "the G4 perturbation set (configs/obstacles/gap_cue_gates.json G4: every 10th kept frame with an overlay-detected ring marker, ring painted or removed, masks recomputed on the perturbed frame); the LK pair is the unperturbed previous frame (the planner's state before the frame is restored), same pose and ring cue",
+  "same_rule": "same kind and |daz| <= 2 deg and |del| <= 2 deg (NaN equal to NaN)",
+  "max_dangle_deg": 2.0,
+  "min_same_fraction": 0.97,
+  "non_clear": "either decision's kind is aperture, shift or blocked",
+  "min_same_fraction_non_clear": 0.9,
+  "hud_only": "every kept frame of these flights: block disparity 1 + 9 f_hud (10 on HUD pixels, 1 elsewhere), validity from that frame's masks, fixed scale a = 1/60, b = 0 (d = 1 lies beyond 30 m, d = 10 at 6 m), the frame's pose and ring cue: no frame may be blocked or shift",
+  "hud_scale": [0.016666666666666666, 0.0]
+ },
+ "V1": {"what": "ceiling (pilot replay, variant on, PLAN_STREAM)", "flights": ["minus-brain08-gapon-01", "minus-brain08-gapon-02", "minus-fast6-wall-01"], "window": "0.5 s before the logged governor climb onset to the ceiling impact", "max_vz_mps": 1.0, "low_ceiling_m": 0.8, "max_vz_low_ceiling_mps": 0.3, "no_class_v_into_ceiling": true},
+ "V2": {"what": "floor sink", "windows": {"minus-fast6-wall-01": "last 3 s", "minus-brain08-gapon-01": [16.5, 19.0]}, "max_vz_mps": 1.0, "flat_floor_max_vz_mps": 0.3, "flat_floor_min_height_m": 0.5, "low_descending_min_vz_mps": 0.0, "min_displaced_fraction": 0.9},
+ "V3": {"what": "mound (dev-flagged, no regression)", "flight": "pine-fast6-ttc-01", "min_vz_mps": 1.0, "min_lateral_deg": 8.0, "min_fraction": 0.8, "no_descent_last_s": 2.0},
+ "R1": {"what": "runtime and parity (G8 protocol, straw-brain08-06 30-90 s, Liftoff idle)", "min_camera_hz": 15.0, "max_plan_age_p95_ms": 150.0, "max_cue_latency_increase_p95_ms": 3.0, "max_lk_ms_p95": 8.0, "max_plan_ms_p95": 6.0, "max_camera_waits": 0, "parity_min_same_kind": 0.95, "parity_max_dangle_p95_deg": 1.0},
+ "I1": {"what": "off and shadow bitwise identity; label isolation (unit tests)"}
+}

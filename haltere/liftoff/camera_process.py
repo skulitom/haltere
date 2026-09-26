@@ -42,6 +42,42 @@ STAGE_FIELDS = ('frame_time', 'capture', 'preprocess', 'inference', 'publish', '
                 'cue_latency')
 STAGE_SLOTS = slice(GAP_SLOTS.stop, GAP_SLOTS.stop+len(STAGE_FIELDS))
 SHARED_SIZE = STAGE_SLOTS.stop
+# FreeSpace corridor planner (haltere.vision.free_space, --obstacle-planner shadow|on): one sample per frame the
+# depth process processes, written to its own shared array `plan_out` (process placement only). All float64,
+# NaN = not applicable; kind indexes PLAN_KINDS; valid = 1 iff kind is clear, aperture, shift or blocked; az, el and
+# the l_*/r_*/v_* options are offsets relative to the ring cue ray of the same frame (NOT confirmed); cls +1 left,
+# -1 right, +2 vertical, 0 none; *_ok / feasible 1 when the option's lag-aware path is free, 0 when saturated
+# (urgent); v_cap m/s; h_floor, h_ceil, rise, rise_x metres from the camera at capture; age = publication - capture.
+from ..vision.free_space import PLAN_FIELDS, PLAN_KINDS  # noqa: E402  (numpy-only module)
+
+_PLAN_OPTIONAL = tuple(k for k in PLAN_FIELDS if k not in ('time', 'seq', 'valid', 'kind'))
+
+
+def plan_sample(values):
+    """The pilot's planner sample from `plan_out` values, or None when nothing was published (time 0): a dict with
+    ``kind`` the kind name, ``valid`` a bool and None for NaN optional fields."""
+    raw = dict(zip(PLAN_FIELDS, (float(v) for v in values)))
+    if not raw['time'] or not np.isfinite(raw['time']):
+        return None
+    k = raw['kind']
+    sample = {key: (raw[key] if np.isfinite(raw[key]) else None) for key in _PLAN_OPTIONAL}
+    sample.update(time=raw['time'], seq=raw['seq'] if np.isfinite(raw['seq']) else 0.,
+                  kind=PLAN_KINDS[int(k)] if np.isfinite(k) and 0 <= int(k) < len(PLAN_KINDS) else '',
+                  valid=bool(raw['valid'] == 1.))
+    return sample
+
+
+def plan_values_of(sample):
+    """Inverse of `plan_sample` (round trip): PLAN_FIELDS float values of a sample dict."""
+    out = []
+    for key in PLAN_FIELDS:
+        v = sample.get(key)
+        if key == 'kind':
+            v = float(PLAN_KINDS.index(v)) if v in PLAN_KINDS else np.nan
+        elif key == 'valid':
+            v = float(bool(v))
+        out.append(np.nan if v is None else float(v))
+    return out
 
 
 def gap_sample(values):
@@ -235,9 +271,15 @@ class ProcessRetinaCamera:
             self.motion = MotionBuffer()
         self._clearance = None
         self._gap = None
+        self._plan = None
+        self.plan_counts = dict(samples=0, busy=0)
         self._stages = None
         self._gap_status = {}
         self.frame_slot = self.gap_process = self.gap_queue = self.gap_out = self.gap_stop = None
+        self.plan_out = None
+        plan = self.gap_spec.get('plan') if self.gap_spec else None
+        if plan and self.gap_spec['placement'] != 'process':
+            raise ValueError('The free-space planner runs only in the separate depth process (placement process)')
         if self.gap_spec and self.gap_spec['placement'] == 'process':
             from .gap_stack import FrameSlot, gap_process_worker
             self.frame_slot = FrameSlot()
@@ -246,8 +288,12 @@ class ProcessRetinaCamera:
             # `done` event, which the camera process takes blocking (no priority inversion through them).
             self.gap_out = context.Array('d',len(GAP_FIELDS),lock=True)
             self.gap_stop = context.Event()
-            self.gap_process = context.Process(target=gap_process_worker,
-                args=(self.frame_slot,self.gap_out,self.motion,self.gap_stop,self.gap_queue,self.gap_spec),daemon=True)
+            args = (self.frame_slot,self.gap_out,self.motion,self.gap_stop,self.gap_queue,self.gap_spec)
+            if plan:
+                # the planner's own sample array (same non-blocking pattern as gap_out)
+                self.plan_out = context.Array('d',len(PLAN_FIELDS),lock=True)
+                args = args+(self.plan_out,)
+            self.gap_process = context.Process(target=gap_process_worker,args=args,daemon=True)
         self.process = context.Process(target=camera_worker,
             args=(self.queue,self.data,self.done,self.phase,title,fps,gate_sensor,backend,race_cues,detector_device,
                   self.motion,self.looming,self.gap_spec,self.frame_slot),daemon=True)
@@ -311,6 +357,17 @@ class ProcessRetinaCamera:
                     self._take_gap(np.frombuffer(gap_out.get_obj(),dtype=np.float64).copy())
                 finally:
                     gap_lock.release()
+        plan_out = getattr(self,'plan_out',None)
+        if plan_out is not None:
+            # the planner's samples: the same nonblocking snapshot; a busy lock skips this read (counted)
+            plan_lock = plan_out.get_lock()
+            if plan_lock.acquire(False):
+                try:
+                    self._take_plan(np.frombuffer(plan_out.get_obj(),dtype=np.float64).copy())
+                finally:
+                    plan_lock.release()
+            else:
+                self.plan_counts['busy'] += 1
         for queue in (self.queue, getattr(self,'gap_queue',None)):
             while queue is not None:
                 try:
@@ -337,11 +394,24 @@ class ProcessRetinaCamera:
                           or values[0] != self._gap['time']):
             self._gap = gap_sample(values)
 
+    def _take_plan(self, values):
+        seq = values[PLAN_FIELDS.index('seq')]
+        if values[0] and (self._plan is None or seq != self._plan['seq'] or values[0] != self._plan['time']):
+            self._plan = plan_sample(values)
+            self.plan_counts['samples'] += 1
+
     @property
     def gap(self):
         """Latest gap-cue sample (see gap_sample) or None."""
         self._poll()
         return self._gap
+
+    @property
+    def plan(self):
+        """Latest free-space planner sample (see plan_sample) or None. The pilot passes a sample with a new
+        ``seq`` to FastRaceCue once."""
+        self._poll()
+        return self._plan
 
     @property
     def stages(self):
@@ -377,6 +447,8 @@ class ProcessRetinaCamera:
         if getattr(self,'gap_spec',None):
             result['gap'] = dict(self._gap_status, placement=self.gap_spec['placement'], stride=self.gap_spec['stride'],
                                  depth_worker_pid=self.gap_process.pid if self.gap_process is not None else None)
+            if getattr(self,'plan_out',None) is not None:
+                result['gap']['plan_reads'] = dict(self.plan_counts)
         return result
 
     def stop(self):

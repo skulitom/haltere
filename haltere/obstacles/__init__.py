@@ -28,6 +28,7 @@ Offline-only modules (never imported by runtime modules):
 - ``thermal``   flight lock, GPU temperature and thread limits for heavy jobs
 - ``gap_cue_eval``  offline gates of the runtime gap cue (haltere.vision.gap_cue): masks, frames, depth, scores
 - ``gap_bench``  runtime bench G8 of the wired gap cue (the flight camera process on a recorded video)
+- ``free_space_eval``  offline gates of the free-space planner (haltere.vision.free_space) and its plan streams
 
 ``tests/test_obstacle_label_isolation.py`` proves that no runtime module can reach
 ``haltere.obstacles.labels`` through any import chain. The labels package also
@@ -75,4 +76,5 @@ OFFLINE_MODULES = (
     'haltere.obstacles.thermal',
     'haltere.obstacles.gap_cue_eval',
     'haltere.obstacles.gap_bench',
+    'haltere.obstacles.free_space_eval',
 )
