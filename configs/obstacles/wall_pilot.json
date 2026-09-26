@@ -1,7 +1,7 @@
 {
  "schema": "haltere.liftoff.wall_pilot.v1",
- "version": 1,
- "note": "Wall-pilot rules of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow; off by default and outside the stack; --wall-pilot off removes them from the stack). 'turn_first': haltere.liftoff.fast_race_cue.TurnFirstConfig, turn before translating at a wall when the next checkpoint is far off the heading (a hairpin). 'ceiling_guard': haltere.liftoff.fast_race_cue.CeilingGuardConfig, keep the looming TTC governor's terrain climb out of ceilings and overhangs. Generic and course-agnostic: they read only the pilot's own state, the causal looming samples and the visible checkpoint marker. The values are a-priori (the M2 round-2 task values: stand-off or a wall brake below about 1.5 m/s, a bearing beyond about 45-60 deg, a request of at most 0.5-1 m/s, a climb of about 1 m/s without persistent below-path evidence), set after inspecting the three Minus Two incidents they address (minus-brain08-gapon-01/02 ceiling, minus-fast6-gapon-01 hairpin side push); they are fitted to no replay, and were frozen before any replay of these rules. The runner refuses another version (fast_race_cue.WALL_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported. Offline replays of these rules are open loop and are not flight evidence.",
+ "version": 2,
+ "note": "Wall-pilot rules of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow; off by default and outside the stack; --wall-pilot off removes them from the stack). 'turn_first': haltere.liftoff.fast_race_cue.TurnFirstConfig, turn before translating at a wall when the next checkpoint is far off the heading (a hairpin). 'ceiling_guard': haltere.liftoff.fast_race_cue.CeilingGuardConfig, keep the looming TTC governor's terrain climb out of ceilings and overhangs. Generic and course-agnostic: they read only the pilot's own state, the causal looming samples and the visible checkpoint marker. The values are a-priori (the M2 round-2 task values: stand-off or a wall brake below about 1.5 m/s, a bearing beyond about 45-60 deg, a request of at most 0.5-1 m/s, a climb of about 1 m/s without persistent below-path evidence), set after inspecting the three Minus Two incidents they address (minus-brain08-gapon-01/02 ceiling, minus-fast6-gapon-01 hairpin side push); version 1 was frozen before any replay of these rules; version 2 adds one condition after the open-loop replay of version 1 (see change), so the Minus Two incident replays are development evidence for version 2, not held-out evidence. The runner refuses another version (fast_race_cue.WALL_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported. Offline replays of these rules are open loop and are not flight evidence.",
  "turn_first": {
   "slow_speed": 1.5,
   "brake_recent_s": 1.0,
@@ -23,6 +23,7 @@
   "overhead_fraction": 0.3,
   "overhead_ttc_s": 1.2,
   "overhead_confirm": 2,
+  "overhead_min_rise": 0.3,
   "hold_s": 1.0,
   "vertical_cap": 0.0,
   "vertical_slew": 15.0
@@ -30,11 +31,22 @@
  "ceiling_guard_notes": {
   "unexplained_alarms": "without the guard a sample without vertical evidence (below_fraction None: one of looming2's vertical windows has no evidence, or neither is urgent) counts as terrain while a climb is active. On minus-brain08-gapon-01 the alarms from the garage ceiling ahead of the climbing path (TTC 0.93 -> 0.43 s, below_fraction None, lower TTC none or 1.23 s) raised the climb from 0.4 to 3.5 m/s. With the guard such a sample is terrain only when the lower window explains it (lower TTC <= lower_ratio x alarm TTC), otherwise a wall",
   "weak_climb": "a climb from such an explained sample (terrain seen by the lower window only) requests at most weak_climb (the task's ~1 m/s), refreshes the climb hold only at that level, and is ignored weak_climb_max_m above where the last below-path climb request (below_fraction >= terrain_fraction) was accepted; below-path climbs keep the TTC policy's vertical_up and climb_max_m",
-  "overhead": "during a climb (or an overhead hold) a sample with alarm TTC < overhead_ttc_s (the TTC policy's climb_on_s) whose expansion lies above the path (below_fraction <= overhead_fraction) or is unexplained is overhead evidence; overhead_confirm of them within the governor's confirm_window_s (0.25 s) cut the climb to 0 and start an overhead hold of hold_s, renewed by further evidence: no terrain climb, below-path samples brake like walls (terrain_brake 0 would otherwise let rising ground pass unbraked), and the whole vertical request (pilot and governor) is bounded to vertical_cap (level) and brought down at vertical_slew m/s^2 (the clearance brake_slew) instead of the pilot's 5 m/s^2. Level flight is unaffected: overhead evidence only counts during a climb or a hold",
-  "not_used": "looming2 already fits an 'up' window 0.12 W above the focus of expansion (ttc_upper, report only). It is not published by the camera process and the live logs do not carry it; while climbing, that window lies at the top of the image, where the HUD mask removes the upper 20 % (on gapon-01 at 18.5 s the lower window was urgent while below_fraction was None, so the upper window had no evidence under the ceiling). The guard therefore uses the fields the camera already publishes"
+  "overhead": "during a climb (or an overhead hold), while the measured vertical speed exceeds overhead_min_rise, a sample with alarm TTC < overhead_ttc_s (the TTC policy's climb_on_s) whose expansion lies above the path (below_fraction <= overhead_fraction) or is unexplained is overhead evidence; overhead_confirm of them within the governor's confirm_window_s (0.25 s) cut the climb to 0 and start an overhead hold of hold_s, renewed by further evidence: no terrain climb, below-path samples brake like walls (terrain_brake 0 would otherwise let rising ground pass unbraked), and the whole vertical request (pilot and governor) is bounded to vertical_cap (level) and brought down at vertical_slew m/s^2 (the clearance brake_slew) instead of the pilot's 5 m/s^2. Level flight is unaffected: overhead evidence only counts during a climb or a hold, and only while the drone rises",
+  "not_used": "looming2 already fits an 'up' window 0.12 W above the focus of expansion (ttc_upper, report only). It is not published by the camera process and the live logs do not carry it; while climbing, that window lies at the top of the image, where the HUD mask removes the upper 20 % (on gapon-01 at 18.5 s the lower window was urgent while below_fraction was None, so the upper window had no evidence under the ceiling). The guard therefore uses the fields the camera already publishes",
+  "overhead_min_rise": "a ceiling or overhang can only cross a rising flight path; an alarm ahead of a level or sinking path is braked for as a wall and does not stop a climb that arrests a sink. 0.3 m/s is a noise margin on the measured vertical speed, not fitted"
  },
- "previous_versions": [],
+ "change": "v2 (after the open-loop replay of v1 on the live logs, before any flight): overhead evidence also needs the drone to rise faster than overhead_min_rise (0.3 m/s). In the v1 replay of minus-brain08-gapon-01 two unexplained alarms (TTC 1.13 s) arriving at 17.7 s while the path sank toward the floor at 0.8-0.9 m/s (z 0.8 m) cut the 1 m/s climb that below-path evidence (the floor, below_fraction 1.0, lower TTC 0.24-0.63 s) had requested; a ceiling cannot cross a sinking path. Every other value and rule is version 1's.",
+ "previous_versions": [
+  {
+   "version": 1,
+   "sha256": "17fecfb1fad7ec0700f3df3442bbf44243bf4c615cb01f53740e7226f3b3fbd6",
+   "frozen_at": "2026-09-26T02:59:49",
+   "file": "configs/obstacles/wall_pilot_v1.json",
+   "scored": "open-loop replays of the live Minus Two and Pine Valley logs (docs/obstacle_gap_pilot.md); never flown",
+   "superseded_because": "the overhead cut also fired ahead of a sinking path (see change)"
+  }
+ ],
  "frozen": true,
- "frozen_at": "2026-09-26T02:59:49",
- "sha256": "17fecfb1fad7ec0700f3df3442bbf44243bf4c615cb01f53740e7226f3b3fbd6"
+ "frozen_at": "2026-09-26T03:17:58",
+ "sha256": "095addc577c0270a76e64692b29fcb9f404fc6988503611ee836b3afafca532a"
 }
