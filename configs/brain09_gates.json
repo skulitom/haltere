@@ -1,0 +1,722 @@
+{
+ "schema": "haltere.train.brake_gates.v1",
+ "version": 1,
+ "note": "Surrogate gates for brain-09 (fast-brain-09: brain-08's contract and parent, re-distilled with braking data). Measured by haltere.train.brake_gates in the measured-drone surrogate (IdentifiedSim, synthetic courses, logged Minus Two states); development checks, not flight evidence. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze, and every frozen version used for scoring is reported. Test settings follow the brain-09 recipe of the round-2 brake diagnosis (m2r2/brake) with the verifier's corrections: cap metrics are defined from the request side (cap events, cruise ticks), the long swaps run with a height loop instead of below ground, the rollout(S) assist-speed test is added, the regression baselines come from the same gate on this code tree (brain-08 measured before freezing), and the mean-speed rule is one-sided.",
+ "reference": {
+  "brain08": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+  "brain08_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+  "parent": "C:/DEV/Haltere/runs/motor-brain-10-tracking-05/candidate.pt",
+  "parent_sha256": "64444a628c58b2c1615086bc84f8c5d3c0a0a12667df31d888c4587a802288b2",
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5"
+ },
+ "tests": {
+  "hover": {
+   "height": 3.0,
+   "vz_gain": 0.5,
+   "cruise": 6.0,
+   "brake_slew": 15.0,
+   "cap_at_s": 5.0,
+   "cap_hold_s": 3.0,
+   "cap_end_s": 10.0,
+   "cap_settle_s": [
+    1.0,
+    3.0
+   ],
+   "within": 0.5,
+   "cap_targets": [
+    1.0,
+    2.0,
+    3.0,
+    3.5,
+    4.0
+   ],
+   "sustained_targets": [
+    2.0,
+    3.0,
+    3.5,
+    4.5
+   ],
+   "sustained_end_s": 9.0,
+   "sustained_settle_s": [
+    5.0,
+    9.0
+   ]
+  },
+  "live": {
+   "flights_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
+   "windows_rule": "the earliest logged cruise state of each brain-08 Minus Two flight (t >= 4 s; for the preceding 0.5 s a level request >= 5.5 m/s within 10 deg of the track, >= 5 m/s flown, |vz| < 0.5, no clearance cap, pilot state cue; >= 4 s before the impact), plus the recipe's slow35-01 8.3 s and loom-01 9.0 s states",
+   "windows": [
+    "minus-brain08-loom-01:5.48",
+    "minus-brain08-gapon-01:5.53",
+    "minus-brain08-gapon-02:5.51",
+    "minus-brain08-gapshadow-01:5.53",
+    "minus-brain08-01:5.53",
+    "minus-brain08-loom-01:9.0",
+    "minus-brain08-slow35-01:8.3"
+   ],
+   "warm_s": 8.0,
+   "pre_s": 0.5,
+   "hold_s": 5.0,
+   "brake_slew": 15.0,
+   "vz_gain": 0.5,
+   "within": 0.5,
+   "targets": [
+    1.0,
+    2.0,
+    3.0,
+    3.5,
+    4.0,
+    4.5
+   ],
+   "settle_s": [
+    1.0,
+    3.0
+   ],
+   "steady_s": [
+    2.0,
+    5.0
+   ]
+  },
+  "swaps": {
+   "flights_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
+   "windows": [
+    "minus-brain08-loom-01:11.5",
+    "minus-brain08-gapon-01:11.6",
+    "minus-brain08-gapon-01:16.1",
+    "minus-brain08-gapon-02:6.7",
+    "minus-brain08-gapon-02:8.2",
+    "minus-brain08-gapon-02:11.9",
+    "minus-brain08-gapon-02:16.2",
+    "minus-brain08-slow35-01:4.8",
+    "minus-brain08-slow35-01:8.3"
+   ],
+   "warm_s": 8.0,
+   "horizon_s": 2.5
+  },
+  "rollout_speed": {
+   "speeds": [
+    3.5,
+    4.5,
+    6.0
+   ],
+   "groups": [
+    [
+     "steep",
+     0.4
+    ]
+   ],
+   "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007
+   ],
+   "seconds": 60.0,
+   "sim_seed": 17,
+   "rest_s": 5.0
+  },
+  "in_course_caps": {
+   "groups": [
+    [
+     "flat",
+     0.0
+    ],
+    [
+     "steep",
+     0.4
+    ]
+   ],
+   "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007
+   ],
+   "seconds": 110.0,
+   "sim_seed": 17,
+   "cap_fraction": 1.0,
+   "cap_seed": 9001,
+   "cap_seed_note": "held out: training collection rounds draw caps with seeds 100-104",
+   "caps": {
+    "rate_per_min": 8.0,
+    "min_speed": 3.0,
+    "states": [
+     "cue",
+     "side",
+     "coast"
+    ],
+    "absolute_share": 0.5,
+    "absolute": [
+     1.0,
+     4.0
+    ],
+    "relative": [
+     0.2,
+     0.7
+    ],
+    "hold_s": [
+     0.5,
+     3.0
+    ],
+    "ray_jitter_deg": 15.0,
+    "brake_rate": 8.0,
+    "release": 3.0,
+    "end_margin": 1.0
+   }
+  },
+  "evaluation8": {
+   "groups": [
+    [
+     "steep",
+     0.4
+    ]
+   ],
+   "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007
+   ],
+   "seconds": 110.0,
+   "sim_seed": 17
+  },
+  "regression16": {
+   "harness": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m3/brain09/gates/harness16.py",
+   "harness_sha256": "9f49372ca928739563f595aea1d4a1b21f892acac5d8b3be9b36943ad86a15fa",
+   "harness_note": "copy of the m2 switch harness (scratchpad/m2impl/lagturn/harness_lt.py; lag turn off): flat and steep seeds 3000-3007, 6 m/s, 110 s, sim seed 17",
+   "label": "brain09-gates"
+  }
+ },
+ "gates": {
+  "G1_cap_step": {
+   "note": "governor-like cap steps: within X + 0.5 m/s in <= 1 s and settled excess (mean speed 1-3 s after the cap minus X) <= 0.3 m/s, from a hover and from logged cruise states (X below the logged request)",
+   "checks": [
+    {
+     "name": "hover t_within",
+     "rows": "hover.cap",
+     "field": "t_within",
+     "op": "le",
+     "value": 1.0
+    },
+    {
+     "name": "hover settled_excess",
+     "rows": "hover.cap",
+     "field": "settled_excess",
+     "op": "le",
+     "value": 0.3
+    },
+    {
+     "name": "live t_within",
+     "rows": "live",
+     "select": {
+      "window": [
+       "minus-brain08-loom-01:5.48",
+       "minus-brain08-gapon-01:5.53",
+       "minus-brain08-gapon-02:5.51",
+       "minus-brain08-gapshadow-01:5.53",
+       "minus-brain08-01:5.53",
+       "minus-brain08-loom-01:9.0"
+      ],
+      "target": [
+       1.0,
+       2.0,
+       3.0,
+       3.5,
+       4.0
+      ]
+     },
+     "field": "t_within",
+     "op": "le",
+     "value": 1.0
+    },
+    {
+     "name": "live settled_excess",
+     "rows": "live",
+     "select": {
+      "window": [
+       "minus-brain08-loom-01:5.48",
+       "minus-brain08-gapon-01:5.53",
+       "minus-brain08-gapon-02:5.51",
+       "minus-brain08-gapshadow-01:5.53",
+       "minus-brain08-01:5.53",
+       "minus-brain08-loom-01:9.0"
+      ],
+      "target": [
+       1.0,
+       2.0,
+       3.0,
+       3.5,
+       4.0
+      ]
+     },
+     "field": "settled_excess",
+     "op": "le",
+     "value": 0.3
+    }
+   ]
+  },
+  "G2_sustained": {
+   "note": "sustained requests 2/3/3.5/4.5 m/s: |excess| <= 0.3 m/s from a hover and from logged states (steady 2-5 s), the two within 0.3 m/s of each other; rollout(S) assist-speed test: |cruise excess| <= 0.3 m/s at S = 3.5 and 4.5, -0.6..+0.3 at S = 6, at most 1 crash of 8",
+   "checks": [
+    {
+     "name": "hover settled_excess",
+     "rows": "hover.sustained",
+     "field": "settled_excess",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "live steady_excess",
+     "rows": "live",
+     "select": {
+      "target": [
+       2.0,
+       3.0,
+       3.5,
+       4.5
+      ]
+     },
+     "field": "steady_excess",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "history gap",
+     "rows": "derived.history_gap",
+     "select": {
+      "target": [
+       2.0,
+       3.0,
+       3.5,
+       4.5
+      ]
+     },
+     "field": "gap",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "rollout(S) cruise excess 3.5/4.5",
+     "rows": "rollout_speed",
+     "select": {
+      "S": [
+       3.5,
+       4.5
+      ]
+     },
+     "field": "cruise_excess_mps",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "rollout(S) cruise excess 6",
+     "rows": "rollout_speed",
+     "select": {
+      "S": [
+       6.0
+      ]
+     },
+     "field": "cruise_excess_mps",
+     "op": "between",
+     "value": [
+      -0.6,
+      0.3
+     ]
+    },
+    {
+     "name": "rollout(S) crashes",
+     "rows": "rollout_speed",
+     "field": "crashed",
+     "op": "le",
+     "value": 1
+    }
+   ]
+  },
+  "G3_live_swaps": {
+   "note": "logged request replayed from 9 logged Minus Two states: speed at +1 s within 0.5 m/s of FastMotorPD in the same plant (windows whose logged commands replay within 0.3 m/s of the live speed); plant validity; the 3.45-3.5 m/s request from slow35 8.3 s and loom 9.0 s settles at <= 3.9 m/s",
+   "checks": [
+    {
+     "name": "controller - PD at +1 s",
+     "rows": "swaps",
+     "field": "controller_minus_pd_1s",
+     "op": "abs_le",
+     "value": 0.5,
+     "where": {
+      "field": "logged_minus_live_1s",
+      "op": "abs_le",
+      "value": 0.3
+     }
+    },
+    {
+     "name": "plant validity",
+     "rows": "swaps",
+     "field": "logged_minus_live_1s",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "3.5 m/s steady from slow35/loom",
+     "rows": "live",
+     "select": {
+      "window": [
+       "minus-brain08-slow35-01:8.3",
+       "minus-brain08-loom-01:9.0"
+      ],
+      "target": [
+       3.5
+      ]
+     },
+     "field": "steady",
+     "op": "le",
+     "value": 3.9
+    }
+   ]
+  },
+  "G5_in_course_caps": {
+   "note": "synthetic governor caps on every drone of the 16 standard courses (held-out cap seed 9001): tick-weighted mean excess of the speed over the request along the cap ray from cap + 0.5 s to the release <= 0.4 m/s",
+   "checks": [
+    {
+     "name": "cap_excess",
+     "path": "in_course_caps.brake.cap_excess_mps",
+     "op": "le",
+     "value": 0.4
+    }
+   ]
+  },
+  "G6_regressions": {
+   "note": "16-course switch harness (no caps, lag turn off) and the 8-course distillation evaluation against brain-08 measured by this runner on this tree; weights audit",
+   "checks": [
+    {
+     "name": "finished",
+     "path": "regression16.finished",
+     "op": "ge",
+     "value": 15
+    },
+    {
+     "name": "crashed",
+     "path": "regression16.crashed",
+     "op": "le",
+     "value": 1
+    },
+    {
+     "name": "stick chatter",
+     "path": "regression16.stick_chatter",
+     "op": "le",
+     "value": 0.0035
+    },
+    {
+     "name": "mean speed (one-sided, 0.95 x brain-08)",
+     "path": "regression16.mean_speed",
+     "op": "ge",
+     "value": 4.564
+    },
+    {
+     "name": "steep sink shortfall",
+     "path": "regression16.steep_sink_shortfall_mps",
+     "op": "le",
+     "value": 0.3
+    },
+    {
+     "name": "descending passes > 1.5 m above the gate",
+     "path": "regression16.descending_passes_high",
+     "op": "le",
+     "value": 0
+    },
+    {
+     "name": "switch 45-75 speed_min (brain-08 - 0.3)",
+     "path": "regression16.switch_bins.45-75.speed_min",
+     "op": "ge",
+     "value": 2.67
+    },
+    {
+     "name": "switch 45-75 regain_s (brain-08 + 0.5)",
+     "path": "regression16.switch_bins.45-75.regain_s",
+     "op": "le",
+     "value": 2.498
+    },
+    {
+     "name": "switch 45-75 stick_after (1.25 x brain-08)",
+     "path": "regression16.switch_bins.45-75.stick_after",
+     "op": "le",
+     "value": 0.01412
+    },
+    {
+     "name": "post-switch lateral 40-75 at 1 s (brain-08 + 0.3 m)",
+     "path": "regression16.lateral_1s.40-75",
+     "op": "le",
+     "value": 3.082
+    },
+    {
+     "name": "8-course velocity error (1.05 x brain-08)",
+     "path": "evaluation8.velocity_error_mps",
+     "op": "le",
+     "value": 0.994
+    },
+    {
+     "name": "8-course crashes",
+     "path": "evaluation8.crashed",
+     "op": "le",
+     "value": 1
+    },
+    {
+     "name": "weights audit: only readout rows 0-2",
+     "path": "audit.only_readout_rows_0_2",
+     "op": "eq",
+     "value": true
+    }
+   ]
+  }
+ },
+ "baselines": {
+  "note": "measured by haltere.train.brake_gates with this file's test settings before the gates were added and frozen; brain-08 measurements are the reference of the relative G6 thresholds; FastMotorPD (the teacher) is shown for scale and is not a candidate",
+  "brain08": {
+   "report": "brain08",
+   "runner_source_sha256": "1652fd81658791ea6bea4ee41b73adf4ae82534b8580abd29a138821a84dc169",
+   "tests_sha256": "45b91024c6b3a23af6243e1758fa52e5dc24ebdffd17effa841bd10140147fae",
+   "rollout_speed": [
+    {
+     "S": 3.5,
+     "crashed": 2,
+     "cruise_excess_mps": 1.301,
+     "cruise_s": 198.99
+    },
+    {
+     "S": 4.5,
+     "crashed": 1,
+     "cruise_excess_mps": 0.746,
+     "cruise_s": 194.05
+    },
+    {
+     "S": 6.0,
+     "crashed": 0,
+     "cruise_excess_mps": -0.472,
+     "cruise_s": 211.12
+    }
+   ],
+   "in_course_caps": {
+    "cap_events": 70,
+    "cap_excess_mps": 1.202,
+    "cap_within_1s": 0.243,
+    "cap_within_median_s": null
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.31,
+    "stick_chatter": 0.00488,
+    "velocity_error_mps": 0.947,
+    "slow_request_excess_mps": 0.105,
+    "steep_sink_shortfall_mps": 0.279
+   },
+   "regression16": {
+    "finished": 15,
+    "crashed": 1,
+    "mean_speed": 4.804,
+    "stick_chatter": 0.00298,
+    "mean_finish_s_own": 63.05,
+    "switch_bins": {
+     "<45": {
+      "n": 14,
+      "speed_min": 3.6485,
+      "regain_s": 2.5171,
+      "stick_after": 0.0085,
+      "pitch_swing": 0.5764
+     },
+     "45-75": {
+      "n": 65,
+      "speed_min": 2.9695,
+      "regain_s": 1.9983,
+      "stick_after": 0.0113,
+      "pitch_swing": 0.6533
+     },
+     ">75": {
+      "n": 4,
+      "speed_min": 2.7733,
+      "regain_s": 1.295,
+      "stick_after": 0.0101,
+      "pitch_swing": 0.4779
+     },
+     "all": {
+      "n": 83,
+      "speed_min": 3.0746,
+      "regain_s": 2.0519,
+      "stick_after": 0.0108,
+      "pitch_swing": 0.6319
+     }
+    },
+    "lateral_1s": {
+     "<20": 0.721,
+     "20-40": 1.682,
+     "40-75": 2.782,
+     ">75": 3.58
+    },
+    "steep_settled_s": 52.15,
+    "steep_sink_shortfall_mps": 0.157,
+    "descending_passes": 10,
+    "descending_passes_high": 0
+   },
+   "hover_cap_settled_excess": [
+    0.684,
+    0.913,
+    1.186,
+    0.975,
+    0.624
+   ],
+   "hover_sustained_excess": [
+    0.937,
+    0.985,
+    0.767,
+    0.066
+   ],
+   "swaps_controller_minus_pd_1s": [
+    1.065,
+    0.689,
+    0.688,
+    1.678,
+    1.469,
+    1.001,
+    0.422,
+    1.574,
+    1.574
+   ]
+  },
+  "fast_pd": {
+   "report": "fast_pd",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2",
+   "tests_sha256": "45b91024c6b3a23af6243e1758fa52e5dc24ebdffd17effa841bd10140147fae",
+   "rollout_speed": [
+    {
+     "S": 3.5,
+     "crashed": 0,
+     "cruise_excess_mps": -0.042,
+     "cruise_s": 270.32
+    },
+    {
+     "S": 4.5,
+     "crashed": 0,
+     "cruise_excess_mps": -0.062,
+     "cruise_s": 234.88
+    },
+    {
+     "S": 6.0,
+     "crashed": 0,
+     "cruise_excess_mps": -0.099,
+     "cruise_s": 196.24
+    }
+   ],
+   "in_course_caps": {
+    "cap_events": 55,
+    "cap_excess_mps": -0.19,
+    "cap_within_1s": 0.981,
+    "cap_within_median_s": 0.41
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.17,
+    "stick_chatter": 0.00424,
+    "velocity_error_mps": 0.427,
+    "slow_request_excess_mps": -0.044,
+    "steep_sink_shortfall_mps": 0.303
+   },
+   "regression16": {
+    "finished": 14,
+    "crashed": 2,
+    "mean_speed": 5.121,
+    "stick_chatter": 0.00571,
+    "mean_finish_s_own": 56.68,
+    "switch_bins": {
+     "<45": {
+      "n": 11,
+      "speed_min": 3.7331,
+      "regain_s": 1.4173,
+      "stick_after": 0.0137,
+      "pitch_swing": 1.0664
+     },
+     "45-75": {
+      "n": 60,
+      "speed_min": 3.457,
+      "regain_s": 1.2368,
+      "stick_after": 0.0155,
+      "pitch_swing": 0.9489
+     },
+     ">75": {
+      "n": 8,
+      "speed_min": 2.9896,
+      "regain_s": 0.9575,
+      "stick_after": 0.0158,
+      "pitch_swing": 0.9015
+     },
+     "all": {
+      "n": 79,
+      "speed_min": 3.4481,
+      "regain_s": 1.2337,
+      "stick_after": 0.0153,
+      "pitch_swing": 0.9605
+     }
+    },
+    "lateral_1s": {
+     "<20": 0.436,
+     "20-40": 0.986,
+     "40-75": 2.072,
+     ">75": 3.39
+    },
+    "steep_settled_s": 15.74,
+    "steep_sink_shortfall_mps": -0.132,
+    "descending_passes": 7,
+    "descending_passes_high": 1
+   },
+   "hover_cap_settled_excess": [
+    -0.029,
+    -0.038,
+    -0.055,
+    -0.065,
+    -0.077
+   ],
+   "hover_sustained_excess": [
+    -0.028,
+    -0.049,
+    -0.061,
+    -0.089
+   ],
+   "swaps_controller_minus_pd_1s": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "runner": {
+  "module": "haltere/train/brake_gates.py",
+  "sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2",
+  "commit": "97bd383",
+  "usage": "python -m haltere.train.brake_gates CHECKPOINT|pd --gates configs/brain09_gates.json --out REPORT.json",
+  "note": "brain-08 baseline measurements were made with runner sha256 1652fd81658791ea6bea4ee41b73adf4ae82534b8580abd29a138821a84dc169 (same measurement code; the committed runner only adds derived values and where-clauses to the verdict)"
+ },
+ "diagnostics": {
+  "G4_static_gain": "request sweep 0-7 m/s at the 10 live over-speed states of brake_replay (scratchpad m3/brain09/gates/g4_request_sweep.py, from m2r2/brake/request_sweep.py): reported for candidates as a diagnostic of the pitch response, not a gate (brain-08 slope 4-6 m/s 1.4-6.1 deg/s per m/s, PD 73-132)"
+ },
+ "selection": "A candidate may be selected as brain-09 only if it passes every primary gate (G1, G2, G3, G5, G6) of this frozen version; among those, the lowest G5 cap_excess, then the lowest 16-course stick chatter. If none passes, none is selected for flight: candidates are ranked by the number of primary gates passed, then by the mean |settled_excess| of the G1 rows (hover and live), and the result is reported as a failed round.",
+ "frozen": true,
+ "frozen_at": "2026-09-26T12:55:47",
+ "sha256": "21ba2fcb2e325198e8fff7353ec37f8f0e5cbe1ef0207aa1e65034ccf4f1b5cc"
+}
