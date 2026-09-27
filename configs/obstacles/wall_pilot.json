@@ -1,20 +1,44 @@
 {
- "schema": "haltere.liftoff.wall_pilot.v1",
- "version": 3,
- "note": "Wall-pilot rules of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow; off by default and outside the stack; --wall-pilot off removes them from the stack). 'turn_first': haltere.liftoff.fast_race_cue.TurnFirstConfig, turn before translating at a wall when the next checkpoint is far off the heading (a hairpin). 'ceiling_guard': haltere.liftoff.fast_race_cue.CeilingGuardConfig, keep the looming TTC governor's terrain climb out of ceilings and overhangs. Generic and course-agnostic: they read only the pilot's own state, the causal looming samples and the visible checkpoint marker. The values are a-priori (the M2 round-2 task values: stand-off or a wall brake below about 1.5 m/s, a bearing beyond about 45-60 deg, a request of at most 0.5-1 m/s, a climb of about 1 m/s without persistent below-path evidence), set after inspecting the three Minus Two incidents they address (minus-brain08-gapon-01/02 ceiling, minus-fast6-gapon-01 hairpin side push); version 1 was frozen before any replay of these rules; versions 2 and 3 each add one condition to the overhead cut after an open-loop replay of the previous version (see change and previous_versions), so the Minus Two incident replays and the Straw Bale quietness replays are development evidence for version 3, not held-out evidence. The runner refuses another version (fast_race_cue.WALL_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported. Offline replays of these rules are open loop and are not flight evidence.",
+ "schema": "haltere.liftoff.wall_pilot.v2",
+ "version": 4,
+ "note": "Wall-pilot rules of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow; off by default and outside the stack; --wall-pilot off removes them from the stack). 'turn_first': haltere.liftoff.fast_race_cue.TurnFirstConfig, turn before translating at a wall the drone cannot stop before when the next checkpoint is far off the heading or its marker is lost (a hairpin), with its stopping model per motor contract in 'turn_first_stopping'. 'ceiling_guard': haltere.liftoff.fast_race_cue.CeilingGuardConfig, keep the looming TTC governor's terrain climb out of ceilings and overhangs (unchanged from version 3). Generic and course-agnostic: they read only the pilot's own state, the causal looming samples, odometry and the visible checkpoint marker; the stopping model is a measured motor property, not a course value. Version 4 was designed after inspecting the round-3 Minus Two logs it addresses (minus-brain09b-vg-01, minus-brain08-vg-01, minus-fast6-vg-02) and earlier logs (minus-fast6-gapon-01), so those replays are development evidence, not held-out evidence. It was frozen with its offline gates (configs/obstacles/wall_pilot_gates.json) before any replay of version 4. The runner refuses another version (fast_race_cue.WALL_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported. Offline replays of these rules are open loop and are not flight evidence.",
  "turn_first": {
-  "slow_speed": 1.5,
   "brake_recent_s": 1.0,
   "engage_deg": 50.0,
   "release_deg": 30.0,
   "creep_speed": 0.8,
+  "coast_creep_speed": 0.0,
+  "max_speed": 3.5,
+  "stop_margin_m": 0.5,
   "max_s": 2.0,
   "rearm_s": 2.0
  },
+ "turn_first_stopping": {
+  "fast_velocity_brain_v1": {
+   "stop_latency_s": 0.3,
+   "stop_deceleration": 3.5
+  },
+  "fast_velocity_pd_v1": {
+   "stop_latency_s": 0.15,
+   "stop_deceleration": 6.0
+  },
+  "default": {
+   "stop_latency_s": 0.3,
+   "stop_deceleration": 3.5
+  }
+ },
  "turn_first_notes": {
-  "condition": "near a wall: the TTC governor holds a stand-off (a wall sample capped the request at standoff_speed, 2 m/s, or less within standoff_s), or its wall brake capped the request within brake_recent_s while the horizontal speed is at most slow_speed; and the checkpoint marker is clamped at a side edge or corner (pilot state 'side'), or its filtered bearing (in view, or clamped at the bottom/top edge away from the corners) is engage_deg or more off the heading. The camera's horizontal half field of view is about 58 deg (focal_320 100 px), so 50 deg is a marker near the image edge",
-  "action": "the horizontal request loses its component toward the wall (the horizontal part of the looming ray that capped the request, taken at engagement) and is bounded to creep_speed; the request's speed toward the wall is removed at the clearance brake_slew (15 m/s^2); the vertical request and the yaw rule are unchanged, so the assisted yaw keeps turning toward the checkpoint",
-  "release": "aligned: the bearing of a marker in view (or bottom/top clamped) is within release_deg of the heading (the declared cone; the ordinary speed schedule and acceleration limits then resume); handoff: search, launch or a support climb owns the request; timeout: max_s after engagement, then no new episode for rearm_s, so the drone never hovers at a wall indefinitely"
+  "condition": "near a wall, at a measured horizontal speed of at most max_speed (the task's ~3.5 m/s: the low-speed hairpin regime; above it the governor's own cap acts alone): either the TTC governor holds a stand-off (a wall sample capped the request at standoff_speed, 2 m/s, or less within standoff_s) with the latest wall sample within the stopping distance from max(closing speed, standoff_speed), or its wall brake capped the request within brake_recent_s and the latest wall sample lies within the stopping distance at the closing speed. The latest wall sample is the newest looming sample the governor did not brake for as terrain with an aged TTC below hold_ttc_s (1.3 s); its remaining distance is its capture-time reach along its looming ray minus the odometry travelled along that ray since, 0 once reached or passed (e.g. a gate arch flown through). Stopping distance: v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m, v the measured velocity along that ray (>= 0). And the checkpoint: its marker clamped at a side edge or corner (pilot state side), its filtered bearing (in view, or clamped at the bottom/top edge away from the corners) engage_deg or more off the heading, or its marker lost (pilot state coast: seen more than 0.25 s ago, the pilot repeats its last request)",
+  "action": "the horizontal request loses its component toward the wall (the horizontal part of the looming ray that capped the request, taken at engagement) and is bounded to creep_speed, or to coast_creep_speed (0: hold) while the marker is lost, since the direction to creep toward is not known; the request's speed toward the wall is removed, and its horizontal speed brought to that bound, at the clearance brake_slew (15 m/s^2, beyond the usual 0.25 s taper); the vertical request and the yaw rule are unchanged, so the assisted yaw keeps turning toward the checkpoint",
+  "release": "aligned: the bearing of a marker in view (or bottom/top clamped) is within release_deg of the heading (the ordinary speed schedule and acceleration limits then resume); handoff: search, launch or a support climb owns the request; timeout: max_s after engagement, then no new episode for rearm_s, so the drone never hovers at a wall indefinitely",
+  "side_guard": "during that rearm time, in pilot state side while the wall condition holds, the side rule's request still loses its component toward the wall (the governor's current wall ray), without the creep bound: the side rule never pushes along a wall it is near (minus-fast6-gapon-01)",
+  "max_speed": "3.5 m/s: the task's engagement range (governor caps and speeds up to ~3.5 m/s). Above it the stopping distance at race speed exceeds every looming alarm distance, so the distance test would no longer discriminate, and an episode would be a hard stop at race speed",
+  "coast_creep_speed": "0 m/s: with the marker lost the checkpoint direction is unknown; the stale lateral part of the last request can point toward the wall when the wall ray (the old travel direction) is not the wall normal"
+ },
+ "turn_first_stopping_notes": {
+  "fast_velocity_brain_v1": "brain-09b (fast-brain-09b-caps-r0001m100, the braking brain candidate), measured on minus-brain09b-vg-01: request drops of >= 1 m/s at 11.96, 17.93 and 20.67 s gave a delay to the speed drop of 0.32 / 0.19 / 0.26 s and a deceleration over the next 0.3 s of 3.64 / 3.70 / 3.88 m/s^2 (scratchpad m4/hairpin braking.py; same method for every motor): declared 0.3 s and 3.5 m/s^2. brain-08 shares the contract but does not brake for such requests (delay 0.3-1.0 s, deceleration about 0 on minus-brain08-vg-01, -gapon-01/02, -loom-01): for it this model is optimistic",
+  "fast_velocity_pd_v1": "fast PD, measured on minus-fast6-vg-02, minus-fast6-gapon-01, minus-fast6-wall-01 and pine-fast6-ttc-01 (12 request drops): delay 0.11-0.19 s (median 0.13), deceleration over 0.3 s 4.2-10.4 m/s^2 (median about 6.5): declared 0.15 s and 6 m/s^2",
+  "default": "the brain contract's model (the slower braking) for any other motor"
  },
  "ceiling_guard": {
   "lower_ratio": 1.0,
@@ -37,8 +61,16 @@
   "overhead_min_rise": "a ceiling or overhang can only cross a rising flight path; an alarm ahead of a level or sinking path is braked for as a wall and does not stop a climb that arrests a sink. 0.3 m/s is a noise margin on the measured vertical speed, not fitted",
   "overhead_positive": "a sample is positive overhead evidence when something shows that the alarm is not the surface below the path: below_fraction <= overhead_fraction (the expansion lies above the path), or a lower-surface TTC that is known and longer than lower_ratio x the alarm TTC. A sample in which neither vertical window crosses the path (below_fraction None and lower TTC None) says nothing either way: climbing a hill, both windows often lose it. Such samples still count toward overhead_confirm but cannot confirm alone. On gapon-02 the confirming sample had below_fraction 0.0; on gapon-01 the ceiling alarms included a lower TTC of 1.23 s against an alarm of 0.63 s"
  },
- "change": "v3 (after the open-loop Straw Bale quietness replay of v2 with offline looming samples, before any flight): the overhead cut also needs at least overhead_positive (1) positive sample. In the v2 replay of the clean laps straw-brain08-04 and -06 it fired 7 times, each time during a hill climb on two samples in which neither vertical window crossed the path (below_fraction None, lower TTC None, alarm TTC 0.8-1.2 s); the laps were flown without any climb, but on a mound the same pattern would cut a needed climb. Every other value and rule is version 2's.",
+ "change": "v4 (after the round-3 flights, before any replay of version 4): turn-first only. Version 3 engaged at a wall brake only at <= slow_speed (1.5 m/s). In minus-brain09b-vg-01 the brain-09b candidate braked to 2-4 m/s under the governor caps (about 3 m/s) into the Minus Two hairpin and grazed the wall behind the arch at (81.8, 19.9) at about 2.7 m/s, 21.9 s, with no episode: after passing the arch the next marker was lost for 0.45 s (coast on the 3.1 m/s request toward the wall) and appeared clamped at the left edge only 0.33 s before the graze. Version 4 removes slow_speed and engages at <= max_speed (3.5 m/s) when the latest wall sample lies within the measured motor's stopping distance (declared per motor contract), also while the marker is lost (coast, holding the horizontal request at 0), requires the stand-off branch to be within the stopping distance of the wall and at <= max_speed too, and adds the side guard. The ceiling guard is version 3's.",
  "previous_versions": [
+  {
+   "version": 3,
+   "sha256": "cafe4aa8c8bfac6ed34050724a04e881bf2b7db01b025e17d8552e21c0688b62",
+   "frozen_at": "2026-09-26T03:30:06",
+   "file": "configs/obstacles/wall_pilot_v3.json",
+   "scored": "open-loop replays of the live Minus Two, Pine Valley and Straw Bale logs (docs/obstacle_gap_pilot.md); flown in rounds 2-3 inside the obstacle stack (minus-fast6-wall-01, minus-fast6-vg-02, minus-brain08-vg-01, minus-brain09b-vg-01)",
+   "superseded_because": "turn-first engaged only at <= 1.5 m/s: a braking brain at about 3 m/s grazed the hairpin wall with no episode (see change)"
+  },
   {
    "version": 2,
    "sha256": "095addc577c0270a76e64692b29fcb9f404fc6988503611ee836b3afafca532a",
@@ -57,6 +89,6 @@
   }
  ],
  "frozen": true,
- "frozen_at": "2026-09-26T03:30:06",
- "sha256": "cafe4aa8c8bfac6ed34050724a04e881bf2b7db01b025e17d8552e21c0688b62"
+ "frozen_at": "2026-09-27T01:51:27",
+ "sha256": "92f842a54e569d9eb5171969e7f2bf6521790766450d624f173158a0eef6360e"
 }

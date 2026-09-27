@@ -64,9 +64,15 @@ def series(rows, key):
 # ---------------------------------------------------------------------------------------------
 def test_config_validation():
     for bad in (dict(release_deg=60.), dict(engage_deg=95., release_deg=30.), dict(creep_speed=0.),
-                dict(max_s=float('nan')), dict(rearm_s=-1.)):
+                dict(max_s=float('nan')), dict(rearm_s=-1.), dict(coast_creep_speed=-.1),
+                dict(coast_creep_speed=1.), dict(max_speed=0.), dict(stop_deceleration=0.),
+                dict(stop_latency_s=float('inf')), dict(stop_margin_m=-.5)):
         with pytest.raises(ValueError):
             TurnFirstConfig(**bad)
+    assert TurnFirstConfig(coast_creep_speed=.5).coast_creep_speed == .5
+    # the stopping distance at the declared braking: v*latency + v^2/(2a) + margin, v clipped at 0
+    assert TURN.stopping_distance(3.) == pytest.approx(3.*.3+9./7.+.5)
+    assert TURN.stopping_distance(-2.) == TURN.stopping_distance(0.) == TURN.stop_margin_m
     for bad in (dict(overhead_fraction=.6), dict(overhead_confirm=1.5), dict(vertical_cap=2.), dict(hold_s=0.),
                 dict(weak_climb=float('inf')), dict(lower_ratio=-1.), dict(overhead_min_rise=0.),
                 dict(overhead_positive=3), dict(overhead_positive=.5)):
@@ -84,44 +90,62 @@ def test_config_validation():
 def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, lag_turn_declaration_sha256, load_wall_pilot
     declaration, digest = load_wall_pilot(WALL_PILOT_DECLARATION)
-    assert declaration['version'] == WALL_PILOT_VERSION == 3 and declaration['frozen'] is True
+    assert declaration['version'] == WALL_PILOT_VERSION == 4 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     configs = wall_pilot_configs(declaration)
     assert configs == dict(turn_first=TURN, ceiling_guard=GUARD)            # the declared values are the defaults
+    # turn-first's stopping model per motor contract: the brain's is the default, the fast PD brakes harder
+    assert wall_pilot_configs(declaration, 'fast_velocity_brain_v1') == configs
+    assert wall_pilot_configs(declaration, 'some_other_contract') == configs
+    pd = wall_pilot_configs(declaration, 'fast_velocity_pd_v1')['turn_first']
+    assert pd.stop_latency_s < TURN.stop_latency_s and pd.stop_deceleration > TURN.stop_deceleration
+    assert asdict(pd) == dict(asdict(TURN), **declaration['turn_first_stopping']['fast_velocity_pd_v1'])
     edited = dict(declaration, turn_first=dict(declaration['turn_first'], creep_speed=2.))
     path = tmp_path/'edited.json'
     path.write_text(json.dumps(edited))
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_wall_pilot(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 4
+    other['version'] = 5
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
         load_wall_pilot(path)
     with pytest.raises(ValueError, match='version'):
         wall_pilot_configs(other)
+    missing = {k: v for k, v in declaration.items() if k != 'turn_first_stopping'}
+    with pytest.raises(ValueError, match='stopping'):
+        wall_pilot_configs(missing)
 
 
 def test_earlier_versions_are_kept_verbatim_and_refused():
-    """Versions 1 and 2 (replayed, never flown) are kept for provenance: version 2 added the ceiling guard's
-    overhead_min_rise to version 1, version 3 its overhead_positive; nothing else changed."""
+    """Versions 1-3 (replayed, never flown as the current rules; version 3 flew in round 3) are kept for
+    provenance: version 2 added the ceiling guard's overhead_min_rise to version 1, version 3 its
+    overhead_positive; version 4 changed only turn-first (the stopping-distance engagement)."""
     from haltere.liftoff.visual_brain import (WALL_PILOT_DECLARATION, lag_turn_declaration_sha256,
                                               load_wall_pilot)
     current, _ = load_wall_pilot(WALL_PILOT_DECLARATION)
     older = {n: json.loads(WALL_PILOT_DECLARATION.with_name(f'wall_pilot_v{n}.json').read_text(encoding='utf-8'))
-             for n in (1, 2)}
+             for n in (1, 2, 3)}
     assert older[1]['sha256'].startswith('17fecfb1fad7') and older[2]['sha256'].startswith('095addc577c0')
+    assert older[3]['sha256'].startswith('cafe4aa8c8bf')
     added = {2: 'overhead_min_rise', 3: 'overhead_positive'}
-    for n, newer in ((1, older[2]), (2, current)):
+    for n, newer in ((1, older[2]), (2, older[3])):
         old = older[n]
         assert old['version'] == n and old['frozen'] is True and lag_turn_declaration_sha256(old) == old['sha256']
         assert newer['previous_versions'][0]['sha256'] == old['sha256'] and newer['change']
         assert old['turn_first'] == newer['turn_first']
         assert {k: v for k, v in newer['ceiling_guard'].items() if k != added[n+1]} == old['ceiling_guard']
+    old = older[3]
+    assert old['version'] == 3 and old['frozen'] is True and lag_turn_declaration_sha256(old) == old['sha256']
+    assert current['previous_versions'][0]['sha256'] == old['sha256'] and current['change']
+    assert current['ceiling_guard'] == old['ceiling_guard']                   # version 4 changed turn-first only
+    kept = {k: v for k, v in old['turn_first'].items() if k != 'slow_speed'}
+    assert {k: current['turn_first'][k] for k in kept} == kept
+    for n in (1, 2, 3):
         with pytest.raises(ValueError, match='version'):
             load_wall_pilot(WALL_PILOT_DECLARATION.with_name(f'wall_pilot_v{n}.json'))
-    assert [v['version'] for v in current['previous_versions']] == [2, 1]
+    assert [v['version'] for v in current['previous_versions']] == [3, 2, 1]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -406,6 +430,135 @@ def test_shadow_turn_first_is_logged_and_not_flown():
     assert meta['ceiling_guard'] is None
 
 
+def braking_approach(final_speed, *, wall=4.5, seconds=.6, cue_after=None, samples_after=True, **kw):
+    """Version-4 scenario: the drone flies along +x toward a wall at x = `wall` with the ring ahead; its measured
+    speed falls from 6 m/s at 8 m/s^2 to `final_speed` (a braking motor, prescribed), wall samples (the true TTC,
+    18 Hz, 0.08 s late) cap the request. After `seconds`, `cue_after` (a cue dict or None: marker lost) replaces the
+    ring; wall samples continue while samples_after. Returns (pilot, rows) with rows (t, state, command, x,
+    turn-first active) of every tick after `seconds`, run for 1 s more."""
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., **kw)
+    drive(pilot, history, AHEAD, 200, velocity=(6., 0., 0.), height=2.)
+    start, x, next_frame, pending, rows = 12., 0., 12., [], []
+    for k in range(int((seconds+1.)/.01)):
+        now = start+k*.01
+        speed = max(final_speed, 6.-8.*(now-start))
+        x += speed*.01
+        if now >= next_frame-1e-9 and (samples_after or now-start < seconds):
+            ttc = max(wall-x, .05)/speed
+            pending.append((now+.08, dict(time=now, ttc=ttc, distance=ttc*speed, below_fraction=.5, ttc_lower=ttc)))
+            next_frame += FRAME
+        clearance = None
+        while pending and pending[0][0] <= now+1e-9:
+            clearance = pending.pop(0)[1]
+        state = senses(position=(x, 0., 2.), velocity=(speed, 0., 0.))
+        history.append(now, [x, 0., 2.], state['quat'][0].numpy())
+        cue = AHEAD if now-start < seconds else cue_after
+        pilot.update(state, [0., 0., 0.], None if cue is None else dict(race_cue=dict(cue)), now-.05, now,
+                     clearance=clearance)
+        if now-start >= seconds:
+            rows.append((now, pilot.state, pilot.velocity_command.copy(), x, pilot.turn_first_active,
+                         pilot.clearance.wall_distance([x, 0., 2.])[0]))
+    return pilot, rows
+
+
+def test_a_side_clamp_after_a_wall_brake_engages_above_the_old_slow_speed_within_the_stopping_distance():
+    """minus-brain09b-vg-01: the brain braked to ~3 m/s under the governor's caps; version 3 engaged only at <= 1.5
+    m/s. Version 4 engages at 3 m/s because the wall lies within the declared stopping distance, and removes the
+    request toward the wall at the brake slew; at 4 m/s (above max_speed) nothing changes."""
+    plain, rows_plain = braking_approach(3., cue_after=LEFT_EDGE)
+    turn, rows = braking_approach(3., cue_after=LEFT_EDGE, turn_first=TURN)
+    assert plain.clearance.status != 'standoff' and not any(r[4] for r in rows_plain)
+    active = [r for r in rows if r[4]]
+    assert active and active[0][1] == 'side' and active[0][0]-rows[0][0] < .05
+    assert turn.turn_first_triggers['side'] == 1 and turn.turn_first_triggers['stopping'] == 1
+    assert turn.turn_first_triggers['standoff'] == 0
+    assert 1.5 < active[0][5] <= TURN.stopping_distance(3.)                 # the wall was still ahead, within reach
+    later = [r for r in rows if r[0]-active[0][0] >= .3 and r[4]]
+    assert later and all(r[2][0] <= 1e-6 and np.linalg.norm(r[2][:2]) <= TURN.creep_speed+1e-6 for r in later)
+    assert max(r[2][0] for r in rows_plain) > 1.                        # the side rule keeps pushing toward the wall
+    fast, rows_fast = braking_approach(4., cue_after=LEFT_EDGE, turn_first=TURN)
+    assert fast.turn_first_counts['episodes'] == 0 and not any(r[4] for r in rows_fast)
+
+
+def test_the_stopping_distance_decides_near_a_wall():
+    """_near_wall with a recent wall brake below max_speed: the latest wall sample, dead-reckoned along its ray, must
+    lie within v*latency + v^2/(2a) + margin at the closing speed; reached or passed walls count as 0 m away."""
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., turn_first=TURN)
+    gov = TtcClearanceGovernor(TTC)
+    gov.cap, gov.cap_ray = 1.5, np.array([1., 0., 0.])
+    pilot.clearance, pilot.wall_brake_at = gov, 10.
+    assert pilot._near_wall([0., 0., 1.], [1.5, 0., 0.], 10.5) == 'stopping'         # a cap without a sample: reached
+    gov.wall_evidence = dict(time=10., reach=3., position=np.zeros(3), ray=np.array([1., 0., 0.]))
+    d = TURN.stopping_distance(1.5)
+    assert d < 3. and pilot._near_wall([0., 0., 1.], [1.5, 0., 0.], 10.5) is None     # the wall is farther
+    assert pilot._near_wall([3.-d+.01, 0., 1.], [1.5, 0., 0.], 10.5) == 'stopping'   # it came within
+    assert pilot._near_wall([4., 0., 1.], [0., 1.5, 0.], 10.5) == 'stopping'         # passed: 0 m left
+    assert pilot._near_wall([0., 0., 1.], [-1.5, 0., 0.], 10.5) is None               # moving away
+    assert pilot._near_wall([4., 0., 1.], [1.5, 0., 0.], 11.6) is None                # no recent wall brake
+    assert pilot._near_wall([4., 0., 1.], [3.6, 0., 0.], 10.5) is None                # above max_speed
+    gov.standoff_until = 12.
+    assert pilot._near_wall([4., 0., 1.], [1., 0., 0.], 10.5) == 'standoff'
+    assert pilot._near_wall([4., 0., 1.], [3.6, 0., 0.], 10.5) is None                # not above max_speed either
+    near = TURN.stopping_distance(TTC.standoff_speed)
+    assert pilot._near_wall([3.-near+.01, 0., 1.], [0., 0., 0.], 11.8) == 'standoff'  # held near the wall
+    assert pilot._near_wall([3.-near-.01, 0., 1.], [0., 0., 0.], 11.8) is None        # the stand-off memory lasts,
+    assert pilot._near_wall([-1., 0., 1.], [-5., 0., 0.], 10.5) is None               # but the drone has left
+
+
+def test_a_lost_marker_near_a_wall_stops_the_coast_toward_it():
+    """After a checkpoint passage in a confined space the next marker can take 0.2-0.5 s to appear; the pilot then
+    coasts on its last request. Version 4 engages in the coast near a wall it cannot stop before and brings the
+    horizontal request to coast_creep_speed (0): it does not creep in an unknown direction."""
+    plain, rows_plain = braking_approach(3., cue_after=None)
+    turn, rows = braking_approach(3., cue_after=None, turn_first=TURN)
+    coast = [r for r in rows if r[1] == 'coast']
+    assert coast and [r[1] for r in rows_plain if r[1] == 'coast']
+    engaged = [r for r in coast if r[4]]
+    assert engaged and engaged[0][0] == coast[0][0] and turn.turn_first_triggers['coast'] == 1
+    settled = [r for r in coast if r[0]-coast[0][0] >= .3]
+    assert settled and all(np.linalg.norm(r[2][:2]) <= 1e-6 for r in settled)
+    assert all(np.linalg.norm(r[2][:2]) > 1. for r in rows_plain if r[1] == 'coast')     # coasts on at ~3 m/s
+    # the search that follows owns the request: the episode is handed off
+    assert rows[-1][1] == 'search' and not rows[-1][4] and turn.turn_first_counts['handoff'] == 1
+
+
+def test_the_side_guard_keeps_the_side_rule_off_the_wall_after_a_timeout():
+    """After a turn-first timeout the episode cannot re-engage for rearm_s; meanwhile, near the same wall, the side
+    rule's request still loses its component toward the wall (not creep-bounded)."""
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., turn_first=TURN)
+    drive(pilot, history, AHEAD, 200, velocity=(6., 0., 0.), height=2.)
+    now, speed, guarded = 12., 6., []
+    for k in range(int((1.2+TURN.max_s+TURN.rearm_s+.3)/.01)):
+        t = now+k*.01
+        clearance = None
+        if k % 5 == 0:                                                       # the wall stays in view
+            clearance = dict(time=t-.08, ttc=.45, distance=.45*speed, below_fraction=.5, ttc_lower=.45)
+        state = senses(position=(0., 0., 2.), velocity=(speed, 0., 0.))
+        history.append(t, [0., 0., 2.], state['quat'][0].numpy())
+        cue = AHEAD if t < now+1.2 else LEFT_EDGE
+        pilot.update(state, [0., 0., 0.], dict(race_cue=dict(cue)), t-.05, t, clearance=clearance)
+        speed = max(.3, speed-8.*.01)
+        if pilot.side_guard_active:
+            guarded.append((t, pilot.velocity_command.copy()))
+    assert pilot.turn_first_counts['timeout'] >= 1 and pilot.turn_first_counts['episodes'] == 2
+    assert guarded and guarded[-1][0]-guarded[0][0] >= TURN.rearm_s-.05 and pilot.side_guard_time > 0.
+    late = [c for t, c in guarded if t-guarded[0][0] >= .3]
+    assert all(c[0] <= 1e-6 for c in late) and max(np.linalg.norm(c[:2]) for c in late) > TURN.creep_speed
+    meta = json.loads(json.dumps(pilot.metadata()))['wall_pilot']['turn_first']
+    assert meta['side_guard_seconds'] > 0 and meta['triggers']['side'] == 2 and meta['triggers']['standoff'] == 2
+
+
+def test_version_4_shadow_is_logged_and_not_flown():
+    plain, rows_plain = braking_approach(3., cue_after=None)
+    shadow, rows = braking_approach(3., cue_after=None, turn_first=TURN, wall_apply=False)
+    for a, b in zip(rows_plain, rows):
+        np.testing.assert_array_equal(a[2], b[2])
+    assert any(r[4] for r in rows) and shadow.turn_first_triggers['coast'] == 1
+
+
 def test_runner_log_columns_and_refusals():
     from haltere.liftoff.visual_brain import WALL_COLUMNS, VisualController, wall_row
     assert len(wall_row(None)) == len(WALL_COLUMNS) == 4
@@ -422,8 +575,8 @@ def surrogate_hairpin(turn_first, *, seconds=5., start=10., a_back=1.5, b_back=6
     the wall on the line; once the drone passes it the HUD marker switches to checkpoint B, `b_back` m before the
     wall and `b_side` m to the side (-3: right): a hairpin, B is behind the drone at the wall. Perfect TTC toward the
     wall (along +x) at 18 Hz, 0.1 s late; ring marker 0.06 s late. Returns the closest gap to the wall, the closest
-    horizontal distance to B after the switch and when it came within 1 m, the along-wall (x) request while
-    turn-first is active, and the pilot."""
+    horizontal distance to B after the switch and when it came within 1 m, the (time, toward-the-wall (x) request)
+    of every tick while turn-first is active, and the pilot."""
     from haltere.brain.motor_baseline import FastMotorPD
     from haltere.liftoff.fast_rehearsal import hud_marker
     from haltere.sim.identified import IdentifiedSim
@@ -472,7 +625,7 @@ def surrogate_hairpin(turn_first, *, seconds=5., start=10., a_back=1.5, b_back=6
         sensors = sim.sensors(state)
         pilot.update(sensors, sensors['gyro'][0].numpy(), detection, capture, now, clearance=sample)
         if pilot.turn_first_active:
-            along.append(float(pilot.velocity_command[0]))
+            along.append((now, float(pilot.velocity_command[0])))
         action = motor.command(sensors, torch.tensor(pilot.velocity_command, dtype=torch.float32)[None],
                                torch.tensor(pilot.feedforward, dtype=torch.float32)[None])
         queue.append(torch.tensor(pilot.command(action[0].numpy()), dtype=torch.float32)[None])
@@ -493,6 +646,11 @@ def test_measured_surrogate_hairpin_turns_first_and_still_reaches_the_next_ring(
         counts = turn['pilot'].turn_first_counts
         assert counts['episodes'] >= 1 and counts['aligned'] >= 1 and counts['timeout'] == 0
         along = np.array(turn['along'])
-        assert along[0] <= 2.5 and np.all(along[30:] <= 1e-6)                 # no speed toward the wall after 0.3 s
+        starts = np.flatnonzero(np.r_[True, np.diff(along[:, 0]) > .015])        # one row per tick while engaged
+        assert len(starts) == counts['episodes']
+        for a, b in zip(starts, np.r_[starts[1:], len(along)]):
+            episode = along[a:b]
+            # version 4 engages up to max_speed (version 3: at <= 1.5 m/s); no speed toward the wall after 0.3 s
+            assert episode[0, 1] <= TURN.max_speed and np.all(episode[episode[:, 0]-episode[0, 0] >= .3, 1] <= 1e-6)
         assert turn['gap'] > .3 and turn['gap'] >= plain['gap']-.02            # no contact
         assert turn['ring'] < 1. and turn['t_ring']-plain['t_ring'] < 1.       # reaches B, at a bounded time cost
