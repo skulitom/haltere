@@ -1,0 +1,2992 @@
+{
+ "config": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_4d0f9960-759-2\\configs\\contact_audit.json",
+ "config_version": 1,
+ "config_sha256": "1c82c7f45668eadb92036a9b492463aa6ae3292a5998e54b46c320e2089ee55f",
+ "results": [
+  {
+   "log": "loop-fast5-02",
+   "contacts": [],
+   "terminal_impact": null,
+   "scored_s": 82.81,
+   "contacts_per_min": 0.0,
+   "frames": 7445
+  },
+  {
+   "log": "minus-brain03-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 13.57,
+    "kind": "terminal",
+    "pos": [
+     54.61,
+     3.63,
+     0.64
+    ],
+    "speed": 5.33,
+    "vz": 0.22,
+    "acceleration": 126.49889373779297,
+    "unexplained": 128.28750979485338
+   },
+   "scored_s": 10.01,
+   "contacts_per_min": 0.0,
+   "frames": 1138
+  },
+  {
+   "log": "minus-brain04-02",
+   "contacts": [
+    {
+     "t_start": 13.143,
+     "t_end": 13.153,
+     "duration_s": 0.01,
+     "kind": "impact",
+     "pos": [
+      54.56,
+      3.54,
+      0.65
+     ],
+     "speed": 5.38,
+     "vz": 0.1,
+     "min_z": 0.65,
+     "launch_plane": false,
+     "peak_external": NaN,
+     "mean_vertical": NaN,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 2
+     },
+     "drive": [
+      0.577,
+      0.577
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 13.163,
+    "kind": "terminal",
+    "pos": [
+     54.65,
+     3.57,
+     0.65
+    ],
+    "speed": 4.81,
+    "vz": 0.12,
+    "acceleration": 119.12639617919922,
+    "unexplained": 120.4294600589432
+   },
+   "scored_s": 9.65,
+   "contacts_per_min": 6.216,
+   "frames": 1091
+  },
+  {
+   "log": "minus-brain05-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 14.839,
+    "kind": "terminal",
+    "pos": [
+     54.55,
+     4.09,
+     0.7
+    ],
+    "speed": 4.38,
+    "vz": 0.2,
+    "acceleration": 95.44554901123047,
+    "unexplained": 96.43622969614219
+   },
+   "scored_s": 11.32,
+   "contacts_per_min": 0.0,
+   "frames": 1380
+  },
+  {
+   "log": "minus-brain06-01",
+   "contacts": [
+    {
+     "t_start": 13.799,
+     "t_end": 13.809,
+     "duration_s": 0.01,
+     "kind": "impact",
+     "pos": [
+      54.51,
+      3.63,
+      0.72
+     ],
+     "speed": 5.16,
+     "vz": 0.22,
+     "min_z": 0.72,
+     "launch_plane": false,
+     "peak_external": NaN,
+     "mean_vertical": NaN,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 2
+     },
+     "drive": [
+      0.579,
+      0.579
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 13.819,
+    "kind": "terminal",
+    "pos": [
+     54.61,
+     3.67,
+     0.72
+    ],
+    "speed": 5.38,
+    "vz": 0.11,
+    "acceleration": 162.85986328125,
+    "unexplained": 163.90201553064873
+   },
+   "scored_s": 10.31,
+   "contacts_per_min": 5.82,
+   "frames": 1156
+  },
+  {
+   "log": "minus-brain07-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 13.919,
+    "kind": "terminal",
+    "pos": [
+     54.57,
+     3.66,
+     0.71
+    ],
+    "speed": 4.93,
+    "vz": 0.42,
+    "acceleration": 69.29175567626953,
+    "unexplained": 70.1991722476082
+   },
+   "scored_s": 10.41,
+   "contacts_per_min": 0.0,
+   "frames": 1171
+  },
+  {
+   "log": "minus-brain08-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 13.21,
+    "kind": "terminal",
+    "pos": [
+     54.51,
+     3.89,
+     0.83
+    ],
+    "speed": 5.92,
+    "vz": 0.03,
+    "acceleration": 130.21571350097656,
+    "unexplained": 130.56129239758775
+   },
+   "scored_s": 9.6,
+   "contacts_per_min": 0.0,
+   "frames": 1112
+  },
+  {
+   "log": "minus-brain08-gapon-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 19.079,
+    "kind": "terminal",
+    "pos": [
+     80.81,
+     19.23,
+     2.09
+    ],
+    "speed": 6.13,
+    "vz": 1.34,
+    "acceleration": 33.03559875488281,
+    "unexplained": 31.92533649035085
+   },
+   "scored_s": 15.47,
+   "contacts_per_min": 0.0,
+   "frames": 1608
+  },
+  {
+   "log": "minus-brain08-gapon-02",
+   "contacts": [
+    {
+     "t_start": 18.569,
+     "t_end": 18.579,
+     "duration_s": 0.01,
+     "kind": "impact",
+     "pos": [
+      78.07,
+      18.97,
+      2.13
+     ],
+     "speed": 3.92,
+     "vz": 3.3,
+     "min_z": 2.13,
+     "launch_plane": false,
+     "peak_external": NaN,
+     "mean_vertical": NaN,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 2
+     },
+     "drive": [
+      0.652,
+      0.656
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 18.589,
+    "kind": "terminal",
+    "pos": [
+     78.09,
+     19.04,
+     2.19
+    ],
+    "speed": 4.85,
+    "vz": 3.27,
+    "acceleration": 197.33241271972656,
+    "unexplained": 192.07593603445181
+   },
+   "scored_s": 14.98,
+   "contacts_per_min": 4.006,
+   "frames": 1587
+  },
+  {
+   "log": "minus-brain08-gapshadow-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 13.1,
+    "kind": "terminal",
+    "pos": [
+     54.54,
+     4.1,
+     0.84
+    ],
+    "speed": 5.71,
+    "vz": 0.03,
+    "acceleration": 151.1909637451172,
+    "unexplained": 151.71108634756362
+   },
+   "scored_s": 9.49,
+   "contacts_per_min": 0.0,
+   "frames": 1090
+  },
+  {
+   "log": "minus-brain08-loom-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 12.9,
+    "kind": "terminal",
+    "pos": [
+     54.52,
+     3.85,
+     0.8
+    ],
+    "speed": 5.86,
+    "vz": -0.02,
+    "acceleration": 165.56951904296875,
+    "unexplained": 166.3422601577467
+   },
+   "scored_s": 9.29,
+   "contacts_per_min": 0.0,
+   "frames": 1090
+  },
+  {
+   "log": "minus-brain08-slow35-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 14.628,
+    "kind": "terminal",
+    "pos": [
+     54.51,
+     4.46,
+     0.52
+    ],
+    "speed": 4.87,
+    "vz": -0.31,
+    "acceleration": 90.55133819580078,
+    "unexplained": 90.81890641818002
+   },
+   "scored_s": 11.02,
+   "contacts_per_min": 0.0,
+   "frames": 1260
+  },
+  {
+   "log": "minus-brain08-vg-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 18.489,
+    "kind": "terminal",
+    "pos": [
+     78.19,
+     19.27,
+     1.27
+    ],
+    "speed": 4.28,
+    "vz": 1.44,
+    "acceleration": 90.7044677734375,
+    "unexplained": 80.49790610749322
+   },
+   "scored_s": 14.87,
+   "contacts_per_min": 0.0,
+   "frames": 1566
+  },
+  {
+   "log": "minus-brain09b-r4-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 23.686,
+    "kind": "terminal",
+    "pos": [
+     80.43,
+     20.96,
+     0.04
+    ],
+    "speed": 4.06,
+    "vz": -1.88,
+    "acceleration": 36.83624267578125,
+    "unexplained": 31.152798963786942
+   },
+   "scored_s": 20.17,
+   "contacts_per_min": 0.0,
+   "frames": 2009
+  },
+  {
+   "log": "minus-brain09b-vg-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 21.919,
+    "kind": "terminal",
+    "pos": [
+     81.89,
+     19.91,
+     0.63
+    ],
+    "speed": 2.96,
+    "vz": -0.26,
+    "acceleration": 107.35087585449219,
+    "unexplained": 105.73003080782793
+   },
+   "scored_s": 18.4,
+   "contacts_per_min": 0.0,
+   "frames": 1856
+  },
+  {
+   "log": "minus-brain10b-r4-02",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 21.586,
+    "kind": "terminal",
+    "pos": [
+     81.95,
+     19.0,
+     1.94
+    ],
+    "speed": 4.96,
+    "vz": 0.53,
+    "acceleration": 135.0342254638672,
+    "unexplained": 134.36741081335362
+   },
+   "scored_s": 18.06,
+   "contacts_per_min": 0.0,
+   "frames": 1836
+  },
+  {
+   "log": "minus-fast6-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 35.116,
+    "kind": "terminal",
+    "pos": [
+     51.08,
+     93.55,
+     0.81
+    ],
+    "speed": 4.56,
+    "vz": 0.56,
+    "acceleration": 98.72328186035156,
+    "unexplained": 61.31899103145061
+   },
+   "scored_s": 31.61,
+   "contacts_per_min": 0.0,
+   "frames": 3034
+  },
+  {
+   "log": "minus-fast6-cur-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 12.85,
+    "kind": "terminal",
+    "pos": [
+     54.61,
+     4.46,
+     0.68
+    ],
+    "speed": 5.92,
+    "vz": 0.01,
+    "acceleration": 127.38841247558594,
+    "unexplained": 127.88588590744767
+   },
+   "scored_s": 9.33,
+   "contacts_per_min": 0.0,
+   "frames": 1142
+  },
+  {
+   "log": "minus-fast6-gapon-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 21.649,
+    "kind": "terminal",
+    "pos": [
+     79.99,
+     18.09,
+     0.66
+    ],
+    "speed": 2.47,
+    "vz": 0.04,
+    "acceleration": 56.5650749206543,
+    "unexplained": 59.38814951099072
+   },
+   "scored_s": 18.14,
+   "contacts_per_min": 0.0,
+   "frames": 1918
+  },
+  {
+   "log": "minus-fast6-r4-02",
+   "contacts": [
+    {
+     "t_start": 27.328,
+     "t_end": 27.988,
+     "duration_s": 0.66,
+     "kind": "support",
+     "pos": [
+      77.47,
+      48.48,
+      0.13
+     ],
+     "speed": 3.55,
+     "vz": -0.68,
+     "min_z": 0.02,
+     "launch_plane": true,
+     "peak_external": 2.82,
+     "mean_vertical": 2.22,
+     "impulse_vertical": 1.475,
+     "evidence": {
+      "support_s": 0.66,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.513,
+      0.585
+     ]
+    },
+    {
+     "t_start": 29.018,
+     "t_end": 29.548,
+     "duration_s": 0.53,
+     "kind": "support",
+     "pos": [
+      79.34,
+      52.97,
+      0.1
+     ],
+     "speed": 3.01,
+     "vz": -0.4,
+     "min_z": 0.01,
+     "launch_plane": true,
+     "peak_external": 3.65,
+     "mean_vertical": 2.28,
+     "impulse_vertical": 1.236,
+     "evidence": {
+      "support_s": 0.53,
+      "arrest_s": 0.15,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.516,
+      0.555
+     ]
+    },
+    {
+     "t_start": 30.679,
+     "t_end": 31.059,
+     "duration_s": 0.38,
+     "kind": "support",
+     "pos": [
+      79.98,
+      56.71,
+      0.11
+     ],
+     "speed": 3.95,
+     "vz": -0.4,
+     "min_z": 0.08,
+     "launch_plane": true,
+     "peak_external": 2.18,
+     "mean_vertical": 1.64,
+     "impulse_vertical": 0.63,
+     "evidence": {
+      "support_s": 0.38,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.572,
+      0.627
+     ]
+    },
+    {
+     "t_start": 34.079,
+     "t_end": 34.089,
+     "duration_s": 0.01,
+     "kind": "impact",
+     "pos": [
+      73.59,
+      69.38,
+      2.12
+     ],
+     "speed": 4.11,
+     "vz": -0.05,
+     "min_z": 2.12,
+     "launch_plane": false,
+     "peak_external": NaN,
+     "mean_vertical": NaN,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 2
+     },
+     "drive": [
+      0.662,
+      0.662
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 34.099,
+    "kind": "terminal",
+    "pos": [
+     73.51,
+     69.38,
+     2.14
+    ],
+    "speed": 4.06,
+    "vz": 0.68,
+    "acceleration": 51.72807312011719,
+    "unexplained": 55.711332876595336
+   },
+   "scored_s": 30.58,
+   "contacts_per_min": 7.848,
+   "frames": 3087
+  },
+  {
+   "log": "minus-fast6-vg-02",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 23.448,
+    "kind": "terminal",
+    "pos": [
+     78.31,
+     31.1,
+     1.0
+    ],
+    "speed": 5.87,
+    "vz": 0.03,
+    "acceleration": 165.91067504882812,
+    "unexplained": 164.99945490064516
+   },
+   "scored_s": 19.94,
+   "contacts_per_min": 0.0,
+   "frames": 2103
+  },
+  {
+   "log": "minus-fast6-wall-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 13.42,
+    "kind": "terminal",
+    "pos": [
+     54.03,
+     4.8,
+     2.27
+    ],
+    "speed": 4.06,
+    "vz": 2.06,
+    "acceleration": 40.446327209472656,
+    "unexplained": 39.08331973518699
+   },
+   "scored_s": 9.91,
+   "contacts_per_min": 0.0,
+   "frames": 1176
+  },
+  {
+   "log": "pine-brain03-01",
+   "contacts": [
+    {
+     "t_start": 17.249,
+     "t_end": 17.599,
+     "duration_s": 0.35,
+     "kind": "support",
+     "pos": [
+      66.61,
+      -11.05,
+      4.26
+     ],
+     "speed": 5.67,
+     "vz": 0.71,
+     "min_z": 4.26,
+     "launch_plane": false,
+     "peak_external": 12.58,
+     "mean_vertical": 2.54,
+     "impulse_vertical": 0.958,
+     "evidence": {
+      "support_s": 0.35,
+      "arrest_s": 0.0,
+      "impact_frames": 3
+     },
+     "drive": [
+      0.496,
+      0.552
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 18.089,
+    "kind": "terminal",
+    "pos": [
+     70.37,
+     -8.54,
+     5.09
+    ],
+    "speed": 5.3,
+    "vz": 0.74,
+    "acceleration": 138.7519989013672,
+    "unexplained": 139.07143936370315
+   },
+   "scored_s": 14.57,
+   "contacts_per_min": 4.118,
+   "frames": 1496
+  },
+  {
+   "log": "pine-brain04-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 16.34,
+    "kind": "terminal",
+    "pos": [
+     59.17,
+     -16.12,
+     3.16
+    ],
+    "speed": 5.0,
+    "vz": 0.37,
+    "acceleration": 71.57555389404297,
+    "unexplained": 71.59344886556646
+   },
+   "scored_s": 12.83,
+   "contacts_per_min": 0.0,
+   "frames": 1371
+  },
+  {
+   "log": "pine-brain05-02",
+   "contacts": [
+    {
+     "t_start": 18.95,
+     "t_end": 19.56,
+     "duration_s": 0.61,
+     "kind": "support",
+     "pos": [
+      61.73,
+      -12.99,
+      3.67
+     ],
+     "speed": 5.25,
+     "vz": 0.35,
+     "min_z": 3.67,
+     "launch_plane": false,
+     "peak_external": 10.92,
+     "mean_vertical": 2.04,
+     "impulse_vertical": 1.273,
+     "evidence": {
+      "support_s": 0.61,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.483,
+      0.571
+     ]
+    },
+    {
+     "t_start": 20.47,
+     "t_end": 20.76,
+     "duration_s": 0.29,
+     "kind": "support",
+     "pos": [
+      67.29,
+      -9.24,
+      5.05
+     ],
+     "speed": 4.05,
+     "vz": 0.7,
+     "min_z": 5.05,
+     "launch_plane": false,
+     "peak_external": 6.69,
+     "mean_vertical": 1.57,
+     "impulse_vertical": 0.461,
+     "evidence": {
+      "support_s": 0.29,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.519,
+      0.557
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 21.53,
+    "kind": "terminal",
+    "pos": [
+     70.66,
+     -6.72,
+     5.79
+    ],
+    "speed": 3.94,
+    "vz": 0.6,
+    "acceleration": 32.07664489746094,
+    "unexplained": 28.12481576845699
+   },
+   "scored_s": 18.02,
+   "contacts_per_min": 6.659,
+   "frames": 1817
+  },
+  {
+   "log": "pine-brain06-01",
+   "contacts": [
+    {
+     "t_start": 17.728,
+     "t_end": 18.078,
+     "duration_s": 0.35,
+     "kind": "support",
+     "pos": [
+      67.54,
+      -10.91,
+      4.23
+     ],
+     "speed": 5.4,
+     "vz": 0.7,
+     "min_z": 4.23,
+     "launch_plane": false,
+     "peak_external": 7.25,
+     "mean_vertical": 1.54,
+     "impulse_vertical": 0.62,
+     "evidence": {
+      "support_s": 0.35,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.491,
+      0.546
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 18.477,
+    "kind": "terminal",
+    "pos": [
+     70.7,
+     -8.77,
+     4.83
+    ],
+    "speed": 4.95,
+    "vz": 0.64,
+    "acceleration": 101.8895492553711,
+    "unexplained": 100.10388324666854
+   },
+   "scored_s": 14.94,
+   "contacts_per_min": 4.017,
+   "frames": 1525
+  },
+  {
+   "log": "pine-brain06-ttc-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 15.74,
+    "kind": "terminal",
+    "pos": [
+     49.26,
+     -19.85,
+     3.34
+    ],
+    "speed": 2.64,
+    "vz": 0.23,
+    "acceleration": 55.407135009765625,
+    "unexplained": 60.51297312018684
+   },
+   "scored_s": 12.23,
+   "contacts_per_min": 0.0,
+   "frames": 1308
+  },
+  {
+   "log": "pine-brain07-01",
+   "contacts": [
+    {
+     "t_start": 19.317,
+     "t_end": 19.627,
+     "duration_s": 0.31,
+     "kind": "support",
+     "pos": [
+      67.34,
+      -9.56,
+      4.92
+     ],
+     "speed": 4.6,
+     "vz": 0.49,
+     "min_z": 4.92,
+     "launch_plane": false,
+     "peak_external": 10.64,
+     "mean_vertical": 2.11,
+     "impulse_vertical": 0.665,
+     "evidence": {
+      "support_s": 0.31,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.489,
+      0.564
+     ]
+    },
+    {
+     "t_start": 20.387,
+     "t_end": 20.617,
+     "duration_s": 0.23,
+     "kind": "support",
+     "pos": [
+      71.25,
+      -7.09,
+      5.57
+     ],
+     "speed": 4.4,
+     "vz": 0.44,
+     "min_z": 5.57,
+     "launch_plane": false,
+     "peak_external": 7.5,
+     "mean_vertical": 1.57,
+     "impulse_vertical": 0.389,
+     "evidence": {
+      "support_s": 0.23,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.497,
+      0.569
+     ]
+    },
+    {
+     "t_start": 21.277,
+     "t_end": 21.287,
+     "duration_s": 0.01,
+     "kind": "impact",
+     "pos": [
+      74.48,
+      -5.0,
+      6.02
+     ],
+     "speed": 4.5,
+     "vz": 0.33,
+     "min_z": 6.02,
+     "launch_plane": false,
+     "peak_external": NaN,
+     "mean_vertical": NaN,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 2
+     },
+     "drive": [
+      0.566,
+      0.567
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 21.297,
+    "kind": "terminal",
+    "pos": [
+     74.54,
+     -4.97,
+     6.03
+    ],
+    "speed": 3.69,
+    "vz": 0.72,
+    "acceleration": 86.97241973876953,
+    "unexplained": 88.18948890617857
+   },
+   "scored_s": 17.79,
+   "contacts_per_min": 10.12,
+   "frames": 1779
+  },
+  {
+   "log": "pine-brain08-01",
+   "contacts": [
+    {
+     "t_start": 16.717,
+     "t_end": 17.947,
+     "duration_s": 1.23,
+     "kind": "support",
+     "pos": [
+      62.56,
+      -13.56,
+      3.5
+     ],
+     "speed": 5.56,
+     "vz": 0.28,
+     "min_z": 3.5,
+     "launch_plane": false,
+     "peak_external": 16.41,
+     "mean_vertical": 2.18,
+     "impulse_vertical": 2.591,
+     "evidence": {
+      "support_s": 0.81,
+      "arrest_s": 0.0,
+      "impact_frames": 3
+     },
+     "drive": [
+      0.469,
+      0.585
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 17.967,
+    "kind": "terminal",
+    "pos": [
+     67.8,
+     -10.54,
+     4.34
+    ],
+    "speed": 3.69,
+    "vz": 0.95,
+    "acceleration": 40.099876403808594,
+    "unexplained": 40.779857573943175
+   },
+   "scored_s": 14.32,
+   "contacts_per_min": 4.191,
+   "frames": 1474
+  },
+  {
+   "log": "pine-brain08-loom-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 9.57,
+    "kind": "terminal",
+    "pos": [
+     31.28,
+     -11.66,
+     2.02
+    ],
+    "speed": 5.59,
+    "vz": 0.23,
+    "acceleration": 183.0167694091797,
+    "unexplained": 183.77604040131067
+   },
+   "scored_s": 5.92,
+   "contacts_per_min": 0.0,
+   "frames": 826
+  },
+  {
+   "log": "pine-fast6-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 15.988,
+    "kind": "terminal",
+    "pos": [
+     64.04,
+     -12.4,
+     3.78
+    ],
+    "speed": 5.69,
+    "vz": 0.71,
+    "acceleration": 32.46425247192383,
+    "unexplained": 18.508611908269167
+   },
+   "scored_s": 12.47,
+   "contacts_per_min": 0.0,
+   "frames": 1397
+  },
+  {
+   "log": "pine-fast6-loom-01",
+   "contacts": [
+    {
+     "t_start": 15.84,
+     "t_end": 16.03,
+     "duration_s": 0.19,
+     "kind": "support",
+     "pos": [
+      63.31,
+      -12.99,
+      3.67
+     ],
+     "speed": 5.88,
+     "vz": 0.33,
+     "min_z": 3.67,
+     "launch_plane": false,
+     "peak_external": 15.47,
+     "mean_vertical": 4.55,
+     "impulse_vertical": 0.842,
+     "evidence": {
+      "support_s": 0.19,
+      "arrest_s": 0.0,
+      "impact_frames": 2
+     },
+     "drive": [
+      0.445,
+      0.598
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 16.22,
+    "kind": "terminal",
+    "pos": [
+     64.78,
+     -12.04,
+     3.99
+    ],
+    "speed": 3.49,
+    "vz": 0.89,
+    "acceleration": 42.37858963012695,
+    "unexplained": 44.73574592026436
+   },
+   "scored_s": 12.7,
+   "contacts_per_min": 4.724,
+   "frames": 1429
+  },
+  {
+   "log": "pine-fast6-ttc-01",
+   "contacts": [
+    {
+     "t_start": 16.7,
+     "t_end": 16.72,
+     "duration_s": 0.02,
+     "kind": "impact",
+     "pos": [
+      59.82,
+      -15.58,
+      5.46
+     ],
+     "speed": 3.69,
+     "vz": 0.09,
+     "min_z": 5.46,
+     "launch_plane": false,
+     "peak_external": 11.44,
+     "mean_vertical": -2.59,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 3
+     },
+     "drive": [
+      0.495,
+      0.498
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 21.24,
+    "kind": "terminal",
+    "pos": [
+     78.97,
+     -1.72,
+     7.97
+    ],
+    "speed": 5.97,
+    "vz": -0.8,
+    "acceleration": 111.70782470703125,
+    "unexplained": 109.47594706727912
+   },
+   "scored_s": 17.73,
+   "contacts_per_min": 3.384,
+   "frames": 1893
+  },
+  {
+   "log": "straw-brain03-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 93.595,
+    "kind": "terminal",
+    "pos": [
+     -35.83,
+     120.76,
+     13.39
+    ],
+    "speed": 4.45,
+    "vz": -0.8,
+    "acceleration": 114.67454528808594,
+    "unexplained": 116.01209611142029
+   },
+   "scored_s": 90.01,
+   "contacts_per_min": 0.0,
+   "frames": 7796
+  },
+  {
+   "log": "straw-brain04-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 91.445,
+    "kind": "terminal",
+    "pos": [
+     -37.25,
+     120.75,
+     13.29
+    ],
+    "speed": 4.02,
+    "vz": -0.76,
+    "acceleration": 115.40444946289062,
+    "unexplained": 115.87765905838981
+   },
+   "scored_s": 87.94,
+   "contacts_per_min": 0.0,
+   "frames": 7593
+  },
+  {
+   "log": "straw-brain05-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 103.327,
+    "kind": "terminal",
+    "pos": [
+     -37.05,
+     120.67,
+     13.4
+    ],
+    "speed": 2.68,
+    "vz": 0.1,
+    "acceleration": 73.9924545288086,
+    "unexplained": 67.37716519056224
+   },
+   "scored_s": 99.82,
+   "contacts_per_min": 0.0,
+   "frames": 8990
+  },
+  {
+   "log": "straw-brain05-gov-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 98.685,
+    "kind": "terminal",
+    "pos": [
+     -38.04,
+     120.8,
+     12.03
+    ],
+    "speed": 3.93,
+    "vz": -1.38,
+    "acceleration": 40.74740219116211,
+    "unexplained": 42.50747131639393
+   },
+   "scored_s": 95.17,
+   "contacts_per_min": 0.0,
+   "frames": 8187
+  },
+  {
+   "log": "straw-brain05-trim-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 97.047,
+    "kind": "terminal",
+    "pos": [
+     -36.26,
+     120.47,
+     13.53
+    ],
+    "speed": 3.75,
+    "vz": -1.23,
+    "acceleration": 92.48712921142578,
+    "unexplained": 91.2070964461697
+   },
+   "scored_s": 93.54,
+   "contacts_per_min": 0.0,
+   "frames": 8059
+  },
+  {
+   "log": "straw-brain05-trim-02",
+   "contacts": [
+    {
+     "t_start": 75.681,
+     "t_end": 75.711,
+     "duration_s": 0.03,
+     "kind": "impact",
+     "pos": [
+      -19.51,
+      188.04,
+      26.65
+     ],
+     "speed": 5.73,
+     "vz": -0.71,
+     "min_z": 26.63,
+     "launch_plane": false,
+     "peak_external": 10.16,
+     "mean_vertical": -1.69,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 3
+     },
+     "drive": [
+      0.535,
+      0.557
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 99.236,
+    "kind": "terminal",
+    "pos": [
+     -37.9,
+     120.75,
+     12.03
+    ],
+    "speed": 1.88,
+    "vz": 0.9,
+    "acceleration": 70.49190521240234,
+    "unexplained": 73.0675366349072
+   },
+   "scored_s": 95.72,
+   "contacts_per_min": 0.627,
+   "frames": 8216
+  },
+  {
+   "log": "straw-brain06-01",
+   "contacts": [
+    {
+     "t_start": 45.076,
+     "t_end": 45.586,
+     "duration_s": 0.51,
+     "kind": "support",
+     "pos": [
+      34.08,
+      129.93,
+      13.41
+     ],
+     "speed": 6.88,
+     "vz": 0.22,
+     "min_z": 13.41,
+     "launch_plane": false,
+     "peak_external": 11.61,
+     "mean_vertical": 2.69,
+     "impulse_vertical": 1.479,
+     "evidence": {
+      "support_s": 0.51,
+      "arrest_s": 0.0,
+      "impact_frames": 1
+     },
+     "drive": [
+      0.58,
+      0.636
+     ]
+    },
+    {
+     "t_start": 50.955,
+     "t_end": 51.466,
+     "duration_s": 0.51,
+     "kind": "support",
+     "pos": [
+      30.18,
+      155.14,
+      19.49
+     ],
+     "speed": 6.51,
+     "vz": 0.44,
+     "min_z": 19.49,
+     "launch_plane": false,
+     "peak_external": 2.12,
+     "mean_vertical": 1.74,
+     "impulse_vertical": 0.89,
+     "evidence": {
+      "support_s": 0.51,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.581,
+      0.637
+     ]
+    },
+    {
+     "t_start": 72.88,
+     "t_end": 74.37,
+     "duration_s": 1.49,
+     "kind": "slide",
+     "pos": [
+      -37.54,
+      170.11,
+      23.25
+     ],
+     "speed": 3.78,
+     "vz": -1.02,
+     "min_z": 22.25,
+     "launch_plane": false,
+     "peak_external": 1.56,
+     "mean_vertical": 1.31,
+     "impulse_vertical": 1.956,
+     "evidence": {
+      "support_s": 1.49,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.511,
+      0.553
+     ]
+    },
+    {
+     "t_start": 76.121,
+     "t_end": 77.091,
+     "duration_s": 0.97,
+     "kind": "support",
+     "pos": [
+      -37.38,
+      159.3,
+      21.2
+     ],
+     "speed": 3.08,
+     "vz": -0.75,
+     "min_z": 20.49,
+     "launch_plane": false,
+     "peak_external": 1.22,
+     "mean_vertical": 1.14,
+     "impulse_vertical": 1.115,
+     "evidence": {
+      "support_s": 0.97,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.518,
+      0.525
+     ]
+    },
+    {
+     "t_start": 79.762,
+     "t_end": 79.962,
+     "duration_s": 0.2,
+     "kind": "support",
+     "pos": [
+      -37.03,
+      147.51,
+      18.47
+     ],
+     "speed": 3.24,
+     "vz": -0.84,
+     "min_z": 18.31,
+     "launch_plane": false,
+     "peak_external": 1.09,
+     "mean_vertical": 1.05,
+     "impulse_vertical": 0.21,
+     "evidence": {
+      "support_s": 0.2,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.531,
+      0.54
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 125.65,
+   "contacts_per_min": 2.388,
+   "frames": 10721
+  },
+  {
+   "log": "straw-brain06-02",
+   "contacts": [
+    {
+     "t_start": 72.561,
+     "t_end": 74.181,
+     "duration_s": 1.62,
+     "kind": "slide",
+     "pos": [
+      -37.04,
+      171.03,
+      23.39
+     ],
+     "speed": 3.82,
+     "vz": -1.04,
+     "min_z": 22.31,
+     "launch_plane": false,
+     "peak_external": 1.71,
+     "mean_vertical": 1.34,
+     "impulse_vertical": 2.174,
+     "evidence": {
+      "support_s": 1.62,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.51,
+      0.55
+     ]
+    },
+    {
+     "t_start": 75.571,
+     "t_end": 77.042,
+     "duration_s": 1.47,
+     "kind": "slide",
+     "pos": [
+      -37.02,
+      160.79,
+      21.52
+     ],
+     "speed": 2.86,
+     "vz": -0.72,
+     "min_z": 20.46,
+     "launch_plane": false,
+     "peak_external": 1.39,
+     "mean_vertical": 1.23,
+     "impulse_vertical": 1.804,
+     "evidence": {
+      "support_s": 1.47,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.515,
+      0.531
+     ]
+    },
+    {
+     "t_start": 80.152,
+     "t_end": 80.663,
+     "duration_s": 0.51,
+     "kind": "support",
+     "pos": [
+      -36.83,
+      146.35,
+      18.19
+     ],
+     "speed": 3.03,
+     "vz": -0.82,
+     "min_z": 17.78,
+     "launch_plane": false,
+     "peak_external": 1.1,
+     "mean_vertical": 1.07,
+     "impulse_vertical": 0.549,
+     "evidence": {
+      "support_s": 0.51,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.523,
+      0.529
+     ]
+    },
+    {
+     "t_start": 162.259,
+     "t_end": 162.799,
+     "duration_s": 0.54,
+     "kind": "support",
+     "pos": [
+      33.96,
+      131.1,
+      13.65
+     ],
+     "speed": 6.84,
+     "vz": 0.8,
+     "min_z": 13.65,
+     "launch_plane": false,
+     "peak_external": 2.69,
+     "mean_vertical": 2.08,
+     "impulse_vertical": 1.129,
+     "evidence": {
+      "support_s": 0.54,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.591,
+      0.627
+     ]
+    },
+    {
+     "t_start": 189.754,
+     "t_end": 191.263,
+     "duration_s": 1.509,
+     "kind": "slide",
+     "pos": [
+      -37.15,
+      170.43,
+      23.3
+     ],
+     "speed": 3.81,
+     "vz": -1.05,
+     "min_z": 22.28,
+     "launch_plane": false,
+     "peak_external": 1.6,
+     "mean_vertical": 1.31,
+     "impulse_vertical": 1.987,
+     "evidence": {
+      "support_s": 1.509,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.511,
+      0.552
+     ]
+    },
+    {
+     "t_start": 192.773,
+     "t_end": 194.162,
+     "duration_s": 1.389,
+     "kind": "slide",
+     "pos": [
+      -37.08,
+      160.31,
+      21.41
+     ],
+     "speed": 2.9,
+     "vz": -0.74,
+     "min_z": 20.42,
+     "launch_plane": false,
+     "peak_external": 1.38,
+     "mean_vertical": 1.23,
+     "impulse_vertical": 1.707,
+     "evidence": {
+      "support_s": 1.389,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.515,
+      0.526
+     ]
+    },
+    {
+     "t_start": 197.32,
+     "t_end": 197.72,
+     "duration_s": 0.4,
+     "kind": "support",
+     "pos": [
+      -36.86,
+      145.95,
+      18.09
+     ],
+     "speed": 3.1,
+     "vz": -0.83,
+     "min_z": 17.77,
+     "launch_plane": false,
+     "peak_external": 1.08,
+     "mean_vertical": 1.05,
+     "impulse_vertical": 0.421,
+     "evidence": {
+      "support_s": 0.4,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.525,
+      0.527
+     ]
+    },
+    {
+     "t_start": 279.56,
+     "t_end": 280.04,
+     "duration_s": 0.48,
+     "kind": "support",
+     "pos": [
+      33.91,
+      131.51,
+      13.74
+     ],
+     "speed": 6.81,
+     "vz": 0.99,
+     "min_z": 13.74,
+     "launch_plane": false,
+     "peak_external": 2.34,
+     "mean_vertical": 1.82,
+     "impulse_vertical": 0.893,
+     "evidence": {
+      "support_s": 0.48,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.591,
+      0.612
+     ]
+    },
+    {
+     "t_start": 307.998,
+     "t_end": 309.209,
+     "duration_s": 1.211,
+     "kind": "slide",
+     "pos": [
+      -38.8,
+      167.44,
+      22.79
+     ],
+     "speed": 3.64,
+     "vz": -0.81,
+     "min_z": 21.98,
+     "launch_plane": false,
+     "peak_external": 1.25,
+     "mean_vertical": 1.17,
+     "impulse_vertical": 1.413,
+     "evidence": {
+      "support_s": 1.211,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.518,
+      0.541
+     ]
+    },
+    {
+     "t_start": 310.89,
+     "t_end": 312.081,
+     "duration_s": 1.191,
+     "kind": "slide",
+     "pos": [
+      -38.35,
+      158.05,
+      20.95
+     ],
+     "speed": 2.95,
+     "vz": -0.75,
+     "min_z": 20.07,
+     "launch_plane": false,
+     "peak_external": 1.32,
+     "mean_vertical": 1.2,
+     "impulse_vertical": 1.434,
+     "evidence": {
+      "support_s": 1.191,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.517,
+      0.526
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 356.14,
+   "contacts_per_min": 1.685,
+   "frames": 29730
+  },
+  {
+   "log": "straw-brain06-03",
+   "contacts": [
+    {
+     "t_start": 74.29,
+     "t_end": 74.94,
+     "duration_s": 0.65,
+     "kind": "support",
+     "pos": [
+      -39.2,
+      165.78,
+      22.5
+     ],
+     "speed": 3.61,
+     "vz": -0.75,
+     "min_z": 22.05,
+     "launch_plane": false,
+     "peak_external": 1.16,
+     "mean_vertical": 1.11,
+     "impulse_vertical": 0.724,
+     "evidence": {
+      "support_s": 0.65,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.521,
+      0.539
+     ]
+    },
+    {
+     "t_start": 76.39,
+     "t_end": 77.63,
+     "duration_s": 1.24,
+     "kind": "slide",
+     "pos": [
+      -38.81,
+      159.12,
+      21.2
+     ],
+     "speed": 3.02,
+     "vz": -0.81,
+     "min_z": 20.29,
+     "launch_plane": false,
+     "peak_external": 1.29,
+     "mean_vertical": 1.2,
+     "impulse_vertical": 1.492,
+     "evidence": {
+      "support_s": 1.24,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.516,
+      0.531
+     ]
+    },
+    {
+     "t_start": 162.554,
+     "t_end": 162.993,
+     "duration_s": 0.44,
+     "kind": "support",
+     "pos": [
+      33.86,
+      131.79,
+      13.82
+     ],
+     "speed": 6.79,
+     "vz": 1.08,
+     "min_z": 13.82,
+     "launch_plane": false,
+     "peak_external": 2.09,
+     "mean_vertical": 1.66,
+     "impulse_vertical": 0.743,
+     "evidence": {
+      "support_s": 0.44,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.592,
+      0.605
+     ]
+    },
+    {
+     "t_start": 190.348,
+     "t_end": 191.738,
+     "duration_s": 1.389,
+     "kind": "slide",
+     "pos": [
+      -38.55,
+      169.19,
+      23.1
+     ],
+     "speed": 3.75,
+     "vz": -0.97,
+     "min_z": 22.16,
+     "launch_plane": false,
+     "peak_external": 1.45,
+     "mean_vertical": 1.27,
+     "impulse_vertical": 1.768,
+     "evidence": {
+      "support_s": 1.389,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.513,
+      0.553
+     ]
+    },
+    {
+     "t_start": 193.277,
+     "t_end": 194.576,
+     "duration_s": 1.299,
+     "kind": "slide",
+     "pos": [
+      -38.22,
+      159.43,
+      21.25
+     ],
+     "speed": 2.97,
+     "vz": -0.77,
+     "min_z": 20.31,
+     "launch_plane": false,
+     "peak_external": 1.29,
+     "mean_vertical": 1.21,
+     "impulse_vertical": 1.567,
+     "evidence": {
+      "support_s": 1.299,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.518,
+      0.526
+     ]
+    },
+    {
+     "t_start": 307.55,
+     "t_end": 308.641,
+     "duration_s": 1.091,
+     "kind": "slide",
+     "pos": [
+      -39.05,
+      167.63,
+      22.83
+     ],
+     "speed": 3.68,
+     "vz": -0.85,
+     "min_z": 22.09,
+     "launch_plane": false,
+     "peak_external": 1.29,
+     "mean_vertical": 1.2,
+     "impulse_vertical": 1.312,
+     "evidence": {
+      "support_s": 1.091,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.516,
+      0.543
+     ]
+    },
+    {
+     "t_start": 310.122,
+     "t_end": 311.413,
+     "duration_s": 1.291,
+     "kind": "slide",
+     "pos": [
+      -38.61,
+      159.21,
+      21.21
+     ],
+     "speed": 2.94,
+     "vz": -0.78,
+     "min_z": 20.27,
+     "launch_plane": false,
+     "peak_external": 1.33,
+     "mean_vertical": 1.24,
+     "impulse_vertical": 1.602,
+     "evidence": {
+      "support_s": 1.291,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.516,
+      0.528
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 355.81,
+   "contacts_per_min": 1.18,
+   "frames": 29791
+  },
+  {
+   "log": "straw-brain07-02",
+   "contacts": [
+    {
+     "t_start": 76.857,
+     "t_end": 78.546,
+     "duration_s": 1.689,
+     "kind": "slide",
+     "pos": [
+      -38.31,
+      166.86,
+      22.69
+     ],
+     "speed": 3.62,
+     "vz": -0.88,
+     "min_z": 21.36,
+     "launch_plane": false,
+     "peak_external": 1.69,
+     "mean_vertical": 1.43,
+     "impulse_vertical": 2.406,
+     "evidence": {
+      "support_s": 1.689,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.508,
+      0.535
+     ]
+    },
+    {
+     "t_start": 192.673,
+     "t_end": 194.435,
+     "duration_s": 1.761,
+     "kind": "slide",
+     "pos": [
+      -38.05,
+      167.41,
+      22.78
+     ],
+     "speed": 3.63,
+     "vz": -0.88,
+     "min_z": 21.41,
+     "launch_plane": false,
+     "peak_external": 1.71,
+     "mean_vertical": 1.43,
+     "impulse_vertical": 2.516,
+     "evidence": {
+      "support_s": 1.761,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.507,
+      0.537
+     ]
+    },
+    {
+     "t_start": 298.796,
+     "t_end": 299.267,
+     "duration_s": 0.47,
+     "kind": "support",
+     "pos": [
+      -7.77,
+      198.97,
+      26.52
+     ],
+     "speed": 3.93,
+     "vz": -1.04,
+     "min_z": 26.39,
+     "launch_plane": false,
+     "peak_external": 1.89,
+     "mean_vertical": 1.57,
+     "impulse_vertical": 0.744,
+     "evidence": {
+      "support_s": 0.47,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.552,
+      0.681
+     ]
+    },
+    {
+     "t_start": 308.546,
+     "t_end": 310.198,
+     "duration_s": 1.652,
+     "kind": "slide",
+     "pos": [
+      -38.02,
+      166.73,
+      22.66
+     ],
+     "speed": 3.65,
+     "vz": -0.88,
+     "min_z": 21.36,
+     "launch_plane": false,
+     "peak_external": 1.66,
+     "mean_vertical": 1.4,
+     "impulse_vertical": 2.319,
+     "evidence": {
+      "support_s": 1.652,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.508,
+      0.534
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 352.86,
+   "contacts_per_min": 0.68,
+   "frames": 29427
+  },
+  {
+   "log": "straw-brain07-03",
+   "contacts": [
+    {
+     "t_start": 76.931,
+     "t_end": 78.631,
+     "duration_s": 1.7,
+     "kind": "slide",
+     "pos": [
+      -38.34,
+      166.94,
+      22.7
+     ],
+     "speed": 3.61,
+     "vz": -0.88,
+     "min_z": 21.37,
+     "launch_plane": false,
+     "peak_external": 1.7,
+     "mean_vertical": 1.42,
+     "impulse_vertical": 2.441,
+     "evidence": {
+      "support_s": 1.7,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.507,
+      0.535
+     ]
+    },
+    {
+     "t_start": 192.756,
+     "t_end": 194.415,
+     "duration_s": 1.659,
+     "kind": "slide",
+     "pos": [
+      -38.12,
+      166.75,
+      22.66
+     ],
+     "speed": 3.6,
+     "vz": -0.87,
+     "min_z": 21.36,
+     "launch_plane": false,
+     "peak_external": 1.72,
+     "mean_vertical": 1.45,
+     "impulse_vertical": 2.411,
+     "evidence": {
+      "support_s": 1.659,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.507,
+      0.533
+     ]
+    },
+    {
+     "t_start": 307.542,
+     "t_end": 309.293,
+     "duration_s": 1.752,
+     "kind": "slide",
+     "pos": [
+      -37.92,
+      167.28,
+      22.76
+     ],
+     "speed": 3.63,
+     "vz": -0.88,
+     "min_z": 21.39,
+     "launch_plane": false,
+     "peak_external": 1.7,
+     "mean_vertical": 1.4,
+     "impulse_vertical": 2.489,
+     "evidence": {
+      "support_s": 1.752,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.507,
+      0.537
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 351.8,
+   "contacts_per_min": 0.512,
+   "frames": 29383
+  },
+  {
+   "log": "straw-brain07-nosweep-01",
+   "contacts": [
+    {
+     "t_start": 76.341,
+     "t_end": 77.971,
+     "duration_s": 1.63,
+     "kind": "slide",
+     "pos": [
+      -38.02,
+      166.58,
+      22.63
+     ],
+     "speed": 3.64,
+     "vz": -0.88,
+     "min_z": 21.34,
+     "launch_plane": false,
+     "peak_external": 1.67,
+     "mean_vertical": 1.43,
+     "impulse_vertical": 2.32,
+     "evidence": {
+      "support_s": 1.63,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.508,
+      0.534
+     ]
+    },
+    {
+     "t_start": 183.12,
+     "t_end": 183.51,
+     "duration_s": 0.39,
+     "kind": "support",
+     "pos": [
+      -7.72,
+      198.52,
+      26.48
+     ],
+     "speed": 3.82,
+     "vz": -0.77,
+     "min_z": 26.37,
+     "launch_plane": false,
+     "peak_external": 1.79,
+     "mean_vertical": 1.46,
+     "impulse_vertical": 0.572,
+     "evidence": {
+      "support_s": 0.39,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.557,
+      0.65
+     ]
+    },
+    {
+     "t_start": 192.885,
+     "t_end": 194.524,
+     "duration_s": 1.639,
+     "kind": "slide",
+     "pos": [
+      -38.24,
+      166.5,
+      22.63
+     ],
+     "speed": 3.63,
+     "vz": -0.89,
+     "min_z": 21.33,
+     "launch_plane": false,
+     "peak_external": 1.66,
+     "mean_vertical": 1.41,
+     "impulse_vertical": 2.316,
+     "evidence": {
+      "support_s": 1.639,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.508,
+      0.534
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 210.605,
+    "kind": "terminal",
+    "pos": [
+     -36.3,
+     95.72,
+     7.02
+    ],
+    "speed": 3.97,
+    "vz": -0.99,
+    "acceleration": 104.95806884765625,
+    "unexplained": 102.16880540091978
+   },
+   "scored_s": 207.08,
+   "contacts_per_min": 0.869,
+   "frames": 17512
+  },
+  {
+   "log": "straw-brain07-steep-01",
+   "contacts": [],
+   "terminal_impact": null,
+   "scored_s": 8.5,
+   "contacts_per_min": 0.0,
+   "frames": 1006
+  },
+  {
+   "log": "straw-brain07-steep-02",
+   "contacts": [
+    {
+     "t_start": 76.231,
+     "t_end": 77.941,
+     "duration_s": 1.71,
+     "kind": "slide",
+     "pos": [
+      -38.34,
+      167.09,
+      22.73
+     ],
+     "speed": 3.62,
+     "vz": -0.91,
+     "min_z": 21.39,
+     "launch_plane": false,
+     "peak_external": 1.74,
+     "mean_vertical": 1.47,
+     "impulse_vertical": 2.526,
+     "evidence": {
+      "support_s": 1.71,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.506,
+      0.536
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 94.585,
+    "kind": "terminal",
+    "pos": [
+     -36.24,
+     95.75,
+     6.89
+    ],
+    "speed": 3.18,
+    "vz": -1.12,
+    "acceleration": 32.34010696411133,
+    "unexplained": 30.272436214058278
+   },
+   "scored_s": 91.07,
+   "contacts_per_min": 0.659,
+   "frames": 7887
+  },
+  {
+   "log": "straw-brain08-01",
+   "contacts": [
+    {
+     "t_start": 68.129,
+     "t_end": 75.791,
+     "duration_s": 7.662,
+     "kind": "slide",
+     "pos": [
+      -36.47,
+      175.29,
+      24.03
+     ],
+     "speed": 4.05,
+     "vz": -1.3,
+     "min_z": 19.02,
+     "launch_plane": false,
+     "peak_external": 8.85,
+     "mean_vertical": 3.3,
+     "impulse_vertical": 25.401,
+     "evidence": {
+      "support_s": 7.662,
+      "arrest_s": 0.15,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.41,
+      0.557
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 75.981,
+    "kind": "terminal",
+    "pos": [
+     -35.04,
+     150.12,
+     18.94
+    ],
+    "speed": 1.96,
+    "vz": -0.44,
+    "acceleration": 39.5956916809082,
+    "unexplained": 41.5576972390577
+   },
+   "scored_s": 72.33,
+   "contacts_per_min": 0.83,
+   "frames": 6295
+  },
+  {
+   "log": "straw-brain08-02",
+   "contacts": [
+    {
+     "t_start": 69.21,
+     "t_end": 70.81,
+     "duration_s": 1.6,
+     "kind": "slide",
+     "pos": [
+      -36.96,
+      169.22,
+      23.07
+     ],
+     "speed": 3.23,
+     "vz": -0.95,
+     "min_z": 22.08,
+     "launch_plane": false,
+     "peak_external": 6.6,
+     "mean_vertical": 2.59,
+     "impulse_vertical": 4.185,
+     "evidence": {
+      "support_s": 1.6,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.452,
+      0.657
+     ]
+    },
+    {
+     "t_start": 74.741,
+     "t_end": 76.101,
+     "duration_s": 1.36,
+     "kind": "slide",
+     "pos": [
+      -36.15,
+      149.01,
+      18.81
+     ],
+     "speed": 2.81,
+     "vz": -1.48,
+     "min_z": 17.83,
+     "launch_plane": false,
+     "peak_external": 10.17,
+     "mean_vertical": 3.24,
+     "impulse_vertical": 4.38,
+     "evidence": {
+      "support_s": 1.36,
+      "arrest_s": 0.26,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.43,
+      0.668
+     ]
+    },
+    {
+     "t_start": 164.44,
+     "t_end": 164.44,
+     "duration_s": 0.0,
+     "kind": "impact",
+     "pos": [
+      4.58,
+      192.71,
+      25.67
+     ],
+     "speed": 2.83,
+     "vz": -0.8,
+     "min_z": 25.67,
+     "launch_plane": false,
+     "peak_external": NaN,
+     "mean_vertical": NaN,
+     "impulse_vertical": 0.0,
+     "evidence": {
+      "support_s": 0.0,
+      "arrest_s": 0.0,
+      "impact_frames": 1
+     },
+     "drive": [
+      0.808,
+      0.808
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 164.47,
+    "kind": "terminal",
+    "pos": [
+     4.57,
+     192.79,
+     25.65
+    ],
+    "speed": 2.72,
+    "vz": -0.5,
+    "acceleration": 34.024269104003906,
+    "unexplained": 15.784596097878678
+   },
+   "scored_s": 160.83,
+   "contacts_per_min": 1.119,
+   "frames": 13557
+  },
+  {
+   "log": "straw-brain08-03",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 59.447,
+    "kind": "terminal",
+    "pos": [
+     -0.47,
+     197.88,
+     26.68
+    ],
+    "speed": 3.84,
+    "vz": 1.24,
+    "acceleration": 55.01382064819336,
+    "unexplained": 53.36404429353165
+   },
+   "scored_s": 55.82,
+   "contacts_per_min": 0.0,
+   "frames": 4927
+  },
+  {
+   "log": "straw-brain08-04",
+   "contacts": [
+    {
+     "t_start": 71.42,
+     "t_end": 72.84,
+     "duration_s": 1.42,
+     "kind": "slide",
+     "pos": [
+      -38.56,
+      163.84,
+      22.14
+     ],
+     "speed": 2.8,
+     "vz": -1.39,
+     "min_z": 21.26,
+     "launch_plane": false,
+     "peak_external": 10.17,
+     "mean_vertical": 3.14,
+     "impulse_vertical": 4.562,
+     "evidence": {
+      "support_s": 1.42,
+      "arrest_s": 0.27,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.429,
+      0.658
+     ]
+    },
+    {
+     "t_start": 76.591,
+     "t_end": 78.341,
+     "duration_s": 1.75,
+     "kind": "slide",
+     "pos": [
+      -37.0,
+      145.88,
+      18.07
+     ],
+     "speed": 2.81,
+     "vz": -1.48,
+     "min_z": 16.53,
+     "launch_plane": false,
+     "peak_external": 8.91,
+     "mean_vertical": 2.45,
+     "impulse_vertical": 4.318,
+     "evidence": {
+      "support_s": 1.75,
+      "arrest_s": 0.23,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.43,
+      0.54
+     ]
+    },
+    {
+     "t_start": 79.551,
+     "t_end": 80.882,
+     "duration_s": 1.33,
+     "kind": "slide",
+     "pos": [
+      -36.44,
+      135.77,
+      15.39
+     ],
+     "speed": 3.26,
+     "vz": -1.07,
+     "min_z": 14.26,
+     "launch_plane": false,
+     "peak_external": 2.31,
+     "mean_vertical": 1.64,
+     "impulse_vertical": 2.188,
+     "evidence": {
+      "support_s": 1.33,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.489,
+      0.547
+     ]
+    },
+    {
+     "t_start": 175.855,
+     "t_end": 177.444,
+     "duration_s": 1.589,
+     "kind": "slide",
+     "pos": [
+      -36.97,
+      168.99,
+      23.04
+     ],
+     "speed": 3.2,
+     "vz": -1.1,
+     "min_z": 22.0,
+     "launch_plane": false,
+     "peak_external": 3.71,
+     "mean_vertical": 2.39,
+     "impulse_vertical": 3.832,
+     "evidence": {
+      "support_s": 1.589,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.467,
+      0.64
+     ]
+    },
+    {
+     "t_start": 181.542,
+     "t_end": 186.299,
+     "duration_s": 4.757,
+     "kind": "slide",
+     "pos": [
+      -36.21,
+      147.85,
+      18.54
+     ],
+     "speed": 2.81,
+     "vz": -1.51,
+     "min_z": 14.39,
+     "launch_plane": false,
+     "peak_external": 11.64,
+     "mean_vertical": 2.05,
+     "impulse_vertical": 9.727,
+     "evidence": {
+      "support_s": 4.757,
+      "arrest_s": 0.21,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.428,
+      0.54
+     ]
+    },
+    {
+     "t_start": 282.458,
+     "t_end": 283.919,
+     "duration_s": 1.461,
+     "kind": "slide",
+     "pos": [
+      -38.32,
+      166.48,
+      22.61
+     ],
+     "speed": 2.9,
+     "vz": -1.16,
+     "min_z": 21.74,
+     "launch_plane": false,
+     "peak_external": 9.35,
+     "mean_vertical": 3.11,
+     "impulse_vertical": 4.485,
+     "evidence": {
+      "support_s": 1.461,
+      "arrest_s": 0.24,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.437,
+      0.661
+     ]
+    },
+    {
+     "t_start": 287.583,
+     "t_end": 288.954,
+     "duration_s": 1.371,
+     "kind": "slide",
+     "pos": [
+      -36.93,
+      148.58,
+      18.72
+     ],
+     "speed": 2.8,
+     "vz": -1.47,
+     "min_z": 17.7,
+     "launch_plane": false,
+     "peak_external": 9.91,
+     "mean_vertical": 3.1,
+     "impulse_vertical": 4.22,
+     "evidence": {
+      "support_s": 1.371,
+      "arrest_s": 0.27,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.429,
+      0.663
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 323.21,
+   "contacts_per_min": 1.299,
+   "frames": 26966
+  },
+  {
+   "log": "straw-brain08-05",
+   "contacts": [
+    {
+     "t_start": 70.939,
+     "t_end": 72.389,
+     "duration_s": 1.45,
+     "kind": "slide",
+     "pos": [
+      -38.69,
+      165.16,
+      22.38
+     ],
+     "speed": 2.84,
+     "vz": -1.25,
+     "min_z": 21.5,
+     "launch_plane": false,
+     "peak_external": 10.66,
+     "mean_vertical": 3.02,
+     "impulse_vertical": 4.35,
+     "evidence": {
+      "support_s": 1.45,
+      "arrest_s": 0.27,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.438,
+      0.662
+     ]
+    },
+    {
+     "t_start": 76.27,
+     "t_end": 77.65,
+     "duration_s": 1.38,
+     "kind": "slide",
+     "pos": [
+      -37.11,
+      146.42,
+      18.2
+     ],
+     "speed": 2.81,
+     "vz": -1.49,
+     "min_z": 17.16,
+     "launch_plane": false,
+     "peak_external": 11.28,
+     "mean_vertical": 3.05,
+     "impulse_vertical": 4.182,
+     "evidence": {
+      "support_s": 1.38,
+      "arrest_s": 0.27,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.428,
+      0.665
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 153.49,
+   "contacts_per_min": 0.782,
+   "frames": 12954
+  },
+  {
+   "log": "straw-brain08-06",
+   "contacts": [
+    {
+     "t_start": 70.609,
+     "t_end": 72.05,
+     "duration_s": 1.44,
+     "kind": "slide",
+     "pos": [
+      -38.96,
+      166.15,
+      22.55
+     ],
+     "speed": 2.88,
+     "vz": -1.14,
+     "min_z": 21.69,
+     "launch_plane": false,
+     "peak_external": 7.94,
+     "mean_vertical": 2.92,
+     "impulse_vertical": 4.282,
+     "evidence": {
+      "support_s": 1.44,
+      "arrest_s": 0.18,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.445,
+      0.652
+     ]
+    },
+    {
+     "t_start": 75.881,
+     "t_end": 77.241,
+     "duration_s": 1.36,
+     "kind": "slide",
+     "pos": [
+      -37.31,
+      147.58,
+      18.47
+     ],
+     "speed": 2.81,
+     "vz": -1.48,
+     "min_z": 17.49,
+     "launch_plane": false,
+     "peak_external": 10.79,
+     "mean_vertical": 3.16,
+     "impulse_vertical": 4.346,
+     "evidence": {
+      "support_s": 1.36,
+      "arrest_s": 0.27,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.423,
+      0.671
+     ]
+    },
+    {
+     "t_start": 176.445,
+     "t_end": 178.014,
+     "duration_s": 1.569,
+     "kind": "slide",
+     "pos": [
+      -35.85,
+      167.19,
+      22.69
+     ],
+     "speed": 3.21,
+     "vz": -0.99,
+     "min_z": 21.68,
+     "launch_plane": false,
+     "peak_external": 5.73,
+     "mean_vertical": 2.6,
+     "impulse_vertical": 4.119,
+     "evidence": {
+      "support_s": 1.569,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.449,
+      0.65
+     ]
+    },
+    {
+     "t_start": 182.101,
+     "t_end": 183.471,
+     "duration_s": 1.369,
+     "kind": "slide",
+     "pos": [
+      -35.53,
+      146.49,
+      18.19
+     ],
+     "speed": 2.82,
+     "vz": -1.51,
+     "min_z": 17.19,
+     "launch_plane": false,
+     "peak_external": 10.49,
+     "mean_vertical": 3.3,
+     "impulse_vertical": 4.542,
+     "evidence": {
+      "support_s": 1.369,
+      "arrest_s": 0.29,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.424,
+      0.674
+     ]
+    },
+    {
+     "t_start": 281.567,
+     "t_end": 283.128,
+     "duration_s": 1.562,
+     "kind": "slide",
+     "pos": [
+      -37.02,
+      169.19,
+      23.07
+     ],
+     "speed": 3.16,
+     "vz": -1.04,
+     "min_z": 22.11,
+     "launch_plane": false,
+     "peak_external": 5.41,
+     "mean_vertical": 2.76,
+     "impulse_vertical": 4.318,
+     "evidence": {
+      "support_s": 1.562,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.445,
+      0.653
+     ]
+    },
+    {
+     "t_start": 286.962,
+     "t_end": 288.323,
+     "duration_s": 1.361,
+     "kind": "slide",
+     "pos": [
+      -36.14,
+      149.65,
+      18.98
+     ],
+     "speed": 2.8,
+     "vz": -1.49,
+     "min_z": 17.97,
+     "launch_plane": false,
+     "peak_external": 11.05,
+     "mean_vertical": 3.27,
+     "impulse_vertical": 4.42,
+     "evidence": {
+      "support_s": 1.361,
+      "arrest_s": 0.27,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.424,
+      0.674
+     ]
+    }
+   ],
+   "terminal_impact": null,
+   "scored_s": 323.12,
+   "contacts_per_min": 1.114,
+   "frames": 27219
+  },
+  {
+   "log": "straw-brain6-02",
+   "contacts": [
+    {
+     "t_start": 38.447,
+     "t_end": 41.146,
+     "duration_s": 2.7,
+     "kind": "slide",
+     "pos": [
+      35.92,
+      114.01,
+      9.28
+     ],
+     "speed": 5.37,
+     "vz": 0.93,
+     "min_z": 9.28,
+     "launch_plane": false,
+     "peak_external": 3.38,
+     "mean_vertical": 1.62,
+     "impulse_vertical": 4.37,
+     "evidence": {
+      "support_s": 2.7,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.517,
+      0.561
+     ]
+    },
+    {
+     "t_start": 41.456,
+     "t_end": 43.516,
+     "duration_s": 2.06,
+     "kind": "slide",
+     "pos": [
+      34.52,
+      128.76,
+      13.01
+     ],
+     "speed": 4.69,
+     "vz": 1.08,
+     "min_z": 13.01,
+     "launch_plane": false,
+     "peak_external": 2.86,
+     "mean_vertical": 1.68,
+     "impulse_vertical": 3.434,
+     "evidence": {
+      "support_s": 2.06,
+      "arrest_s": 0.0,
+      "impact_frames": 0
+     },
+     "drive": [
+      0.518,
+      0.537
+     ]
+    }
+   ],
+   "terminal_impact": {
+    "t": 43.726,
+    "kind": "terminal",
+    "pos": [
+     33.08,
+     139.55,
+     15.67
+    ],
+    "speed": 4.92,
+    "vz": 1.24,
+    "acceleration": 68.76734161376953,
+    "unexplained": 69.34205574450384
+   },
+   "scored_s": 40.03,
+   "contacts_per_min": 2.998,
+   "frames": 3632
+  },
+  {
+   "log": "straw-fast6-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 62.56,
+    "kind": "terminal",
+    "pos": [
+     -36.69,
+     174.77,
+     23.82
+    ],
+    "speed": 3.05,
+    "vz": -2.85,
+    "acceleration": 30.81607437133789,
+    "unexplained": 11.709178263604871
+   },
+   "scored_s": 59.05,
+   "contacts_per_min": 0.0,
+   "frames": 5464
+  },
+  {
+   "log": "straw-fast6-02",
+   "contacts": [],
+   "terminal_impact": null,
+   "scored_s": 308.33,
+   "contacts_per_min": 0.0,
+   "frames": 27376
+  },
+  {
+   "log": "straw-fast6-03",
+   "contacts": [],
+   "terminal_impact": null,
+   "scored_s": 308.18,
+   "contacts_per_min": 0.0,
+   "frames": 27187
+  },
+  {
+   "log": "straw-fast6-arc-01",
+   "contacts": [],
+   "terminal_impact": {
+    "t": 275.813,
+    "kind": "terminal",
+    "pos": [
+     -36.35,
+     120.74,
+     13.29
+    ],
+    "speed": 2.97,
+    "vz": -0.45,
+    "acceleration": 82.34928894042969,
+    "unexplained": 78.303830181823
+   },
+   "scored_s": 272.3,
+   "contacts_per_min": 0.0,
+   "frames": 24483
+  }
+ ]
+}

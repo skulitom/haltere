@@ -862,8 +862,9 @@ class ContactSupportConfig:
     valid windows outside a contact episode and a support climb, and only when the window's unexplained force is at most
     gain_quiet (a negative one is never a ground reaction) or the drone rises (the window's lowest vz >= gain_rising: a
     surface below cannot hold up a drone that moves away from it; an uphill scrape can, which the clipped step bounds).
-    Live logs keep the gain within 0.98-1.03 (the measured curve); the surrogate randomises the thrust by up to about
-    +-20%, which the gain absorbs.
+    On the logged flights the gain stays within 0.95-1.10 (the measured curve), except an uphill scrape
+    (straw-brain6-02, 1.195), after which quiet windows bring it back at up to about 0.15 per second; the surrogate
+    randomises the thrust by up to about +-20%, which the gain absorbs.
     Reads only the measured velocity and attitude, the throttle the motor issued and the pad calibration: no height above
     ground, no course geometry.
     """

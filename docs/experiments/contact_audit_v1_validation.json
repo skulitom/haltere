@@ -1,0 +1,2254 @@
+{
+ "straw_downhill": {
+  "cases": [
+   {
+    "log": "straw-brain08-04",
+    "onset": 72.31,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 71.42,
+      "t_end": 72.84,
+      "kind": "slide",
+      "peak_external": 10.17,
+      "impulse_vertical": 4.562
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-04",
+    "onset": 176.96,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 175.855,
+      "t_end": 177.444,
+      "kind": "slide",
+      "peak_external": 3.71,
+      "impulse_vertical": 3.832
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-04",
+    "onset": 283.4,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 282.458,
+      "t_end": 283.919,
+      "kind": "slide",
+      "peak_external": 9.35,
+      "impulse_vertical": 4.485
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-04",
+    "onset": 288.48,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 287.583,
+      "t_end": 288.954,
+      "kind": "slide",
+      "peak_external": 9.91,
+      "impulse_vertical": 4.22
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 71.54,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 70.609,
+      "t_end": 72.05,
+      "kind": "slide",
+      "peak_external": 7.94,
+      "impulse_vertical": 4.282
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 76.75,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 75.881,
+      "t_end": 77.241,
+      "kind": "slide",
+      "peak_external": 10.79,
+      "impulse_vertical": 4.346
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 177.51,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 176.445,
+      "t_end": 178.014,
+      "kind": "slide",
+      "peak_external": 5.73,
+      "impulse_vertical": 4.119
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 182.98,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 182.101,
+      "t_end": 183.471,
+      "kind": "slide",
+      "peak_external": 10.49,
+      "impulse_vertical": 4.542
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 282.63,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 281.567,
+      "t_end": 283.128,
+      "kind": "slide",
+      "peak_external": 5.41,
+      "impulse_vertical": 4.318
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 287.84,
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 286.962,
+      "t_end": 288.323,
+      "kind": "slide",
+      "peak_external": 11.05,
+      "impulse_vertical": 4.42
+     }
+    ]
+   }
+  ],
+  "detected": 10,
+  "of": 10,
+  "passed": true
+ },
+ "slide": {
+  "window": [
+   70.5,
+   75.8
+  ],
+  "coverage": 0.998,
+  "kinds": [
+   "slide"
+  ],
+  "contacts": [
+   {
+    "t_start": 68.129,
+    "t_end": 75.791,
+    "kind": "slide"
+   }
+  ],
+  "passed": true
+ },
+ "floor": {
+  "windows": [
+   {
+    "window": [
+     27.4,
+     28.9
+    ],
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 27.328,
+      "t_end": 27.988,
+      "kind": "support",
+      "min_z": 0.02
+     }
+    ]
+   },
+   {
+    "window": [
+     29.1,
+     29.6
+    ],
+    "detected": true,
+    "contacts": [
+     {
+      "t_start": 29.018,
+      "t_end": 29.548,
+      "kind": "support",
+      "min_z": 0.01
+     }
+    ]
+   }
+  ],
+  "passed": true
+ },
+ "terminal": {
+  "impacts": [
+   {
+    "log": "minus-brain03-01",
+    "listed": true,
+    "terminal": {
+     "t": 13.57,
+     "kind": "terminal",
+     "pos": [
+      54.61,
+      3.63,
+      0.64
+     ],
+     "speed": 5.33,
+     "vz": 0.22,
+     "acceleration": 126.49889373779297,
+     "unexplained": 128.28750979485338
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain04-02",
+    "listed": true,
+    "terminal": {
+     "t": 13.163,
+     "kind": "terminal",
+     "pos": [
+      54.65,
+      3.57,
+      0.65
+     ],
+     "speed": 4.81,
+     "vz": 0.12,
+     "acceleration": 119.12639617919922,
+     "unexplained": 120.4294600589432
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 13.143,
+      "t_end": 13.153,
+      "kind": "impact"
+     }
+    ]
+   },
+   {
+    "log": "minus-brain05-01",
+    "listed": true,
+    "terminal": {
+     "t": 14.839,
+     "kind": "terminal",
+     "pos": [
+      54.55,
+      4.09,
+      0.7
+     ],
+     "speed": 4.38,
+     "vz": 0.2,
+     "acceleration": 95.44554901123047,
+     "unexplained": 96.43622969614219
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain06-01",
+    "listed": true,
+    "terminal": {
+     "t": 13.819,
+     "kind": "terminal",
+     "pos": [
+      54.61,
+      3.67,
+      0.72
+     ],
+     "speed": 5.38,
+     "vz": 0.11,
+     "acceleration": 162.85986328125,
+     "unexplained": 163.90201553064873
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 13.799,
+      "t_end": 13.809,
+      "kind": "impact"
+     }
+    ]
+   },
+   {
+    "log": "minus-brain07-01",
+    "listed": true,
+    "terminal": {
+     "t": 13.919,
+     "kind": "terminal",
+     "pos": [
+      54.57,
+      3.66,
+      0.71
+     ],
+     "speed": 4.93,
+     "vz": 0.42,
+     "acceleration": 69.29175567626953,
+     "unexplained": 70.1991722476082
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain08-01",
+    "listed": true,
+    "terminal": {
+     "t": 13.21,
+     "kind": "terminal",
+     "pos": [
+      54.51,
+      3.89,
+      0.83
+     ],
+     "speed": 5.92,
+     "vz": 0.03,
+     "acceleration": 130.21571350097656,
+     "unexplained": 130.56129239758775
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain08-gapon-01",
+    "listed": true,
+    "terminal": {
+     "t": 19.079,
+     "kind": "terminal",
+     "pos": [
+      80.81,
+      19.23,
+      2.09
+     ],
+     "speed": 6.13,
+     "vz": 1.34,
+     "acceleration": 33.03559875488281,
+     "unexplained": 31.92533649035085
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain08-gapon-02",
+    "listed": true,
+    "terminal": {
+     "t": 18.589,
+     "kind": "terminal",
+     "pos": [
+      78.09,
+      19.04,
+      2.19
+     ],
+     "speed": 4.85,
+     "vz": 3.27,
+     "acceleration": 197.33241271972656,
+     "unexplained": 192.07593603445181
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 18.569,
+      "t_end": 18.579,
+      "kind": "impact"
+     }
+    ]
+   },
+   {
+    "log": "minus-brain08-gapshadow-01",
+    "listed": true,
+    "terminal": {
+     "t": 13.1,
+     "kind": "terminal",
+     "pos": [
+      54.54,
+      4.1,
+      0.84
+     ],
+     "speed": 5.71,
+     "vz": 0.03,
+     "acceleration": 151.1909637451172,
+     "unexplained": 151.71108634756362
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain08-loom-01",
+    "listed": true,
+    "terminal": {
+     "t": 12.9,
+     "kind": "terminal",
+     "pos": [
+      54.52,
+      3.85,
+      0.8
+     ],
+     "speed": 5.86,
+     "vz": -0.02,
+     "acceleration": 165.56951904296875,
+     "unexplained": 166.3422601577467
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain08-slow35-01",
+    "listed": true,
+    "terminal": {
+     "t": 14.628,
+     "kind": "terminal",
+     "pos": [
+      54.51,
+      4.46,
+      0.52
+     ],
+     "speed": 4.87,
+     "vz": -0.31,
+     "acceleration": 90.55133819580078,
+     "unexplained": 90.81890641818002
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain08-vg-01",
+    "listed": true,
+    "terminal": {
+     "t": 18.489,
+     "kind": "terminal",
+     "pos": [
+      78.19,
+      19.27,
+      1.27
+     ],
+     "speed": 4.28,
+     "vz": 1.44,
+     "acceleration": 90.7044677734375,
+     "unexplained": 80.49790610749322
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain09b-r4-01",
+    "listed": true,
+    "terminal": {
+     "t": 23.686,
+     "kind": "terminal",
+     "pos": [
+      80.43,
+      20.96,
+      0.04
+     ],
+     "speed": 4.06,
+     "vz": -1.88,
+     "acceleration": 36.83624267578125,
+     "unexplained": 31.152798963786942
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain09b-vg-01",
+    "listed": true,
+    "terminal": {
+     "t": 21.919,
+     "kind": "terminal",
+     "pos": [
+      81.89,
+      19.91,
+      0.63
+     ],
+     "speed": 2.96,
+     "vz": -0.26,
+     "acceleration": 107.35087585449219,
+     "unexplained": 105.73003080782793
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-brain10b-r4-02",
+    "listed": true,
+    "terminal": {
+     "t": 21.586,
+     "kind": "terminal",
+     "pos": [
+      81.95,
+      19.0,
+      1.94
+     ],
+     "speed": 4.96,
+     "vz": 0.53,
+     "acceleration": 135.0342254638672,
+     "unexplained": 134.36741081335362
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-fast6-01",
+    "listed": true,
+    "terminal": {
+     "t": 35.116,
+     "kind": "terminal",
+     "pos": [
+      51.08,
+      93.55,
+      0.81
+     ],
+     "speed": 4.56,
+     "vz": 0.56,
+     "acceleration": 98.72328186035156,
+     "unexplained": 61.31899103145061
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-fast6-cur-01",
+    "listed": true,
+    "terminal": {
+     "t": 12.85,
+     "kind": "terminal",
+     "pos": [
+      54.61,
+      4.46,
+      0.68
+     ],
+     "speed": 5.92,
+     "vz": 0.01,
+     "acceleration": 127.38841247558594,
+     "unexplained": 127.88588590744767
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-fast6-gapon-01",
+    "listed": true,
+    "terminal": {
+     "t": 21.649,
+     "kind": "terminal",
+     "pos": [
+      79.99,
+      18.09,
+      0.66
+     ],
+     "speed": 2.47,
+     "vz": 0.04,
+     "acceleration": 56.5650749206543,
+     "unexplained": 59.38814951099072
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-fast6-r4-02",
+    "listed": true,
+    "terminal": {
+     "t": 34.099,
+     "kind": "terminal",
+     "pos": [
+      73.51,
+      69.38,
+      2.14
+     ],
+     "speed": 4.06,
+     "vz": 0.68,
+     "acceleration": 51.72807312011719,
+     "unexplained": 55.711332876595336
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 34.079,
+      "t_end": 34.089,
+      "kind": "impact"
+     }
+    ]
+   },
+   {
+    "log": "minus-fast6-vg-02",
+    "listed": true,
+    "terminal": {
+     "t": 23.448,
+     "kind": "terminal",
+     "pos": [
+      78.31,
+      31.1,
+      1.0
+     ],
+     "speed": 5.87,
+     "vz": 0.03,
+     "acceleration": 165.91067504882812,
+     "unexplained": 164.99945490064516
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "minus-fast6-wall-01",
+    "listed": true,
+    "terminal": {
+     "t": 13.42,
+     "kind": "terminal",
+     "pos": [
+      54.03,
+      4.8,
+      2.27
+     ],
+     "speed": 4.06,
+     "vz": 2.06,
+     "acceleration": 40.446327209472656,
+     "unexplained": 39.08331973518699
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "pine-brain03-01",
+    "listed": true,
+    "terminal": {
+     "t": 18.089,
+     "kind": "terminal",
+     "pos": [
+      70.37,
+      -8.54,
+      5.09
+     ],
+     "speed": 5.3,
+     "vz": 0.74,
+     "acceleration": 138.7519989013672,
+     "unexplained": 139.07143936370315
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 17.249,
+      "t_end": 17.599,
+      "kind": "support"
+     }
+    ]
+   },
+   {
+    "log": "pine-brain04-01",
+    "listed": true,
+    "terminal": {
+     "t": 16.34,
+     "kind": "terminal",
+     "pos": [
+      59.17,
+      -16.12,
+      3.16
+     ],
+     "speed": 5.0,
+     "vz": 0.37,
+     "acceleration": 71.57555389404297,
+     "unexplained": 71.59344886556646
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "pine-brain05-02",
+    "listed": true,
+    "terminal": {
+     "t": 21.53,
+     "kind": "terminal",
+     "pos": [
+      70.66,
+      -6.72,
+      5.79
+     ],
+     "speed": 3.94,
+     "vz": 0.6,
+     "acceleration": 32.07664489746094,
+     "unexplained": 28.12481576845699
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 20.47,
+      "t_end": 20.76,
+      "kind": "support"
+     }
+    ]
+   },
+   {
+    "log": "pine-brain06-01",
+    "listed": true,
+    "terminal": {
+     "t": 18.477,
+     "kind": "terminal",
+     "pos": [
+      70.7,
+      -8.77,
+      4.83
+     ],
+     "speed": 4.95,
+     "vz": 0.64,
+     "acceleration": 101.8895492553711,
+     "unexplained": 100.10388324666854
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 17.728,
+      "t_end": 18.078,
+      "kind": "support"
+     }
+    ]
+   },
+   {
+    "log": "pine-brain06-ttc-01",
+    "listed": true,
+    "terminal": {
+     "t": 15.74,
+     "kind": "terminal",
+     "pos": [
+      49.26,
+      -19.85,
+      3.34
+     ],
+     "speed": 2.64,
+     "vz": 0.23,
+     "acceleration": 55.407135009765625,
+     "unexplained": 60.51297312018684
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "pine-brain07-01",
+    "listed": true,
+    "terminal": {
+     "t": 21.297,
+     "kind": "terminal",
+     "pos": [
+      74.54,
+      -4.97,
+      6.03
+     ],
+     "speed": 3.69,
+     "vz": 0.72,
+     "acceleration": 86.97241973876953,
+     "unexplained": 88.18948890617857
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 20.387,
+      "t_end": 20.617,
+      "kind": "support"
+     },
+     {
+      "t_start": 21.277,
+      "t_end": 21.287,
+      "kind": "impact"
+     }
+    ]
+   },
+   {
+    "log": "pine-brain08-01",
+    "listed": true,
+    "terminal": {
+     "t": 17.967,
+     "kind": "terminal",
+     "pos": [
+      67.8,
+      -10.54,
+      4.34
+     ],
+     "speed": 3.69,
+     "vz": 0.95,
+     "acceleration": 40.099876403808594,
+     "unexplained": 40.779857573943175
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 16.717,
+      "t_end": 17.947,
+      "kind": "support"
+     }
+    ]
+   },
+   {
+    "log": "pine-brain08-loom-01",
+    "listed": true,
+    "terminal": {
+     "t": 9.57,
+     "kind": "terminal",
+     "pos": [
+      31.28,
+      -11.66,
+      2.02
+     ],
+     "speed": 5.59,
+     "vz": 0.23,
+     "acceleration": 183.0167694091797,
+     "unexplained": 183.77604040131067
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "pine-fast6-01",
+    "listed": true,
+    "terminal": {
+     "t": 15.988,
+     "kind": "terminal",
+     "pos": [
+      64.04,
+      -12.4,
+      3.78
+     ],
+     "speed": 5.69,
+     "vz": 0.71,
+     "acceleration": 32.46425247192383,
+     "unexplained": 18.508611908269167
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "pine-fast6-loom-01",
+    "listed": true,
+    "terminal": {
+     "t": 16.22,
+     "kind": "terminal",
+     "pos": [
+      64.78,
+      -12.04,
+      3.99
+     ],
+     "speed": 3.49,
+     "vz": 0.89,
+     "acceleration": 42.37858963012695,
+     "unexplained": 44.73574592026436
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 15.84,
+      "t_end": 16.03,
+      "kind": "support"
+     }
+    ]
+   },
+   {
+    "log": "pine-fast6-ttc-01",
+    "listed": true,
+    "terminal": {
+     "t": 21.24,
+     "kind": "terminal",
+     "pos": [
+      78.97,
+      -1.72,
+      7.97
+     ],
+     "speed": 5.97,
+     "vz": -0.8,
+     "acceleration": 111.70782470703125,
+     "unexplained": 109.47594706727912
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain03-01",
+    "listed": true,
+    "terminal": {
+     "t": 93.595,
+     "kind": "terminal",
+     "pos": [
+      -35.83,
+      120.76,
+      13.39
+     ],
+     "speed": 4.45,
+     "vz": -0.8,
+     "acceleration": 114.67454528808594,
+     "unexplained": 116.01209611142029
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain04-01",
+    "listed": true,
+    "terminal": {
+     "t": 91.445,
+     "kind": "terminal",
+     "pos": [
+      -37.25,
+      120.75,
+      13.29
+     ],
+     "speed": 4.02,
+     "vz": -0.76,
+     "acceleration": 115.40444946289062,
+     "unexplained": 115.87765905838981
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain05-01",
+    "listed": true,
+    "terminal": {
+     "t": 103.327,
+     "kind": "terminal",
+     "pos": [
+      -37.05,
+      120.67,
+      13.4
+     ],
+     "speed": 2.68,
+     "vz": 0.1,
+     "acceleration": 73.9924545288086,
+     "unexplained": 67.37716519056224
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain05-gov-01",
+    "listed": true,
+    "terminal": {
+     "t": 98.685,
+     "kind": "terminal",
+     "pos": [
+      -38.04,
+      120.8,
+      12.03
+     ],
+     "speed": 3.93,
+     "vz": -1.38,
+     "acceleration": 40.74740219116211,
+     "unexplained": 42.50747131639393
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain05-trim-01",
+    "listed": true,
+    "terminal": {
+     "t": 97.047,
+     "kind": "terminal",
+     "pos": [
+      -36.26,
+      120.47,
+      13.53
+     ],
+     "speed": 3.75,
+     "vz": -1.23,
+     "acceleration": 92.48712921142578,
+     "unexplained": 91.2070964461697
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain05-trim-02",
+    "listed": true,
+    "terminal": {
+     "t": 99.236,
+     "kind": "terminal",
+     "pos": [
+      -37.9,
+      120.75,
+      12.03
+     ],
+     "speed": 1.88,
+     "vz": 0.9,
+     "acceleration": 70.49190521240234,
+     "unexplained": 73.0675366349072
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain07-nosweep-01",
+    "listed": true,
+    "terminal": {
+     "t": 210.605,
+     "kind": "terminal",
+     "pos": [
+      -36.3,
+      95.72,
+      7.02
+     ],
+     "speed": 3.97,
+     "vz": -0.99,
+     "acceleration": 104.95806884765625,
+     "unexplained": 102.16880540091978
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain07-steep-02",
+    "listed": true,
+    "terminal": {
+     "t": 94.585,
+     "kind": "terminal",
+     "pos": [
+      -36.24,
+      95.75,
+      6.89
+     ],
+     "speed": 3.18,
+     "vz": -1.12,
+     "acceleration": 32.34010696411133,
+     "unexplained": 30.272436214058278
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain08-01",
+    "listed": true,
+    "terminal": {
+     "t": 75.981,
+     "kind": "terminal",
+     "pos": [
+      -35.04,
+      150.12,
+      18.94
+     ],
+     "speed": 1.96,
+     "vz": -0.44,
+     "acceleration": 39.5956916809082,
+     "unexplained": 41.5576972390577
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 68.129,
+      "t_end": 75.791,
+      "kind": "slide"
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-02",
+    "listed": true,
+    "terminal": {
+     "t": 164.47,
+     "kind": "terminal",
+     "pos": [
+      4.57,
+      192.79,
+      25.65
+     ],
+     "speed": 2.72,
+     "vz": -0.5,
+     "acceleration": 34.024269104003906,
+     "unexplained": 15.784596097878678
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 164.44,
+      "t_end": 164.44,
+      "kind": "impact"
+     }
+    ]
+   },
+   {
+    "log": "straw-brain08-03",
+    "listed": true,
+    "terminal": {
+     "t": 59.447,
+     "kind": "terminal",
+     "pos": [
+      -0.47,
+      197.88,
+      26.68
+     ],
+     "speed": 3.84,
+     "vz": 1.24,
+     "acceleration": 55.01382064819336,
+     "unexplained": 53.36404429353165
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-brain6-02",
+    "listed": true,
+    "terminal": {
+     "t": 43.726,
+     "kind": "terminal",
+     "pos": [
+      33.08,
+      139.55,
+      15.67
+     ],
+     "speed": 4.92,
+     "vz": 1.24,
+     "acceleration": 68.76734161376953,
+     "unexplained": 69.34205574450384
+    },
+    "csv_evidence": true,
+    "evidence": [
+     {
+      "t_start": 41.456,
+      "t_end": 43.516,
+      "kind": "slide"
+     }
+    ]
+   },
+   {
+    "log": "straw-fast6-01",
+    "listed": true,
+    "terminal": {
+     "t": 62.56,
+     "kind": "terminal",
+     "pos": [
+      -36.69,
+      174.77,
+      23.82
+     ],
+     "speed": 3.05,
+     "vz": -2.85,
+     "acceleration": 30.81607437133789,
+     "unexplained": 11.709178263604871
+    },
+    "csv_evidence": false,
+    "evidence": []
+   },
+   {
+    "log": "straw-fast6-arc-01",
+    "listed": true,
+    "terminal": {
+     "t": 275.813,
+     "kind": "terminal",
+     "pos": [
+      -36.35,
+      120.74,
+      13.29
+     ],
+     "speed": 2.97,
+     "vz": -0.45,
+     "acceleration": 82.34928894042969,
+     "unexplained": 78.303830181823
+    },
+    "csv_evidence": false,
+    "evidence": []
+   }
+  ],
+  "listed": 46,
+  "of": 46,
+  "csv_evidence": 13,
+  "passed": true
+ },
+ "false_positives": {
+  "review_items": 45,
+  "reviewed": 45,
+  "labelled": 45,
+  "false_positives": 27,
+  "estimated_false_positives": 27.0,
+  "scored_minutes": 83.94,
+  "per_minute": 0.3216,
+  "judged": [
+   {
+    "log": "pine-brain05-02",
+    "t_start": 18.95,
+    "t_end": 19.56,
+    "kind": "support",
+    "pos": [
+     61.73,
+     -12.99,
+     3.67
+    ],
+    "min_z": 3.67,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "pine-brain07-01",
+    "t_start": 19.317,
+    "t_end": 19.627,
+    "kind": "support",
+    "pos": [
+     67.34,
+     -9.56,
+     4.92
+    ],
+    "min_z": 4.92,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "pine-fast6-ttc-01",
+    "t_start": 16.7,
+    "t_end": 16.72,
+    "kind": "impact",
+    "pos": [
+     59.82,
+     -15.58,
+     5.46
+    ],
+    "min_z": 5.46,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain05-trim-02",
+    "t_start": 75.681,
+    "t_end": 75.711,
+    "kind": "impact",
+    "pos": [
+     -19.51,
+     188.04,
+     26.65
+    ],
+    "min_z": 26.63,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain06-01",
+    "t_start": 45.076,
+    "t_end": 45.586,
+    "kind": "support",
+    "pos": [
+     34.08,
+     129.93,
+     13.41
+    ],
+    "min_z": 13.41,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain06-01",
+    "t_start": 50.955,
+    "t_end": 51.466,
+    "kind": "support",
+    "pos": [
+     30.18,
+     155.14,
+     19.49
+    ],
+    "min_z": 19.49,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain06-01",
+    "t_start": 72.88,
+    "t_end": 74.37,
+    "kind": "slide",
+    "pos": [
+     -37.54,
+     170.11,
+     23.25
+    ],
+    "min_z": 22.25,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-01",
+    "t_start": 76.121,
+    "t_end": 77.091,
+    "kind": "support",
+    "pos": [
+     -37.38,
+     159.3,
+     21.2
+    ],
+    "min_z": 20.49,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-01",
+    "t_start": 79.762,
+    "t_end": 79.962,
+    "kind": "support",
+    "pos": [
+     -37.03,
+     147.51,
+     18.47
+    ],
+    "min_z": 18.31,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 72.561,
+    "t_end": 74.181,
+    "kind": "slide",
+    "pos": [
+     -37.04,
+     171.03,
+     23.39
+    ],
+    "min_z": 22.31,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 75.571,
+    "t_end": 77.042,
+    "kind": "slide",
+    "pos": [
+     -37.02,
+     160.79,
+     21.52
+    ],
+    "min_z": 20.46,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 80.152,
+    "t_end": 80.663,
+    "kind": "support",
+    "pos": [
+     -36.83,
+     146.35,
+     18.19
+    ],
+    "min_z": 17.78,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 162.259,
+    "t_end": 162.799,
+    "kind": "support",
+    "pos": [
+     33.96,
+     131.1,
+     13.65
+    ],
+    "min_z": 13.65,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 189.754,
+    "t_end": 191.263,
+    "kind": "slide",
+    "pos": [
+     -37.15,
+     170.43,
+     23.3
+    ],
+    "min_z": 22.28,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 192.773,
+    "t_end": 194.162,
+    "kind": "slide",
+    "pos": [
+     -37.08,
+     160.31,
+     21.41
+    ],
+    "min_z": 20.42,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 197.32,
+    "t_end": 197.72,
+    "kind": "support",
+    "pos": [
+     -36.86,
+     145.95,
+     18.09
+    ],
+    "min_z": 17.77,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 279.56,
+    "t_end": 280.04,
+    "kind": "support",
+    "pos": [
+     33.91,
+     131.51,
+     13.74
+    ],
+    "min_z": 13.74,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 307.998,
+    "t_end": 309.209,
+    "kind": "slide",
+    "pos": [
+     -38.8,
+     167.44,
+     22.79
+    ],
+    "min_z": 21.98,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-02",
+    "t_start": 310.89,
+    "t_end": 312.081,
+    "kind": "slide",
+    "pos": [
+     -38.35,
+     158.05,
+     20.95
+    ],
+    "min_z": 20.07,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-03",
+    "t_start": 74.29,
+    "t_end": 74.94,
+    "kind": "support",
+    "pos": [
+     -39.2,
+     165.78,
+     22.5
+    ],
+    "min_z": 22.05,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-03",
+    "t_start": 76.39,
+    "t_end": 77.63,
+    "kind": "slide",
+    "pos": [
+     -38.81,
+     159.12,
+     21.2
+    ],
+    "min_z": 20.29,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-03",
+    "t_start": 162.554,
+    "t_end": 162.993,
+    "kind": "support",
+    "pos": [
+     33.86,
+     131.79,
+     13.82
+    ],
+    "min_z": 13.82,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain06-03",
+    "t_start": 190.348,
+    "t_end": 191.738,
+    "kind": "slide",
+    "pos": [
+     -38.55,
+     169.19,
+     23.1
+    ],
+    "min_z": 22.16,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-03",
+    "t_start": 193.277,
+    "t_end": 194.576,
+    "kind": "slide",
+    "pos": [
+     -38.22,
+     159.43,
+     21.25
+    ],
+    "min_z": 20.31,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-03",
+    "t_start": 307.55,
+    "t_end": 308.641,
+    "kind": "slide",
+    "pos": [
+     -39.05,
+     167.63,
+     22.83
+    ],
+    "min_z": 22.09,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain06-03",
+    "t_start": 310.122,
+    "t_end": 311.413,
+    "kind": "slide",
+    "pos": [
+     -38.61,
+     159.21,
+     21.21
+    ],
+    "min_z": 20.27,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-02",
+    "t_start": 76.857,
+    "t_end": 78.546,
+    "kind": "slide",
+    "pos": [
+     -38.31,
+     166.86,
+     22.69
+    ],
+    "min_z": 21.36,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-02",
+    "t_start": 192.673,
+    "t_end": 194.435,
+    "kind": "slide",
+    "pos": [
+     -38.05,
+     167.41,
+     22.78
+    ],
+    "min_z": 21.41,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-02",
+    "t_start": 298.796,
+    "t_end": 299.267,
+    "kind": "support",
+    "pos": [
+     -7.77,
+     198.97,
+     26.52
+    ],
+    "min_z": 26.39,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain07-02",
+    "t_start": 308.546,
+    "t_end": 310.198,
+    "kind": "slide",
+    "pos": [
+     -38.02,
+     166.73,
+     22.66
+    ],
+    "min_z": 21.36,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-03",
+    "t_start": 76.931,
+    "t_end": 78.631,
+    "kind": "slide",
+    "pos": [
+     -38.34,
+     166.94,
+     22.7
+    ],
+    "min_z": 21.37,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-03",
+    "t_start": 192.756,
+    "t_end": 194.415,
+    "kind": "slide",
+    "pos": [
+     -38.12,
+     166.75,
+     22.66
+    ],
+    "min_z": 21.36,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-03",
+    "t_start": 307.542,
+    "t_end": 309.293,
+    "kind": "slide",
+    "pos": [
+     -37.92,
+     167.28,
+     22.76
+    ],
+    "min_z": 21.39,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-nosweep-01",
+    "t_start": 76.341,
+    "t_end": 77.971,
+    "kind": "slide",
+    "pos": [
+     -38.02,
+     166.58,
+     22.63
+    ],
+    "min_z": 21.34,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-nosweep-01",
+    "t_start": 183.12,
+    "t_end": 183.51,
+    "kind": "support",
+    "pos": [
+     -7.72,
+     198.52,
+     26.48
+    ],
+    "min_z": 26.37,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain07-nosweep-01",
+    "t_start": 192.885,
+    "t_end": 194.524,
+    "kind": "slide",
+    "pos": [
+     -38.24,
+     166.5,
+     22.63
+    ],
+    "min_z": 21.33,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain07-steep-02",
+    "t_start": 76.231,
+    "t_end": 77.941,
+    "kind": "slide",
+    "pos": [
+     -38.34,
+     167.09,
+     22.73
+    ],
+    "min_z": 21.39,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain08-02",
+    "t_start": 69.21,
+    "t_end": 70.81,
+    "kind": "slide",
+    "pos": [
+     -36.96,
+     169.22,
+     23.07
+    ],
+    "min_z": 22.08,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain08-02",
+    "t_start": 74.741,
+    "t_end": 76.101,
+    "kind": "slide",
+    "pos": [
+     -36.15,
+     149.01,
+     18.81
+    ],
+    "min_z": 17.83,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain08-04",
+    "t_start": 76.591,
+    "t_end": 78.341,
+    "kind": "slide",
+    "pos": [
+     -37.0,
+     145.88,
+     18.07
+    ],
+    "min_z": 16.53,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain08-04",
+    "t_start": 79.551,
+    "t_end": 80.882,
+    "kind": "slide",
+    "pos": [
+     -36.44,
+     135.77,
+     15.39
+    ],
+    "min_z": 14.26,
+    "label": "ambiguous",
+    "false_positive": true
+   },
+   {
+    "log": "straw-brain08-04",
+    "t_start": 181.542,
+    "t_end": 186.299,
+    "kind": "slide",
+    "pos": [
+     -36.21,
+     147.85,
+     18.54
+    ],
+    "min_z": 14.39,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain08-05",
+    "t_start": 70.939,
+    "t_end": 72.389,
+    "kind": "slide",
+    "pos": [
+     -38.69,
+     165.16,
+     22.38
+    ],
+    "min_z": 21.5,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain08-05",
+    "t_start": 76.27,
+    "t_end": 77.65,
+    "kind": "slide",
+    "pos": [
+     -37.11,
+     146.42,
+     18.2
+    ],
+    "min_z": 17.16,
+    "label": "contact",
+    "false_positive": false
+   },
+   {
+    "log": "straw-brain6-02",
+    "t_start": 38.447,
+    "t_end": 41.146,
+    "kind": "slide",
+    "pos": [
+     35.92,
+     114.01,
+     9.28
+    ],
+    "min_z": 9.28,
+    "label": "contact",
+    "false_positive": false
+   }
+  ],
+  "known": [
+   {
+    "log": "minus-brain04-02",
+    "t_start": 13.143,
+    "t_end": 13.153,
+    "kind": "impact",
+    "pos": [
+     54.56,
+     3.54,
+     0.65
+    ],
+    "min_z": 0.65,
+    "reason": "terminal"
+   },
+   {
+    "log": "minus-brain06-01",
+    "t_start": 13.799,
+    "t_end": 13.809,
+    "kind": "impact",
+    "pos": [
+     54.51,
+     3.63,
+     0.72
+    ],
+    "min_z": 0.72,
+    "reason": "terminal"
+   },
+   {
+    "log": "minus-brain08-gapon-02",
+    "t_start": 18.569,
+    "t_end": 18.579,
+    "kind": "impact",
+    "pos": [
+     78.07,
+     18.97,
+     2.13
+    ],
+    "min_z": 2.13,
+    "reason": "terminal"
+   },
+   {
+    "log": "minus-fast6-r4-02",
+    "t_start": 27.328,
+    "t_end": 27.988,
+    "kind": "support",
+    "pos": [
+     77.47,
+     48.48,
+     0.13
+    ],
+    "min_z": 0.02,
+    "reason": "floor"
+   },
+   {
+    "log": "minus-fast6-r4-02",
+    "t_start": 29.018,
+    "t_end": 29.548,
+    "kind": "support",
+    "pos": [
+     79.34,
+     52.97,
+     0.1
+    ],
+    "min_z": 0.01,
+    "reason": "floor"
+   },
+   {
+    "log": "minus-fast6-r4-02",
+    "t_start": 30.679,
+    "t_end": 31.059,
+    "kind": "support",
+    "pos": [
+     79.98,
+     56.71,
+     0.11
+    ],
+    "min_z": 0.08,
+    "reason": "height"
+   },
+   {
+    "log": "minus-fast6-r4-02",
+    "t_start": 34.079,
+    "t_end": 34.089,
+    "kind": "impact",
+    "pos": [
+     73.59,
+     69.38,
+     2.12
+    ],
+    "min_z": 2.12,
+    "reason": "terminal"
+   },
+   {
+    "log": "pine-brain03-01",
+    "t_start": 17.249,
+    "t_end": 17.599,
+    "kind": "support",
+    "pos": [
+     66.61,
+     -11.05,
+     4.26
+    ],
+    "min_z": 4.26,
+    "reason": "terminal"
+   },
+   {
+    "log": "pine-brain05-02",
+    "t_start": 20.47,
+    "t_end": 20.76,
+    "kind": "support",
+    "pos": [
+     67.29,
+     -9.24,
+     5.05
+    ],
+    "min_z": 5.05,
+    "reason": "terminal"
+   },
+   {
+    "log": "pine-brain06-01",
+    "t_start": 17.728,
+    "t_end": 18.078,
+    "kind": "support",
+    "pos": [
+     67.54,
+     -10.91,
+     4.23
+    ],
+    "min_z": 4.23,
+    "reason": "terminal"
+   },
+   {
+    "log": "pine-brain07-01",
+    "t_start": 20.387,
+    "t_end": 20.617,
+    "kind": "support",
+    "pos": [
+     71.25,
+     -7.09,
+     5.57
+    ],
+    "min_z": 5.57,
+    "reason": "terminal"
+   },
+   {
+    "log": "pine-brain07-01",
+    "t_start": 21.277,
+    "t_end": 21.287,
+    "kind": "impact",
+    "pos": [
+     74.48,
+     -5.0,
+     6.02
+    ],
+    "min_z": 6.02,
+    "reason": "terminal"
+   },
+   {
+    "log": "pine-brain08-01",
+    "t_start": 16.717,
+    "t_end": 17.947,
+    "kind": "support",
+    "pos": [
+     62.56,
+     -13.56,
+     3.5
+    ],
+    "min_z": 3.5,
+    "reason": "terminal"
+   },
+   {
+    "log": "pine-fast6-loom-01",
+    "t_start": 15.84,
+    "t_end": 16.03,
+    "kind": "support",
+    "pos": [
+     63.31,
+     -12.99,
+     3.67
+    ],
+    "min_z": 3.67,
+    "reason": "terminal"
+   },
+   {
+    "log": "straw-brain08-01",
+    "t_start": 68.129,
+    "t_end": 75.791,
+    "kind": "slide",
+    "pos": [
+     -36.47,
+     175.29,
+     24.03
+    ],
+    "min_z": 19.02,
+    "reason": "slide"
+   },
+   {
+    "log": "straw-brain08-02",
+    "t_start": 164.44,
+    "t_end": 164.44,
+    "kind": "impact",
+    "pos": [
+     4.58,
+     192.71,
+     25.67
+    ],
+    "min_z": 25.67,
+    "reason": "terminal"
+   },
+   {
+    "log": "straw-brain08-04",
+    "t_start": 71.42,
+    "t_end": 72.84,
+    "kind": "slide",
+    "pos": [
+     -38.56,
+     163.84,
+     22.14
+    ],
+    "min_z": 21.26,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-04",
+    "t_start": 175.855,
+    "t_end": 177.444,
+    "kind": "slide",
+    "pos": [
+     -36.97,
+     168.99,
+     23.04
+    ],
+    "min_z": 22.0,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-04",
+    "t_start": 282.458,
+    "t_end": 283.919,
+    "kind": "slide",
+    "pos": [
+     -38.32,
+     166.48,
+     22.61
+    ],
+    "min_z": 21.74,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-04",
+    "t_start": 287.583,
+    "t_end": 288.954,
+    "kind": "slide",
+    "pos": [
+     -36.93,
+     148.58,
+     18.72
+    ],
+    "min_z": 17.7,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-06",
+    "t_start": 70.609,
+    "t_end": 72.05,
+    "kind": "slide",
+    "pos": [
+     -38.96,
+     166.15,
+     22.55
+    ],
+    "min_z": 21.69,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-06",
+    "t_start": 75.881,
+    "t_end": 77.241,
+    "kind": "slide",
+    "pos": [
+     -37.31,
+     147.58,
+     18.47
+    ],
+    "min_z": 17.49,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-06",
+    "t_start": 176.445,
+    "t_end": 178.014,
+    "kind": "slide",
+    "pos": [
+     -35.85,
+     167.19,
+     22.69
+    ],
+    "min_z": 21.68,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-06",
+    "t_start": 182.101,
+    "t_end": 183.471,
+    "kind": "slide",
+    "pos": [
+     -35.53,
+     146.49,
+     18.19
+    ],
+    "min_z": 17.19,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-06",
+    "t_start": 281.567,
+    "t_end": 283.128,
+    "kind": "slide",
+    "pos": [
+     -37.02,
+     169.19,
+     23.07
+    ],
+    "min_z": 22.11,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain08-06",
+    "t_start": 286.962,
+    "t_end": 288.323,
+    "kind": "slide",
+    "pos": [
+     -36.14,
+     149.65,
+     18.98
+    ],
+    "min_z": 17.97,
+    "reason": "straw_downhill"
+   },
+   {
+    "log": "straw-brain6-02",
+    "t_start": 41.456,
+    "t_end": 43.516,
+    "kind": "slide",
+    "pos": [
+     34.52,
+     128.76,
+     13.01
+    ],
+    "min_z": 13.01,
+    "reason": "terminal"
+   }
+  ],
+  "passed": false
+ },
+ "contacts_total": 72,
+ "passed": {
+  "straw_downhill": true,
+  "slide": true,
+  "floor": true,
+  "terminal": true,
+  "false_positives": false
+ },
+ "config_sha256": "1c82c7f45668eadb92036a9b492463aa6ae3292a5998e54b46c320e2089ee55f",
+ "config_version": 1,
+ "labels": "docs/experiments/contact_audit_v1_video_labels.json",
+ "support_recall_report": {
+  "onsets": 15,
+  "with_audit_contact": 14,
+  "rows": [
+   {
+    "log": "straw-brain03-01",
+    "onset": 85.98,
+    "audit_contact": false
+   },
+   {
+    "log": "straw-brain08-02",
+    "onset": 70.28,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-02",
+    "onset": 75.59,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-04",
+    "onset": 72.31,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-04",
+    "onset": 176.96,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-04",
+    "onset": 283.4,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-04",
+    "onset": 288.48,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-05",
+    "onset": 71.86,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-05",
+    "onset": 77.16,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 71.54,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 76.75,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 177.51,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 182.98,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 282.63,
+    "audit_contact": true
+   },
+   {
+    "log": "straw-brain08-06",
+    "onset": 287.84,
+    "audit_contact": true
+   }
+  ]
+ }
+}

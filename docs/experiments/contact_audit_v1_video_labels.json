@@ -1,0 +1,77 @@
+{
+ "pine-brain05-02": {
+  "18.95": "contact"
+ },
+ "pine-brain07-01": {
+  "19.32": "contact"
+ },
+ "pine-fast6-ttc-01": {
+  "16.70": "contact"
+ },
+ "straw-brain05-trim-02": {
+  "75.68": "contact"
+ },
+ "straw-brain06-01": {
+  "45.08": "contact",
+  "50.95": "contact",
+  "72.88": "ambiguous",
+  "76.12": "ambiguous",
+  "79.76": "ambiguous"
+ },
+ "straw-brain06-02": {
+  "162.26": "contact",
+  "279.56": "contact",
+  "72.56": "ambiguous",
+  "75.57": "ambiguous",
+  "80.15": "ambiguous",
+  "189.75": "ambiguous",
+  "192.77": "ambiguous",
+  "197.32": "ambiguous",
+  "308.00": "ambiguous",
+  "310.89": "ambiguous"
+ },
+ "straw-brain06-03": {
+  "162.55": "contact",
+  "74.29": "ambiguous",
+  "76.39": "ambiguous",
+  "190.35": "ambiguous",
+  "193.28": "ambiguous",
+  "307.55": "ambiguous",
+  "310.12": "ambiguous"
+ },
+ "straw-brain07-02": {
+  "298.80": "contact",
+  "76.86": "ambiguous",
+  "192.67": "ambiguous",
+  "308.55": "ambiguous"
+ },
+ "straw-brain07-nosweep-01": {
+  "183.12": "contact",
+  "76.34": "ambiguous",
+  "192.88": "ambiguous"
+ },
+ "straw-brain08-02": {
+  "69.21": "contact",
+  "74.74": "contact"
+ },
+ "straw-brain08-04": {
+  "76.59": "contact",
+  "181.54": "contact",
+  "79.55": "ambiguous"
+ },
+ "straw-brain08-05": {
+  "70.94": "contact",
+  "76.27": "contact"
+ },
+ "straw-brain6-02": {
+  "38.45": "contact"
+ },
+ "straw-brain07-03": {
+  "76.93": "ambiguous",
+  "192.76": "ambiguous",
+  "307.54": "ambiguous"
+ },
+ "straw-brain07-steep-02": {
+  "76.23": "ambiguous"
+ }
+}

@@ -1,9 +1,153 @@
-# View-keeping descent (round 4)
+# View-keeping descent (round 4) and contact support (round 4b)
 
-**Status: not flown.** Off by default (`--descent-view on|off|DECLARATION`). Only surrogate
-runs, open-loop replays of logged flights and unit tests exist. The declaration is
-`configs/pilot/descent_view.json` **version 1**; its frozen surrogate gates are
-`configs/pilot/descent_view_gates.json` version 1.
+**Status.** Off by default (`--descent-view on|off|DECLARATION`). The declaration is
+`configs/pilot/descent_view.json` **version 2** (round 4b). It keeps version 1's view rule unchanged
+and adds contact support; see [Version 2](#version-2-round-4b-contact-support). Version 1
+(`descent_view_v1.json`, kept) flew on Minus Two in round 4 as a disclosed development deviation. The
+runner now flies only version 2. Version 1's frozen surrogate gates are
+`configs/pilot/descent_view_gates.json` version 1; version 2's are
+`configs/pilot/contact_support_gates.json` version 1.
+
+## Version 2 (round 4b): contact support
+
+**Not flown.** Version 2 keeps version 1's view rule, value for value (the `descent_view` block is
+identical), and adds `contact_support` (`haltere.liftoff.fast_race_cue.ContactSupportConfig`). Its
+frozen gates are `configs/pilot/contact_support_gates.json` version 1
+(`haltere/liftoff/contact_support_eval.py`).
+
+### Why
+
+Both older support rules need a sink request below -0.8 m/s. Version 1's view bound keeps the request
+above that below about 5 m/s. The round-4 review found this, and `minus-fast6-r4-02` showed it live.
+The drone lay on the Minus Two garage floor at 27.4-28.9 s (z < 0.1 m) with a request of
+-0.3..-0.5 m/s, and no support climb came. (That request was itself the clearance brake's; see
+[clearance_brake.md](clearance_brake.md).) A drone resting on a floor or a hill at low speed got no
+support climb at all.
+
+### The rule
+
+It reads the ground reaction instead of the size of the request:
+
+- **Thrust.** The propellers push only along the drone's own up axis. The thrust comes from the issued
+  throttle through the measured curve of `runs/measured-dynamics-low-speed-20260923/profile.json`:
+  `g * 3.138 * drive^1.973`, with `drive = (processed + 1)/2` from the pad calibration, acting 0.03 s
+  after it was issued. The measured body drag is subtracted.
+- **Unexplained force.** Over the last 0.3 s it compares the change of the measured vertical speed
+  with what that thrust, gravity and drag explain:
+  `unexplained = dvz/dt - (gain * mean(thrust * up_z) - g - mean(drag_z))`. In free air it stays near
+  0; on the logged flights the median is -0.03..-0.08 m/s^2 and p10-p90 about +-0.2 m/s^2 at a drive of
+  0.5-0.7. A surface can only push, so a sustained positive value is a ground reaction. Windows with any
+  drive outside 0.4-0.8 are not used (idle thrust and spin-down leave +0.4..+3.7 m/s^2 there).
+- **Support climb.** The older rules' 0.6 s climb at 1 m/s or more starts after 0.15 s of all of these:
+  - the command asks to sink (at most -0.1 m/s);
+  - the measured vertical speed does not follow it (at least 0.1 m/s above the command);
+  - the drone is not climbing away (vz at most 0.5 m/s);
+  - the unexplained upward force is at least 0.8 m/s^2.
+- **Arming.** It is armed 3.2 s after the pilot's first tick (the runner holds the throttle for 1 s and
+  ramps it until 3 s), and never while launching.
+- **Thrust gain.** `gain` starts at 1 (the measured vehicle). On armed, valid windows outside a contact
+  and a support climb, it follows the observed gain with a 1 s time constant, each step clipped to 0.15,
+  within 0.75-1.3. It learns only when the unexplained force is at most 0.4 m/s^2 or the drone rises.
+  The surrogate randomises the thrust by up to about +-20% at hover. The gain absorbs that: without it,
+  a strong drone flying level looks like a drone on the ground.
+
+It reads the measured velocity and attitude, the throttle the motor issued and the pad calibration:
+no height above ground and no course geometry. With `--descent-view on` the CSV gains
+`contact_unexplained`, `contact_gain` and `contact_fire` after the three view columns. The sidecar gains
+`pilot_assistance.contact_support` (rule, parameters, onsets, seconds valid, suspected and learning,
+and the final gain). With the flag off, the CSV and the sidecar are unchanged.
+
+### How it was developed (disclosed)
+
+Round 4b ran in two attempts. The first was cut off by a usage limit before it committed; its draft was
+reviewed and reused unchanged. Everything below was development evidence, looked at before the freeze
+(`d15faeb`):
+
+- **First attempt:**
+  - the rule's code on every logged flight, including the round-4 live logs;
+  - the resting and floor scenarios for all four motors;
+  - the surrogate on development seeds only (flat and steep 5000-5007, hill 6100-6111);
+  - contact sheets of the labelled contacts;
+  - the draft contact audit on an unrecorded subset of logs.
+- **Second attempt:**
+  - the `minus-fast6-r4-02` replay (onsets at 27.72 s and 29.38 s);
+  - the resting scenario for the fast PD and fast-brain-10b;
+  - the gain trace of `straw-brain6-02`.
+
+The gate seeds of the surrogate were never run with the rule before the freeze. CS_Rest, CS_R402 and
+CS_Clean are therefore not blind; CS_Surrogate and CS_Identity are.
+
+### Gates (frozen) and scores
+
+`configs/pilot/contact_support_gates.json` version 1 (`a7d033ce`, commit `d15faeb`). Scores:
+`docs/experiments/contact_support_v1_scores.json`. None of it is flight evidence.
+
+```
+python -m haltere.liftoff.contact_support_eval rest|clean|surrogate --out DIR
+haltere/obstacles/vertical_replay.py ...      (the variants the gates file lists, this tree and a git archive of m4)
+python -m haltere.liftoff.contact_support_eval score --out DIR --prefix THIS --baseline M4 --audit AUDIT --json SCORES
+```
+
+| Gate | Threshold | Result | Pass |
+|---|---|---|---|
+| CS-Identity | Command arrays bit-identical to `m4` (24 flights x 4 variants): stack off, shadow, stack with the kept wall pilot 4, and stack with the kept descent view 1 | 96 of 96; plus the unit tests' golden digests of the default and version-1 pilots | yes |
+| CS-Rest | The review's resting case with the motor that would fly (fast PD, fast-brain-08, brain-09b, fast-brain-10b) at 0-6 m/s: a support climb within 0.8 s at every speed, none before the rest | fast PD 0.28 s at every speed; brain-08 0.19-0.44 s; brain-09b 0.42-0.47 s; fast-brain-10b 0.39-0.46 s | yes |
+| CS-R402 | `minus-fast6-r4-02` replayed through the round-4 stack as flown with version 2: an onset during the floor contact, 27.4-28.9 s | onsets at 27.72 s and 29.38 s (the second touch) | yes |
+| CS-Surrogate | Gate seeds (flat and steep 3000-3007, hill 6000-6011), four motors, the deployed pilot (stack with wall pilot 5, plus descent view 2): no onset, and every course identical to its round-4 run | 0 onsets on 112 courses; 112 of 112 identical. The thrust gain ranged 0.93-1.21 over the randomised drones | yes |
+| CS-Clean | The rule on every logged flight (58 logs, 87.4 min): no onset outside the frozen contact audit's contacts (+-1 s) | 0 outside; all 90 onsets are inside audit contacts: the Straw Bale downhill spot of the brain-06/07/08 laps, the `straw-brain08-01` slide, and the `minus-fast6-r4-02` floor | yes |
+
+Notes:
+
+- **CS-Clean leans on the audit.** Its clean segments are defined by the contact audit, and 27 of that
+  audit's contacts cannot be confirmed on the video, although their heights match video-confirmed
+  touches (see [contact_audit.md](contact_audit.md)). 51 of the 90 onsets are in those ambiguous
+  downhill slides. The other 39 are in video-confirmed contacts: the labelled Straw contacts, the slide,
+  other confirmed downhill touches, and the Minus floor.
+- **In the review's case the first support climb is the contact rule's, at every speed and for every
+  motor.** It then fires again every 1.2-1.3 s while the drone stays resting. An older rule fired only
+  with the fast PD at 5-6 m/s, once, 1.82 s after the rest began: there the view bound allows more than
+  0.8 m/s of sink.
+- **Report: the round-4b stack on the 24 replayed flights** (wall pilot 5, descent view 2, the motor's
+  issued throttle):
+  - 22 contact onsets, all on the Straw Bale downhill and all inside audit contacts;
+  - none on Minus Two or Pine Valley. On `minus-fast6-r4-02` the floor sink was the clearance brake's,
+    which version 5 removes.
+  - `docs/experiments/round4b_stack_replay_report.json` (scripts: session scratchpad
+    `m4b/contact/a2/run_replays.py`, `run_gates.sh`, `full_stack_report.py`).
+- **Report: the floor scenario** (`contact_support_eval.floor_scenario`). The nominal surrogate with a
+  flat floor: level flight, then a ring below the floor, so the drone descends onto it and slides.
+  - The fast PD, brain-09b and fast-brain-10b get a support climb 0.16-0.17 s after touchdown at
+    0.5-6 m/s.
+  - fast-brain-08 gets one after 0.16-0.17 s at 4-6 m/s, 0.32 s at 3 m/s and 0.9 s at 2 m/s. At
+    0.5-1 m/s it gets none: brain-08 already sits on the floor during the level phase, with its
+    throttle at the idle floor (a drive below 0.4, where the rule does not look).
+  - `docs/experiments/contact_support_v1_floor_scenario.json`.
+
+### Risks of version 2 for live flight
+
+- **It has not flown.** The gates are open-loop replays, synthetic states and a surrogate without
+  ground reaction.
+- **The drone must be asked to sink.** The rule needs a sink request of at least 0.1 m/s that the drone
+  does not follow. A drone resting on the ground with a level or climbing request gets no support climb.
+  That is intended: nothing needs to climb. On `minus-fast6-r4-02` the floor contact came from the
+  clearance brake's sink. With wall pilot version 5 that sink is gone, so the round-4b stack's replay
+  has no request to sink there and no contact onset.
+- **Throttle ranges.** Windows with a drive below 0.4 are not used: idle thrust, and a hard throttle
+  cut. A motor that cuts to idle while resting (fast-brain-08 at 0.5-2 m/s in the floor scenario) is
+  detected late or not at all. The older support rules still cover sink requests below -0.8 m/s.
+- **The thrust gain.** An uphill scrape can raise the gain (1.195 on `straw-brain6-02`). A contact in
+  the next 1-1.5 s is then detected less readily.
+- **The thrust model.** The curve and the drag are the low-speed measured profile's. At high speed,
+  in hard braking flares or in turns steeper than about 45 degrees (a drive above 0.8), the rule is not
+  used or its model is less certain. No false support was seen on any log, but the logs never flew the
+  rule itself.
+- **Support climbs change the flight.** A climb of 0.6 s at 1 m/s on the Straw downhill lifts the drone
+  off the hill, and then the view rule's sink resumes. In the round-4b stack's replay of the four
+  brain-08 Straw laps with contacts, support climbs rise from 0-5 per file (m4 stack with descent view 1)
+  to 3-11. All 22 contact-rule onsets lie inside an audit contact. Whether that brings more ring misses
+  or turn-backs is a flight question.
+
+## Version 1 (round 4)
 
 **Version 1 fails its frozen surrogate gates for all three motors.** On the held-out seeds it
 cut ground contacts by only 50% (fast PD), 69% (fast-brain-08) and 38% (brain-09b) against the
@@ -108,7 +252,8 @@ The looming wall cap and turn-first still bound the raised speed.
 |---|---|---|
 | `--descent-view on\|off\|DECLARATION` | off | Fast pilot only (`--pilot-profile fast --pilot-assistance race-cue`). `on` loads `configs/pilot/descent_view.json`; the runner refuses an unfrozen or edited declaration and another version. |
 
-With the rule on, three CSV columns are appended to each row:
+With the rule on, three CSV columns are appended to each row (version 2 adds three more, see
+[Version 2](#version-2-round-4b-contact-support)):
 - `view_sink_bound`: the largest sink that keeps the path in view;
 - `view_withheld`: the sink withheld from the pilot's own request;
 - `view_boost`: 1 while the horizontal request was raised.
@@ -122,8 +267,10 @@ as before.
 
 | File | Version | sha256 (content) | Frozen |
 |---|---|---|---|
-| `configs/pilot/descent_view.json` | 1 | `8afb64d730ad...` | after the design on the development seeds, before any gate-seed run (commit `67d013b`) |
+| `configs/pilot/descent_view_v1.json` (was `descent_view.json`) | 1 | `8afb64d730ad...` | after the design on the development seeds, before any gate-seed run (commit `67d013b`) |
 | `configs/pilot/descent_view_gates.json` | 1 | `d2b1e4bb312f...` | with rule version 1, before any gate-seed run (commit `7e96146`) |
+| `configs/pilot/descent_view.json` | 2 | `7dc36efc6377...` | round 4b, after the development listed above, before any gate run (commit `d15faeb`) |
+| `configs/pilot/contact_support_gates.json` | 1 | `a7d033cee819...` | with version 2 (commit `d15faeb`) |
 
 The values were chosen on development seeds of the surrogate (`hill:6100-6111`,
 `steep:5000-5007`, fast PD and fast-brain-08; brain-09b once). The declaration lists the
@@ -324,3 +471,13 @@ is needed.
   - the runner's flag, columns and refusals.
 - `tests/test_descent_rehearsal.py`: the terrain model, the contact, view and high-pass
   scoring, and the course sets.
+- `tests/test_fast_race_cue_contact_support.py` (round 4b):
+  - version 2 and its gates are frozen, version 1 is kept and refused by the runner, and the declared
+    thrust curve is the measured profile's;
+  - a drone resting on a surface with a small, view-bounded sink request gets a support climb within
+    0.8 s at 0, 3 and 6 m/s; the same thrust in free air gets none;
+  - no onset before arming; the thrust gain learns a 15% stronger drone without an onset;
+  - off by default, and the default and version-1 pilots keep m4's golden digests;
+  - the runner's contact columns and metadata;
+  - the clearance brake's sink floor (wall pilot version 5).
+- `tests/test_contact_audit.py`: the audit on synthetic telemetry and its validation scoring.
