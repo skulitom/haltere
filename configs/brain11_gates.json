@@ -1,0 +1,1272 @@
+{
+ "schema": "haltere.train.brake_gates.v1",
+ "version": 1,
+ "note": "Surrogate gates for brain-11 (fast-brain-11: a braking brain motor that follows governor caps in turns and climbs and keeps height when it accelerates hard from low speed, distilled under the deployed pilot). Measured by haltere.train.brake_gates in the measured-drone surrogate (IdentifiedSim, synthetic courses, logged Minus Two states); development checks, not flight evidence. Tests and gates G1-G8 are copied verbatim from configs/brain10_gates.json version 1; G3 v1 is kept and reported but not primary: G3v2 (latency band) replaces it for brain-11 candidates, frozen before any existed (the round-4 audit allows a G3 v2 only for candidates scored after its freeze). New: G9 (the round-4 live failure windows, development cases), G10 (capped turns and climbs), G11 (hard acceleration from low speed), G12 (wider and climbing in-course caps), G13 (the deployed pilot in the descent surrogate). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze, and every frozen version used for scoring is reported.",
+ "previous_versions": [
+  {
+   "file": "configs/brain10_gates.json",
+   "version": 1,
+   "sha256": "7736f465ae498877fb0e372ce92b362b0c6b4b727741d816b2d2da94e3d8a26e",
+   "relation": "tests and G1-G8 copied verbatim; G3 v1 not primary (reported)"
+  }
+ ],
+ "reference": {
+  "brain08": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+  "brain08_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+  "parent": "C:/DEV/Haltere/runs/motor-brain-10-tracking-05/candidate.pt",
+  "parent_sha256": "64444a628c58b2c1615086bc84f8c5d3c0a0a12667df31d888c4587a802288b2",
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5"
+ },
+ "tests": {
+  "hover": {
+   "height": 3.0,
+   "vz_gain": 0.5,
+   "cruise": 6.0,
+   "brake_slew": 15.0,
+   "cap_at_s": 5.0,
+   "cap_hold_s": 3.0,
+   "cap_end_s": 10.0,
+   "cap_settle_s": [
+    1.0,
+    3.0
+   ],
+   "within": 0.5,
+   "cap_targets": [
+    1.0,
+    2.0,
+    3.0,
+    3.5,
+    4.0
+   ],
+   "sustained_targets": [
+    2.0,
+    3.0,
+    3.5,
+    4.5
+   ],
+   "sustained_end_s": 9.0,
+   "sustained_settle_s": [
+    5.0,
+    9.0
+   ]
+  },
+  "live": {
+   "flights_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
+   "windows_rule": "the earliest logged cruise state of each brain-08 Minus Two flight (t >= 4 s; for the preceding 0.5 s a level request >= 5.5 m/s within 10 deg of the track, >= 5 m/s flown, |vz| < 0.5, no clearance cap, pilot state cue; >= 4 s before the impact), plus the recipe's slow35-01 8.3 s and loom-01 9.0 s states",
+   "windows": [
+    "minus-brain08-loom-01:5.48",
+    "minus-brain08-gapon-01:5.53",
+    "minus-brain08-gapon-02:5.51",
+    "minus-brain08-gapshadow-01:5.53",
+    "minus-brain08-01:5.53",
+    "minus-brain08-loom-01:9.0",
+    "minus-brain08-slow35-01:8.3"
+   ],
+   "warm_s": 8.0,
+   "pre_s": 0.5,
+   "hold_s": 5.0,
+   "brake_slew": 15.0,
+   "vz_gain": 0.5,
+   "within": 0.5,
+   "targets": [
+    1.0,
+    2.0,
+    3.0,
+    3.5,
+    4.0,
+    4.5
+   ],
+   "settle_s": [
+    1.0,
+    3.0
+   ],
+   "steady_s": [
+    2.0,
+    5.0
+   ]
+  },
+  "swaps": {
+   "flights_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
+   "windows": [
+    "minus-brain08-loom-01:11.5",
+    "minus-brain08-gapon-01:11.6",
+    "minus-brain08-gapon-01:16.1",
+    "minus-brain08-gapon-02:6.7",
+    "minus-brain08-gapon-02:8.2",
+    "minus-brain08-gapon-02:11.9",
+    "minus-brain08-gapon-02:16.2",
+    "minus-brain08-slow35-01:4.8",
+    "minus-brain08-slow35-01:8.3"
+   ],
+   "warm_s": 8.0,
+   "horizon_s": 2.5
+  },
+  "rollout_speed": {
+   "speeds": [
+    3.5,
+    4.5,
+    6.0
+   ],
+   "groups": [
+    [
+     "steep",
+     0.4
+    ]
+   ],
+   "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007
+   ],
+   "seconds": 60.0,
+   "sim_seed": 17,
+   "rest_s": 5.0
+  },
+  "in_course_caps": {
+   "groups": [
+    [
+     "flat",
+     0.0
+    ],
+    [
+     "steep",
+     0.4
+    ]
+   ],
+   "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007
+   ],
+   "seconds": 110.0,
+   "sim_seed": 17,
+   "cap_fraction": 1.0,
+   "cap_seed": 9001,
+   "cap_seed_note": "held out: training collection rounds draw caps with seeds 100-104",
+   "caps": {
+    "rate_per_min": 8.0,
+    "min_speed": 3.0,
+    "states": [
+     "cue",
+     "side",
+     "coast"
+    ],
+    "absolute_share": 0.5,
+    "absolute": [
+     1.0,
+     4.0
+    ],
+    "relative": [
+     0.2,
+     0.7
+    ],
+    "hold_s": [
+     0.5,
+     3.0
+    ],
+    "ray_jitter_deg": 15.0,
+    "brake_rate": 8.0,
+    "release": 3.0,
+    "end_margin": 1.0
+   }
+  },
+  "evaluation8": {
+   "groups": [
+    [
+     "steep",
+     0.4
+    ]
+   ],
+   "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007
+   ],
+   "seconds": 110.0,
+   "sim_seed": 17
+  },
+  "regression16": {
+   "harness": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m3/brain09/gates/harness16.py",
+   "harness_sha256": "9f49372ca928739563f595aea1d4a1b21f892acac5d8b3be9b36943ad86a15fa",
+   "harness_note": "copy of the m2 switch harness (scratchpad/m2impl/lagturn/harness_lt.py; lag turn off): flat and steep seeds 3000-3007, 6 m/s, 110 s, sim seed 17",
+   "label": "brain09-gates"
+  },
+  "r4_windows": {
+   "flights_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
+   "warm_s": 8.0,
+   "windows": [
+    {
+     "name": "hairpin_cap_climb",
+     "window": "minus-brain10b-r4-02:20.2",
+     "horizon_s": 1.35,
+     "skip_s": 0.5
+    },
+    {
+     "name": "stop_accelerate",
+     "window": "minus-brain09b-r4-01:22.9",
+     "horizon_s": 1.5,
+     "skip_s": 0.0
+    }
+   ]
+  },
+  "swaps_delayed": {
+   "flights_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
+   "windows": [
+    "minus-brain08-loom-01:11.5",
+    "minus-brain08-gapon-01:11.6",
+    "minus-brain08-gapon-01:16.1",
+    "minus-brain08-gapon-02:6.7",
+    "minus-brain08-gapon-02:8.2",
+    "minus-brain08-gapon-02:11.9",
+    "minus-brain08-gapon-02:16.2",
+    "minus-brain08-slow35-01:4.8",
+    "minus-brain08-slow35-01:8.3"
+   ],
+   "warm_s": 8.0,
+   "horizon_s": 2.5,
+   "extra_delay_ticks": 8
+  },
+  "capped_turns": {
+   "hover": {
+    "height": 3.0,
+    "vz_gain": 0.5,
+    "cruise": 6.0,
+    "cap_at_s": 5.0,
+    "end_s": 9.0
+   },
+   "live": {
+    "flights_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
+    "windows": [
+     "minus-brain08-loom-01:5.48",
+     "minus-brain08-gapon-01:5.53",
+     "minus-brain08-gapon-02:5.51",
+     "minus-brain08-gapshadow-01:5.53",
+     "minus-brain08-01:5.53",
+     "minus-brain08-loom-01:9.0"
+    ],
+    "warm_s": 8.0,
+    "pre_s": 0.5,
+    "hold_s": 3.5,
+    "vz_gain": 0.5
+   },
+   "cases": {
+    "targets": [
+     3.0,
+     4.0
+    ],
+    "turns_deg": [
+     0.0,
+     45.0,
+     90.0
+    ],
+    "climbs": [
+     0.0,
+     1.0
+    ]
+   },
+   "brake_slew": 15.0,
+   "turn_rate": 1.0,
+   "climb_s": 1.5,
+   "vertical_slew": [
+    10.0,
+    5.0
+   ],
+   "within": 0.5,
+   "excess_window_s": [
+    0.5,
+    1.5
+   ],
+   "settle_s": [
+    1.0,
+    3.0
+   ]
+  },
+  "accelerate": {
+   "height": 1.0,
+   "vz_gain": 0.5,
+   "creep": 0.5,
+   "cruise": 5.0,
+   "bearings_deg": [
+    0.0,
+    30.0,
+    60.0
+   ],
+   "variants": [
+    "creep",
+    "stop"
+   ],
+   "brake_s": 4.0,
+   "go_s": 5.5,
+   "horizon_s": 3.0,
+   "brake_slew": 15.0,
+   "reach": 4.0,
+   "vertical_slew": [
+    10.0,
+    5.0
+   ]
+  },
+  "in_course_caps2": {
+   "groups": [
+    [
+     "flat",
+     0.0
+    ],
+    [
+     "steep",
+     0.4
+    ]
+   ],
+   "seeds": [
+    3000,
+    3001,
+    3002,
+    3003,
+    3004,
+    3005,
+    3006,
+    3007
+   ],
+   "seconds": 110.0,
+   "sim_seed": 17,
+   "cap_fraction": 1.0,
+   "cap_seed": 9002,
+   "caps": {
+    "rate_per_min": 8.0,
+    "min_speed": 3.0,
+    "states": [
+     "cue",
+     "side",
+     "coast"
+    ],
+    "absolute_share": 0.5,
+    "absolute": [
+     1.0,
+     4.0
+    ],
+    "relative": [
+     0.2,
+     0.7
+    ],
+    "hold_s": [
+     0.5,
+     3.0
+    ],
+    "ray_jitter_deg": 45.0,
+    "brake_rate": 8.0,
+    "release": 3.0,
+    "end_margin": 1.0,
+    "climb_share": 0.5,
+    "climb": [
+     0.5,
+     1.5
+    ],
+    "climb_s": [
+     0.5,
+     2.0
+    ]
+   }
+  },
+  "full_pilot": {
+   "sets": [
+    "flat:3000-3007",
+    "steep:3000-3007",
+    "hill:6000-6011"
+   ],
+   "seconds": 150.0,
+   "sim_seed": 17,
+   "contract_brain": "fast_velocity_brain_v1",
+   "contract_pd": "fast_velocity_pd_v1",
+   "rest_s": 5.0
+  }
+ },
+ "gates": {
+  "G1_cap_step": {
+   "note": "governor-like cap steps: within X + 0.5 m/s in <= 1 s and settled excess (mean speed 1-3 s after the cap minus X) <= 0.3 m/s, from a hover and from logged cruise states (X below the logged request)",
+   "checks": [
+    {
+     "name": "hover t_within",
+     "rows": "hover.cap",
+     "field": "t_within",
+     "op": "le",
+     "value": 1.0
+    },
+    {
+     "name": "hover settled_excess",
+     "rows": "hover.cap",
+     "field": "settled_excess",
+     "op": "le",
+     "value": 0.3
+    },
+    {
+     "name": "live t_within",
+     "rows": "live",
+     "select": {
+      "window": [
+       "minus-brain08-loom-01:5.48",
+       "minus-brain08-gapon-01:5.53",
+       "minus-brain08-gapon-02:5.51",
+       "minus-brain08-gapshadow-01:5.53",
+       "minus-brain08-01:5.53",
+       "minus-brain08-loom-01:9.0"
+      ],
+      "target": [
+       1.0,
+       2.0,
+       3.0,
+       3.5,
+       4.0
+      ]
+     },
+     "field": "t_within",
+     "op": "le",
+     "value": 1.0
+    },
+    {
+     "name": "live settled_excess",
+     "rows": "live",
+     "select": {
+      "window": [
+       "minus-brain08-loom-01:5.48",
+       "minus-brain08-gapon-01:5.53",
+       "minus-brain08-gapon-02:5.51",
+       "minus-brain08-gapshadow-01:5.53",
+       "minus-brain08-01:5.53",
+       "minus-brain08-loom-01:9.0"
+      ],
+      "target": [
+       1.0,
+       2.0,
+       3.0,
+       3.5,
+       4.0
+      ]
+     },
+     "field": "settled_excess",
+     "op": "le",
+     "value": 0.3
+    }
+   ]
+  },
+  "G2_sustained": {
+   "note": "sustained requests 2/3/3.5/4.5 m/s: |excess| <= 0.3 m/s from a hover and from logged states (steady 2-5 s), the two within 0.3 m/s of each other; rollout(S) assist-speed test: |cruise excess| <= 0.3 m/s at S = 3.5 and 4.5, -0.6..+0.3 at S = 6, at most 1 crash of 8",
+   "checks": [
+    {
+     "name": "hover settled_excess",
+     "rows": "hover.sustained",
+     "field": "settled_excess",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "live steady_excess",
+     "rows": "live",
+     "select": {
+      "target": [
+       2.0,
+       3.0,
+       3.5,
+       4.5
+      ]
+     },
+     "field": "steady_excess",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "history gap",
+     "rows": "derived.history_gap",
+     "select": {
+      "target": [
+       2.0,
+       3.0,
+       3.5,
+       4.5
+      ]
+     },
+     "field": "gap",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "rollout(S) cruise excess 3.5/4.5",
+     "rows": "rollout_speed",
+     "select": {
+      "S": [
+       3.5,
+       4.5
+      ]
+     },
+     "field": "cruise_excess_mps",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "rollout(S) cruise excess 6",
+     "rows": "rollout_speed",
+     "select": {
+      "S": [
+       6.0
+      ]
+     },
+     "field": "cruise_excess_mps",
+     "op": "between",
+     "value": [
+      -0.6,
+      0.3
+     ]
+    },
+    {
+     "name": "rollout(S) crashes",
+     "rows": "rollout_speed",
+     "field": "crashed",
+     "op": "le",
+     "value": 1
+    }
+   ]
+  },
+  "G3_live_swaps": {
+   "note": "logged request replayed from 9 logged Minus Two states: speed at +1 s within 0.5 m/s of FastMotorPD in the same plant (windows whose logged commands replay within 0.3 m/s of the live speed); plant validity; the 3.45-3.5 m/s request from slow35 8.3 s and loom 9.0 s settles at <= 3.9 m/s",
+   "checks": [
+    {
+     "name": "controller - PD at +1 s",
+     "rows": "swaps",
+     "field": "controller_minus_pd_1s",
+     "op": "abs_le",
+     "value": 0.5,
+     "where": {
+      "field": "logged_minus_live_1s",
+      "op": "abs_le",
+      "value": 0.3
+     }
+    },
+    {
+     "name": "plant validity",
+     "rows": "swaps",
+     "field": "logged_minus_live_1s",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "3.5 m/s steady from slow35/loom",
+     "rows": "live",
+     "select": {
+      "window": [
+       "minus-brain08-slow35-01:8.3",
+       "minus-brain08-loom-01:9.0"
+      ],
+      "target": [
+       3.5
+      ]
+     },
+     "field": "steady",
+     "op": "le",
+     "value": 3.9
+    }
+   ],
+   "primary": false
+  },
+  "G5_in_course_caps": {
+   "note": "synthetic governor caps on every drone of the 16 standard courses (held-out cap seed 9001): tick-weighted mean excess of the speed over the request along the cap ray from cap + 0.5 s to the release <= 0.4 m/s",
+   "checks": [
+    {
+     "name": "cap_excess",
+     "path": "in_course_caps.brake.cap_excess_mps",
+     "op": "le",
+     "value": 0.4
+    }
+   ]
+  },
+  "G6_regressions": {
+   "note": "16-course switch harness (no caps, lag turn off) and the 8-course distillation evaluation against brain-08 measured by this runner on this tree; weights audit",
+   "checks": [
+    {
+     "name": "finished",
+     "path": "regression16.finished",
+     "op": "ge",
+     "value": 15
+    },
+    {
+     "name": "crashed",
+     "path": "regression16.crashed",
+     "op": "le",
+     "value": 1
+    },
+    {
+     "name": "stick chatter",
+     "path": "regression16.stick_chatter",
+     "op": "le",
+     "value": 0.0035
+    },
+    {
+     "name": "mean speed (one-sided, 0.95 x brain-08)",
+     "path": "regression16.mean_speed",
+     "op": "ge",
+     "value": 4.564
+    },
+    {
+     "name": "steep sink shortfall",
+     "path": "regression16.steep_sink_shortfall_mps",
+     "op": "le",
+     "value": 0.3
+    },
+    {
+     "name": "descending passes > 1.5 m above the gate",
+     "path": "regression16.descending_passes_high",
+     "op": "le",
+     "value": 0
+    },
+    {
+     "name": "switch 45-75 speed_min (brain-08 - 0.3)",
+     "path": "regression16.switch_bins.45-75.speed_min",
+     "op": "ge",
+     "value": 2.67
+    },
+    {
+     "name": "switch 45-75 regain_s (brain-08 + 0.5)",
+     "path": "regression16.switch_bins.45-75.regain_s",
+     "op": "le",
+     "value": 2.498
+    },
+    {
+     "name": "switch 45-75 stick_after (1.25 x brain-08)",
+     "path": "regression16.switch_bins.45-75.stick_after",
+     "op": "le",
+     "value": 0.01412
+    },
+    {
+     "name": "post-switch lateral 40-75 at 1 s (brain-08 + 0.3 m)",
+     "path": "regression16.lateral_1s.40-75",
+     "op": "le",
+     "value": 3.082
+    },
+    {
+     "name": "8-course velocity error (1.05 x brain-08)",
+     "path": "evaluation8.velocity_error_mps",
+     "op": "le",
+     "value": 0.994
+    },
+    {
+     "name": "8-course crashes",
+     "path": "evaluation8.crashed",
+     "op": "le",
+     "value": 1
+    },
+    {
+     "name": "weights audit: only readout rows 0-2",
+     "path": "audit.only_readout_rows_0_2",
+     "op": "eq",
+     "value": true
+    }
+   ]
+  },
+  "G7_smoothness": {
+   "note": "roll/pitch stick change per 10 ms tick (mean |d roll|, |d pitch| of the issued command) <= 1.15 x brain-08 measured by this runner on this tree, in the 16-course switch harness (the primary number: in brain-09 its ratio to brain-08, 1.7, matched the live Minus Two ratio 1.8), the 8-course evaluation and the in-course synthetic-caps rollout",
+   "checks": [
+    {
+     "name": "16-course stick chatter (1.15 x brain-08)",
+     "path": "regression16.stick_chatter",
+     "op": "le",
+     "value": 0.003427
+    },
+    {
+     "name": "8-course stick chatter (1.15 x brain-08)",
+     "path": "evaluation8.stick_chatter",
+     "op": "le",
+     "value": 0.005612
+    },
+    {
+     "name": "in-course caps stick chatter (1.15 x brain-08)",
+     "path": "in_course_caps.stick_chatter",
+     "op": "le",
+     "value": 0.006727
+    }
+   ]
+  },
+  "G8_regressions": {
+   "note": "16-course development gate: finishes >= brain-08's; steep sink shortfall <= 0.25 m/s. The view-keeping descent (branch m4-descent) was not merged (its round-4 result was not flight ready), so its terrain-contact gate does not apply to this version",
+   "checks": [
+    {
+     "name": "16-course finishes >= brain-08",
+     "path": "regression16.finished",
+     "op": "ge",
+     "value": 15
+    },
+    {
+     "name": "steep sink shortfall <= 0.25 m/s",
+     "path": "regression16.steep_sink_shortfall_mps",
+     "op": "le",
+     "value": 0.25
+    }
+   ]
+  },
+  "G3v2_live_swaps_latency": {
+   "note": "G3 with the brain's structural latency allowed for (brain-11 candidates only, frozen before any of them existed; G3 v1 is kept and reported). Same 9 logged Minus Two windows, same plant-validity filter and 3.5 m/s check. The speed at +1 s must lie within 0.5 m/s of the band between FastMotorPD and FastMotorPD with 80 ms of added command delay (the brain's measured 70-90 ms output lag behind its teacher), both in the same plant. Why: the PD with +80 ms is up to 0.555 m/s off the PD in these windows (gapon-01:16.1), so v1's 0.5 m/s tolerance is below the latency floor of any brain; a deviation away from both (e.g. over-braking in a capped arch turn where the delayed PD is faster) is not excused.",
+   "checks": [
+    {
+     "name": "distance from the PD..PD+80ms band at +1 s",
+     "rows": "swaps_delayed",
+     "field": "controller_band_distance_1s",
+     "op": "le",
+     "value": 0.5,
+     "where": {
+      "field": "logged_minus_live_1s",
+      "op": "abs_le",
+      "value": 0.3
+     }
+    },
+    {
+     "name": "plant validity",
+     "rows": "swaps_delayed",
+     "field": "logged_minus_live_1s",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "3.5 m/s steady from slow35/loom",
+     "rows": "live",
+     "select": {
+      "window": [
+       "minus-brain08-slow35-01:8.3",
+       "minus-brain08-loom-01:9.0"
+      ],
+      "target": [
+       3.5
+      ]
+     },
+     "field": "steady",
+     "op": "le",
+     "value": 3.9
+    }
+   ]
+  },
+  "G9_r4_live_windows": {
+   "note": "DEVELOPMENT CASES (the round-4 live failures, looked at before this freeze; not held-out): the logged request (all three axes) replayed from the logged state. hairpin_cap_climb: minus-brain10b-r4-02 from 20.2 s (cap onset in a 75 deg capped turn with the false guard climb) to the wall: mean |v_h| - |request_h| from +0.5 s <= 0.5 m/s (live 1.30). stop_accelerate: minus-brain09b-r4-01 from 22.9 s (turn-first release, 0.8 m) for 1.5 s (past the floor impact at 23.68 s the last request is held): height loss <= 0.4 m (live 0.74 to the floor) and |v_h| >= 3.5 m/s at 1.5 s (it accelerates). Plant validity: the logged commands open loop reproduce the live speed excess within 0.3 m/s and the lowest height within 0.1 m.",
+   "checks": [
+    {
+     "name": "hairpin: speed excess over the capped request",
+     "rows": "r4_windows",
+     "select": {
+      "name": [
+       "hairpin_cap_climb"
+      ]
+     },
+     "field": "controller_speed_excess_mean",
+     "op": "le",
+     "value": 0.5
+    },
+    {
+     "name": "stop-accelerate: height loss",
+     "rows": "r4_windows",
+     "select": {
+      "name": [
+       "stop_accelerate"
+      ]
+     },
+     "field": "controller_height_loss",
+     "op": "le",
+     "value": 0.4
+    },
+    {
+     "name": "stop-accelerate: speed at 1.5 s",
+     "rows": "r4_windows",
+     "select": {
+      "name": [
+       "stop_accelerate"
+      ]
+     },
+     "field": "controller_vh_final",
+     "op": "ge",
+     "value": 3.5
+    },
+    {
+     "name": "plant validity: speed excess",
+     "rows": "r4_windows",
+     "field": "logged_minus_live_speed_excess_mean",
+     "op": "abs_le",
+     "value": 0.3
+    },
+    {
+     "name": "plant validity: lowest height",
+     "rows": "r4_windows",
+     "field": "logged_minus_live_min_z_span",
+     "op": "abs_le",
+     "value": 0.1
+    }
+   ]
+  },
+  "G10_capped_turns": {
+   "note": "held-out scripted caps during turns (45/90 deg at 1 rad/s) and climbs (+1 m/s for 1.5 s) to 3 or 4 m/s, from a hover (6 m/s cruise) and from the 6 logged brain-08 cruise states of G1: within X + 0.5 m/s in <= 1 s, mean |v_h| - X over 0.5-1.5 s after the onset <= 0.5 (not through the turn at speed), and over 1-3 s in [-0.6, 0.3] (no stall below the cap in the turn). The label teacher with +80 ms passes (worst 0.53 s, 0.15, [-0.12, 0.19]).",
+   "checks": [
+    {
+     "name": "hover t_within",
+     "rows": "capped_turns.hover",
+     "field": "t_within",
+     "op": "le",
+     "value": 1.0
+    },
+    {
+     "name": "hover excess 0.5-1.5 s",
+     "rows": "capped_turns.hover",
+     "field": "excess_mean",
+     "op": "le",
+     "value": 0.5
+    },
+    {
+     "name": "hover settled excess 1-3 s",
+     "rows": "capped_turns.hover",
+     "field": "settled_excess",
+     "op": "between",
+     "value": [
+      -0.6,
+      0.3
+     ]
+    },
+    {
+     "name": "live t_within",
+     "rows": "capped_turns.live",
+     "field": "t_within",
+     "op": "le",
+     "value": 1.0
+    },
+    {
+     "name": "live excess 0.5-1.5 s",
+     "rows": "capped_turns.live",
+     "field": "excess_mean",
+     "op": "le",
+     "value": 0.5
+    },
+    {
+     "name": "live settled excess 1-3 s",
+     "rows": "capped_turns.live",
+     "field": "settled_excess",
+     "op": "between",
+     "value": [
+      -0.6,
+      0.3
+     ]
+    }
+   ]
+  },
+  "G11_accelerate": {
+   "note": "held-out scripted hard acceleration from low speed at 1 m (height loop): from a 0.5 m/s creep, or from a cap-to-0.5 m/s stop out of 5 m/s cruise, to 5 m/s at 0/30/60 deg off the heading (yaw held): height loss from the brake or go onset <= 0.4 m and 4 m/s reached within 1.5 s. The label teacher with +80 ms passes (worst 0.384 m, 0.66 s); the PD with +80 ms loses 0.6-1.0 m (latency makes this hard).",
+   "checks": [
+    {
+     "name": "height loss",
+     "rows": "accelerate",
+     "field": "height_loss",
+     "op": "le",
+     "value": 0.4
+    },
+    {
+     "name": "time to 4 m/s",
+     "rows": "accelerate",
+     "field": "t_reach",
+     "op": "le",
+     "value": 1.5
+    }
+   ]
+  },
+  "G12_in_course_caps2": {
+   "note": "G5 with wider and climbing caps: synthetic governor caps on every drone of the 16 standard courses, rays up to 45 deg off the travel direction, a 0.5-1.5 m/s climb for 0.5-2 s on half of them (held-out cap seed 9002; training draws caps with seeds 100-104): mean excess along the cap ray <= 0.4 m/s, >= 15 finished, <= 1 crash.",
+   "checks": [
+    {
+     "path": "in_course_caps2.brake.cap_excess_mps",
+     "op": "le",
+     "value": 0.4
+    },
+    {
+     "path": "in_course_caps2.finished",
+     "op": "ge",
+     "value": 15
+    },
+    {
+     "path": "in_course_caps2.crashed",
+     "op": "le",
+     "value": 1
+    }
+   ]
+  },
+  "G13_full_pilot": {
+   "note": "the deployed pilot (--obstacle-stack on --descent-view on for the brain contract) in the descent surrogate (flat and steep 3000-3007, hill 6000-6011, 150 s, sim seed 17): no worse than fast-brain-10b under the same pilot (measured on this tree before the freeze) in finishes, crashes, terrain contacts, passes > 1.5 m above a checkpoint and mean finish time on the terrain sets (+3%); stick chatter over the 16 flat and steep courses <= 1.15 x brain-08 under the same pilot.",
+   "checks": [
+    {
+     "path": "full_pilot.overall.finished",
+     "op": "ge",
+     "value": 28
+    },
+    {
+     "path": "full_pilot.overall.crashed",
+     "op": "le",
+     "value": 0
+    },
+    {
+     "path": "full_pilot.overall.contacts",
+     "op": "le",
+     "value": 12
+    },
+    {
+     "path": "full_pilot.overall.high_passes",
+     "op": "le",
+     "value": 29
+    },
+    {
+     "path": "full_pilot.overall.stick_chatter_16",
+     "op": "le",
+     "value": 0.004289
+    },
+    {
+     "path": "full_pilot.overall.mean_finish_terrain_s",
+     "op": "le",
+     "value": 67.23
+    }
+   ]
+  }
+ },
+ "selection": {
+  "rule": "A candidate is selectable only if it passes every primary gate (G1, G2, G3v2, G5, G6, G7, G8, G9, G10, G11, G12, G13) with its weights audit clean (only readout rows 0-2 and their biases changed against the parent). Among selectable candidates the lowest 16-course stick chatter (regression16) wins. If none is selectable, none is selected; candidates are ranked by primary gates passed, then 16-course chatter, as a report only.",
+  "candidates_dir_prefix": "C:/DEV/Haltere/runs/fast-brain-11-",
+  "max_candidates": 10
+ },
+ "baselines": {
+  "pd": {
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": -0.096,
+     "height_loss": -0.002,
+     "vh_final": 4.161,
+     "min_z_span": 0.863
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -0.728,
+     "height_loss": 0.232,
+     "vh_final": 4.894,
+     "min_z_span": 0.7
+    }
+   },
+   "swaps_delayed": {
+    "controller_minus_pd_1s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "pd_delayed_minus_pd_1s": [
+     0.071,
+     0.069,
+     0.555,
+     -0.271,
+     0.206,
+     0.134,
+     0.069,
+     0.127,
+     0.136
+    ]
+   },
+   "capped_turns_hover": {
+    "t_within_max": 0.36,
+    "t_within_never": 0,
+    "excess_max": 0.075,
+    "settled_range": [
+     -0.079,
+     0.071
+    ]
+   },
+   "capped_turns_live": {
+    "t_within_max": 0.36,
+    "t_within_never": 0,
+    "excess_max": 0.076,
+    "settled_range": [
+     -0.079,
+     0.071
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.149,
+    "t_reach_max": 0.52,
+    "t_reach_never": 0
+   },
+   "in_course_caps2": {
+    "cap_excess_mps": -0.159,
+    "finished": 14,
+    "crashed": 2
+   }
+  },
+  "brain08": {
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 1.075,
+     "height_loss": -0.002,
+     "vh_final": 4.358,
+     "min_z_span": 0.863
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.484,
+     "height_loss": 1.173,
+     "vh_final": 5.791,
+     "min_z_span": 0.192
+    }
+   },
+   "swaps_delayed": {
+    "controller_minus_pd_1s": [
+     1.065,
+     0.689,
+     0.688,
+     1.678,
+     1.469,
+     1.001,
+     0.422,
+     1.574,
+     1.574
+    ],
+    "pd_delayed_minus_pd_1s": [
+     0.071,
+     0.069,
+     0.555,
+     -0.271,
+     0.206,
+     0.134,
+     0.069,
+     0.127,
+     0.136
+    ]
+   },
+   "capped_turns_hover": {
+    "t_within_max": null,
+    "t_within_never": 4,
+    "excess_max": 2.221,
+    "settled_range": [
+     0.257,
+     1.897
+    ]
+   },
+   "capped_turns_live": {
+    "t_within_max": null,
+    "t_within_never": 36,
+    "excess_max": 2.767,
+    "settled_range": [
+     0.021,
+     1.767
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 2.487,
+    "t_reach_max": 1.03,
+    "t_reach_never": 0
+   },
+   "full_pilot": {
+    "courses": 28,
+    "finished": 27,
+    "crashed": 1,
+    "contacts": 8,
+    "contact_s": 22.0,
+    "high_passes": 26,
+    "stick_chatter_16": 0.00373,
+    "mean_finish_terrain_s": 69.08
+   }
+  },
+  "brain09b": {
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.436,
+     "height_loss": -0.002,
+     "vh_final": 4.327,
+     "min_z_span": 0.863
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.35,
+     "height_loss": 1.406,
+     "vh_final": 4.975,
+     "min_z_span": 0.041
+    }
+   },
+   "swaps_delayed": {
+    "controller_minus_pd_1s": [
+     -0.63,
+     -1.534,
+     -1.469,
+     -0.777,
+     0.716,
+     -1.562,
+     -1.493,
+     0.117,
+     0.311
+    ],
+    "pd_delayed_minus_pd_1s": [
+     0.071,
+     0.069,
+     0.555,
+     -0.271,
+     0.206,
+     0.134,
+     0.069,
+     0.127,
+     0.136
+    ]
+   },
+   "capped_turns_hover": {
+    "t_within_max": 0.7,
+    "t_within_never": 0,
+    "excess_max": 0.246,
+    "settled_range": [
+     -2.092,
+     0.072
+    ]
+   },
+   "capped_turns_live": {
+    "t_within_max": 0.9,
+    "t_within_never": 0,
+    "excess_max": 0.535,
+    "settled_range": [
+     -2.079,
+     0.314
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.611,
+    "t_reach_max": null,
+    "t_reach_never": 2
+   }
+  },
+  "brain10b": {
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 1.226,
+     "height_loss": -0.002,
+     "vh_final": 4.853,
+     "min_z_span": 0.863
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.524,
+     "height_loss": 0.475,
+     "vh_final": 5.555,
+     "min_z_span": 0.471
+    }
+   },
+   "swaps_delayed": {
+    "controller_minus_pd_1s": [
+     -0.115,
+     -0.501,
+     -0.756,
+     0.549,
+     0.889,
+     -0.255,
+     -0.657,
+     0.262,
+     0.261
+    ],
+    "pd_delayed_minus_pd_1s": [
+     0.071,
+     0.069,
+     0.555,
+     -0.271,
+     0.206,
+     0.134,
+     0.069,
+     0.127,
+     0.136
+    ]
+   },
+   "capped_turns_hover": {
+    "t_within_max": 1.72,
+    "t_within_never": 0,
+    "excess_max": 1.288,
+    "settled_range": [
+     -1.654,
+     0.294
+    ]
+   },
+   "capped_turns_live": {
+    "t_within_max": 1.65,
+    "t_within_never": 0,
+    "excess_max": 1.287,
+    "settled_range": [
+     -1.569,
+     0.264
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.251,
+    "t_reach_max": null,
+    "t_reach_never": 2
+   },
+   "in_course_caps2": {
+    "cap_excess_mps": 0.403,
+    "finished": 16,
+    "crashed": 0
+   },
+   "full_pilot": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 12,
+    "contact_s": 19.74,
+    "high_passes": 29,
+    "stick_chatter_16": 0.00289,
+    "mean_finish_terrain_s": 65.27
+   }
+  }
+ },
+ "diagnostics": {
+  "sim_to_real": "Before this freeze the two round-4 live failures were replayed from their logged states with the logged request (brake_gates.r4_window_tests). The logged commands open loop reproduce the live flights (speed excess 1.249 vs 1.300 m/s; lowest height 0.054 vs 0.060 m). The flown brains reproduce their failures: fast-brain-10b speed excess 1.226 m/s (end 4.85 vs live 4.93 m/s); brain-09b lowest height 0.041 m over the logged span (live 0.06) and 1.41 m of loss over 1.5 s. The PD tracks the capped request (-0.10 m/s) and loses 0.23 m. G9 therefore carries full weight.",
+  "hairpin_climb": "With the vertical request replaced by the pilot's own (no guard climb) fast-brain-10b still overshoots (0.998 m/s), and level (1.171); with the request direction held (no turn) 0.808 falling to -0.49 at the wall: the miss is mostly the capped turn, not the climb. In the scripted capped turns fast-brain-10b over-brakes in level turns (settled -0.52..-1.65 m/s) and does not brake while climbing (excess up to +1.29 m/s, t_within up to 1.72 s); brain-09b over-brakes in level turns (settled down to -2.09).",
+  "reference_verdicts": "On the new gates the PD passes G3v2 (distance 0), G9, G10 and G11, and the G12 cap excess (-0.159) but not the G12 finishes (14 finished, 2 crashed; the PD also fails G6 in the surrogate). brain-08, brain-09b and fast-brain-10b fail G3v2, G9, G10 and G11; fast-brain-10b also fails G12 (cap excess 0.403) and passes G13 by construction (it is the G13 reference). This tree reproduces the round-4 integration surrogate for fast-brain-10b under the full pilot exactly (steep 3000-3007 summary identical).",
+  "development_cases": "The r4 live logs (minus-brain10b-r4-02, minus-brain09b-r4-01) were inspected before this freeze and are development cases (G9 is not held-out); G10-G12 are scripted or seeded and were designed from the diagnosis of those logs, with parameters and seeds disjoint from the development screening (dev.py: other turn angles, targets, heights, bearings; courses steep 5000-5007).",
+  "label_teacher": {
+   "teacher10b": {
+    "capped_turns_hover_t_within_max": 0.53,
+    "capped_turns_hover_excess_max": 0.131,
+    "capped_turns_hover_settled": [
+     -0.134,
+     0.188
+    ],
+    "accelerate_height_loss_max": 0.122,
+    "accelerate_t_reach_max": 0.67
+   },
+   "teacher10b_delay80": {
+    "capped_turns_hover_t_within_max": 0.53,
+    "capped_turns_hover_excess_max": 0.153,
+    "capped_turns_hover_settled": [
+     -0.121,
+     0.194
+    ],
+    "accelerate_height_loss_max": 0.384,
+    "accelerate_t_reach_max": 0.65
+   },
+   "pd_delay80": {
+    "capped_turns_hover_t_within_max": 0.41,
+    "capped_turns_hover_excess_max": 0.038,
+    "capped_turns_hover_settled": [
+     -0.083,
+     0.062
+    ],
+    "accelerate_height_loss_max": 1.03,
+    "accelerate_t_reach_max": 0.52
+   }
+  },
+  "g3_latency": "FastMotorPD with +80 ms minus FastMotorPD at +1 s in the 9 G3 windows: +0.071, +0.069, +0.555, -0.271, +0.206, +0.134, +0.069, +0.127, +0.136 m/s. Band distances of the reference brains (not brain-11 candidates): brain08 0.994, 0.620, 0.133, 1.678, 1.263, 0.867, 0.353, 1.447, 1.438; brain09b 0.630, 1.534, 1.469, 0.506, 0.510, 1.562, 1.493, 0.000, 0.175; brain10b 0.115, 0.501, 0.756, 0.549, 0.683, 0.255, 0.657, 0.135, 0.125 (G3v2 fails where > 0.5)."
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-27T19:58:40",
+ "sha256": "78a528ab8501b2254cdb8bf850fdcc01f529e29edc8c95762879c053a89ff25c"
+}

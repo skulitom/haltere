@@ -59,7 +59,7 @@ from ..brain.motor_baseline import FastMotorPD, FastPDConfig
 from ..brain.retina import RETINA_DIM
 from ..liftoff.camera_pose import CameraPoseHistory
 from ..liftoff.fast_race_cue import FastRaceCue
-from ..liftoff.fast_rehearsal import hud_marker, synthetic_course
+from ..liftoff.fast_rehearsal import hill_course, hud_marker, synthetic_course
 from ..sim.identified import IdentifiedSim
 from ..sim.quad import quat_to_mat
 from ..vision.camera import Camera
@@ -108,7 +108,12 @@ class SyntheticCapsConfig:
     target is, with probability `absolute_share`, U(absolute) m/s, else U(relative) x the horizontal speed.
     As in `TtcClearanceGovernor` the cap starts at the speed along the ray and falls at `brake_rate` m/s^2 to
     the target; it holds U(hold_s) s from reaching it, then rises at `release` m/s^2 and ends once it exceeds
-    the pilot speed + `end_margin`. brake_rate and release are the TTC governor's defaults."""
+    the pilot speed + `end_margin`. brake_rate and release are the TTC governor's defaults.
+
+    Climbing caps (brain-11; off at climb_share 0): with probability `climb_share` an event also requests a climb of
+    U(climb) m/s from its onset for U(climb_s) s (at most until its release starts), as the looming governor's terrain
+    climb (or the vertical guard's) does beside its cap: the pilot raises its vertical request to it. The extra draws
+    are made only when climb_share > 0, so the default event stream is unchanged."""
     rate_per_min: float = 8.
     min_speed: float = 3.
     states: tuple = ('cue', 'side', 'coast')
@@ -120,28 +125,46 @@ class SyntheticCapsConfig:
     brake_rate: float = 8.
     release: float = 3.
     end_margin: float = 1.
+    climb_share: float = 0.
+    climb: tuple = (.5, 1.5)
+    climb_s: tuple = (.5, 2.)
 
     def __post_init__(self):
         values = [self.rate_per_min, self.min_speed, self.absolute_share, *self.absolute, *self.relative,
-                  *self.hold_s, self.ray_jitter_deg, self.brake_rate, self.release, self.end_margin]
+                  *self.hold_s, self.ray_jitter_deg, self.brake_rate, self.release, self.end_margin,
+                  self.climb_share, *self.climb, *self.climb_s]
         if not np.isfinite(values).all() or min(values) < 0 or self.rate_per_min <= 0 or self.brake_rate <= 0 \
                 or self.release <= 0:
             raise ValueError('Use finite non-negative synthetic cap parameters (positive rate, brake rate, release)')
-        for name in ('absolute', 'relative', 'hold_s'):
+        for name in ('absolute', 'relative', 'hold_s', 'climb', 'climb_s'):
             low, high = getattr(self, name)
             if not 0 <= low <= high:
                 raise ValueError(f'{name} is a (low, high) range')
         if not self.absolute_share <= 1 or not self.relative[1] <= 1 or not self.ray_jitter_deg < 90:
             raise ValueError('absolute_share and relative are fractions; ray_jitter_deg < 90')
+        if not self.climb_share <= 1 or not self.climb[1] <= 3.5:
+            raise ValueError('climb_share is a fraction and climbs are at most the pilot vertical_up (3.5 m/s)')
         if not set(self.states):
             raise ValueError('Name the pilot states in which caps may start')
+
+
+def caps_record(caps):
+    """JSON record of a SyntheticCapsConfig (None for None). The climbing-cap fields are recorded only when climbing
+    caps are on, so runs made before they existed (and default runs) keep their record and can be resolved."""
+    if caps is None:
+        return None
+    record = json.loads(json.dumps(asdict(caps)))
+    if caps.climb_share == 0:
+        for key in ('climb_share', 'climb', 'climb_s'):
+            record.pop(key)
+    return record
 
 
 class SyntheticCaps:
     """Stand-in for the pilot's looming governor (``FastRaceCue.clearance``) that issues synthetic caps.
 
     It has the interface FastRaceCue reads from a governor (limits(), cap, cap_ray, climb, vertical_cap, blind,
-    status, counts, standoff_until); it never climbs and never holds a stand-off. Assign it as
+    status, counts, standoff_until); it climbs only with climbing caps and never holds a stand-off. Assign it as
     ``pilot.clearance`` before the first tick; rollouts pass no clearance samples, so the pilot never builds a
     looming governor of its own. Nothing happens while the pilot is launching (the pilot calls limits() then
     too). `events` logs every cap: onset, target, kind, hold, ray, closing (speed along the ray at onset) and
@@ -173,12 +196,16 @@ class SyntheticCaps:
         self.event = dict(onset=float(now), target=target, kind='absolute' if absolute else 'relative',
                           hold=float(self.rng.uniform(*c.hold_s)), ray=ray, closing=closing,
                           reached=None, release=None, end=None)
+        if c.climb_share > 0:
+            climbing = bool(self.rng.random() < c.climb_share)
+            rate, duration = float(self.rng.uniform(*c.climb)), float(self.rng.uniform(*c.climb_s))
+            self.event.update(climb=rate if climbing else 0., climb_until=float(now)+duration)
         self.events.append(self.event)
         self.counts['synthetic_events'] += 1
         self.cap, self.cap_ray = max(closing, target), ray
 
     def limits(self, position, velocity, now, dt, vertical_up):
-        """(cap or None, ray or None, climb 0) for this tick."""
+        """(cap or None, ray or None, climb: 0 unless a climbing cap is active) for this tick."""
         c = self.config
         if self.pilot.launching:
             self.status = 'none'
@@ -202,6 +229,11 @@ class SyntheticCaps:
                     e['end'] = float(now)
                     self.event = self.cap = self.cap_ray = None
         self.status = 'armed' if self.cap is not None else 'none'
+        if c.climb_share > 0:
+            # a climbing cap requests its climb from the onset for its duration, at most until the release starts
+            e = self.event
+            self.climb = e['climb'] if e is not None and e['release'] is None and now < e['climb_until'] else 0.
+            return self.cap, self.cap_ray, self.climb
         return self.cap, self.cap_ray, 0.
 
 
@@ -342,7 +374,7 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
             seed=0, randomize=.1, collect=False, retina_stream=None, retina_dropout=.25, dropout=.1,
             camera_period=.055, camera_latency=.06, delay_steps=3, radius=3., quadratic_drag=.0075,
             pilot_speeds=None, caps=None, cap_fraction=0., cap_seed=None, record_brake=False, teacher_factory=None,
-            label_lead=0):
+            label_lead=0, pilot_kwargs=None):
     """Batched closed loop: one synthetic course per drone; controller 'pd' or 'brain'.
 
     Off by default: `pilot_speeds` (one pilot speed per course; default `speed`), `caps` (a SyntheticCapsConfig
@@ -350,8 +382,9 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
     (adds `brake_metrics` to the result), `teacher_factory` (profile, calibration -> the label teacher that
     also flies controller 'pd'; default FastMotorPD) and `label_lead` (collect: each sample's features are paired
     with the teacher's label `label_lead` ticks later, on the same drone if it is still flying, so the student
-    learns to anticipate its own latency; the sample's request and velocity stay those of the feature tick).
-    Without them the rollout is unchanged."""
+    learns to anticipate its own latency; the sample's request and velocity stay those of the feature tick) and
+    `pilot_kwargs` (FastRaceCue keyword arguments for every drone's pilot, e.g. the deployed pilot of
+    haltere.train.deployed_pilot). Without them the rollout is unchanged."""
     speed = contract['nominal_speed_mps'] if speed is None else speed
     batch = len(courses)
     device = brain.device
@@ -372,7 +405,7 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
     if len(course_speeds) != batch or not all(np.isfinite(s) and 0 < s <= 20 for s in course_speeds):
         raise ValueError('Give one finite pilot speed in (0, 20] m/s per course')
     pilots = [FastRaceCue(sensor, histories[i], course_speeds[i], reference_speed=course_speeds[i], yaw_curve=curve,
-                          calibration=calibration) for i in range(batch)]
+                          calibration=calibration, **(pilot_kwargs or {})) for i in range(batch)]
     capped = []
     if caps is not None and cap_fraction > 0:
         base = seed if cap_seed is None else cap_seed
@@ -564,15 +597,22 @@ def sink_weights(request, weight, threshold=-1.5):
     return weights*len(weights)/weights.sum()
 
 
-def brake_mask(request, velocity, *, aligned_deg=20., level=.5, min_speed=3., min_excess=.8):
+def brake_mask(request, velocity, *, aligned_deg=20., level=.5, min_speed=3., min_excess=.8, turn_deg=None):
     """Samples that call for a level brake: the horizontal request within `aligned_deg` of the horizontal
     velocity, |vertical request| < `level`, |v_h| >= `min_speed` and |v_h| - request_h . v_h/|v_h| >= `min_excess`
-    (over-speed along the track)."""
+    (over-speed along the track). With `turn_deg` (brain-11; default off) also capped turns: the request within
+    `turn_deg` of the velocity and its magnitude at least `min_excess` below the speed (|v_h| - |request_h|; the turn
+    geometry alone does not count), same level and speed conditions."""
     rh, vh = request[:, :2], velocity[:, :2]
     speed = vh.norm(dim=-1)
     along = (rh*vh).sum(-1)/speed.clamp_min(1e-6)
     aligned = (rh.norm(dim=-1) > 1e-6) & (along >= np.cos(np.radians(aligned_deg))*rh.norm(dim=-1))
-    return aligned & (request[:, 2].abs() < level) & (speed >= min_speed) & (speed-along >= min_excess)
+    mask = aligned & (request[:, 2].abs() < level) & (speed >= min_speed) & (speed-along >= min_excess)
+    if turn_deg is None:
+        return mask
+    magnitude = rh.norm(dim=-1)
+    within = (magnitude > 1e-6) & (along >= np.cos(np.radians(turn_deg))*magnitude)
+    return mask | (within & (request[:, 2].abs() < level) & (speed >= min_speed) & (speed-magnitude >= min_excess))
 
 
 def brake_weights(request, velocity, weight, **selection):
@@ -648,7 +688,19 @@ def slow_leg_speeds(courses, share, low, high, nominal, seed):
 
 # collection settings a --resolve must repeat, with their value for runs made before they existed
 COLLECTION_DEFAULTS = dict(synthetic_caps=0., slow_legs=0., slow_leg_speed=[2.5, 4.5], teacher_gains=[], turn_relief=0.,
-                           label_lead=0.)
+                           label_lead=0., pilot='default', hill_share=0.)
+
+
+def collection_courses(round_index, courses, steep, hill_share):
+    """The seeded collection courses of a DAgger round: synthetic_course(1000 x round + i, steep); with `hill_share` > 0 a
+    seeded share of them (drawn with seed [round, 4]) are hill_course(1000 x round + i) instead (long descents off a
+    crest; seeds below 5000, disjoint from the descent gates' hill seeds 6000-6011). Returns (courses, hill indices)."""
+    seeds = [1000*round_index+s for s in range(courses)]
+    hills = set()
+    if hill_share > 0:
+        order = np.random.default_rng([round_index, 4]).permutation(courses)
+        hills = {int(i) for i in order[:int(round(hill_share*courses))]}
+    return [hill_course(s) if i in hills else synthetic_course(s, steep=steep) for i, s in enumerate(seeds)], sorted(hills)
 
 
 def main():
@@ -696,6 +748,16 @@ def main():
                         help='pair each sample with the teacher label this many seconds later (whole ticks; 0: off)')
     parser.add_argument('--smooth-rows', type=float, nargs=3, default=[1., 1., 1.], metavar=('THR', 'ROLL', 'PITCH'),
                         help='per-row multipliers of --smooth (refit only)')
+    parser.add_argument('--pilot', choices=['default', 'deployed'], default='default',
+                        help='pilot of every rollout: the default fast race-cue pilot, or the deployed one (the runner\'s '
+                             '--obstacle-stack on --descent-view on for the brain contract; haltere.train.deployed_pilot)')
+    parser.add_argument('--hill-share', type=float, default=0.,
+                        help='share of the collection courses that are hill courses (long descents; 0: off)')
+    parser.add_argument('--brake-level', type=float, default=.5,
+                        help='largest |vertical request| of a --brake-weight sample (refit only; default 0.5: level)')
+    parser.add_argument('--brake-turn-deg', type=float, default=0.,
+                        help='also up-weight capped turns with the request within this angle of the velocity and its '
+                             'magnitude over-speed (refit only; 0: off)')
     args = parser.parse_args()
     if (args.ridge <= 0 or args.rounds < 1 or args.sink_weight <= 0 or args.smooth < 0 or args.brake_weight <= 0
             or args.sag_weight <= 0):
@@ -715,6 +777,8 @@ def main():
         raise ValueError('--caps-config needs --synthetic-caps')
     if min(args.smooth_rows) < 0 or (args.smooth_rows != [1., 1., 1.] and args.smooth <= 0):
         raise ValueError('--smooth-rows takes non-negative multipliers of a positive --smooth')
+    if not 0 <= args.hill_share <= 1 or not 0 < args.brake_level <= 3.5 or not 0 <= args.brake_turn_deg < 180:
+        raise ValueError('--hill-share is a share, --brake-level in (0, 3.5] m/s, --brake-turn-deg in [0, 180)')
     if not args.retina_data and args.validation_retina_data:
         raise ValueError('A readout fitted without scene currents is blanked at runtime; '
                          'evaluate it that way too (--validation-retina-data "")')
@@ -734,7 +798,11 @@ def main():
     if teacher_gains or args.turn_relief > 0:
         def teacher_factory(profile, calibration):
             return LabelTeacher(profile, calibration, teacher_gains, args.turn_relief)
-    caps_config = json.loads(json.dumps(asdict(caps))) if caps is not None else None
+    caps_config = caps_record(caps)
+    pilot_kwargs, pilot_record = None, None
+    if args.pilot == 'deployed':
+        from .deployed_pilot import deployed_pilot_kwargs
+        pilot_kwargs, pilot_record = deployed_pilot_kwargs('fast_velocity_brain_v1')
     source = None
     if args.resolve:
         source = torch.load(Path(args.resolve)/'training.pt', map_location='cpu', weights_only=False)
@@ -764,6 +832,10 @@ def main():
                   validation_retina_data_sha256=sha256(args.validation_retina_data) if args.validation_retina_data else None,
                   resolved_training_sha256=sha256(Path(args.resolve)/'training.pt') if args.resolve else None,
                   scope='offline measured-drone surrogate on synthetic courses; not Liftoff qualification')
+    if pilot_record is not None:
+        config['pilot_declarations'] = pilot_record
+    if source is not None and source['config'].get('pilot_declarations') != (pilot_record or None):
+        raise ValueError('The resolved run was collected under other pilot declarations')
     (out/'config.json').write_text(json.dumps(config, indent=2))
     training_retina = load_recorded_retina(args.retina_data, meta['gate_sensor'])
     evaluation_retina = load_recorded_retina(args.validation_retina_data, meta['gate_sensor'])
@@ -777,7 +849,7 @@ def main():
     for controller in ('pd', 'brain') if source is None else ():
         row, _ = rollout(brain, cfg, meta, profile, contract, evaluation_courses, controller=controller,
                          seconds=args.seconds, seed=17, retina_stream=evaluation_retina, retina_dropout=args.retina_dropout,
-                         record_brake=True)
+                         record_brake=True, pilot_kwargs=pilot_kwargs)
         record(dict(stage='baseline', **row))
     rows, targets, requests, requests_3d, velocities, history = [], [], [], [], [], []
     steps, step_count = None, 0
@@ -794,7 +866,8 @@ def main():
             sag = sag_weights(torch.cat(requests_3d), torch.cat(velocities), args.sag_weight)
             weights = sag if weights is None else weights*sag/(weights*sag).mean()
         if args.brake_weight != 1:
-            brake = brake_weights(torch.cat(requests_3d), torch.cat(velocities), args.brake_weight)
+            brake = brake_weights(torch.cat(requests_3d), torch.cat(velocities), args.brake_weight, level=args.brake_level,
+                                  turn_deg=args.brake_turn_deg or None)
             weights = brake if weights is None else weights*brake/(weights*brake).mean()
         return fit_readout(brain, torch.cat(rows), torch.cat(targets), args.ridge, weights, args.smooth,
                            steps, step_count, smooth_rows=args.smooth_rows)
@@ -807,20 +880,22 @@ def main():
         changed = refit()
         row, _ = rollout(brain, cfg, meta, profile, contract, evaluation_courses, controller='brain',
                          seconds=args.seconds, seed=17, retina_stream=evaluation_retina, retina_dropout=args.retina_dropout,
-                         record_brake=True)
+                         record_brake=True, pilot_kwargs=pilot_kwargs)
         record(dict(stage='evaluate-resolved', **row))
         history.append(dict(round=args.rounds-1, evaluation=row, changed=changed))
     for round_index in range(0 if source is None else args.rounds, args.rounds):
         controller = 'pd' if round_index == 0 else 'brain'
-        seeds = [1000*round_index+s for s in range(args.courses)]
+        courses, hills = collection_courses(round_index, args.courses, args.steep, args.hill_share)
         legs = slow_leg_speeds(args.courses, args.slow_legs, *args.slow_leg_speed, args.speed, 100+round_index)
         time.sleep(args.rest)
-        row, data = rollout(brain, cfg, meta, profile, contract, [synthetic_course(s, steep=args.steep) for s in seeds],
+        row, data = rollout(brain, cfg, meta, profile, contract, courses,
                             controller=controller, seconds=args.seconds, seed=100+round_index, collect=True,
                             retina_stream=training_retina, retina_dropout=args.retina_dropout,
                             pilot_speeds=legs, caps=caps, cap_fraction=args.synthetic_caps,
                             record_brake=caps is not None or legs is not None, teacher_factory=teacher_factory,
-                            label_lead=int(round(args.label_lead/cfg.brain.dt)))
+                            label_lead=int(round(args.label_lead/cfg.brain.dt)), pilot_kwargs=pilot_kwargs)
+        if hills:
+            row['hill_courses'] = hills
         record(dict(stage=f'collect-{round_index}', **row, samples=len(data['labels']) if data else 0))
         if data is None:
             break
@@ -832,7 +907,7 @@ def main():
         time.sleep(args.rest)
         row, _ = rollout(brain, cfg, meta, profile, contract, evaluation_courses, controller='brain',
                          seconds=args.seconds, seed=17, retina_stream=evaluation_retina, retina_dropout=args.retina_dropout,
-                         record_brake=True)
+                         record_brake=True, pilot_kwargs=pilot_kwargs)
         record(dict(stage=f'evaluate-{round_index}', **row))
         history.append(dict(round=round_index, evaluation=row, changed=changed))
     if source is None:
@@ -855,6 +930,13 @@ def main():
            if teacher_factory is not None or args.label_lead > 0 else {}),
         **({'smooth_rows': args.smooth_rows} if args.smooth_rows != [1., 1., 1.] else {}),
         **({'sag_weight': args.sag_weight} if args.sag_weight != 1 else {}),
+        **({'collection_pilot': dict(kind='deployed', declarations=pilot_record,
+                                     note='DAgger rollouts and evaluations flew the deployed pilot (--obstacle-stack on '
+                                          '--descent-view on for the brain contract); training data only')}
+           if pilot_record is not None else {}),
+        **({'hill_share': args.hill_share} if args.hill_share > 0 else {}),
+        **({'brake_selection': dict(level=args.brake_level, turn_deg=args.brake_turn_deg or None)}
+           if args.brake_level != .5 or args.brake_turn_deg else {}),
         resolved_training_sha256=config['resolved_training_sha256'],
         resolved_from=None if source is None else dict(
             run=args.resolve, source_sha256=source['config']['source_sha256'],

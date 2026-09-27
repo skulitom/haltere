@@ -1,0 +1,10 @@
+{
+ "_note": "brain-11 training data only (haltere.train.fast_motor_tracking --caps-config): SyntheticCapsConfig overrides. brain-10's longer caps (6 per minute, held 1-5 s, like the live looming governor's) plus: rays up to 45 deg off the travel direction, so the capped request turns away from the ray (the round-4 Minus Two hairpin: fast-brain-10b held 4.9-5.3 m/s through a 75 deg capped turn under 3.6-4.0 m/s caps); absolute targets down to 0.3 m/s (near stops, after which the pilot re-accelerates; under the deployed pilot turn-first can also hold the request at a turn, as it stopped brain-09b live); and a climb of 0.5-1.5 m/s for 0.5-2 s on 40% of the caps (the terrain or vertical-guard climb beside a cap, as in that hairpin). Nothing at runtime reads this file.",
+ "rate_per_min": 6.0,
+ "hold_s": [1.0, 5.0],
+ "absolute": [0.3, 4.0],
+ "ray_jitter_deg": 45.0,
+ "climb_share": 0.4,
+ "climb": [0.5, 1.5],
+ "climb_s": [0.5, 2.0]
+}

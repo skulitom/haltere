@@ -24,6 +24,16 @@ delay, quadratic drag 0.0075, as haltere.train.fast_motor_tracking.rollout; brai
   tree, plus steep-sink tracking and descending gate passes from its trace.
 - audit: the weights changed against the parent are only readout rows 0-2 and their biases.
 
+brain-11 parts (configs/brain11_gates.json; a gate file without their tests does not run them):
+- r4_windows: logged round-4 live windows replayed from their logged states with the logged request (all three axes;
+  past the log's end the last request is held): this controller, FastMotorPD and the logged commands open loop against
+  the live flight (speed excess over the request, height loss).
+- swaps_delayed: the swaps windows with a FastMotorPD reference given extra command delay (the brain's output lag).
+- capped_turns: governor caps during turns and climbs, from a hover and from logged cruise states.
+- accelerate: height kept while accelerating hard from low speed (creep, or a stop) toward several bearings.
+- in_course_caps2: in_course_caps with another declared cap configuration (e.g. wider rays and climbing caps).
+- full_pilot: the deployed pilot (--obstacle-stack on --descent-view on) in the descent surrogate.
+
 usage: python -m haltere.train.brake_gates CHECKPOINT|pd --gates configs/brain09_gates.json --out report.json
        [--parts hover,live,swaps,rollout_speed,in_course_caps,evaluation8,regression16,audit] [--run RUN_DIR]
 """
@@ -54,6 +64,8 @@ from ..vision.datasets import sha256
 
 META_KEYS = ('frozen', 'frozen_at', 'sha256')
 PARTS = ('hover', 'live', 'swaps', 'rollout_speed', 'in_course_caps', 'evaluation8', 'regression16', 'audit')
+# brain-11 parts: run by default only when the gate file declares their tests (a brain-09/10 file runs PARTS only)
+NEW_PARTS = ('r4_windows', 'swaps_delayed', 'capped_turns', 'accelerate', 'in_course_caps2', 'full_pilot')
 DT = .01
 CONTRACT_KEYS = ('nominal_speed_mps', 'goal_seconds', 'velocity_scale', 'vertical_goal_seconds')
 
@@ -430,6 +442,388 @@ def _open_loop(ctl, profile, flight, k0, H):
     return out
 
 
+def _window_inputs(flight, k0, H):
+    """Logged world request, yaw stick and request feedforward for H ticks from k0. Past the log's last row the last
+    logged request and yaw stick are held and the feedforward low-pass decays (a held request has no derivative)."""
+    n = len(flight.d)
+    request, yaw, ff = np.zeros((H, 3)), np.zeros(H), np.zeros((H, 3))
+    alpha = 1-np.exp(-DT/.05)
+    for j in range(H):
+        k = k0+j
+        if k < n:
+            request[j], yaw[j], ff[j] = flight.req[k], flight.cmds[k, 3], flight.ff[k]
+        else:
+            request[j], yaw[j] = request[j-1], yaw[j-1]
+            ff[j] = ff[j-1]*(1-alpha)
+    return request, yaw, ff
+
+
+def replay_window(ctl, profile, flight, k0, H, mode, *, warm_s=8., extra_delay=0):
+    """Closed loop of one drone from the logged state at k0 for H ticks, with the logged world request (all three
+    axes; held past the log's last row) and the logged yaw stick clamped for throttle priority as the runtime does.
+    mode 'controller': this controller (a brain warmed for warm_s on the recorded inputs; the PD as 'pd'); 'pd':
+    FastMotorPD with its stick filter warmed on the logged trajectory and `extra_delay` ticks added to the 3-tick command
+    delay; 'logged': the logged commands open loop (only within the log). The delay queue is primed with the logged
+    commands. Returns position and velocity after each tick (H, 3)."""
+    if mode == 'controller':
+        mode = 'pd' if ctl.kind == 'pd' else 'brain'
+    if mode == 'logged':
+        H = min(H, len(flight.d)-k0)
+    elif mode != 'pd' and extra_delay:
+        raise ValueError('An added delay is declared for the PD reference only')
+    request, yaw, ff = _window_inputs(flight, k0, H)
+    sim = IdentifiedSim(profile, ctl.calibration, 'cpu', DT)
+    sim.randomize(1, 0.)
+    s = flight.state_fn(k0)(sim, 1)
+    delay = 3+int(extra_delay)
+    q = deque(torch.tensor(flight.cmds[k0-delay+i], dtype=torch.float32)[None] for i in range(delay))
+    state = flight.warm(ctl, k0, warm_s) if mode == 'brain' else None
+    pd = None
+    if mode == 'pd':
+        pd = FastMotorPD(profile, ctl.calibration)
+        pd.reset()
+        flight.pd_warm(profile, ctl, k0)(pd)
+    cal = ctl.calibration
+    pos, vel = np.zeros((H, 3)), np.zeros((H, 3))
+    with torch.no_grad():
+        for j in range(H):
+            if mode == 'logged':
+                command = torch.tensor(flight.cmds[k0+j], dtype=torch.float32)[None]
+            else:
+                senses = sim.sensors(s)
+                r = torch.tensor(request[j:j+1], dtype=torch.float32)
+                if mode == 'pd':
+                    a = pd.command(senses, r, torch.tensor(ff[j:j+1], dtype=torch.float32), dt=DT)
+                else:
+                    a, state = ctl.act(senses, s.quad.motor.mean(-1, keepdim=True), r, state)
+                command = a.clone()
+                thr = cal['hover_processed']+cal['throttle_scale']*(float(command[0, 0])-cal['hover_stick_sim'])
+                room = float(np.sqrt(max(.97**2-min(thr*thr, .97**2), 0.)))
+                command[0, 3] = float(np.clip(yaw[j], -room, room))
+            q.append(command)
+            s = sim.step(s, q.popleft())
+            v = s.quad.vel
+            s.quad.vel = v-.0075*v.norm(dim=-1, keepdim=True)*v*DT
+            s.quad.crashed[:] = False
+            pos[j], vel[j] = s.quad.pos[0].numpy(), s.quad.vel[0].numpy()
+    return pos, vel
+
+
+def _window_metrics(pos, vel, request, z0, span, skip):
+    """Speed excess |v_h| - |request_h| (mean over [skip, span) ticks, at the last tick of the span, and its maximum
+    there), and heights: loss z0 - min z over all ticks, min z over the span, z at the end."""
+    vh = np.linalg.norm(vel[:, :2], axis=-1)
+    rh = np.linalg.norm(request[:len(vel), :2], axis=-1)
+    excess = vh-rh
+    s0, s1 = min(skip, span-1), min(span, len(vel))
+    return dict(speed_excess_mean=round(float(excess[s0:s1].mean()), 3),
+                speed_excess_end=round(float(excess[s1-1]), 3), speed_excess_max=round(float(excess[s0:s1].max()), 3),
+                vh_end=round(float(vh[s1-1]), 3), rh_end=round(float(rh[s1-1]), 3),
+                vh_final=round(float(vh[-1]), 3), rh_final=round(float(rh[-1]), 3),
+                height_loss=round(float(z0-pos[:, 2].min()), 3), min_z_span=round(float(pos[:s1, 2].min()), 3),
+                min_z=round(float(pos[:, 2].min()), 3), z_end=round(float(pos[-1, 2]), 3))
+
+
+def r4_window_tests(ctl, profile, spec, reference_contract):
+    """Logged round-4 live windows replayed from their logged states (see replay_window): this controller, the
+    FastMotorPD and the logged commands open loop, against the live flight. The logged span ends at the log's last row
+    (the impact); a longer horizon holds the last logged request and yaw stick."""
+    _check_recorded_contract(ctl, reference_contract)
+    rows, flights = [], {}
+    for w in spec['windows']:
+        name, t0 = w['window'].rsplit(':', 1)
+        flight = flights.setdefault(name, Flight(spec['flights_dir'], name))
+        k0 = flight.index(float(t0))
+        H = int(round(w['horizon_s']/DT))
+        span = min(H, len(flight.d)-1-k0)
+        skip = int(round(w.get('skip_s', 0.)/DT))
+        request, _, _ = _window_inputs(flight, k0, H)
+        z0 = float(flight.d.z.iloc[k0])
+        live_pos = flight.d[['x', 'y', 'z']].to_numpy(float)[k0+1:k0+1+span]
+        row = dict(name=w['name'], window=w['window'], t0=round(float(flight.t[k0]), 3), z0=round(z0, 3),
+                   span_s=round(span*DT, 2), horizon_s=round(H*DT, 2),
+                   live=_window_metrics(live_pos, flight.vel[k0+1:k0+1+span], request, z0, span, skip))
+        for tag, mode in (('controller', 'controller'), ('pd', 'pd'), ('logged', 'logged')):
+            pos, vel = replay_window(ctl, profile, flight, k0, H if mode != 'logged' else span, mode,
+                                     warm_s=spec['warm_s'])
+            row[tag] = _window_metrics(pos, vel, request, z0, span, skip)
+        for key in ('speed_excess_mean', 'min_z_span'):
+            row[f'logged_minus_live_{key}'] = round(row['logged'][key]-row['live'][key], 3)
+        for tag in ('controller', 'pd', 'live'):
+            row.update({f'{tag}_{key}': value for key, value in row[tag].items()})   # flat fields for the verdict
+        rows.append(row)
+    return rows
+
+
+def swap_delay_tests(ctl, profile, spec, reference_contract):
+    """G3's logged windows (swap_tests) with the PD reference given `extra_delay_ticks` of added command delay (the
+    brain's measured output lag behind its teacher), beside the undelayed PD and the logged commands open loop; the
+    controller's distance at +1 s from the band between the undelayed and the delayed PD speed (0 inside it)."""
+    _check_recorded_contract(ctl, reference_contract)
+    rows, flights = [], {}
+    for window in spec['windows']:
+        name, t0 = window.rsplit(':', 1)
+        flight = flights.setdefault(name, Flight(spec['flights_dir'], name))
+        k0 = flight.index(float(t0))
+        H = min(int(round(spec['horizon_s']/DT)), flight.impact_after(k0)-k0-1)
+        k1 = min(99, H-1)
+        out = dict(window=window, horizon_s=round(H*DT, 2),
+                   live_vh_1s=round(float(np.linalg.norm(flight.vel[k0+1+k1, :2])), 3),
+                   request_h_1s=round(float(np.linalg.norm(flight.req[k0+k1, :2])), 3))
+        for tag, mode, extra in (('controller', 'controller', 0), ('pd', 'pd', 0),
+                                 ('pd_delayed', 'pd', spec['extra_delay_ticks']), ('logged', 'logged', 0)):
+            _, vel = replay_window(ctl, profile, flight, k0, H, mode, warm_s=spec['warm_s'], extra_delay=extra)
+            out[f'{tag}_vh_1s'] = round(float(np.linalg.norm(vel[k1, :2])), 3)
+        out['controller_minus_pd_delayed_1s'] = round(out['controller_vh_1s']-out['pd_delayed_vh_1s'], 3)
+        low, high = sorted((out['pd_vh_1s'], out['pd_delayed_vh_1s']))
+        # distance from the band between the undelayed and the latency-matched PD (0 inside it)
+        out['controller_band_distance_1s'] = round(max(0., low-out['controller_vh_1s'], out['controller_vh_1s']-high), 3)
+        out['controller_minus_pd_1s'] = round(out['controller_vh_1s']-out['pd_vh_1s'], 3)
+        out['pd_delayed_minus_pd_1s'] = round(out['pd_delayed_vh_1s']-out['pd_vh_1s'], 3)
+        out['logged_minus_live_1s'] = round(out['logged_vh_1s']-out['live_vh_1s'], 3)
+        rows.append(out)
+    return rows
+
+
+def _slew_vec(start, goal, n, acceleration=10., tc=.25):
+    """The pilot's straight-line slew of a horizontal request vector (its 0.25 s taper), n ticks: (n, 2)."""
+    out, cur, goal = np.zeros((n, 2)), np.asarray(start, float).copy(), np.asarray(goal, float)
+    for k in range(n):
+        chord = goal-cur
+        norm = float(np.linalg.norm(chord))
+        if norm > 0:
+            cur = cur+chord*min(1., acceleration*DT/norm, DT/tc)
+        out[k] = cur
+    return out
+
+
+def _capped_turn(start_speed, heading, target, turn_deg, n, *, brake_slew=15., rate=1.):
+    """A governor cap during a turn, n ticks (n, 2): the request magnitude falls from start_speed to `target` at
+    brake_slew (no taper) while its direction turns from `heading` (rad) by turn_deg at `rate` rad/s."""
+    magnitude = _drop(start_speed, target, brake_slew, n)
+    turn = np.radians(turn_deg)
+    angle = heading+np.sign(turn)*np.minimum(abs(turn), rate*DT*np.arange(1, n+1))
+    return magnitude[:, None]*np.stack((np.cos(angle), np.sin(angle)), -1)
+
+
+def _fly3(ctl, profile, sim_state_fn, horizontal, vertical, height_ref, *, brain_state=None, queue=None, vz_gain=.5,
+          vertical_slew=(10., 5.)):
+    """Closed loop of one batch with a planned horizontal request (T, B, 2) and a planned vertical request (T, B): an
+    explicit value, or NaN for the height loop vz = vz_gain (reference - z) clipped to +-1 m/s, whose reference (per
+    drone) is the height when an explicit segment ends (the altitude reached is held). The flown vertical request
+    moves toward its target at the pilot's vertical command slew (up, down m/s^2); feedforward is the pilot's 0.05 s
+    low-pass of the horizontal request derivative; yaw stick 0. Returns velocity (T, B, 3), height (T, B) and the flown
+    request (T, B, 3)."""
+    T, B = horizontal.shape[:2]
+    request3 = np.concatenate((horizontal, np.zeros((T, B, 1))), -1)
+    feedforward = _feedforward(request3)
+    sim = IdentifiedSim(profile, ctl.calibration, 'cpu', DT)
+    sim.randomize(B, 0.)
+    s = sim_state_fn(sim, B)
+    pd = FastMotorPD(profile, ctl.calibration)
+    pd.reset()
+    idle = torch.tensor([[-1., 0., 0., 0.]]).repeat(B, 1)
+    queue = deque(queue) if queue is not None else deque(idle.clone() for _ in range(3))
+    reference = np.broadcast_to(np.asarray(height_ref, float), (B,)).copy()
+    flown = np.zeros((T, B, 3))
+    flown[..., :2] = horizontal
+    velocities, heights = np.zeros((T, B, 3)), np.zeros((T, B))
+    vz_request = np.zeros(B)
+    state = brain_state
+    with torch.no_grad():
+        for k in range(T):
+            senses = sim.sensors(s)
+            z = s.quad.pos[:, 2].numpy().astype(float)
+            explicit = np.isfinite(vertical[k])
+            reference = np.where(explicit, z, reference)
+            target = np.where(explicit, np.nan_to_num(vertical[k]), np.clip(vz_gain*(reference-z), -1., 1.))
+            vz_request = vz_request+np.clip(target-vz_request, -vertical_slew[1]*DT, vertical_slew[0]*DT)
+            flown[k, :, 2] = vz_request
+            r = torch.tensor(flown[k], dtype=torch.float32)
+            if ctl.kind == 'pd':
+                command = pd.command(senses, r, torch.tensor(feedforward[k], dtype=torch.float32), dt=DT).clone()
+            else:
+                if state is None:
+                    state = ctl.brain.init_state(B)
+                    obs = brain_observation(ctl.meta, senses, s.quad.motor.mean(-1, keepdim=True), ctl.cfg.task,
+                                            torch.zeros(B, RETINA_DIM), r, ctl.contract)
+                    for _ in range(50):
+                        _, state, _ = ctl.brain(obs, state, ctl.W)
+                command, state = ctl.act(senses, s.quad.motor.mean(-1, keepdim=True), r, state)
+                command = command.clone()
+            command[:, 3] = 0.
+            queue.append(command)
+            s = sim.step(s, queue.popleft())
+            v = s.quad.vel
+            s.quad.vel = v-.0075*v.norm(dim=-1, keepdim=True)*v*DT
+            s.quad.crashed[:] = False
+            velocities[k] = s.quad.vel.numpy()
+            heights[k] = s.quad.pos[:, 2].numpy()
+    return velocities, heights, flown
+
+
+def _turn_cases(spec):
+    """(target, turn_deg, climb) cases of the capped-turn tests: the product of the listed values, without the
+    straight level cap (G1's own test)."""
+    c = spec['cases']
+    return [(float(x), float(a), float(v)) for x in c['targets'] for a in c['turns_deg'] for v in c['climbs']
+            if not (a == 0 and v == 0)]
+
+
+def _turn_rows(spec, cases, vel, z, onset, extra=None):
+    vh = np.linalg.norm(vel[..., :2], axis=-1)
+    e0, e1 = (onset+int(round(a/DT)) for a in spec['excess_window_s'])
+    s0, s1 = (onset+int(round(a/DT)) for a in spec['settle_s'])
+    rows = []
+    for i, (x, turn, climb) in enumerate(cases):
+        reach = np.flatnonzero(vh[onset:, i] <= x+spec['within'])
+        rows.append(dict(**(extra or {}), target=x, turn_deg=turn, climb=climb, pre_cap=round(float(vh[onset-1, i]), 3),
+                         t_within=round(float(reach[0]*DT), 2) if len(reach) else None,
+                         excess_mean=round(float(vh[e0:e1, i].mean()-x), 3),
+                         settled_excess=round(float(vh[s0:s1, i].mean()-x), 3),
+                         z_range=[round(float(z[onset:, i].min()), 2), round(float(z[onset:, i].max()), 2)]))
+    return rows
+
+
+def capped_turn_tests(ctl, profile, spec, reference_contract):
+    """Governor caps during turns and climbs (brain-11): the request magnitude falls to X at brake_slew while its
+    direction turns by turn_deg at turn_rate rad/s, optionally with a climb request for climb_s (the terrain climb
+    beside a cap); from a hover (cruise along +x first) and from the logged cruise states of `live.windows` (brain
+    warmed on the recorded inputs; pre_s at the logged request first). Metrics per case: time until |v_h| <= X + within,
+    mean |v_h| - X over excess_window_s and over settle_s after the cap onset."""
+    cases = _turn_cases(spec)
+    B = len(cases)
+    out = {}
+    h = spec['hover']
+    T = int(round(h['end_s']/DT))
+    kc, k1 = int(round(h['cap_at_s']/DT)), int(round(1./DT))
+    horizontal, vertical = np.zeros((T, B, 2)), np.full((T, B), np.nan)
+    climb_n = int(round(spec['climb_s']/DT))
+    for i, (x, turn, climb) in enumerate(cases):
+        horizontal[k1:kc, i, 0] = _slew(0., h['cruise'], kc-k1)
+        horizontal[kc:, i] = _capped_turn(horizontal[kc-1, i, 0], 0., x, turn, T-kc, brake_slew=spec['brake_slew'],
+                                          rate=spec['turn_rate'])
+        if climb > 0:
+            vertical[kc:kc+climb_n, i] = climb
+
+    def start(sim, batch):
+        s = sim.hover(batch, h['height'])
+        s.quad.pos[:, :2] = 0.
+        s.quad.vel[:] = 0.
+        return s
+    vel, z, _ = _fly3(ctl, profile, start, horizontal, vertical, h['height'], vz_gain=h['vz_gain'],
+                      vertical_slew=spec['vertical_slew'])
+    out['hover'] = _turn_rows(spec, cases, vel, z, kc)
+    live = spec.get('live')
+    if live:
+        _check_recorded_contract(ctl, reference_contract)
+        rows, flights = [], {}
+        for window in live['windows']:
+            name, t0 = window.rsplit(':', 1)
+            flight = flights.setdefault(name, Flight(live['flights_dir'], name))
+            k0 = flight.index(float(t0))
+            pre, hold = int(round(live['pre_s']/DT)), int(round(live['hold_s']/DT))
+            req0 = flight.req[k0, :2]
+            cruise = float(np.linalg.norm(req0))
+            heading = float(np.arctan2(req0[1], req0[0]))
+            horizontal, vertical = np.zeros((pre+hold, B, 2)), np.full((pre+hold, B), np.nan)
+            for i, (x, turn, climb) in enumerate(cases):
+                horizontal[:pre, i] = req0
+                horizontal[pre:, i] = _capped_turn(cruise, heading, x, turn, hold, brake_slew=spec['brake_slew'],
+                                                   rate=spec['turn_rate'])
+                if climb > 0:
+                    vertical[pre:pre+climb_n, i] = climb
+            z0 = float(flight.d.z.iloc[k0])
+            queue = [torch.tensor(flight.cmds[k0-3+i], dtype=torch.float32)[None].repeat(B, 1) for i in range(3)]
+            state = ctl.expand(flight.warm(ctl, k0, live['warm_s']), B) if ctl.kind == 'brain' else None
+            vel, z, _ = _fly3(ctl, profile, flight.state_fn(k0), horizontal, vertical, z0, brain_state=state,
+                              queue=queue, vz_gain=live['vz_gain'], vertical_slew=spec['vertical_slew'])
+            rows += _turn_rows(spec, cases, vel, z, pre, dict(window=window, live_request=round(cruise, 3)))
+        out['live'] = rows
+    return out
+
+
+def accelerate_tests(ctl, profile, spec):
+    """Height kept while accelerating hard from low speed (brain-11), from a hover at `height` (height loop, yaw 0):
+    'creep': the request creeps at `creep` m/s along +x from 1 s, then at go_s slews (the pilot's straight-line slew)
+    to `cruise` along bearing b; 'stop': it slews to `cruise` along +x from 1 s, a cap drops it to `creep` at
+    brake_slew at brake_s, and at go_s it slews to `cruise` along bearing b. Metrics per case: height loss (the
+    reference height minus the lowest height from the brake or go onset to go_s + horizon_s), time from go_s until
+    |v_h| >= reach, and |v_h| at go_s + 1.5 s."""
+    cases = [(variant, float(b)) for variant in spec['variants'] for b in spec['bearings_deg']]
+    B = len(cases)
+    go, end = int(round(spec['go_s']/DT)), int(round((spec['go_s']+spec['horizon_s'])/DT))
+    kb, k1 = int(round(spec['brake_s']/DT)), int(round(1./DT))
+    horizontal = np.zeros((end, B, 2))
+    for i, (variant, bearing) in enumerate(cases):
+        if variant == 'creep':
+            horizontal[k1:go, i, 0] = _slew(0., spec['creep'], go-k1)
+        else:
+            horizontal[k1:kb, i, 0] = _slew(0., spec['cruise'], kb-k1)
+            horizontal[kb:go, i, 0] = _drop(horizontal[kb-1, i, 0], spec['creep'], spec['brake_slew'], go-kb)
+        b = np.radians(bearing)
+        horizontal[go:, i] = _slew_vec(horizontal[go-1, i], spec['cruise']*np.array([np.cos(b), np.sin(b)]), end-go)
+
+    def start(sim, batch):
+        s = sim.hover(batch, spec['height'])
+        s.quad.pos[:, :2] = 0.
+        s.quad.vel[:] = 0.
+        return s
+    vel, z, _ = _fly3(ctl, profile, start, horizontal, np.full((end, B), np.nan), spec['height'],
+                      vz_gain=spec['vz_gain'], vertical_slew=spec['vertical_slew'])
+    vh = np.linalg.norm(vel[..., :2], axis=-1)
+    rows = []
+    k15 = go+int(round(1.5/DT))
+    for i, (variant, bearing) in enumerate(cases):
+        first = kb if variant == 'stop' else go
+        reach = np.flatnonzero(vh[go:, i] >= spec['reach'])
+        rows.append(dict(variant=variant, bearing_deg=bearing,
+                         height_loss=round(float(spec['height']-z[first:, i].min()), 3),
+                         height_loss_go=round(float(z[go-1, i]-z[go:, i].min()), 3),
+                         t_reach=round(float(reach[0]*DT), 2) if len(reach) else None,
+                         speed_1p5s=round(float(vh[k15, i]), 3), z_min=round(float(z[first:, i].min()), 3)))
+    return rows
+
+
+def full_pilot_tests(ctl, profile, spec):
+    """The deployed pilot (haltere.train.deployed_pilot: --obstacle-stack on --descent-view on for the motor
+    contract) in the descent surrogate (haltere.liftoff.descent_rehearsal.run_batch: scoring-only hills, contacts,
+    passes high above a checkpoint), on the declared course sets. Per set: its summary; overall: finishes and crashes
+    of all courses, contacts on the terrain sets, high passes, stick chatter over the flat and steep courses and the
+    mean finish time of the steep and hill sets."""
+    from ..liftoff import descent_rehearsal as dr
+    from .deployed_pilot import deployed_pilot_kwargs
+    kwargs, record = deployed_pilot_kwargs(spec['contract_brain'] if ctl.kind == 'brain' else spec['contract_pd'])
+    controller = dict(kind=ctl.kind, meta=ctl.meta, cfg=ctl.cfg, brain=ctl.brain if ctl.kind == 'brain' else None,
+                      contract=ctl.contract if ctl.kind == 'brain' else None)
+    out = dict(declarations=record, sets={})
+    rows_all = {}
+    for set_spec in spec['sets']:
+        kind, seeds = dr.parse_set(set_spec)
+        courses, terrains = dr.course_set(kind, seeds)
+        rows, _ = dr.run_batch(controller, profile, courses, terrains, pilot_kwargs=kwargs, seconds=spec['seconds'],
+                               seed=spec['sim_seed'])
+        for seed, row in zip(seeds, rows):
+            row['seed'] = seed
+        rows_all[set_spec] = rows
+        out['sets'][set_spec] = dict(summary=dr._summary(rows), courses=[
+            {k: r.get(k) for k in ('seed', 'finished', 'crashed', 'finish_s', 'gates', 'mean_speed', 'stick_chatter',
+                                   'contacts', 'contact_s', 'high_passes', 'support_climbs')} for r in rows])
+        time.sleep(spec.get('rest_s', 0.))
+    every = [r for rows in rows_all.values() for r in rows]
+    terrain = [r for s, rows in rows_all.items() if not s.startswith('flat') for r in rows]
+    smooth = [r for s, rows in rows_all.items() if not s.startswith('hill') for r in rows]
+    timed = [r for s, rows in rows_all.items() if not s.startswith('flat') for r in rows if r['finished']]
+    out['overall'] = dict(courses=len(every), finished=sum(r['finished'] for r in every),
+                          crashed=sum(r['crashed'] for r in every),
+                          contacts=sum(r.get('contacts') or 0 for r in terrain),
+                          contact_s=round(sum(r.get('contact_s') or 0 for r in terrain), 2),
+                          high_passes=sum(r.get('high_passes') or 0 for r in every),
+                          stick_chatter_16=round(float(np.mean([r['stick_chatter'] for r in smooth])), 5),
+                          mean_finish_terrain_s=round(float(np.mean([r['finish_s'] for r in timed])), 2) if timed else None)
+    return out
+
+
 def _courses(spec):
     return [synthetic_course(s, steep=steep) for _, steep in spec['groups'] for s in spec['seeds']]
 
@@ -617,7 +1011,7 @@ def main():
     parser.add_argument('controller', help="a fast-contract brain checkpoint, or 'pd'")
     parser.add_argument('--gates', default='configs/brain09_gates.json')
     parser.add_argument('--out', required=True)
-    parser.add_argument('--parts', default=','.join(PARTS))
+    parser.add_argument('--parts', default='', help='comma-separated parts (default: every part the file declares)')
     parser.add_argument('--label', default='')
     parser.add_argument('--freeze', action='store_true', help='freeze the gate file (content sha256) and exit')
     args = parser.parse_args()
@@ -645,10 +1039,10 @@ def main():
         previous = json.loads(out.read_text())
         if (previous.get('tests_sha256') == report['tests_sha256'] and previous.get('source_sha256') == report['source_sha256']
                 and previous.get('checkpoint_sha256') == report['checkpoint_sha256']):
-            report.update({k: v for k, v in previous.items() if k in PARTS})
-    parts = [p for p in args.parts.split(',') if p]
+            report.update({k: v for k, v in previous.items() if k in PARTS+NEW_PARTS})
+    parts = [p for p in args.parts.split(',') if p] or [*PARTS, *(p for p in NEW_PARTS if p in tests)]
     for part in parts:
-        if part not in PARTS:
+        if part not in PARTS+NEW_PARTS:
             raise ValueError(f'Unknown part {part}')
         begin = time.time()
         if part == 'hover':
@@ -667,6 +1061,18 @@ def main():
             report['regression16'] = regression16(ctl, tests['regression16'], out.parent/(out.stem+'_harness'), tree)
         elif part == 'audit':
             report['audit'] = audit(ctl, gates['reference']['parent'])
+        elif part == 'r4_windows':
+            report['r4_windows'] = r4_window_tests(ctl, profile, tests['r4_windows'], reference_contract)
+        elif part == 'swaps_delayed':
+            report['swaps_delayed'] = swap_delay_tests(ctl, profile, tests['swaps_delayed'], reference_contract)
+        elif part == 'capped_turns':
+            report['capped_turns'] = capped_turn_tests(ctl, profile, tests['capped_turns'], reference_contract)
+        elif part == 'accelerate':
+            report['accelerate'] = accelerate_tests(ctl, profile, tests['accelerate'])
+        elif part == 'in_course_caps2':
+            report['in_course_caps2'] = in_course_caps(ctl, profile, tests['in_course_caps2'])
+        elif part == 'full_pilot':
+            report['full_pilot'] = full_pilot_tests(ctl, profile, tests['full_pilot'])
         report['timing'][part] = round(time.time()-begin, 1)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(report, indent=1, default=float))
