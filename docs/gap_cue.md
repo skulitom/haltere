@@ -114,6 +114,41 @@ avoided the trunk.
   flank the ring symmetrically (gate legs), and a background that does not
   collapse when one object fills the window.
 
+## Round 4: the pilot holds the side (pillar C)
+
+The per-frame cue above is unchanged (`gap_cue.json` version 2). A re-score of G1-G4 with the
+round-4 code on the cached frames reproduces every G4 number exactly. Round 4 changes only how the
+pilot uses the cue: the gap pilot declaration `configs/obstacles/gap_pilot.json` version 5. Its
+wiring, versions and gates are in [obstacle_gap_pilot.md](obstacle_gap_pilot.md#round-4-pillar-c-and-side-commitment).
+
+**What went wrong at pillar C** (`minus-fast6-vg-02`, impact 23.44 s). The next ring lies 1.1 m to
+the right of the pillar, beyond it. Ten earlier store runs passed the pillar on that side, at
+x 79.3-80.7; the pillar spans x 77.85-78.55 (the scene's collider box, used for scoring only).
+
+- The cue's evidence was on the right (free) side throughout. Its first right vote came 1.05 s
+  before the impact, about 5.7 m from the pillar face, and no left vote followed.
+- The left shift of 21.73-22.45 s did not come from the cue. It was the pilot's terrain side steer:
+  the vertical guard was running its gentle floor climb after the hairpin, and the terrain
+  statistic saw the near outer wall on the right, so the steer aimed 6 deg left, toward the pillar.
+- Version 2's side latch, set by that terrain episode, blocked the right obstacle evidence for 0.6 s.
+- For 0.4 s the cue read `clear` while the pillar straddled the ring. The pillar and the walls then
+  raised the background median.
+
+![Pillar C: cue profile, flown (v2) and version 5 applied shift](gap_cue_pillar_c.jpg)
+
+**Pilot-level numbers.** These replay `GapAim` over the teacher-basis decisions: a sample is received
+0.09 s after capture and handled at 100 Hz. They are development evidence, and every data set
+below was read before version 5 was chosen.
+
+- **Pillar A, first confirmed LEFT distance:** unchanged on all 25 Minus Two approaches. The first
+  confirmation never moves.
+- **Pillar A, share of time that keeps the ring side after that:** 23-98 % under version 2 and
+  38-100 % under version 5.
+- **Clean Straw Bale laps:** 8.87 → 7.45 episodes/min. That is still above the cue-level 6/min
+  target, and the cue itself still scores 9.3.
+- **Quiet checkpoint switches on those laps:** 120 → 115 of 120.
+- **p90 of the applied shift on those laps:** 8.2 → 12 deg. A commitment holds the largest shift.
+
 ## Reproduce
 
 ```
