@@ -34,6 +34,11 @@ def load_gates(path=GATES_PATH, wall_pilot=WALL_PILOT_PATH):
     if obj.get('frozen') is not True or obj.get('sha256') != digest:
         raise ValueError(f'{path} is not frozen or changed after the freeze: gates are scored only when frozen')
     declared = json.loads(Path(wall_pilot).read_text(encoding='utf-8'))
+    if declared.get('version') != obj['wall_pilot']['version']:
+        # a later version replaced the declaration; the scored one is kept beside it (wall_pilot_v<version>.json)
+        kept = Path(wall_pilot).with_name(f"{Path(wall_pilot).stem}_v{obj['wall_pilot']['version']}.json")
+        if kept.exists():
+            declared = json.loads(kept.read_text(encoding='utf-8'))
     if obj['wall_pilot']['sha256'] != declared.get('sha256') or obj['wall_pilot']['version'] != declared.get('version'):
         raise ValueError(f'{path} scores wall-pilot version {obj["wall_pilot"]["version"]} '
                          f'({obj["wall_pilot"]["sha256"][:12]}), not the declaration in this tree')
@@ -221,8 +226,88 @@ def kinematic_report(mine, base, spec, wall):
 
 
 # ---------------------------------------------------------------------------------------------
+# Gates version 2: wall-pilot version 5, the clearance brake's sink floor
+# ---------------------------------------------------------------------------------------------
+def along_horizontal_ray(arrays, ray_from):
+    """The horizontal request's component along the horizontal projection of the clearance cap's ray of `ray_from`
+    (NaN where that replay had no cap or the ray has no horizontal part)."""
+    rx, ry = np.asarray(ray_from['brake_ray_x'], float), np.asarray(ray_from['brake_ray_y'], float)
+    n = np.hypot(rx, ry)
+    ok = np.isfinite(n) & (n > 1e-6)
+    out = np.full(len(n), np.nan)
+    out[ok] = (np.asarray(arrays['cvx'], float)[ok]*rx[ok]+np.asarray(arrays['cvy'], float)[ok]*ry[ok])/n[ok]
+    return out, n
+
+
+def score_brake_sink(v5, v4, spec):
+    """One flight: the sink the clearance brake left (v5) and added (v4), and the horizontal request along the
+    horizontal cap ray on the ticks where the version-4 replay braked (v5 minus v4)."""
+    dt = durations(v5['t'])
+    left = np.nan_to_num(np.asarray(v5['brake_sink_left'], float))
+    added4 = np.nan_to_num(np.asarray(v4['brake_added_sink'], float))
+    withheld = np.nan_to_num(np.asarray(v5['brake_sink_withheld'], float))
+    braking = np.asarray(v4['braking'], float) > 0
+    a5, n = along_horizontal_ray(v5, v4)
+    a4, _ = along_horizontal_ray(v4, v4)
+    use = braking & (n > spec['min_ray_horizontal'])
+    diff = (a5-a4)[use]
+    return dict(v5_max_sink_left=round(float(left.max()), 4),
+                v5_sink_left_s=round(float(dt[left > EPS].sum()), 3),
+                v5_withheld_s=round(float(dt[withheld > spec['report_sink']].sum()), 3),
+                v4_added_s=round(float(dt[added4 > spec['report_sink']].sum()), 3),
+                v4_max_added=round(float(added4.max()), 4),
+                v4_min_cvz=round(float(np.min(v4['cvz'])), 3), v5_min_cvz=round(float(np.min(v5['cvz'])), 3),
+                braking_ticks=int(use.sum()),
+                max_along_increase=None if not len(diff) else round(float(diff.max()), 4),
+                p99_along_increase=None if not len(diff) else round(float(np.percentile(diff, 99)), 4),
+                max_along_decrease=None if not len(diff) else round(float(-diff.min()), 4))
+
+
+def score_all_v2(out, baseline, gates, digest, runs=RUNS):
+    """Score gates version 2 (configs/obstacles/wall_pilot_gates.json): this tree's replays (`out`) with wall-pilot
+    version 5 (the tree's declaration) and version 4 (the kept configs/obstacles/wall_pilot_v4.json, tag -wp4), the
+    baseline tree's (`baseline`, m4) for identity."""
+    from haltere.liftoff.contact_support_eval import replay_tag, score_identity
+    g = gates['gates']
+    result = dict(gates_sha256=digest, gates_version=gates['version'], wall_pilot=gates['wall_pilot'],
+                  baseline_tree=gates['baseline_tree'])
+    stream = set(gates['flights']['stream'])
+    gi = g['B_Identity']
+    result['B_Identity'] = score_identity(out, baseline, gi['flights'], stream)
+    per = {}
+    for f in g['B_NoSink']['flights']:
+        s = f in stream
+        rows = {}
+        for dv in (None, 1):
+            rows['stack' if dv is None else 'stack_dv1'] = score_brake_sink(
+                load(out, replay_tag('on', s, dv=dv), f), load(out, replay_tag('on', s, dv=dv, wp=4), f), g['B_NoSink'])
+        per[f] = rows
+    result['B_NoSink'] = dict(flights=per, passed=all(r['v5_max_sink_left'] <= EPS for rows in per.values()
+                                                       for r in rows.values()))
+    spec = g['B_R402']
+    r = per[spec['flight']]['stack_dv1']
+    result['B_R402'] = dict(r, flight=spec['flight'],
+                            exercised=r['v4_added_s'] >= spec['min_v4_added_s'],
+                            passed=r['v5_max_sink_left'] <= EPS and r['v4_added_s'] >= spec['min_v4_added_s'])
+    spec = g['B_Horizontal']
+    horizontal = {f: {k: dict(max_along_increase=v['max_along_increase'], p99_along_increase=v['p99_along_increase'],
+                              braking_ticks=v['braking_ticks'])
+                      for k, v in per[f].items()} for f in spec['flights']}
+    worst = max((v['max_along_increase'] or 0.) for rows in horizontal.values() for v in rows.values())
+    result['B_Horizontal'] = dict(flights=horizontal, worst_increase=round(worst, 4),
+                                  passed=worst <= spec['max_increase_mps']+EPS)
+    spec = g['B_Quiet']
+    quiet = {f: per[f]['stack']['v5_withheld_s'] for f in spec['flights']}
+    result['B_Quiet'] = dict(withheld_s=quiet, passed=all(v <= spec['max_withheld_s']+EPS for v in quiet.values()))
+    result['passed'] = {k: result[k]['passed'] for k in ('B_Identity', 'B_NoSink', 'B_R402', 'B_Horizontal',
+                                                         'B_Quiet')}
+    return result
+
+
 def score_all(out, baseline, gates_path=GATES_PATH, runs=RUNS):
     gates, digest = load_gates(gates_path)
+    if int(gates['version']) >= 2:
+        return score_all_v2(out, baseline, gates, digest, runs)
     g = gates['gates']
     wall = gates['hairpin_wall']
     result = dict(gates_sha256=digest, wall_pilot=gates['wall_pilot'], baseline_tree=gates['baseline_tree'])

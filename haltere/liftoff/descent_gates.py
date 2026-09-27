@@ -39,6 +39,12 @@ def load_gates(path=GATES_PATH):
         raise ValueError(f'{path} is not frozen or changed after the freeze: gates are scored only when frozen')
     declaration_path = REPO/gates['descent_view']['file']
     declaration = json.loads(declaration_path.read_text(encoding='utf-8'))
+    if declaration.get('version') != gates['descent_view']['version']:
+        # a later version replaced the declaration; the scored one is kept beside it (descent_view_v<version>.json)
+        kept = declaration_path.with_name(f"{declaration_path.stem}_v{gates['descent_view']['version']}.json")
+        if kept.exists():
+            declaration_path = kept
+            declaration = json.loads(kept.read_text(encoding='utf-8'))
     if (declaration.get('version') != gates['descent_view']['version']
             or declaration.get('sha256') != gates['descent_view']['sha256']
             or content_sha256(declaration) != declaration['sha256'] or declaration.get('frozen') is not True):

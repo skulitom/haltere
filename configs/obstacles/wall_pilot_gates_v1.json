@@ -1,0 +1,192 @@
+{
+ "schema": "haltere.obstacles.wall_pilot_gates.v1",
+ "version": 1,
+ "note": "Offline gates of turn-first version 4 (configs/obstacles/wall_pilot.json version 4), scored by open-loop replays of logged flights through FastRaceCue (haltere/obstacles/vertical_replay.py for the replays, haltere/obstacles/wall_pilot_gates.py for the scores). The thresholds are the round-4 task's; the definitions below make them computable and were fixed with version 4, before any replay of it. The replays are open loop: the recorded motion does not respond to the replayed requests, so a gate shows the request a variant would have made at the recorded states, not a flight. Every Minus Two flight named here was inspected while version 4 was designed (development evidence, not held out); the Straw Bale and Pine Valley quietness replays were not run for version 4 before this freeze. Hindsight (the end of a log at an impact, the wall plane found from the logs) is used for scoring only. The hash covers everything except frozen/frozen_at/sha256.",
+ "wall_pilot": {
+  "file": "configs/obstacles/wall_pilot.json",
+  "version": 4,
+  "sha256": "92f842a54e569d9eb5171969e7f2bf6521790766450d624f173158a0eef6360e"
+ },
+ "baseline_tree": {
+  "branch": "m2-vertical",
+  "commit": "935cfdb4b6d712dc2b239838ce943a8c9ee596b9",
+  "wall_pilot_version": 3,
+  "note": "the round-3 stack as flown (wall pilot version 3, vertical guard version 2); both trees are replayed with this tree's harness"
+ },
+ "flights": {
+  "logged": [
+   "minus-brain09b-vg-01",
+   "minus-brain08-vg-01",
+   "minus-fast6-vg-02",
+   "minus-fast6-gapon-01",
+   "minus-fast6-wall-01",
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-brain08-loom-01",
+   "minus-brain08-gapshadow-01",
+   "pine-fast6-ttc-01",
+   "pine-brain08-loom-01",
+   "pine-brain08-01"
+  ],
+  "flown_with_vertical_guard": [
+   "minus-brain09b-vg-01",
+   "minus-brain08-vg-01",
+   "minus-fast6-vg-02"
+  ],
+  "straw_stream": [
+   "straw-brain08-04",
+   "straw-brain08-06"
+  ]
+ },
+ "variants": {
+  "as_flown_with_wall": "--stack flown --wall on (--vertical on for the flights flown with the vertical guard): the stack as flown (gap aim and lag turn when flown with --obstacle-stack on) with the tree's wall rules applied; on the baseline tree this is the round-3 stack as flown",
+  "as_flown_without_wall": "--stack flown --wall off (same --vertical)",
+  "as_flown_wall_shadow": "--stack flown --wall shadow (same --vertical)",
+  "none": "--stack none: the default fast pilot, no obstacle stack (logged looming samples reach the governor)",
+  "shadow": "--stack shadow: the full stack computed and logged, nothing applied",
+  "full_stack": "--stack on: the full stack declared for the flight's motor contract (gap aim, lag turn, wall rules, vertical guard), all applied",
+  "straw": "the Straw Bale laps flew without looming: --looming-stream with the offline looming2 samples of round 2 (received 0.085 s after capture); none also without the stream",
+  "tolerance": "bit for bit (NaN equal to NaN) on the command keys cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale"
+ },
+ "inputs": {
+  "runs": "C:/DEV/Haltere/runs/fast-stack-20260923",
+  "log_sha256": {
+   "minus-brain09b-vg-01.csv": "14a364a04134ee81972893c622c3e523c43a34a75b87bec455a7d146565945c0",
+   "minus-brain08-vg-01.csv": "3522d568dd25f9411603e2b2e4f27e18bff8482b48b0be87979c950a02cfc0bc",
+   "minus-fast6-vg-02.csv": "47f2049e0473f40f421705b94a2b9b312012e71def3240c5ed58d976c1307dc3",
+   "minus-fast6-gapon-01.csv": "fc29c96fc6b10170ad71f02037c4e94c6c58284bc1aa884218863a37b613aa43",
+   "minus-fast6-wall-01.csv": "c13ab87969783ec47d46ccb7740b544a5e052dd6f7cc4a677ba1a30a6748f028",
+   "minus-brain08-gapon-01.csv": "2ec83772275e418212f55dd73d3913860313ffb1569ef24db611f8ff7e68230d",
+   "minus-brain08-gapon-02.csv": "1d7563abbbd65f4990d585f28d2b0811a85e0df47f6a208f1ef26ec56e9a46bb",
+   "minus-brain08-loom-01.csv": "7639dba8e89caef0b2ece4cd29ea76f1eb016bd722773e6e4bb092d0a33db5ed",
+   "minus-brain08-gapshadow-01.csv": "3f8ae3efd8a0284d4220e34308056e58f9c4c09579aa72f6e096cfb7ba0a3e68",
+   "pine-fast6-ttc-01.csv": "352e86f09407d5c9ea2168771a693b6ef8603324e06af2185db31e25564ee3c4",
+   "pine-brain08-loom-01.csv": "411051a32d0c1473f1f29709b99664631848499fb45f0d341171c00bdaaee19f",
+   "pine-brain08-01.csv": "e28627df086158dec95040d7f7c52016cde718c9529c853b22d6f5c3916cbb2e",
+   "straw-brain08-04.csv": "e08219b19e51fc622cfb82f34b0cc75d6b0c7d698bd5c1e3d71d204981b4b38f",
+   "straw-brain08-06.csv": "9498c64aa12b27dca82f7360819cb6cb4b33e165123f4540e17daddde886a7eb"
+  },
+  "looming_stream": {
+   "stream_straw-brain08-04.npz": "99067a40c32e4fbc139269df38aa3bdf07e99a8459fbec94a6e0944c48a562e8",
+   "stream_straw-brain08-06.npz": "67029f4eb5284be3588459bb14a86fb9f2e570887428636489afe3a629d7c767"
+  }
+ },
+ "hairpin_wall": {
+  "normal": [
+   1.0,
+   0.0
+  ],
+  "plane_offset_m": 81.84,
+  "note": "the Minus Two hairpin wall behind the arch, from the logs (scoring only): brain-09b grazed it with its centre at (81.84, 19.88) moving (2.61, 1.38) m/s (minus-brain09b-vg-01, the end of the log); the fast PD turned along it at x <= 80.2 and flew north at x 78-80 (minus-fast6-vg-02), and its video shows the wall with the green arrows on the right of that corridor: a wall plane facing -x. The request along +x is the request toward it; plane_offset_m is the drone-centre x at contact. The fast PD's side-push impact of minus-fast6-gapon-01 was also along +x (round-2 replay)"
+ },
+ "gates": {
+  "W_Identity": {
+   "definition": "this tree against the baseline tree, bit for bit on the command keys: every logged flight with --stack none, --stack flown --wall off and --stack shadow; the Straw laps with --stack none (with and without the stream) and --stack shadow with the stream. Reported, not gated: as flown with the wall rules (version 4 against version 3)",
+   "pass_rule": "every gated pair identical"
+  },
+  "W_Shadow": {
+   "definition": "in this tree, --stack flown --wall shadow against --wall off on every logged flight: the version-4 rules computed and logged leave the command bit for bit unchanged; the episodes logged in shadow are reported",
+   "pass_rule": "every pair identical"
+  },
+  "W_B09": {
+   "flight": "minus-brain09b-vg-01",
+   "variant": "as_flown_with_wall",
+   "window_s": 1.5,
+   "lead_s": 0.5,
+   "settle_s": 0.25,
+   "max_toward_mps": 0.1,
+   "definition": "the log ends at the graze of the hairpin wall (21.90 s). Engagement: the first tick in [end - window_s, end) at which a turn-first episode is active must lie at least lead_s before the end: brain-09b's measured delay behind a request drop (0.19-0.32 s; declared stop_latency_s 0.3) plus about 0.2 s for the rule to remove a 3 m/s request at the 15 m/s^2 brake slew. Direction: from engagement + settle_s to the end, the requested velocity along the hairpin wall normal (+x) is at most max_toward_mps",
+   "pass_rule": "both"
+  },
+  "W_B08": {
+   "flight": "minus-brain08-vg-01",
+   "variant": "as_flown_with_wall",
+   "window_s": 1.5,
+   "lead_s": 0.5,
+   "settle_s": 0.25,
+   "max_toward_mps": null,
+   "definition": "the task's \"early enough\" for brain-08: the first turn-first tick in [end - window_s, end) at least lead_s before the impact at the end of the log (18.47 s). No direction test: the wall brain-08 hit is not the hairpin wall",
+   "expected": "the diagnosis (before this freeze) expects a failure: brain-08 hit the wall beside the arch at (78.1, 19.2) at about 6.4 m/s before reaching the hairpin, with the ring in view (marker u 0.4-0.96) until 0.2 s before the impact; the marker was first clamped (a corner) at 18.28 s and the drone flew 5.5-7 m/s, above max_speed. No turn-first trigger exists earlier; the request there is the governor's cap (3.9 m/s), which brain-08 did not follow",
+   "pass_rule": "engagement lead"
+  },
+  "W_PD": {
+   "flight": "minus-fast6-vg-02",
+   "variant": "as_flown_with_wall",
+   "window": [
+    20.0,
+    22.5
+   ],
+   "exit_window": [
+    21.5,
+    22.5
+   ],
+   "max_extra_toward_mps": 0.05,
+   "max_engaged_s": 1.0,
+   "max_delay_s": 1.0,
+   "definition": "the fast PD's pass of the same hairpin (it turned north at x <= 80.2 without contact). In the window, against the baseline (version 3, as flown): never pushed toward the wall: at every tick max(request along +x, 0) exceeds the baseline's max(request along +x, 0) by at most max_extra_toward_mps; turn-first active at most max_engaged_s; the open-loop delay estimate, the path deficit sum(max(0, |h_baseline| - |h_version4|) dt) of the horizontal request over the window divided by the mean measured horizontal speed in exit_window, at most max_delay_s",
+   "pass_rule": "all three"
+  },
+  "W_V3case": {
+   "flight": "minus-fast6-gapon-01",
+   "variant": "as_flown_with_wall",
+   "engaged_from_t": 20.9,
+   "from_t": 21.26,
+   "max_toward_mps": 0.1,
+   "definition": "version 3's design case (the side rule pushed the fast PD into the hairpin wall, impact at (80.0, 18.1), 21.64 s): a turn-first episode is active at some tick from engaged_from_t to the end, and from from_t to the end the request along +x is at most max_toward_mps (version 3 brought it from 0.7 to 0 by 21.26 s)",
+   "pass_rule": "both"
+  },
+  "W_Quiet": {
+   "pine": [
+    "pine-fast6-ttc-01",
+    "pine-brain08-loom-01",
+    "pine-brain08-01"
+   ],
+   "straw": [
+    "straw-brain08-04",
+    "straw-brain08-06"
+   ],
+   "definition": "no turn-first tick and no side-guard tick with the full stack on (--stack on; the Straw laps with the offline looming stream) and, for the Pine flights, as flown with the wall rules. pine-brain08-01 flew without looming: its governor never runs, so it is quiet by construction (listed for completeness)",
+   "pass_rule": "zero on every flight and variant"
+  }
+ },
+ "kinematic_report_only": {
+  "flight": "minus-brain09b-vg-01",
+  "from_t": 20.9,
+  "to_t": 22.4,
+  "fit_windows": [
+   [
+    6.0,
+    20.4
+   ]
+  ],
+  "grid": {
+   "delay_s": [
+    0.1,
+    0.15,
+    0.2,
+    0.25,
+    0.3,
+    0.35,
+    0.4
+   ],
+   "tau_s": [
+    0.05,
+    0.1,
+    0.2,
+    0.3,
+    0.5
+   ],
+   "accel_mps2": [
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    8.0
+   ]
+  },
+  "definition": "report only, not a gate: a delayed first-order motor with an acceleration bound, fitted on the logged request and velocity of the flight before the hairpin (1 s rollouts every 0.5 s in fit_windows), driven from the logged state at from_t by the as-flown request (baseline) and by the version-4 request (open loop: after engagement the replayed request is the one computed at the recorded states); reported: the crossing of the hairpin wall plane and the speed toward it"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-27T01:52:43",
+ "sha256": "6418aea51c44102dfa5f37255e3daea7ead542ce430293695e19b223a789cd71"
+}

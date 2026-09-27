@@ -1,7 +1,7 @@
 {
  "schema": "haltere.liftoff.wall_pilot.v2",
- "version": 5,
- "note": "Wall-pilot rules of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow; off by default and outside the stack; --wall-pilot off removes them from the stack). 'turn_first': haltere.liftoff.fast_race_cue.TurnFirstConfig, turn before translating at a wall the drone cannot stop before when the next checkpoint is far off the heading or its marker is lost (a hairpin), with its stopping model per motor contract in 'turn_first_stopping'. 'ceiling_guard': haltere.liftoff.fast_race_cue.CeilingGuardConfig, keep the looming TTC governor's terrain climb out of ceilings and overhangs (unchanged from version 3). Generic and course-agnostic: they read only the pilot's own state, the causal looming samples, odometry and the visible checkpoint marker; the stopping model is a measured motor property, not a course value. Version 4 was designed after inspecting the round-3 Minus Two logs it addresses (minus-brain09b-vg-01, minus-brain08-vg-01, minus-fast6-vg-02) and earlier logs (minus-fast6-gapon-01), so those replays are development evidence, not held-out evidence. It was frozen with its offline gates (configs/obstacles/wall_pilot_gates.json) before any replay of version 4. The runner refuses another version (fast_race_cue.WALL_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported. Offline replays of these rules are open loop and are not flight evidence. Version 5 adds 'clearance_brake' (haltere.liftoff.fast_race_cue.ClearanceBrakeConfig): the TTC governor's clearance brake never commands a descent the pilot did not ask for.",
+ "version": 4,
+ "note": "Wall-pilot rules of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow; off by default and outside the stack; --wall-pilot off removes them from the stack). 'turn_first': haltere.liftoff.fast_race_cue.TurnFirstConfig, turn before translating at a wall the drone cannot stop before when the next checkpoint is far off the heading or its marker is lost (a hairpin), with its stopping model per motor contract in 'turn_first_stopping'. 'ceiling_guard': haltere.liftoff.fast_race_cue.CeilingGuardConfig, keep the looming TTC governor's terrain climb out of ceilings and overhangs (unchanged from version 3). Generic and course-agnostic: they read only the pilot's own state, the causal looming samples, odometry and the visible checkpoint marker; the stopping model is a measured motor property, not a course value. Version 4 was designed after inspecting the round-3 Minus Two logs it addresses (minus-brain09b-vg-01, minus-brain08-vg-01, minus-fast6-vg-02) and earlier logs (minus-fast6-gapon-01), so those replays are development evidence, not held-out evidence. It was frozen with its offline gates (configs/obstacles/wall_pilot_gates.json) before any replay of version 4. The runner refuses another version (fast_race_cue.WALL_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported. Offline replays of these rules are open loop and are not flight evidence.",
  "turn_first": {
   "brake_recent_s": 1.0,
   "engage_deg": 50.0,
@@ -61,25 +61,8 @@
   "overhead_min_rise": "a ceiling or overhang can only cross a rising flight path; an alarm ahead of a level or sinking path is braked for as a wall and does not stop a climb that arrests a sink. 0.3 m/s is a noise margin on the measured vertical speed, not fitted",
   "overhead_positive": "a sample is positive overhead evidence when something shows that the alarm is not the surface below the path: below_fraction <= overhead_fraction (the expansion lies above the path), or a lower-surface TTC that is known and longer than lower_ratio x the alarm TTC. A sample in which neither vertical window crosses the path (below_fraction None and lower TTC None) says nothing either way: climbing a hill, both windows often lose it. Such samples still count toward overhead_confirm but cannot confirm alone. On gapon-02 the confirming sample had below_fraction 0.0; on gapon-01 the ceiling alarms included a lower TTC of 1.23 s against an alarm of 0.63 s"
  },
- "clearance_brake": {
-  "max_added_sink": 0.0
- },
- "clearance_brake_notes": {
-  "rule": "the TTC wall cap bounds the request's component along the looming ray (the travel direction at the sample's capture): the brake subtracts ray x (along - cap) from the request, and _cap_command brings the command's component along the ray to the cap at brake_slew. After each of the two steps the vertical request (command) is at least min(its value before the step, 0) - max_added_sink (0 m/s): the brake may reduce a climb to level and may raise the request when the ray points down, but it adds no sink. Its horizontal part is unchanged; the vertical guard's and the pilot's own sink are untouched. Applied only with the stack on (wall_apply); in shadow it is measured and logged, not applied",
-  "why": "round-4 live flight minus-fast6-r4-02 (development case, found by the round-4b guard agent): from 26.4 s the stand-off cap (0.53-0.62 m/s) along a travel ray tilted about 11 deg up ((-0.80, 0.58, 0.19)), renewed by wall samples until 29.7 s, turned the pilot's and guard's +0.1..+0.23 m/s into a command of -0.3..-0.5 m/s: the drone skimmed the garage floor (z < 0.1 m for 1.5 s at 27.4-28.9 s). The sink request below -0.3 m/s also fed the descent-path governor (horizontal cut to its floor) and would have fed the support rules",
-  "alternatives": "correcting only the horizontal part (the ray's horizontal projection, scaled so the 3-D component meets the cap) brakes harder horizontally on every rising ray and changes the brake on every Minus log; the floor at min(request, 0) keeps the horizontal part bit for bit and changes only the vertical request on ticks where the brake added sink. Chosen before any replay of version 5",
-  "evidence": "development only: the open-loop replay of minus-fast6-r4-02 (the case that motivated the rule) was looked at before the freeze; the gates (configs/obstacles/wall_pilot_gates.json version 2) are frozen with this version, before any replay of it is scored"
- },
- "change": "v5 (round 4b, after the round-4 live flights): the clearance brake's sink floor only (clearance_brake). Turn-first, its stopping models and the ceiling guard are version 4's values, unchanged.",
+ "change": "v4 (after the round-3 flights, before any replay of version 4): turn-first only. Version 3 engaged at a wall brake only at <= slow_speed (1.5 m/s). In minus-brain09b-vg-01 the brain-09b candidate braked to 2-4 m/s under the governor caps (about 3 m/s) into the Minus Two hairpin and grazed the wall behind the arch at (81.8, 19.9) at about 2.7 m/s, 21.9 s, with no episode: after passing the arch the next marker was lost for 0.45 s (coast on the 3.1 m/s request toward the wall) and appeared clamped at the left edge only 0.33 s before the graze. Version 4 removes slow_speed and engages at <= max_speed (3.5 m/s) when the latest wall sample lies within the measured motor's stopping distance (declared per motor contract), also while the marker is lost (coast, holding the horizontal request at 0), requires the stand-off branch to be within the stopping distance of the wall and at <= max_speed too, and adds the side guard. The ceiling guard is version 3's.",
  "previous_versions": [
-  {
-   "version": 4,
-   "sha256": "92f842a54e569d9eb5171969e7f2bf6521790766450d624f173158a0eef6360e",
-   "frozen_at": "2026-09-27T01:51:27",
-   "file": "configs/obstacles/wall_pilot_v4.json",
-   "scored": "frozen gates configs/obstacles/wall_pilot_gates_v1.json (open-loop replays; W-B08 failed); flown on Minus Two in round 4 (minus-fast6-r4-02, minus-brain10b-r4-02, minus-brain09b-r4-01)",
-   "superseded_because": "the clearance brake along a rising looming ray commanded a descent the pilot did not ask for and drove minus-fast6-r4-02 onto the garage floor (see clearance_brake_notes)"
-  },
   {
    "version": 3,
    "sha256": "cafe4aa8c8bfac6ed34050724a04e881bf2b7db01b025e17d8552e21c0688b62",
@@ -106,6 +89,6 @@
   }
  ],
  "frozen": true,
- "frozen_at": "2026-09-27T16:55:59",
- "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af"
+ "frozen_at": "2026-09-27T01:51:27",
+ "sha256": "92f842a54e569d9eb5171969e7f2bf6521790766450d624f173158a0eef6360e"
 }

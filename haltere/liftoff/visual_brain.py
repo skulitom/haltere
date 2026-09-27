@@ -450,9 +450,13 @@ class VisualController:
             descent_kw = {}
             if descent_view:
                 # Declared once for every motor contract and course; off by default.
-                from .fast_race_cue import descent_view_config
+                from .fast_race_cue import contact_support_config, descent_view_config
                 declaration, digest = load_descent_view(descent_view)
                 descent_kw['descent_view'] = descent_view_config(declaration)
+                contact = contact_support_config(declaration)
+                if contact is not None:
+                    # Version 2: contact support (it reads the pad calibration passed below as calibration).
+                    descent_kw['contact_support'] = contact
                 self.descent_view_declaration = dict(path=str(descent_view), sha256=digest,
                                                      file_sha256=sha256(descent_view),
                                                      schema=declaration.get('schema'),
@@ -863,16 +867,28 @@ def commit_row(assistance):
 
 
 DESCENT_VIEW_COLUMNS = ('view_sink_bound','view_withheld','view_boost')
+# Contact support (descent-view declaration version 2): appended after the view columns when the pilot has it.
+CONTACT_COLUMNS = ('contact_unexplained','contact_gain','contact_fire')
+
+
+def descent_view_columns(assistance):
+    """The CSV columns --descent-view on adds: the view columns, then the contact-support columns when the pilot's
+    declaration has contact support (version 2)."""
+    return DESCENT_VIEW_COLUMNS+(CONTACT_COLUMNS if getattr(assistance,'contact_support',None) is not None else ())
 
 
 def descent_view_row(assistance):
-    """CSV values for DESCENT_VIEW_COLUMNS (written only with --descent-view on): the largest sink keeping the flight
-    path in view, the sink withheld from the pilot's own request, and 1 while the horizontal request was raised."""
+    """CSV values for descent_view_columns(assistance) (written only with --descent-view on): the largest sink keeping
+    the flight path in view, the sink withheld from the pilot's own request, 1 while the horizontal request was raised,
+    and with contact support the window's unexplained upward specific force, the thrust gain and 1 on a tick the rule
+    started a support climb."""
     log = getattr(assistance,'descent_view_log',None)
     if log is None:
         return (float('nan'),)*len(DESCENT_VIEW_COLUMNS)
     values = log()
-    return tuple(values[k] for k in DESCENT_VIEW_COLUMNS)
+    if getattr(assistance,'contact_support',None) is not None:
+        values = {**values, **assistance.contact_log()}
+    return tuple(values[k] for k in descent_view_columns(assistance))
 
 
 def clearance_row(assistance):
@@ -1052,7 +1068,7 @@ def run(args):
                                   wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'],
                                   vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
                                   descent_view=descent_view)
-    view_columns = DESCENT_VIEW_COLUMNS if controller.descent_view_declaration is not None else ()
+    view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,

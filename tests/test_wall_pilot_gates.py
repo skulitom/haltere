@@ -24,11 +24,26 @@ def arrays(n=300, dt=.01, **columns):
     return base
 
 
-def test_gates_declaration_is_frozen_and_names_this_trees_wall_pilot(tmp_path):
+def test_version_2_gates_are_frozen_and_name_wall_pilot_version_5():
     gates, digest = wg.load_gates()
-    assert gates['version'] == 1 and gates['frozen'] is True and digest == gates['sha256']
+    assert gates['version'] == 2 and gates['frozen'] is True and digest == gates['sha256']
     from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, load_wall_pilot
-    declaration, wall_digest = load_wall_pilot(WALL_PILOT_DECLARATION)
+    _, wall_digest = load_wall_pilot(WALL_PILOT_DECLARATION)
+    assert gates['wall_pilot'] == dict(file='configs/obstacles/wall_pilot.json', version=5, sha256=wall_digest)
+    g = gates['gates']
+    assert g['B_Horizontal']['max_increase_mps'] == .1 and g['B_Quiet']['max_withheld_s'] == 1.
+    assert g['B_R402']['flight'] == 'minus-fast6-r4-02' and set(g['B_Horizontal']['flights']) <= \
+        set(g['B_NoSink']['flights'])
+    assert gates['previous_versions'][0]['file'] == 'configs/obstacles/wall_pilot_gates_v1.json'
+
+
+def test_gates_declaration_is_frozen_and_names_this_trees_wall_pilot(tmp_path):
+    gates, digest = wg.load_gates(wg.GATES_PATH.with_name('wall_pilot_gates_v1.json'))
+    assert gates['version'] == 1 and gates['frozen'] is True and digest == gates['sha256']
+    # version 1 scores wall pilot version 4, kept beside the version-5 declaration
+    from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, lag_turn_declaration_sha256
+    declaration = json.loads(WALL_PILOT_DECLARATION.with_name('wall_pilot_v4.json').read_text(encoding='utf-8'))
+    wall_digest = lag_turn_declaration_sha256(declaration)
     assert gates['wall_pilot'] == dict(file='configs/obstacles/wall_pilot.json', version=4, sha256=wall_digest)
     g = gates['gates']
     assert g['W_B09']['lead_s'] == .5 and g['W_B09']['max_toward_mps'] == .1 and g['W_B09']['window_s'] == 1.5
