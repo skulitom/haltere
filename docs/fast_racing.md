@@ -12,6 +12,7 @@ brain's PD teacher contract; every part is opt-in.
 | Looming brake (experimental, off) | `--looming-brake` | Fly-style time-to-contact from image expansion around the focus of expansion, computed in the camera process with de-rotated optical flow. A graded time-to-contact policy slows along the looming ray and climbs when the expansion lies below the flight path (terrain). |
 | Lag-aware turns (experimental, off) | `--lag-turn [on\|off\|DECLARATION]` | For the first second after the in-view ring marker's centre bearing jumps (a flag clearance beside it does not count), the goal leads the bearing by a clipped share of the flown course error and the request heading turns faster (per motor contract, `configs/obstacles/lag_turn.json` version 2). With the gap cue, the lead is computed without the gap shift and the shift is added after it. |
 | Obstacle stack (experimental, off) | `--obstacle-stack on\|shadow` (needs `--looming-brake`), overrides `--gap-cue on\|off`, `--lag-turn on\|off`, `--wall-pilot on\|off` | Gap cue (frozen relative depth of the current frame -> free interval beside the ring -> a confirmed aim shift of up to 12 deg, no speed cap) plus lag-aware turns and the wall-pilot rules (at a wall with the checkpoint far off the heading, turn before translating; keep the looming terrain climb out of ceilings; `configs/obstacles/wall_pilot.json`) and the vertical guard (`--vertical-guard on\|off`: a time margin to the ground below the path, descent first, terrain climbs above 1 m/s only for rising ground, keep speed on contact; `configs/obstacles/vertical_guard.json`); `shadow` runs and logs the same processes without applying any of them. See [obstacle_gap_pilot.md](obstacle_gap_pilot.md) and [vertical_guard.md](vertical_guard.md). |
+| View-keeping descent (experimental, off) | `--descent-view on\|off\|DECLARATION` (fast pilot) | Bounds the pilot's own sink so the flight path stays 3 deg inside the camera's lower image edge at the measured attitude, keeps speed for bottom-clipped rings (no half-speed brake, descent-path governor floor 0.75), raises speed rather than lowering it when the view limits the sink, starts descents at 2.5 m/s², and steepens beyond the view only for rings that stay clipped below (after 0.75 s). `configs/pilot/descent_view.json` version 1; not flown. See [descent_view.md](descent_view.md). |
 
 Nothing in the stack reads course files, routes or per-course parameters. The
 checkpoint ring is a disclosed generic Liftoff race cue; it gives a bearing, not
@@ -47,7 +48,12 @@ evidence.
 flies the pilot and fast PD through synthetic courses in the surrogate with
 camera latency, dropout and command delay. It found every pilot bug fixed before
 the first live flight, but it has flat ground, no obstacles and an assumed HUD
-clamp rule, so it cannot predict terrain or obstacle failures.
+clamp rule, so it cannot predict terrain or obstacle failures. An optional
+scoring-only terrain model (`terrain=CourseTerrain(...)`; hills under descending
+legs, ground contacts, clearance, time with the path below the image, high
+checkpoint passes; the drone flies through it) and a batched version for fast
+brains (`haltere.liftoff.descent_rehearsal`) were added for the
+[view-keeping descent](descent_view.md); without terrain nothing changes.
 
 ## Brain contract without scene currents
 

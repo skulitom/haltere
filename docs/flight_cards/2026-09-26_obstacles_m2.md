@@ -125,3 +125,34 @@ Next: gap cue side commitment near an obstacle (pillar C); turn-first for side-c
 rings at a wall at governor caps up to ~3.5 m/s; smoother brain-09 (chatter); keep
 descents inside the camera's view on Straw Bale (fly the downhill with the nose down
 and speed kept, as the user suggested).
+
+## Round 4 (not flown): view-keeping descent for the Straw Bale downhill
+
+Branch `m4-descent` answers the user's request to touch the Straw Bale hill less: keep
+throttle up and pitch forward instead of dropping. See [descent_view.md](../descent_view.md).
+
+- **Diagnosis** of straw-brain08-04/-06/-01. All 10 contacts came after bottom-clip brakes
+  to half speed. The brakes lifted the nose 10-20 degrees and the lower image edge with it.
+  The pilot then asked for 16-30 degree descents at 3 m/s into a hill of about 12 degrees,
+  and the path pointed below the image 70-79% of the last 3 s. During contact the
+  descent-path governor cut the speed to 0.35-0.53x. The rings lay only 5-10 degrees down.
+- **Rule** (`--descent-view`, `configs/pilot/descent_view.json` v1, off by default): keep the
+  requested path 3 degrees inside the lower image edge at the measured attitude, keep speed,
+  more speed rather than less, gentle sink onset, and steep only late for rings that stay
+  clipped below.
+- **Frozen surrogate gates** (held-out seeds, scoring-only hills): **failed for all three
+  motors.**
+  - Passed: no crash or finish changed.
+  - Contacts: down 50% (PD), 69% (brain-08) and 38% (brain-09b) against 75%; contact time
+    down 65-84%.
+  - The path stayed below the image for 36-53% of the descent time.
+  - Passes more than 1.5 m above a checkpoint rose from 1-3 to 13-24.
+  - The brains do not fly 6 m/s descents (brain-08 keeps about 3 m/s and sinks less than
+    asked).
+- **Open-loop replay** of the Straw downhill: the rule's request points into the image before
+  all 10 contacts, against 58-83% below with the default pilot. Development evidence only.
+- **Default pilot**: bit-identical to `935cfdb` (52/52 replayed command arrays, golden-digest
+  test).
+
+Next: distil a brain under this pilot (6 m/s in-view descents), or fly the fast PD on Straw
+Bale with `--descent-view on` as a disclosed development test.
