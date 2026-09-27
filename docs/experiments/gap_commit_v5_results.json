@@ -1,0 +1,2317 @@
+{
+ "schema": "haltere.obstacles.gap_commit_results.v1",
+ "scored_at": "2026-09-27T02:07:56",
+ "gates_sha256": "e520b64ed3cbed7b80a8adcdfcd57d263280ed8e2b9bf63f7b10bd237924c03e",
+ "gates_version": 3,
+ "candidate": {
+  "path": "configs/obstacles/gap_pilot.json",
+  "version": 5,
+  "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+ },
+ "current": {
+  "path": "configs/obstacles/gap_pilot_v2.json",
+  "version": 2,
+  "sha256": "67ec1f140a312256f205bbe444268fabb5d023df70cec9e5591d61876f08c7d6"
+ },
+ "C_pillar_c": {
+  "rows": {
+   "current": {
+    "window": [
+     20.7,
+     23.438
+    ],
+    "left_applied_ticks": 103,
+    "max_left_applied_deg": 6.0,
+    "first_right_t": 23.048,
+    "lead_s": 0.39,
+    "held": false,
+    "non_decreasing": false,
+    "min_abs_target_after": 0.0,
+    "applied_at_impact": -10.68,
+    "zero_target_ticks": 3,
+    "left_target_ticks": 0
+   },
+   "candidate": {
+    "window": [
+     20.7,
+     23.438
+    ],
+    "left_applied_ticks": 0,
+    "max_left_applied_deg": 0.0,
+    "first_right_t": 22.448,
+    "lead_s": 0.99,
+    "held": true,
+    "non_decreasing": true,
+    "min_abs_target_after": 3.24,
+    "applied_at_impact": -12.0,
+    "zero_target_ticks": 0,
+    "left_target_ticks": 0
+   }
+  },
+  "checks": {
+   "no_left": true,
+   "early": true,
+   "held": true,
+   "non_decreasing": true
+  },
+  "passed": true,
+  "stop_reason": "Impact detected from flight motion",
+  "report_only": {
+   "ring_xy_hindsight": [
+    79.609,
+    40.565
+   ],
+   "response_model_crossing": {
+    "current": {
+     "21.5": {
+      "x_at_face": 79.404,
+      "clearance_m": 0.854,
+      "t_to_face": 2.29
+     },
+     "22.0": {
+      "x_at_face": 78.912,
+      "clearance_m": 0.362,
+      "t_to_face": 1.645
+     }
+    },
+    "candidate": {
+     "21.5": {
+      "x_at_face": 79.919,
+      "clearance_m": 1.369,
+      "t_to_face": 2.29
+     },
+     "22.0": {
+      "x_at_face": 79.377,
+      "clearance_m": 0.827,
+      "t_to_face": 1.655
+     }
+    }
+   }
+  }
+ },
+ "A_pillar_a": {
+  "approaches": {
+   "minus-brain03-01": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 277,
+     "first_left_d_m": 4.329,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.3284,
+     "closest_d_m": 0.61
+    },
+    "candidate": {
+     "region_ticks": 277,
+     "first_left_d_m": 4.329,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7164,
+     "closest_d_m": 0.61
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain04-02": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 272,
+     "first_left_d_m": 5.286,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.4863,
+     "closest_d_m": 0.71
+    },
+    "candidate": {
+     "region_ticks": 272,
+     "first_left_d_m": 5.286,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7877,
+     "closest_d_m": 0.71
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain05-01": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 325,
+     "first_left_d_m": 5.213,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.3708,
+     "closest_d_m": 0.25
+    },
+    "candidate": {
+     "region_ticks": 325,
+     "first_left_d_m": 5.213,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.4551,
+     "closest_d_m": 0.25
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain06-01": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 293,
+     "first_left_d_m": 4.785,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.3448,
+     "closest_d_m": 0.56
+    },
+    "candidate": {
+     "region_ticks": 293,
+     "first_left_d_m": 4.785,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7793,
+     "closest_d_m": 0.56
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-fast6-01": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 225,
+     "first_left_d_m": 3.966,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7746,
+     "closest_d_m": 0.78
+    },
+    "candidate": {
+     "region_ticks": 225,
+     "first_left_d_m": 3.966,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 1.0,
+     "closest_d_m": 0.78
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store123-03-minus-pd": {
+    "source": "offline",
+    "role": "G2 run",
+    "current": {
+     "region_ticks": 542,
+     "first_left_d_m": 5.187,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.2444,
+     "closest_d_m": 0.71
+    },
+    "candidate": {
+     "region_ticks": 542,
+     "first_left_d_m": 5.187,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7822,
+     "closest_d_m": 0.71
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store124-04-minus-brain": {
+    "source": "offline",
+    "role": "other store run",
+    "current": {
+     "region_ticks": 645,
+     "first_left_d_m": 5.894,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.2973,
+     "closest_d_m": 0.91
+    },
+    "candidate": {
+     "region_ticks": 645,
+     "first_left_d_m": 5.894,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7061,
+     "closest_d_m": 0.91
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store125-motor-comparison-minus-brain": {
+    "source": "offline",
+    "role": "other store run",
+    "current": {
+     "region_ticks": 805,
+     "first_left_d_m": null,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": null,
+     "closest_d_m": 0.73
+    },
+    "candidate": {
+     "region_ticks": 805,
+     "first_left_d_m": null,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": null,
+     "closest_d_m": 0.73
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store126-motor-comparison-minus-pd": {
+    "source": "offline",
+    "role": "other store run",
+    "current": {
+     "region_ticks": 828,
+     "first_left_d_m": null,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": null,
+     "closest_d_m": 0.73
+    },
+    "candidate": {
+     "region_ticks": 828,
+     "first_left_d_m": null,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": null,
+     "closest_d_m": 0.73
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store127-motor10-transfer-minus": {
+    "source": "offline",
+    "role": "G2 run",
+    "current": {
+     "region_ticks": 464,
+     "first_left_d_m": 5.369,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.5584,
+     "closest_d_m": 0.55
+    },
+    "candidate": {
+     "region_ticks": 464,
+     "first_left_d_m": 5.369,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 1.0,
+     "closest_d_m": 0.55
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store128-motor10-visual-full-minus": {
+    "source": "offline",
+    "role": "other store run",
+    "current": {
+     "region_ticks": 651,
+     "first_left_d_m": 5.953,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.3903,
+     "closest_d_m": 0.98
+    },
+    "candidate": {
+     "region_ticks": 651,
+     "first_left_d_m": 5.953,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7097,
+     "closest_d_m": 0.98
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store129-race-completion-minus-cue-01": {
+    "source": "offline",
+    "role": "other store run",
+    "current": {
+     "region_ticks": 2379,
+     "first_left_d_m": 5.088,
+     "right_ticks": 33,
+     "right_d_m": [
+      7.56,
+      7.5,
+      7.43,
+      7.32,
+      7.26,
+      7.19,
+      7.72,
+      7.65,
+      7.58
+     ],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.2298,
+     "closest_d_m": 0.69
+    },
+    "candidate": {
+     "region_ticks": 2379,
+     "first_left_d_m": 5.088,
+     "right_ticks": 33,
+     "right_d_m": [
+      7.56,
+      7.5,
+      7.43,
+      7.32,
+      7.26,
+      7.19,
+      7.72,
+      7.65,
+      7.58
+     ],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.3817,
+     "closest_d_m": 0.69
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain07-01": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 291,
+     "first_left_d_m": 4.926,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.3245,
+     "closest_d_m": 0.77
+    },
+    "candidate": {
+     "region_ticks": 291,
+     "first_left_d_m": 4.926,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7947,
+     "closest_d_m": 0.77
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain08-01": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 272,
+     "first_left_d_m": 6.421,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.6852,
+     "closest_d_m": 0.5
+    },
+    "candidate": {
+     "region_ticks": 272,
+     "first_left_d_m": 6.421,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7778,
+     "closest_d_m": 0.5
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-fast6-cur-01": {
+    "source": "offline",
+    "role": "G1 gated",
+    "current": {
+     "region_ticks": 274,
+     "first_left_d_m": 5.945,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.6369,
+     "closest_d_m": 0.51
+    },
+    "candidate": {
+     "region_ticks": 274,
+     "first_left_d_m": 5.945,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.828,
+     "closest_d_m": 0.51
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain08-slow35-01": {
+    "source": "offline",
+    "role": "G1 reported",
+    "current": {
+     "region_ticks": 333,
+     "first_left_d_m": 2.447,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.4673,
+     "closest_d_m": 0.55
+    },
+    "candidate": {
+     "region_ticks": 333,
+     "first_left_d_m": 2.447,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.4673,
+     "closest_d_m": 0.55
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain08-loom-01": {
+    "source": "offline",
+    "role": "G1 reported",
+    "current": {
+     "region_ticks": 271,
+     "first_left_d_m": 4.764,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.5746,
+     "closest_d_m": 0.67
+    },
+    "candidate": {
+     "region_ticks": 271,
+     "first_left_d_m": 4.764,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7313,
+     "closest_d_m": 0.67
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain08-gapshadow-01": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 221,
+     "first_left_d_m": 6.04,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.981,
+     "closest_d_m": 0.21
+    },
+    "candidate": {
+     "region_ticks": 221,
+     "first_left_d_m": 6.04,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 1.0,
+     "closest_d_m": 0.21
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain08-gapon-01": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 227,
+     "first_left_d_m": 6.14,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.8319,
+     "closest_d_m": 0.63
+    },
+    "candidate": {
+     "region_ticks": 227,
+     "first_left_d_m": 6.14,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 1.0,
+     "closest_d_m": 0.63
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain08-gapon-02": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 226,
+     "first_left_d_m": 6.286,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7699,
+     "closest_d_m": 0.71
+    },
+    "candidate": {
+     "region_ticks": 226,
+     "first_left_d_m": 6.286,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 1.0,
+     "closest_d_m": 0.71
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-fast6-gapon-01": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 263,
+     "first_left_d_m": 6.106,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7099,
+     "closest_d_m": 1.15
+    },
+    "candidate": {
+     "region_ticks": 263,
+     "first_left_d_m": 6.106,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.9008,
+     "closest_d_m": 1.15
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-fast6-wall-01": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 274,
+     "first_left_d_m": 4.48,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.5979,
+     "closest_d_m": 1.02
+    },
+    "candidate": {
+     "region_ticks": 274,
+     "first_left_d_m": 4.48,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.4742,
+     "closest_d_m": 1.02
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain08-vg-01": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 226,
+     "first_left_d_m": 5.65,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.8571,
+     "closest_d_m": 0.54
+    },
+    "candidate": {
+     "region_ticks": 226,
+     "first_left_d_m": 5.65,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 1.0,
+     "closest_d_m": 0.54
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-brain09b-vg-01": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 376,
+     "first_left_d_m": 4.709,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.375,
+     "closest_d_m": 1.63
+    },
+    "candidate": {
+     "region_ticks": 376,
+     "first_left_d_m": 4.709,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.375,
+     "closest_d_m": 1.63
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "minus-fast6-vg-02": {
+    "source": "live",
+    "role": "stack flight (live samples)",
+    "current": {
+     "region_ticks": 266,
+     "first_left_d_m": 5.899,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.5615,
+     "closest_d_m": 1.2
+    },
+    "candidate": {
+     "region_ticks": 266,
+     "first_left_d_m": 5.899,
+     "right_ticks": 0,
+     "right_d_m": [],
+     "aim_into_pillar_ticks": 0,
+     "left_share_after_first": 0.7692,
+     "closest_d_m": 1.2
+    },
+    "checks": {
+     "first_left": true,
+     "right": true,
+     "into": true
+    },
+    "passed": true
+   }
+  },
+  "passing": 25,
+  "total": 25,
+  "passed": true
+ },
+ "B_pillar_b": {
+  "runs": {
+   "store123-03-minus-pd": {
+    "current": {
+     "first_minus_x_tti_s": 1.251,
+     "plus_x_ticks_before": 0,
+     "passes": true
+    },
+    "candidate": {
+     "first_minus_x_tti_s": 1.251,
+     "plus_x_ticks_before": 0,
+     "passes": true
+    }
+   },
+   "store127-motor10-transfer-minus": {
+    "current": {
+     "first_minus_x_tti_s": 0.952,
+     "plus_x_ticks_before": 0,
+     "passes": false
+    },
+    "candidate": {
+     "first_minus_x_tti_s": 0.952,
+     "plus_x_ticks_before": 0,
+     "passes": false
+    }
+   }
+  },
+  "passed": false
+ },
+ "P_pillar_c_passes": {
+  "runs": {
+   "minus-fast6-01": {
+    "current": {
+     "region_ticks": 177,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 177,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store123-03-minus-pd": {
+    "current": {
+     "region_ticks": 418,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 418,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store124-04-minus-brain": {
+    "current": {
+     "region_ticks": 444,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 444,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store125-motor-comparison-minus-brain": {
+    "current": {
+     "region_ticks": 647,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 647,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store126-motor-comparison-minus-pd": {
+    "current": {
+     "region_ticks": 521,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 521,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store127-motor10-transfer-minus": {
+    "current": {
+     "region_ticks": 369,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 369,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store128-motor10-visual-full-minus": {
+    "current": {
+     "region_ticks": 438,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 438,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   },
+   "store129-race-completion-minus-cue-01": {
+    "current": {
+     "region_ticks": 1745,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "candidate": {
+     "region_ticks": 1745,
+     "left_ticks": 0,
+     "right_ticks": 0,
+     "aim_into_pillar_ticks": 0,
+     "max_left_deg": 0.0
+    },
+    "checks": {
+     "left": true,
+     "into": true
+    },
+    "passed": true
+   }
+  },
+  "passed": true
+ },
+ "S_straw": {
+  "laps": {
+   "straw-brain08-04": {
+    "current": {
+     "minutes": 5.401,
+     "episodes": 47,
+     "episodes_per_min": 8.702,
+     "engaged_share": 0.0322,
+     "applied_p90": 8.5,
+     "switches": 31,
+     "switches_ok": 31,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.2,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.4,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.27,
+      0.0,
+      0.0
+     ]
+    },
+    "candidate": {
+     "minutes": 5.401,
+     "episodes": 33,
+     "episodes_per_min": 6.11,
+     "engaged_share": 0.0621,
+     "applied_p90": 12.0,
+     "switches": 31,
+     "switches_ok": 29,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.2,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      12.0,
+      0.0,
+      1.4,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      11.67,
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "straw-brain08-06": {
+    "current": {
+     "minutes": 5.399,
+     "episodes": 39,
+     "episodes_per_min": 7.223,
+     "engaged_share": 0.0341,
+     "applied_p90": 9.5,
+     "switches": 28,
+     "switches_ok": 28,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.33,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    "candidate": {
+     "minutes": 5.399,
+     "episodes": 30,
+     "episodes_per_min": 5.557,
+     "engaged_share": 0.0617,
+     "applied_p90": 12.0,
+     "switches": 28,
+     "switches_ok": 26,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      3.33,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      12.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      4.5,
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "straw-brain07-02": {
+    "current": {
+     "minutes": 5.888,
+     "episodes": 59,
+     "episodes_per_min": 10.02,
+     "engaged_share": 0.0393,
+     "applied_p90": 6.4,
+     "switches": 31,
+     "switches_ok": 31,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.27,
+      2.67,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      2.67,
+      0.0,
+      0.4,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      2.1,
+      0.0,
+      0.4
+     ]
+    },
+    "candidate": {
+     "minutes": 5.888,
+     "episodes": 54,
+     "episodes_per_min": 9.171,
+     "engaged_share": 0.0561,
+     "applied_p90": 9.5,
+     "switches": 31,
+     "switches_ok": 30,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      2.5,
+      10.91,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      2.0,
+      0.0,
+      0.4,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      3.0,
+      0.0,
+      0.4
+     ]
+    }
+   },
+   "straw-brain07-03": {
+    "current": {
+     "minutes": 5.872,
+     "episodes": 55,
+     "episodes_per_min": 9.366,
+     "engaged_share": 0.0379,
+     "applied_p90": 8.12,
+     "switches": 30,
+     "switches_ok": 30,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.75,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.73,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.04
+     ]
+    },
+    "candidate": {
+     "minutes": 5.872,
+     "episodes": 51,
+     "episodes_per_min": 8.685,
+     "engaged_share": 0.0488,
+     "applied_p90": 9.5,
+     "switches": 30,
+     "switches_ok": 30,
+     "switch_worst_deg": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.75,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.73,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      1.04
+     ]
+    }
+   }
+  },
+  "total": {
+   "current": {
+    "minutes": 22.560000000000002,
+    "episodes": 200,
+    "switches": 120,
+    "switches_ok": 120,
+    "episodes_per_min": 8.865,
+    "switch_ok_fraction": 1.0,
+    "applied_p90": 8.23
+   },
+   "candidate": {
+    "minutes": 22.560000000000002,
+    "episodes": 168,
+    "switches": 120,
+    "switches_ok": 115,
+    "episodes_per_min": 7.447,
+    "switch_ok_fraction": 0.9583,
+    "applied_p90": 12.0
+   }
+  },
+  "checks": {
+   "episodes": true,
+   "switches": true
+  },
+  "passed": true,
+  "cue_level_g3_note": "the per-frame cue and its own two-frame confirmation are unchanged: G3 of configs/obstacles/gap_cue_gates.json stays 9.3 episodes/min (FAIL against 6; docs/gap_cue.md)"
+ },
+ "L_leaks": {
+  "checks": {
+   "cue_config_unchanged": true,
+   "g4_rescored_identical": true
+  },
+  "passed": true,
+  "g4_teacher": {
+   "ring_painted": {
+    "n": 1723,
+    "within_fraction": 0.9594,
+    "dshift_p95": 0.69,
+    "dshift_max": 12.42
+   },
+   "ring_removed": {
+    "n": 1723,
+    "within_fraction": 0.9478,
+    "dshift_p95": 1.09,
+    "dshift_max": 24.0
+   },
+   "hud_only": {
+    "frames": 17580,
+    "frames_with_near_column": 0
+   },
+   "per_flight": {
+    "minus-brain07-01": {
+     "ring_painted": {
+      "n": 15,
+      "within": 1.0
+     },
+     "ring_removed": {
+      "n": 15,
+      "within": 1.0
+     }
+    },
+    "minus-brain08-01": {
+     "ring_painted": {
+      "n": 17,
+      "within": 1.0
+     },
+     "ring_removed": {
+      "n": 17,
+      "within": 0.9412
+     }
+    },
+    "minus-fast6-cur-01": {
+     "ring_painted": {
+      "n": 17,
+      "within": 0.8824
+     },
+     "ring_removed": {
+      "n": 17,
+      "within": 0.8824
+     }
+    },
+    "minus-brain08-slow35-01": {
+     "ring_painted": {
+      "n": 13,
+      "within": 1.0
+     },
+     "ring_removed": {
+      "n": 13,
+      "within": 1.0
+     }
+    },
+    "minus-brain08-loom-01": {
+     "ring_painted": {
+      "n": 13,
+      "within": 1.0
+     },
+     "ring_removed": {
+      "n": 13,
+      "within": 1.0
+     }
+    },
+    "pine-brain08-loom-01": {
+     "ring_painted": {
+      "n": 8,
+      "within": 1.0
+     },
+     "ring_removed": {
+      "n": 8,
+      "within": 1.0
+     }
+    },
+    "straw-brain08-04": {
+     "ring_painted": {
+      "n": 409,
+      "within": 0.9731
+     },
+     "ring_removed": {
+      "n": 409,
+      "within": 0.956
+     }
+    },
+    "straw-brain08-06": {
+     "ring_painted": {
+      "n": 358,
+      "within": 0.9581
+     },
+     "ring_removed": {
+      "n": 358,
+      "within": 0.9413
+     }
+    },
+    "straw-brain07-02": {
+     "ring_painted": {
+      "n": 443,
+      "within": 0.9549
+     },
+     "ring_removed": {
+      "n": 443,
+      "within": 0.9436
+     }
+    },
+    "straw-brain07-03": {
+     "ring_painted": {
+      "n": 430,
+      "within": 0.9488
+     },
+     "ring_removed": {
+      "n": 430,
+      "within": 0.9465
+     }
+    }
+   },
+   "passes": false
+  }
+ },
+ "O_identity": {
+  "pairs": [
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "none-woff-voff",
+    "against": "BASE:none-woff-voff",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "on-won-von-gpgap_pilot_v2-nop",
+    "against": "BASE:on-won-von",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true,
+     "gap_target": true,
+     "gap_applied": true,
+     "gap_offset": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "BASE:shadow-wshadow-vshadow",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "shadow-wshadow-vshadow-gpgap_pilot-nop",
+    "against": "shadow-wshadow-vshadow-gpgap_pilot_v2-nop",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   }
+  ],
+  "passed": true
+ },
+ "verdict": {
+  "C_pillar_c": true,
+  "A_pillar_a": true,
+  "B_pillar_b": false,
+  "P_pillar_c_passes": true,
+  "S_straw": true,
+  "L_leaks": true,
+  "O_identity": true
+ },
+ "report_only": {
+  "pine_trunk": {
+   "pine-brain08-loom-01": {
+    "current": {
+     "first_target_tti_s": 0.569,
+     "sides": [
+      "right"
+     ],
+     "applied_at_impact": -6.12,
+     "counts": {
+      "samples": 84,
+      "stale": 0,
+      "repeated": 0,
+      "obstacle_votes": 7,
+      "terrain_votes": 0,
+      "obstacle_episodes": 2,
+      "terrain_episodes": 0,
+      "latch_blocks": 0,
+      "ring_conflicts": 0,
+      "flag_conflicts": 0
+     }
+    },
+    "candidate": {
+     "first_target_tti_s": 0.569,
+     "sides": [
+      "right"
+     ],
+     "applied_at_impact": -10.24,
+     "counts": {
+      "samples": 84,
+      "stale": 0,
+      "repeated": 0,
+      "obstacle_votes": 7,
+      "terrain_votes": 0,
+      "obstacle_episodes": 1,
+      "terrain_episodes": 0,
+      "latch_blocks": 0,
+      "ring_conflicts": 0,
+      "flag_conflicts": 0,
+      "commits": 1,
+      "commit_switches": 0,
+      "commit_blocks": 0,
+      "commit_hold_releases": 1,
+      "commit_max_releases": 0,
+      "commit_conflict_releases": 0,
+      "terrain_yields": 0
+     }
+    }
+   }
+  }
+ }
+}
