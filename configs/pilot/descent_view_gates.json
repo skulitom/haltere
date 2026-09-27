@@ -1,0 +1,86 @@
+{
+ "schema": "haltere.liftoff.descent_view_gates.v1",
+ "version": 1,
+ "note": "Offline gates of the view-keeping descent (configs/pilot/descent_view.json version 1), scored in the measured-drone surrogate with scoring-only hills (haltere.liftoff.descent_rehearsal, haltere.liftoff.descent_gates). The thresholds are the task's (2026-09-27 round 4); the definitions below make them computable and were frozen with the rule version, after its design on the development seeds and before any run of the gate seeds. Every gate compares the rule with the baseline (the current pilot: the default fast race-cue pilot of m2-vertical 935cfdb, which is this tree's pilot with the rule off) on the same seeds, courses, drones and surrogate. The surrogate is development evidence, never flight evidence: no Liftoff terrain, drag, contact physics or HUD rules. The hash covers everything except frozen/frozen_at/sha256; each gate is scored once per rule version and every version is reported.",
+ "descent_view": {
+  "file": "configs/pilot/descent_view.json",
+  "version": 1,
+  "sha256": "8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d",
+  "commit": "67d013b"
+ },
+ "baseline": "the default fast race-cue pilot (no descent-view declaration): bit-identical to m2-vertical 935cfdb (tests/test_fast_race_cue_descent_view.py::test_default_pilot_is_bit_identical_to_m2_vertical and the open-loop replay identity check)",
+ "surrogate": {
+  "loop": "haltere.train.fast_motor_tracking.rollout's closed loop (haltere.liftoff.descent_rehearsal.run_batch): IdentifiedSim with 10% per-drone randomisation, synthetic HUD marker (camera period 0.055 s, latency 0.06 s, 10% dropout), 3-tick command delay, quadratic drag 0.0075, 1 s arming hold, 3 m checkpoint radius",
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
+  "seconds": 150.0,
+  "sim_seed": 17,
+  "speed_mps": 6.0
+ },
+ "terrain": {
+  "model": "haltere.liftoff.fast_rehearsal.CourseTerrain with TerrainConfig defaults: a leg that descends >= 2 m gets a hill whose ground lies 1.2-2.5 m (seeded) below each of its checkpoints, a smoothstep between them after a flat crest over 0-30% of the leg and before a flat toe over 0-15%; it depends only on the distance along the leg, exists while that leg is flown and for 1 s after its lower checkpoint's pass; contacts are separated by 0.3 s above ground; scoring only (the drone flies through it)",
+  "viewable_slope_deg": 12.0
+ },
+ "controllers": {
+  "pd": {
+   "kind": "pd",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "use": "the fast PD (FastMotorPD); the checkpoint gives only the pad calibration and camera"
+  },
+  "brain08": {
+   "kind": "brain",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "use": "fast-brain-08 (released experimental weights), its own fast_motor_tracking contract"
+  },
+  "brain09b": {
+   "kind": "brain",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-09b-caps-r0001m100/candidate.pt",
+   "sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+   "use": "the brain-09b development candidate (not selected by its own gates; flown as a disclosed deviation)"
+  }
+ },
+ "course_sets": {
+  "gate": [
+   "flat:3000-3007",
+   "steep:3000-3007",
+   "hill:6000-6011"
+  ],
+  "terrain_gate": [
+   "steep:3000-3007",
+   "hill:6000-6011"
+  ],
+  "flat_gate": [
+   "flat:3000-3007"
+  ],
+  "dev": [
+   "hill:6100-6111",
+   "steep:5000-5007"
+  ],
+  "definitions": "flat = synthetic_course(seed) without terrain; steep = synthetic_course(seed, steep=0.4) (the fast-brain development gate's steep courses) with hills under its descending legs; hill = hill_course(seed) (climbs to a crest, then 1-3 descending legs of 6-30 deg) with hills. The dev seeds were used to design the rule and are not scored here"
+ },
+ "gates": {
+  "contacts_reduction_min": 0.75,
+  "below_view_max": 0.05,
+  "below_view_viewable_max": 0.05,
+  "high_passes_extra": 1,
+  "time_slower_max": 0.03,
+  "flat_change_max": 0.02
+ },
+ "definitions": {
+  "contacts_reduced": "per controller, over the terrain gate sets: total ground contacts with the rule <= (1 - 0.75) x the baseline's, and no course with a contact where the baseline had none",
+  "crashes_not_more": "per controller, over every gate set: surrogate crashes (flat ground at the launch height) with the rule <= the baseline's",
+  "finishes_not_fewer": "per controller, over every gate set: courses finished within 150 s with the rule >= the baseline's",
+  "path_below_view": "per controller, over the terrain gate sets: time with the velocity vector below the camera's lower image edge (exact projection at the true attitude) while descending (vz < -0.5 m/s, speed > 1.5 m/s), as a share of the descent time, <= 5%",
+  "path_below_view_viewable": "the same on the hill legs no steeper than 12 deg (mean slope), which a level camera can see down, <= 5%",
+  "high_passes": "per controller, over every gate set: checkpoint passes more than 1.5 m above the checkpoint centre with the rule <= the baseline's + 1",
+  "course_time": "per controller, over the terrain gate sets: the mean finish time over the courses both variants finish <= 1.03 x the baseline's",
+  "flat_unchanged": "per controller, on the flat gate set: the same finishes and crashes and the paired mean finish time within +-2% of the baseline's"
+ },
+ "reported_not_gated": "stick chatter (mean roll/pitch command change per tick), support-climb episodes, contact seconds, per-set summaries; the open-loop replay of the Straw Bale downhill of straw-brain08-04/-06 (haltere.obstacles.descent_replay: where the rule's request would have pointed relative to the image, at the recorded states)",
+ "scope": "measured surrogate (IdentifiedSim) on seeded synthetic courses with scoring-only hills; development evidence, not flight evidence",
+ "frozen": true,
+ "frozen_at": "2026-09-27T02:54:47",
+ "sha256": "d2b1e4bb312f1aa29f1fe2843d8b3bb55184ace6e6f0e1ed07ad49eb6e41e030"
+}
