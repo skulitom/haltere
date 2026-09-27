@@ -123,6 +123,12 @@ Notes:
     throttle at the idle floor (a drive below 0.4, where the rule does not look).
   - `docs/experiments/contact_support_v1_floor_scenario.json`.
 
+- **Wiring.** A CPU check built the runner's controller as `run()` does, with no camera and no pad:
+  `--obstacle-stack on|shadow --descent-view on` for the fast PD, and `on` for brain-09b and fast-brain-10b.
+  Every case declared wall pilot 5 (sink floor applied only with `on`) and descent view 2 (contact
+  support, with the pad calibration), and wrote the six view and contact columns
+  (`docs/experiments/round4b_contact_wiring.json`).
+
 ### Risks of version 2 for live flight
 
 - **It has not flown.** The gates are open-loop replays, synthetic states and a surrogate without
