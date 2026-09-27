@@ -94,6 +94,33 @@ def load_vertical_guard(path=VERTICAL_GUARD_DECLARATION):
     return declaration, digest
 
 
+# Declared view-keeping descent of the fast pilot (--descent-view on; off by default).
+DESCENT_VIEW_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'descent_view.json'
+
+
+def load_descent_view(path=DESCENT_VIEW_DECLARATION):
+    """A frozen descent-view declaration and its content hash (same canonical hash as the lag-turn declaration);
+    refuses an unfrozen or edited file and another rule version than FastRaceCue implements
+    (fast_race_cue.DESCENT_VIEW_VERSION)."""
+    from .fast_race_cue import DESCENT_VIEW_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen descent-view declaration, or it changed after the freeze')
+    if declaration.get('version') != DESCENT_VIEW_VERSION:
+        raise ValueError(f'{path} declares descent-view rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {DESCENT_VIEW_VERSION}')
+    return declaration, digest
+
+
+def resolve_descent_view(args):
+    """The descent-view declaration path of --descent-view (on: the default declaration; off/absent: None)."""
+    flag = getattr(args,'descent_view',None)
+    if flag in (None,'off'):
+        return None
+    return str(DESCENT_VIEW_DECLARATION) if flag == 'on' else str(flag)
+
+
 CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
 
 
@@ -273,7 +300,7 @@ class VisualController:
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
-                 vertical_guard=None, vertical_apply=True):
+                 vertical_guard=None, vertical_apply=True, descent_view=None):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -284,6 +311,8 @@ class VisualController:
             raise ValueError('The wall-pilot rules are part of the fast pilot profile')
         if vertical_guard and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The vertical guard is part of the fast pilot profile')
+        if descent_view and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The view-keeping descent is part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -358,6 +387,7 @@ class VisualController:
         self.lag_turn_declaration = None
         self.wall_pilot_declaration = None
         self.vertical_guard_declaration = None
+        self.descent_view_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -411,6 +441,16 @@ class VisualController:
                                                        file_sha256=sha256(vertical_guard),
                                                        schema=declaration.get('schema'),
                                                        version=declaration.get('version'), applied=bool(vertical_apply))
+            descent_kw = {}
+            if descent_view:
+                # Declared once for every motor contract and course; off by default.
+                from .fast_race_cue import descent_view_config
+                declaration, digest = load_descent_view(descent_view)
+                descent_kw['descent_view'] = descent_view_config(declaration)
+                self.descent_view_declaration = dict(path=str(descent_view), sha256=digest,
+                                                     file_sha256=sha256(descent_view),
+                                                     schema=declaration.get('schema'),
+                                                     version=declaration.get('version'), applied=True)
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -420,7 +460,7 @@ class VisualController:
                                           lag_turn=lag_turn_config, lag_turn_apply=lag_turn_apply,
                                           gap_aim=gap_pilot, gap_apply=gap_apply, wall_apply=wall_apply,
                                           vertical_guard=vertical_config, vertical_apply=vertical_apply,
-                                          **wall_configs)
+                                          **wall_configs, **descent_kw)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
             reference = self.meta.get('motor_tracking',{}).get('nominal_speed_mps',2.)
@@ -805,6 +845,19 @@ def vertical_row(assistance):
     return tuple(values[k] for k in VERTICAL_COLUMNS)
 
 
+DESCENT_VIEW_COLUMNS = ('view_sink_bound','view_withheld','view_boost')
+
+
+def descent_view_row(assistance):
+    """CSV values for DESCENT_VIEW_COLUMNS (written only with --descent-view on): the largest sink keeping the flight
+    path in view, the sink withheld from the pilot's own request, and 1 while the horizontal request was raised."""
+    log = getattr(assistance,'descent_view_log',None)
+    if log is None:
+        return (float('nan'),)*len(DESCENT_VIEW_COLUMNS)
+    values = log()
+    return tuple(values[k] for k in DESCENT_VIEW_COLUMNS)
+
+
 def clearance_row(assistance):
     governor = getattr(assistance,'clearance',None)
     if governor is None:
@@ -956,6 +1009,7 @@ def run(args):
     if log_path.exists() or log_path.with_suffix('.json').exists() or (args.record and Path(args.record).exists()):
         raise FileExistsError('Use new log and video paths')
     stack = resolve_obstacle_stack(args)
+    descent_view = resolve_descent_view(args)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
         from .gap_aim import GapAimConfig
@@ -979,7 +1033,9 @@ def run(args):
                                   lag_turn=stack['lag_turn'],lag_turn_apply=stack['apply'],
                                   gap_pilot=gap_aim_config,gap_apply=stack['apply'],
                                   wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'],
-                                  vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'])
+                                  vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
+                                  descent_view=descent_view)
+    view_columns = DESCENT_VIEW_COLUMNS if controller.descent_view_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1111,7 +1167,7 @@ def run(args):
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
-                                 *VERTICAL_COLUMNS])
+                                 *VERTICAL_COLUMNS,*view_columns])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1224,7 +1280,8 @@ def run(args):
                                  getattr(controller.assistance,'lag_turn_lead_deg',float('nan')),
                                  *gap_row(gap,controller.assistance,now),*stage_row(camera.stages),
                                  *wall_row(controller.assistance),
-                                 *vertical_row(controller.assistance)])
+                                 *vertical_row(controller.assistance),
+                                 *(descent_view_row(controller.assistance) if view_columns else ())])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1296,6 +1353,8 @@ def run(args):
             pilot_meta['wall_pilot_declaration'] = controller.wall_pilot_declaration
         if controller.vertical_guard_declaration is not None:
             pilot_meta['vertical_guard_declaration'] = controller.vertical_guard_declaration
+        if controller.descent_view_declaration is not None:
+            pilot_meta['descent_view_declaration'] = controller.descent_view_declaration
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
@@ -1459,6 +1518,12 @@ def main():
                    help='Component override inside --obstacle-stack (default on): keep a time margin to the ground '
                         'below the path, stop a descent before any terrain climb, and climb hard only for rising '
                         'ground (configs/obstacles/vertical_guard.json)')
+    p.add_argument('--descent-view',default=None,metavar='on|off|DECLARATION',
+                   help='EXPERIMENTAL view-keeping descent of the fast pilot (off by default): bound the sink so the '
+                        'flight path stays inside the lower field of view of the camera at the measured attitude, '
+                        'keep speed for bottom-clipped rings, more speed rather than less for a steeper path, gentle '
+                        'sink onset, steep only late for rings that stay clipped below (on: '
+                        'configs/pilot/descent_view.json; recorded in the flight-log metadata)')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

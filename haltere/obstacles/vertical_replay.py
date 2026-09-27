@@ -78,8 +78,9 @@ def variant_tag(stack, wall, vertical, stream):
     return f'{stack}-w{walls}-v{vertical}'+('-stream' if stream else '')
 
 
-def build(side, tree, stack='flown', wall='off', vertical=None):
-    """The FastRaceCue variant for a flight's sidecar and its description."""
+def build(side, tree, stack='flown', wall='off', vertical=None, descent_view=None):
+    """The FastRaceCue variant for a flight's sidecar and its description (``descent_view``: an optional
+    DescentViewConfig added to any variant)."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -105,22 +106,26 @@ def build(side, tree, stack='flown', wall='off', vertical=None):
         kw['vertical_apply'] = verticals == 'on' and applied
     if not applied:
         kw.update(lag_turn_apply=False, gap_apply=False)
+    if descent_view is not None:
+        kw['descent_view'] = descent_view
     pa = side['pilot_assistance']
     speed = float(pa.get('nominal_speed_mps') or 6.)
     reference = float(pa.get('trained_motor_reference_mps') or speed)
     yaw_curve = tuple(pa.get('yaw_curve') or frc.DEFAULT_YAW_CURVE)
     pilot = frc.FastRaceCue(side['gate_sensor'], CameraPoseHistory(), speed, reference_speed=reference,
                             yaw_curve=yaw_curve, calibration=CALIBRATION, **kw)
-    return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals)
+    return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
+                       descent_view=descent_view is not None)
 
 
-def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None):
+def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
+           descent_view=None):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
     side = json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
-    pilot, info = build(side, tree, stack, wall, vertical)
+    pilot, info = build(side, tree, stack, wall, vertical, descent_view)
     history = pilot.pose_history
     d = pd.read_csv(Path(runs)/f'{flight}.csv', low_memory=False)
     have_gap = 'gap_age' in d and getattr(pilot, 'gap_aim', None) is not None
@@ -136,6 +141,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
             'log_cvz', 'log_state', 'log_climb', 'cap', 'climb', 'descent_scale', 'support_since',
             'slope_support_since', 'new_sample', 'ttc', 'below', 'lower', 'vertical_pilot', 'vertical_target',
             'vertical_factor', 'vertical_arrest', 'vertical_stage', 'vertical_climb')
+    if descent_view is not None:
+        keys += ('view_sink_bound', 'view_withheld', 'view_boost')
     rows = {k: [] for k in keys}
     last_ts = None
     nan = float('nan')
@@ -194,6 +201,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                       lower=nan if clearance is None or clearance['ttc_lower'] is None else clearance['ttc_lower'])
         if has_vertical:
             values.update(pilot.vertical_log())
+        if descent_view is not None:
+            values.update(pilot.descent_view_log())
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}
