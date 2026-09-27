@@ -1,18 +1,20 @@
 {
  "schema": "haltere.obstacles.vertical_guard_gates.v1",
- "version": 2,
- "note": "Offline gates of the vertical guard (configs/obstacles/vertical_guard.json version 1), scored by open-loop replays of logged flights through FastRaceCue (haltere/obstacles/vertical_replay.py). The thresholds are the task's; the definitions below make them computable and were fixed with the guard version they score, before any replay of the guard. The replays are open loop: the recorded motion does not respond to the replayed requests, so a gate shows the request a variant would have made at the recorded states, not a flight. Every flight named here was inspected while the guard was designed (development evidence, not held out). Each gate is scored once per guard version and every version is reported. The hash covers everything except frozen/frozen_at/sha256.",
+ "version": 3,
+ "note": "Offline gates of the vertical guard (configs/obstacles/vertical_guard.json version 3), scored by open-loop replays of logged flights through FastRaceCue (haltere/obstacles/vertical_replay.py). The replays are open loop: the recorded motion does not respond to the replayed requests, so a gate shows the request a variant would have made at the recorded states, not a flight. Every flight named here is development evidence (the flights of gates v2 were inspected while guards v1-v3 were designed; the other Straw Bale laps, the round-3 Minus Two flights and the Pine brain-08 flights were replayed through guard v2 before guard v3 was frozen, for its diagnosis). Version 3 was frozen with guard v3 before any replay of guard v3. Every gate of version 2 is kept below (old_definitions, scored and reported on the same replays); where a v2 gate was ill-posed or out of this guard's reach it is split or redefined here with the reason in change, never loosened silently. The hash covers everything except frozen/frozen_at/sha256.",
  "vertical_guard": {
   "file": "configs/obstacles/vertical_guard.json",
-  "version": 2,
-  "sha256": "e06b690d0d4f1a416695cffbf5900e0942df70138db57f7b9f7a8c113fee417f"
+  "version": 3,
+  "sha256": "b70e263ccdc549844490ca3e60381cecd781f6c2e040b32519805e4624727518"
  },
  "baseline_tree": {
-  "branch": "m2-hairpin",
-  "commit": "4083454f828eb7d2d56d5ae45bd0ef403b2a2d6c"
+  "branch": "m2-vertical",
+  "commit": "935cfdb4b6d712dc2b239838ce943a8c9ee596b9",
+  "guard_version": 2,
+  "note": "the previous guard (v2) and stack; Identity compares stack off and shadow with it"
  },
  "variants": {
-  "guard": "--stack on: the full obstacle stack declared for the flight's motor contract (gap aim, lag turn, wall-pilot rules v3 and the vertical guard v1, all applied)",
+  "guard": "--stack on: the full obstacle stack declared for the flight's motor contract (gap aim, lag turn, wall-pilot rules v3 and the vertical guard v3, all applied)",
   "control": "--stack on --vertical off: the same stack without the vertical guard (m2-hairpin's stack)",
   "logged_pilot": "--stack none without looming samples (the pilot as flown on the Straw Bale laps, which flew without looming; it reproduces the logged pilot states); used only to find the support-climb episodes and their contact times",
   "tolerance": 1e-09
@@ -23,21 +25,103 @@
    "minus-fast6-wall-01.csv": "c13ab87969783ec47d46ccb7740b544a5e052dd6f7cc4a677ba1a30a6748f028",
    "minus-brain08-gapon-01.csv": "2ec83772275e418212f55dd73d3913860313ffb1569ef24db611f8ff7e68230d",
    "minus-brain08-gapon-02.csv": "1d7563abbbd65f4990d585f28d2b0811a85e0df47f6a208f1ef26ec56e9a46bb",
-   "pine-fast6-ttc-01.csv": "352e86f09407d5c9ea2168771a693b6ef8603324e06af2185db31e25564ee3c4",
-   "straw-brain08-04.csv": "e08219b19e51fc622cfb82f34b0cc75d6b0c7d698bd5c1e3d71d204981b4b38f",
-   "straw-brain08-06.csv": "9498c64aa12b27dca82f7360819cb6cb4b33e165123f4540e17daddde886a7eb",
    "minus-fast6-gapon-01.csv": "fc29c96fc6b10170ad71f02037c4e94c6c58284bc1aa884218863a37b613aa43",
    "minus-brain08-loom-01.csv": "7639dba8e89caef0b2ece4cd29ea76f1eb016bd722773e6e4bb092d0a33db5ed",
-   "pine-brain08-loom-01.csv": "411051a32d0c1473f1f29709b99664631848499fb45f0d341171c00bdaaee19f"
+   "minus-brain08-gapshadow-01.csv": "3f8ae3efd8a0284d4220e34308056e58f9c4c09579aa72f6e096cfb7ba0a3e68",
+   "minus-fast6-vg-02.csv": "47f2049e0473f40f421705b94a2b9b312012e71def3240c5ed58d976c1307dc3",
+   "minus-brain08-vg-01.csv": "3522d568dd25f9411603e2b2e4f27e18bff8482b48b0be87979c950a02cfc0bc",
+   "minus-brain09b-vg-01.csv": "14a364a04134ee81972893c622c3e523c43a34a75b87bec455a7d146565945c0",
+   "pine-fast6-ttc-01.csv": "352e86f09407d5c9ea2168771a693b6ef8603324e06af2185db31e25564ee3c4",
+   "pine-brain08-loom-01.csv": "411051a32d0c1473f1f29709b99664631848499fb45f0d341171c00bdaaee19f",
+   "pine-brain08-01.csv": "e28627df086158dec95040d7f7c52016cde718c9529c853b22d6f5c3916cbb2e",
+   "straw-brain08-04.csv": "e08219b19e51fc622cfb82f34b0cc75d6b0c7d698bd5c1e3d71d204981b4b38f",
+   "straw-brain08-06.csv": "9498c64aa12b27dca82f7360819cb6cb4b33e165123f4540e17daddde886a7eb",
+   "straw-brain08-01.csv": "2e1c67091cb7d8195e36d87b79d1726b98706cb76791195b1e4e9479eadda58c",
+   "straw-brain08-02.csv": "6aa69a9bd4b230d126b3e66545b81a781cf77b62be14f2d52a5683ce9d9ab269",
+   "straw-brain08-03.csv": "e647c984c434bf2f0844b1eb212b1968832e84aea80fad72ac617947c141a7ff",
+   "straw-fast6-01.csv": "e94f239aa798b400ea3e8bb3a78e98c5d78f0b3fccaea22a8ee8c5d1d4ca5685",
+   "straw-fast6-02.csv": "38e2895ccc28b102231f12b8664745736bbbd23c9005466b6d9c5844775babd5",
+   "straw-fast6-03.csv": "210ad42a279b8cacd6eda9b5e7bfe5f2aef35d4ff7940709940026eae703f724",
+   "straw-fast6-arc-01.csv": "d5c2da9e07b3a01b53b5660263aec6b0dd4f6e72d52300779196eaa2bb4fa136"
   },
+  "stream_flights": [
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01",
+   "pine-brain08-01"
+  ],
   "looming_stream": {
-   "note": "the Straw Bale laps flew without looming: offline looming2 samples recomputed from the recorded video in the flight camera's configuration (M2 round 2, session scratchpad m2r2/pilot/stream_prep.py, epipolar alignment residual 0.31 / 0.36 px), received 0.085 s after capture",
-   "stream_straw-brain08-04.npz": "99067a40c32e4fbc139269df38aa3bdf07e99a8459fbec94a6e0944c48a562e8",
-   "stream_straw-brain08-06.npz": "67029f4eb5284be3588459bb14a86fb9f2e570887428636489afe3a629d7c767"
+   "note": "flights flown without looming get offline looming2 samples recomputed from the recorded video in the flight camera's configuration (240x135, focal_320 and tilt from the sidecar: camera_process.py), received 0.085 s after capture; straw-brain08-04/06 reuse the M2 round-2 streams frozen in gates v2; the others were computed in round 4 (session scratchpad m4/vguard/stream_prep4.py, a copy of M2 round 2's stream_prep.py) with the same alignment (prep.pass1/pass2 of the looming study) before any replay of guard v3",
+   "alignment": {
+    "straw-brain08-04": "M2 round 2 stream (m2r2/pilot/out), residual 0.31 / 0.36 px",
+    "straw-brain08-06": "M2 round 2 stream (m2r2/pilot/out), residual 0.31 / 0.36 px",
+    "straw-brain08-01": "aligned in round 4: pause_menu, epipolar, epipolar residual 0.73 px, yaw-flow correlation 0.61",
+    "straw-brain08-02": "aligned in round 4: pause_menu, epipolar, epipolar residual 0.49 px, yaw-flow correlation 0.69",
+    "straw-brain08-03": "aligned in round 4: pause_menu, epipolar, epipolar residual 0.38 px, yaw-flow correlation 0.74",
+    "straw-fast6-01": "frame cache of the looming study reused read-only (looming/flow/cache)",
+    "straw-fast6-02": "frame cache of the looming study reused read-only (looming/flow/cache)",
+    "straw-fast6-03": "aligned in round 4: telemetry_end=video_end, epipolar, epipolar residual 0.87 px, yaw-flow correlation 0.70",
+    "straw-fast6-arc-01": "aligned in round 4: pause_menu, epipolar, epipolar residual 0.85 px, yaw-flow correlation 0.68",
+    "pine-brain08-01": "aligned in round 4: pause_menu, epipolar, epipolar residual 0.42 px, yaw-flow correlation 0.74"
+   },
+   "sha256": {
+    "stream_straw-brain08-04.npz": "99067a40c32e4fbc139269df38aa3bdf07e99a8459fbec94a6e0944c48a562e8",
+    "stream_straw-brain08-06.npz": "67029f4eb5284be3588459bb14a86fb9f2e570887428636489afe3a629d7c767",
+    "stream_straw-brain08-01.npz": "351023ceeb27ec1c4c2a0a7586bb1642ea50497e24c36b348f273f96a2cdc216",
+    "stream_straw-brain08-02.npz": "6d53bd960bad89933b325238a461dc6dfcd89d1e646b940acda03cd85a6f1257",
+    "stream_straw-brain08-03.npz": "3ed00182cf3760620cfe521dfdb924881567dc6eeca9a351417e37cac24ab0ee",
+    "stream_straw-fast6-01.npz": "cef5ab61a0ce2bf8915a85e2b4ac2dd7a620b7a070b1cf577d1e832544072d3a",
+    "stream_straw-fast6-02.npz": "ce2a22e71c6019a9ee86171f5d41e393c7f8f9c759dd083fc7f7c7d4f882d2e0",
+    "stream_straw-fast6-03.npz": "5bdb98680ebaead0eddc166c1a990360eb79a30dd0cf2dfe877e618f28f1406a",
+    "stream_straw-fast6-arc-01.npz": "d05b1ec575353f123b20d6e24f004a8de8b52589fe6e8c92c822245b3c83a379",
+    "stream_pine-brain08-01.npz": "320bee5d04b63cdc8c3c563a3f6497c0d148bf7d52db9932e7486c7b971af91b"
+   }
   }
  },
  "gates": {
-  "V_Straw": {
+  "Identity": {
+   "flights": [
+    "minus-fast6-wall-01",
+    "minus-brain08-gapon-01",
+    "minus-brain08-gapon-02",
+    "minus-fast6-gapon-01",
+    "minus-brain08-loom-01",
+    "minus-brain08-gapshadow-01",
+    "minus-fast6-vg-02",
+    "minus-brain08-vg-01",
+    "minus-brain09b-vg-01",
+    "pine-fast6-ttc-01",
+    "pine-brain08-loom-01",
+    "pine-brain08-01",
+    "straw-brain08-04",
+    "straw-brain08-06",
+    "straw-brain08-01",
+    "straw-brain08-02",
+    "straw-brain08-03",
+    "straw-fast6-01",
+    "straw-fast6-02",
+    "straw-fast6-03",
+    "straw-fast6-arc-01"
+   ],
+   "variants": [
+    "--stack none (every flight; the stream flights also with their stream)",
+    "--stack shadow (the stream flights with their stream)"
+   ],
+   "report_only_variants": [
+    "--stack on --vertical off",
+    "--stack flown --wall on",
+    "--stack flown --wall shadow"
+   ],
+   "criterion": "per-tick arrays cvx, cvy, cvz, yaw_cmd, state, cap, climb and descent_scale bitwise identical between this tree and the baseline tree (m2-vertical, guard v2) (NaN equal to NaN)",
+   "pass": "every flight and gate variant identical"
+  },
+  "V_Straw_downhill": {
    "flights": [
     "straw-brain08-04",
     "straw-brain08-06"
@@ -53,8 +137,26 @@
    "not_raised": "in the windows, at every tick where the measured vertical speed is below -level_band (descending), the guard's vertical request is at most max(the pilot's own request, 0): it may withhold sink, never add a climb the pilot did not ask for",
    "horizontal": "in the windows, at every tick, the issued horizontal request of the guard variant is at least that of the control; descent_scale of both is reported per episode",
    "max_new_climb": 1.0,
-   "whole_lap": "the guard's terrain climb request never exceeds max_new_climb over the whole lap (the laps flew without any terrain climb); reported: sink limiting, arrest, climb and escalated seconds and onsets per minute, and the control's climbs",
-   "pass": "limited fraction >= limited_fraction, no raised tick, no reduced tick and no whole-lap climb above max_new_climb, on the pooled episodes / both laps"
+   "max_new_climb_note": "used only for the reported whole-lap numbers",
+   "pass": "limited fraction >= limited_fraction, no raised tick and no reduced tick on the pooled episodes / both laps (v2's V-Straw without its whole-lap climb criterion, which is V_Straw_uphill here)"
+  },
+  "V_Straw_uphill": {
+   "flights": [
+    "straw-brain08-04",
+    "straw-brain08-06",
+    "straw-brain08-01",
+    "straw-brain08-02",
+    "straw-brain08-03",
+    "straw-fast6-01",
+    "straw-fast6-02",
+    "straw-fast6-03",
+    "straw-fast6-arc-01"
+   ],
+   "max_escalated_per_min": 0.2,
+   "max_new_climb": 1.0,
+   "escalated": "seconds with vertical_stage 2 (rising ground confirmed: the climb may exceed gentle_climb) of the guard variant with the lap's offline looming stream, pooled over the laps, per minute of flight",
+   "report": "per lap: escalated seconds and escalations, guard climb seconds and onsets, ticks whose guard climb exceeds max_new_climb, and the control's climb seconds",
+   "pass": "pooled escalated seconds per minute <= max_escalated_per_min (about 1 s per 5.45-min lap: \"near zero\"; v2 escalated 23-24 s per lap)"
   },
   "V_Minus": {
    "flights": {
@@ -75,7 +177,58 @@
    "level_band": 0.3,
    "floor_sink": "minus-fast6-wall-01 only: the sink under way at the logged climb onset (the run of ticks with measured vz < -level_band at or last before the onset; z_ref = the height where the measured vertical speed last turned negative before it). The issued vertical request is at least 0 from a tick at which less than max_height_loss_m below z_ref has been lost, to the end of that run",
    "max_height_loss_m": 0.3,
-   "pass": "every flight passes no_climb, and wall-01 passes floor_sink"
+   "no_escalation": {
+    "flights": [
+     "minus-fast6-wall-01",
+     "minus-brain08-gapon-01",
+     "minus-brain08-gapon-02",
+     "minus-fast6-gapon-01",
+     "minus-brain08-loom-01",
+     "minus-brain08-gapshadow-01",
+     "minus-fast6-vg-02",
+     "minus-brain08-vg-01",
+     "minus-brain09b-vg-01"
+    ],
+    "max_climb": 1.0,
+    "criterion": "the guard variant's terrain climb request (vertical_climb) is at most max_climb at every tick of every Minus Two flight: no escalation under the ~2.2 m garage ceiling"
+   },
+   "pass": "every window flight passes no_climb, wall-01 passes floor_sink (both as in v2), and every Minus Two flight passes no_escalation"
+  },
+  "V_Pine": {
+   "flight": "pine-fast6-ttc-01",
+   "min_vz": 1.0,
+   "climb_fraction": 0.8,
+   "last_s": 2.0,
+   "mound_fraction": 0.9,
+   "climb": "the issued vertical request is at least min_vz for at least climb_fraction of the seconds in which the logged governor itself requested at least min_vz (clearance_climb >= min_vz; a tick lasts until the next tick). The flown log itself answers 91.4% of those 5.02 s",
+   "no_descent": "as v2: the issued vertical request is at least 0 at every tick of the last last_s before the contact (the logged impact, the end of the log)",
+   "mound": "the first logged climb episode (the mound, 4.30-6.01 s): the issued height request, the integral of the issued vertical request over the episode, is at least mound_fraction of the flown one (the logged issued request: 3.42 m)",
+   "report_flights": [
+    "pine-brain08-loom-01",
+    "pine-brain08-01"
+   ],
+   "pass": "climb, no_descent and mound"
+  }
+ },
+ "old_definitions": {
+  "V_Straw": {
+   "flights": [
+    "straw-brain08-04",
+    "straw-brain08-06"
+   ],
+   "episodes": "every support-climb onset of the logged pilot (pilot state 'support_climb'); contact = the start of the support timer (support_since or slope_support_since) that produced it",
+   "lookback_s": 3.0,
+   "limited": "the guard limits the requested sink before contact: at some tick in [contact - lookback_s, contact) the pilot's own request is a sink (vertical_pilot < 0) and the guard's request is above it (vertical_target > vertical_pilot)",
+   "limited_fraction": 0.8,
+   "limited_pooled": "over the episodes of both laps together",
+   "after_onset_s": 0.6,
+   "windows": "the downhill spots: [contact - lookback_s, onset + after_onset_s] of every episode",
+   "level_band": 0.3,
+   "not_raised": "in the windows, at every tick where the measured vertical speed is below -level_band (descending), the guard's vertical request is at most max(the pilot's own request, 0): it may withhold sink, never add a climb the pilot did not ask for",
+   "horizontal": "in the windows, at every tick, the issued horizontal request of the guard variant is at least that of the control; descent_scale of both is reported per episode",
+   "max_new_climb": 1.0,
+   "whole_lap": "the guard's terrain climb request never exceeds max_new_climb over the whole lap (the laps flew without any terrain climb); reported: sink limiting, arrest, climb and escalated seconds and onsets per minute, and the control's climbs",
+   "pass": "limited fraction >= limited_fraction, no raised tick, no reduced tick and no whole-lap climb above max_new_climb, on the pooled episodes / both laps"
   },
   "V_Pine": {
    "flight": "pine-fast6-ttc-01",
@@ -86,34 +239,18 @@
    "no_descent": "the issued vertical request is at least 0 at every tick of the last last_s before the contact (the logged impact, the end of the log)",
    "pass": "both"
   },
-  "Identity": {
-   "flights": [
-    "minus-fast6-wall-01",
-    "minus-brain08-gapon-01",
-    "minus-brain08-gapon-02",
-    "minus-fast6-gapon-01",
-    "minus-brain08-loom-01",
-    "pine-fast6-ttc-01",
-    "pine-brain08-loom-01",
-    "straw-brain08-04",
-    "straw-brain08-06"
-   ],
-   "variants": [
-    "--stack none",
-    "--stack shadow"
-   ],
-   "straw": "the Straw Bale laps with the looming stream (and --stack none also without it)",
-   "report_only_variants": [
-    "--stack flown --wall on",
-    "--stack flown --wall shadow",
-    "--stack on --vertical off (this tree) against --stack on (m2-hairpin)"
-   ],
-   "criterion": "per-tick arrays cvx, cvy, cvz, yaw_cmd, state, cap, climb and descent_scale bitwise identical between this tree and the baseline tree (NaN equal to NaN)",
-   "pass": "every flight and variant identical"
-  }
+  "note": "the version-2 definitions of the two gates redefined here, scored and reported on the same replays (not part of the version-3 pass)"
  },
- "change": "v2 scores the vertical guard version 2 with the definitions and thresholds of v1 unchanged (every gate, window, tolerance and input is v1's); v1 scored guard version 1",
+ "change": "v3 scores the vertical guard version 3. Identity: the baseline is the previous guard's tree (m2-vertical, guard v2) and every replayed flight is included (21: the 9 of v2, the round-3 Minus Two flights minus-fast6-vg-02, minus-brain08-vg-01 and minus-brain09b-vg-01, minus-brain08-gapshadow-01, pine-brain08-01 and six more Straw Bale laps). V-Straw is split: (a) V_Straw_downhill keeps v2's first three criteria unchanged (limited before contact, not raised, horizontal); the round-3 replays showed that no looming sample carries below-path evidence before any of the 10 contacts (the path points below the camera's view), so its first criterion is out of reach of any looming rule and is expected to fail until the pilot keeps its descents inside the view (another change of round 4); it is kept, not loosened. (b) V_Straw_uphill replaces v2's whole-lap criterion (no guard climb above 1 m/s on straw-brain08-04/06) with the escalated seconds per minute pooled over nine laps, at most 0.2 s/min (about 1 s per lap: the task's \"near zero\"; v2: 23-24 s per lap). This is a loosening of that criterion (zero ticks became a rate) and is disclosed: the old criterion is still scored and reported (old_definitions). V-Minus keeps v2's windows and floor sink unchanged and adds no_escalation on all nine Minus Two flights. V-Pine: v2's climb criterion was ill-posed: it counted every second in which the logged governor's climb was positive, including its release tail (3 m/s^2 after the hold) and graded climbs below 1 m/s, for which the flown pilot itself requested less than 1 m/s; the flown log therefore reached only 72.4% against the 80% threshold. Version 3 counts only the seconds in which the logged governor itself requested at least 1 m/s (the flown log: 91.4%), keeps min_vz and the 80% threshold, keeps v2's no-descent criterion unchanged, and adds the mound (the first episode, whose evidence precedes any climb so the open-loop replay is fair up to the onset): at least 90% of the flown height request. v2's V-Pine is still scored and reported (old_definitions).",
  "previous_versions": [
+  {
+   "version": 2,
+   "sha256": "53926ceada1062b4497fc7df1d2f435192dda8d2a58eda7e1037decbef0f291a",
+   "frozen_at": "2026-09-26T20:40:32",
+   "file": "configs/obstacles/vertical_guard_gates_v2.json",
+   "scored_guard_version": 2,
+   "result": "docs/experiments/vertical_guard_v2_scores.json"
+  },
   {
    "version": 1,
    "sha256": "977740fbc0f5c0852c18deee0a1c24d2ddc3fbd8d57e60cd13059cb7ae8b715e",
@@ -124,6 +261,6 @@
   }
  ],
  "frozen": true,
- "frozen_at": "2026-09-26T20:40:32",
- "sha256": "53926ceada1062b4497fc7df1d2f435192dda8d2a58eda7e1037decbef0f291a"
+ "frozen_at": "2026-09-27T01:51:29",
+ "sha256": "689635881467a34a7ba84471ee55b3154602206af4aa5dac754fcf26c7182bf7"
 }

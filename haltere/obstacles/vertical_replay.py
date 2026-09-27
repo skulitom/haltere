@@ -423,6 +423,88 @@ def score_pine(guard, info, gate):
     return result
 
 
+def score_straw_uphill(laps, gate):
+    """V-Straw uphill (gates v3): the guard's escalated climb (vertical_stage 2: beyond the gentle bound) pooled over
+    the Straw Bale laps replayed with the offline looming stream, in seconds per minute of flight; `laps` maps the flight
+    to its guard replay. Also reported per lap: escalated and climbing seconds, escalations, and the ticks whose guard
+    climb request exceeds the gentle bound (max_new_climb)."""
+    rows, total_s, total_min = {}, 0., 0.
+    for flight, guard in laps.items():
+        t = np.asarray(guard['t'], float)
+        dt = durations(t)
+        stage = np.nan_to_num(np.asarray(guard['vertical_stage'], float))
+        climb = np.nan_to_num(np.asarray(guard['vertical_climb'], float))
+        minutes = float(t[-1]-t[0])/60.
+        escalated = float(dt[stage == 2].sum())
+        rows[flight] = dict(minutes=round(minutes, 2), escalated_s=round(escalated, 2),
+                            escalated_per_min=round(escalated/minutes, 3) if minutes else None,
+                            escalations=int(len(onsets(stage == 2))), climb_s=round(float(dt[climb > 0].sum()), 2),
+                            climb_onsets=int(len(onsets(climb > 0))), max_guard_climb=round(float(climb.max()), 3),
+                            ticks_guard_climb_above_limit=int((climb > gate['max_new_climb']+EPS).sum()))
+        total_s += escalated
+        total_min += minutes
+    pooled = total_s/total_min if total_min else None
+    return dict(laps=rows, escalated_s=round(total_s, 2), minutes=round(total_min, 2),
+                escalated_per_min=None if pooled is None else round(pooled, 3),
+                passed=bool(pooled is not None and pooled <= gate['max_escalated_per_min']+EPS))
+
+
+def score_minus_escalation(guard, gate):
+    """V-Minus no escalation (gates v3): the guard's terrain climb request never exceeds max_climb on a Minus Two
+    flight (a flat garage floor under a ~2.2 m ceiling: rising ground is never there)."""
+    climb = np.nan_to_num(np.asarray(guard['vertical_climb'], float))
+    stage = np.nan_to_num(np.asarray(guard['vertical_stage'], float))
+    t = np.asarray(guard['t'], float)
+    return dict(max_guard_climb=round(float(climb.max()), 3), escalated_s=round(float(durations(t)[stage == 2].sum()), 3),
+                max_requested_vz=round(float(np.max(guard['cvz'])), 3),
+                passed=bool(climb.max() <= gate['max_climb']+EPS))
+
+
+def score_pine_v3(guard, info, gate):
+    """V-Pine (gates v3): the issued vertical request is at least min_vz for at least climb_fraction of the seconds in
+    which the logged governor itself requested at least min_vz (its release tail and weaker climbs excluded); no
+    requested descent in the last last_s before the contact (v2's criterion); on the mound (the first logged climb
+    episode) the issued height request (the integral of the issued vertical request over the episode) is at least
+    mound_fraction of the flown one (the logged issued request)."""
+    t = np.asarray(guard['t'], float)
+    dt = durations(t)
+    logged = np.nan_to_num(np.asarray(guard['log_climb'], float))
+    strong = logged >= gate['min_vz']-EPS
+    answered = strong & (guard['cvz'] >= gate['min_vz']-EPS)
+    total, covered = float(dt[strong].sum()), float(dt[answered].sum())
+    end = _impact_end(guard, info)
+    end = float(t[-1]) if end is None else end
+    late = t >= end-gate['last_s']
+    episodes = []
+    climbing = logged > 0
+    for i in onsets(climbing):
+        j = i
+        while j+1 < len(t) and climbing[j+1]:
+            j += 1
+        span = slice(i, j+1)
+        episodes.append(dict(t=[round(float(t[i]), 2), round(float(t[j]), 2)],
+                             strong_s=round(float(dt[span][strong[span]].sum()), 2),
+                             answered_s=round(float(dt[span][answered[span]].sum()), 2),
+                             height_request_m=round(float((guard['cvz'][span]*dt[span]).sum()), 3),
+                             flown_height_request_m=round(float((guard['log_cvz'][span]*dt[span]).sum()), 3),
+                             max_requested_vz=round(float(guard['cvz'][span].max()), 3)))
+    mound = episodes[0] if episodes else None
+    result = dict(strong_logged_s=round(total, 3), answered_s=round(covered, 3),
+                  answered_fraction=round(covered/total, 4) if total else None, episodes=episodes,
+                  late_window=[round(end-gate['last_s'], 2), round(end, 2)],
+                  late_min_requested_vz=round(float(np.min(guard['cvz'][late])), 4),
+                  logged_late_min_requested_vz=round(float(np.nanmin(guard['log_cvz'][late])), 4),
+                  mound_height_fraction=None if mound is None or mound['flown_height_request_m'] <= 0 else
+                  round(mound['height_request_m']/mound['flown_height_request_m'], 4))
+    result['climb_passed'] = bool(result['answered_fraction'] is not None
+                                  and result['answered_fraction'] >= gate['climb_fraction'])
+    result['no_descent_passed'] = bool(result['late_min_requested_vz'] >= -EPS)
+    result['mound_passed'] = bool(result['mound_height_fraction'] is not None
+                                  and result['mound_height_fraction'] >= gate['mound_fraction'])
+    result['passed'] = result['climb_passed'] and result['no_descent_passed'] and result['mound_passed']
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('flights', nargs='+')
@@ -466,6 +548,8 @@ def score_all(out, baseline, gates_path=GATES_PATH, runs=RUNS):
     """Score the frozen gates from the replay files: `out` is this tree's prefix, `baseline` the baseline tree's.
     Expected files: {prefix}_{variant_tag}_{flight}.npz as written by main()."""
     gates, digest = load_gates(gates_path)
+    if gates['version'] >= 3:
+        return score_all_v3(out, baseline, gates, digest, runs)
     g = gates['gates']
     info = {f: json.loads((Path(runs)/f'{f}.json').read_text(encoding='utf-8'))
             for f in g['Identity']['flights']}
@@ -530,6 +614,115 @@ def score_all(out, baseline, gates_path=GATES_PATH, runs=RUNS):
     result['V_Pine'] = dict(pine, control_report_only=pine_control)
     result['passed'] = {k: result[k]['passed'] for k in ('Identity', 'V_Straw', 'V_Minus', 'V_Pine')}
     del info
+    return result
+
+
+def score_all_v3(out, baseline, gates, digest, runs=RUNS):
+    """Score gates version 3 (see configs/obstacles/vertical_guard_gates.json): the baseline is the previous guard's
+    tree (m2-vertical); stream flights are replayed with the offline looming stream. The v2 gate definitions are also
+    scored on the same replays (report: old_definitions)."""
+    g = gates['gates']
+    stream_flights = set(gates['inputs']['stream_flights'])
+    result = dict(gates_sha256=digest, gates_version=gates['version'], vertical_guard=gates['vertical_guard'],
+                  baseline_tree=gates['baseline_tree'])
+
+    def load(prefix, stack, wall, vertical, flight, stream=None):
+        stream = flight in stream_flights if stream is None else stream
+        return _load(prefix, variant_tag(stack, wall, vertical, stream), flight)
+
+    def side(flight):
+        return json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
+    # Identity: stack off and shadow bit-identical to the baseline tree
+    identity = []
+    for flight in g['Identity']['flights']:
+        streamed = flight in stream_flights
+        pairs = [(('none', 'off', 'off', False), 'gate'), (('shadow', 'off', 'shadow', streamed), 'gate'),
+                 (('on', 'off', 'off', streamed), 'report')]
+        if streamed:
+            pairs.append((('none', 'off', 'off', True), 'gate'))
+        else:
+            pairs += [(('flown', 'on', 'off', False), 'report'), (('flown', 'shadow', 'off', False), 'report')]
+        for (stack, wall, vertical, stream), kind in pairs:
+            tag = variant_tag(stack, wall, vertical, stream)
+            try:
+                same, keys = identical(_load(out, tag, flight), _load(baseline, tag, flight))
+            except FileNotFoundError as exc:
+                same, keys = None, str(exc)
+            identity.append(dict(flight=flight, variant=tag, kind=kind, identical=same, keys=keys))
+    gate_rows = [r for r in identity if r['kind'] == 'gate']
+    result['Identity'] = dict(pairs=identity, gate_pairs=len(gate_rows),
+                              identical_gate_pairs=sum(bool(r['identical']) for r in gate_rows),
+                              report_pairs=len(identity)-len(gate_rows),
+                              identical_report_pairs=sum(bool(r['identical']) for r in identity if r['kind'] != 'gate'),
+                              passed=bool(gate_rows and all(r['identical'] for r in gate_rows)))
+    # V-Straw downhill: v2's V-Straw definitions without its whole-lap climb criterion
+    vd = g['V_Straw_downhill']
+    laps = {}
+    for flight in vd['flights']:
+        laps[flight] = score_straw(load(out, 'on', 'off', 'on', flight, True), load(out, 'on', 'off', 'off', flight, True),
+                                   load(out, 'none', 'off', 'off', flight, False), vd)
+    episodes = [e for lap in laps.values() for e in lap['episodes']]
+    fraction = sum(e['limited_before_contact'] for e in episodes)/len(episodes) if episodes else None
+    result['V_Straw_downhill'] = dict(
+        laps=laps, n_episodes=len(episodes), limited_fraction=None if fraction is None else round(fraction, 3),
+        limited_passed=bool(episodes and fraction >= vd['limited_fraction']),
+        not_raised_passed=all(lap['ticks_raised_above_pilot'] == 0 for lap in laps.values()),
+        horizontal_passed=all(lap['ticks_horizontal_reduced'] == 0 for lap in laps.values()))
+    result['V_Straw_downhill']['passed'] = all(result['V_Straw_downhill'][k] for k in
+                                               ('limited_passed', 'not_raised_passed', 'horizontal_passed'))
+    # V-Straw uphill: escalated climbs pooled over every Straw Bale lap
+    vu = g['V_Straw_uphill']
+    result['V_Straw_uphill'] = score_straw_uphill({f: load(out, 'on', 'off', 'on', f, True) for f in vu['flights']}, vu)
+    result['V_Straw_uphill']['control_report_only'] = {
+        f: dict(climb_s=round(float(durations(c['t'])[np.nan_to_num(c['climb']) > 0].sum()), 2),
+                max_climb=round(float(np.nan_to_num(c['climb']).max()), 3))
+        for f, c in ((f, load(out, 'on', 'off', 'off', f, True)) for f in vu['flights'])}
+    # V-Minus: v2's windows and floor sink, and no escalation on any Minus Two flight
+    vm = g['V_Minus']
+    minus, control = {}, {}
+    for flight, spec in vm['flights'].items():
+        minus[flight] = score_minus(load(out, 'on', 'off', 'on', flight), side(flight), vm, spec['floor_sink'])
+        control[flight] = score_minus(load(out, 'on', 'off', 'off', flight), side(flight), vm, spec['floor_sink'])
+    escalation = {f: score_minus_escalation(load(out, 'on', 'off', 'on', f), vm['no_escalation'])
+                  for f in vm['no_escalation']['flights']}
+    result['V_Minus'] = dict(flights=minus, control_report_only=control, no_escalation=escalation,
+                             windows_passed=all(r.get('passed') for r in minus.values()),
+                             no_escalation_passed=all(r['passed'] for r in escalation.values()))
+    result['V_Minus']['passed'] = result['V_Minus']['windows_passed'] and result['V_Minus']['no_escalation_passed']
+    # V-Pine
+    vp = g['V_Pine']
+    pine = score_pine_v3(load(out, 'on', 'off', 'on', vp['flight']), side(vp['flight']), vp)
+    pine['control_report_only'] = score_pine_v3(load(out, 'on', 'off', 'off', vp['flight']), side(vp['flight']), vp)
+    pine['other_flights_report_only'] = {}
+    for flight in vp.get('report_flights', []):
+        guard = load(out, 'on', 'off', 'on', flight)
+        t = np.asarray(guard['t'], float)
+        pine['other_flights_report_only'][flight] = dict(
+            max_guard_climb=round(float(np.nan_to_num(guard['vertical_climb']).max()), 3),
+            escalated_s=round(float(durations(t)[np.nan_to_num(guard['vertical_stage']) == 2].sum()), 2),
+            guard_climb_s=round(float(durations(t)[np.nan_to_num(guard['vertical_climb']) > 0].sum()), 2))
+    result['V_Pine'] = pine
+    # the version-2 gate definitions on the same replays (report)
+    v2 = gates['old_definitions']
+    straw_v2 = {f: score_straw(load(out, 'on', 'off', 'on', f, True), load(out, 'on', 'off', 'off', f, True),
+                               load(out, 'none', 'off', 'off', f, False), v2['V_Straw']) for f in v2['V_Straw']['flights']}
+    episodes = [e for lap in straw_v2.values() for e in lap['episodes']]
+    fraction = sum(e['limited_before_contact'] for e in episodes)/len(episodes) if episodes else None
+    pine_v2 = score_pine(load(out, 'on', 'off', 'on', v2['V_Pine']['flight']), side(v2['V_Pine']['flight']),
+                         v2['V_Pine'])
+    result['old_definitions'] = dict(
+        V_Straw=dict(limited_fraction=None if fraction is None else round(fraction, 3),
+                     whole_lap_ticks_above=sum(lap['whole_lap']['ticks_guard_climb_above_limit']
+                                               for lap in straw_v2.values()),
+                     escalated_s={f: lap['whole_lap']['escalated_s'] for f, lap in straw_v2.items()},
+                     passed=bool(episodes and fraction >= v2['V_Straw']['limited_fraction']
+                                 and all(lap['ticks_raised_above_pilot'] == 0 and lap['ticks_horizontal_reduced'] == 0
+                                         and lap['whole_lap']['ticks_guard_climb_above_limit'] == 0
+                                         for lap in straw_v2.values()))),
+        V_Pine=dict(answered_fraction=pine_v2['answered_fraction'],
+                    late_min_requested_vz=pine_v2['late_min_requested_vz'], passed=pine_v2['passed']))
+    result['passed'] = {k: result[k]['passed'] for k in ('Identity', 'V_Straw_downhill', 'V_Straw_uphill', 'V_Minus',
+                                                         'V_Pine')}
     return result
 
 

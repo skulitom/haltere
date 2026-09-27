@@ -28,10 +28,11 @@ AHEAD = cue_toward([10., 0., 0.])
 BELOW = cue_toward([10., 0., -1.5])      # a ring ahead and below: the pilot requests a sink of about 0.9 m/s
 
 
-def run(gov, sample_of, seconds, *, start=0., speed=6., height=1., follow=False, delay=.08, rise=0.):
+def run(gov, sample_of, seconds, *, start=0., speed=6., height=1., follow=False, delay=.08, rise=0., pilot=None):
     """Drone along +x at `speed`; sample_of(t) -> None or dict(ttc, below, lower) at 18 Hz, `delay` late.
     `rise` is the measured vertical speed (m/s; a number or a function of time). follow=True flies the climb request
-    (the height integrates it and the measured vertical speed is the request). Rows: dict(t, z, vz, climb, factor,
+    (the height integrates it and the measured vertical speed is the request). `pilot` (a function of time), when
+    given, is the pilot's own vertical request set on the governor every tick. Rows: dict(t, z, vz, climb, factor,
     arrest, stage)."""
     rows, pending, next_frame, z, vz = [], [], start, height, 0.
     for k in range(int(round(seconds/.01))):
@@ -49,6 +50,8 @@ def run(gov, sample_of, seconds, *, start=0., speed=6., height=1., follow=False,
                        received=now, ttc_lower=s.get('lower'))
         if not follow:
             vz = rise(now) if callable(rise) else rise
+        if pilot is not None:
+            gov.pilot_vertical = pilot(now)
         _, _, climb = gov.limits([x, 0., z], [speed, 0., vz], now, .01, 3.5)
         if follow:
             vz = climb if climb > 0 else (rise(now) if callable(rise) else rise)
@@ -82,7 +85,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
                                               load_vertical_guard)
     declaration, digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert declaration['version'] == VERTICAL_GUARD_VERSION == 2 and declaration['frozen'] is True
+    assert declaration['version'] == VERTICAL_GUARD_VERSION == 3 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     assert vertical_guard_config(declaration) == VG                     # the declared values are the defaults
     # the declared values the task gave: full sink at 1.5 s, none at 0.6 s; about 1 m/s without rising ground
@@ -93,7 +96,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_vertical_guard(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 3
+    other['version'] = 4
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
@@ -102,17 +105,21 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
         vertical_guard_config(other)
 
 
-def test_version_1_is_kept_verbatim_and_refused():
-    """Version 1 (replayed, never flown) is kept for provenance: version 2 keeps every value and changes three rules
-    (the crossing TTC for the sink rules, the binding test of rising ground, keep speed on contact)."""
+@pytest.mark.parametrize('version, prefix', [(1, '703f60e33aa0'), (2, 'e06b690d0d4f')])
+def test_earlier_versions_are_kept_verbatim_and_refused(version, prefix):
+    """Version 1 (replayed, never flown) and version 2 (replayed, flown on Minus Two in round 3) are kept for
+    provenance: every version keeps v1's values; version 2 changed three rules (the crossing TTC for the sink rules,
+    the binding test of rising ground, keep speed on contact), version 3 two (a path alarm to start a climb, the
+    binding test over the pilot's recent requests)."""
     from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
                                               load_vertical_guard)
     current, _ = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    path = VERTICAL_GUARD_DECLARATION.with_name('vertical_guard_v1.json')
+    path = VERTICAL_GUARD_DECLARATION.with_name(f'vertical_guard_v{version}.json')
     old = json.loads(path.read_text(encoding='utf-8'))
-    assert old['version'] == 1 and old['frozen'] is True and lag_turn_declaration_sha256(old) == old['sha256']
-    assert old['sha256'].startswith('703f60e33aa0') and old['vertical_guard'] == current['vertical_guard']
-    assert current['previous_versions'][0]['sha256'] == old['sha256'] and current['change']
+    assert old['version'] == version and old['frozen'] is True and lag_turn_declaration_sha256(old) == old['sha256']
+    assert old['sha256'].startswith(prefix) and old['vertical_guard'] == current['vertical_guard']
+    previous = {p['version']: p for p in current['previous_versions']}
+    assert previous[version]['sha256'] == old['sha256'] and current['change']
     with pytest.raises(ValueError, match='version'):
         load_vertical_guard(path)
 
@@ -232,6 +239,40 @@ def test_rising_ground_needs_the_guard_climb_to_bind():
         rows = run(gov, uphill, 1.5, rise=lambda t: 1.2)
         assert gov.escalated is escalates
         assert max(r['climb'] for r in rows) == (pytest.approx(3.5) if escalates else pytest.approx(VG.gentle_climb))
+
+
+def test_a_climb_starts_only_when_the_path_heads_into_the_surface():
+    """The Straw Bale crest (v2 replay of straw-brain08-04 at 51.4 s): the lower window reads 0.3-0.95 s on the slope
+    below the pilot's line while the alarm reads 5.8-10 s over the crest. Version 2 started a climb on such samples;
+    version 3 starts none (counted as no_path_onsets). A path alarm among the confirming alarms (both TTCs short)
+    starts one, and the lower window alone then sustains it (here gently: the pilot climbs 0.8 m/s by itself)."""
+    def crest(t):
+        return dict(ttc=6., below=1., lower=.4)
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, crest, 1.5, rise=.8)
+    assert max(r['climb'] for r in rows) == 0. and gov.vertical_counts['no_path_onsets'] > 10
+    assert gov.vertical_counts['gentle_climbs'] == 0 and not gov.escalated
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, lambda t: dict(ttc=.9, below=1., lower=.4) if t < FRAME else crest(t), 1.5, rise=.8,
+               pilot=lambda t: .8)
+    climb = series(rows, 'climb')
+    assert climb.max() == pytest.approx(VG.gentle_climb) and (climb[-20:] > 0).all()
+    assert gov.vertical_counts['gentle_climbs'] == 1 and not gov.escalated
+
+
+@pytest.mark.parametrize('pilot, escalates', [
+    (lambda t: 0. if 1. <= t < 1.2 else .9, False),     # climbing up a hill, a brief dip at a checkpoint switch
+    (lambda t: .6, False),                                # a steady 0.6 m/s: the gentle climb adds only 0.4
+    (lambda t: .9 if t < .5 else 0., True),               # the pilot stopped climbing more than rising_window_s ago
+    (lambda t: .4, True)])                                # the Pine mound: the pilot asked 0.3-0.44 m/s
+def test_rising_ground_needs_the_guard_to_add_to_the_pilots_recent_requests(pilot, escalates):
+    """Straw Bale uphills (v2 replay): the pilot climbed 0.6-1.1 m/s toward rings up the hill and its own request
+    dipped to 0-0.25 m/s for a tick at a checkpoint switch; version 2 then escalated. Version 3 compares the guard's
+    climb with every request the pilot made itself in the last rising_window_s and needs rising_min_rise more."""
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, lambda t: dict(ttc=.85, below=.9, lower=.35), 2., rise=lambda t: 1.2, pilot=pilot)
+    assert gov.escalated is escalates
+    assert max(r['climb'] for r in rows) == (pytest.approx(3.5) if escalates else pytest.approx(VG.gentle_climb))
 
 
 def test_alarms_while_descending_never_confirm_a_climb():

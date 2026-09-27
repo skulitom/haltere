@@ -1,0 +1,129 @@
+{
+ "schema": "haltere.obstacles.vertical_guard_gates.v1",
+ "version": 2,
+ "note": "Offline gates of the vertical guard (configs/obstacles/vertical_guard.json version 1), scored by open-loop replays of logged flights through FastRaceCue (haltere/obstacles/vertical_replay.py). The thresholds are the task's; the definitions below make them computable and were fixed with the guard version they score, before any replay of the guard. The replays are open loop: the recorded motion does not respond to the replayed requests, so a gate shows the request a variant would have made at the recorded states, not a flight. Every flight named here was inspected while the guard was designed (development evidence, not held out). Each gate is scored once per guard version and every version is reported. The hash covers everything except frozen/frozen_at/sha256.",
+ "vertical_guard": {
+  "file": "configs/obstacles/vertical_guard.json",
+  "version": 2,
+  "sha256": "e06b690d0d4f1a416695cffbf5900e0942df70138db57f7b9f7a8c113fee417f"
+ },
+ "baseline_tree": {
+  "branch": "m2-hairpin",
+  "commit": "4083454f828eb7d2d56d5ae45bd0ef403b2a2d6c"
+ },
+ "variants": {
+  "guard": "--stack on: the full obstacle stack declared for the flight's motor contract (gap aim, lag turn, wall-pilot rules v3 and the vertical guard v1, all applied)",
+  "control": "--stack on --vertical off: the same stack without the vertical guard (m2-hairpin's stack)",
+  "logged_pilot": "--stack none without looming samples (the pilot as flown on the Straw Bale laps, which flew without looming; it reproduces the logged pilot states); used only to find the support-climb episodes and their contact times",
+  "tolerance": 1e-09
+ },
+ "inputs": {
+  "runs": "C:/DEV/Haltere/runs/fast-stack-20260923",
+  "log_sha256": {
+   "minus-fast6-wall-01.csv": "c13ab87969783ec47d46ccb7740b544a5e052dd6f7cc4a677ba1a30a6748f028",
+   "minus-brain08-gapon-01.csv": "2ec83772275e418212f55dd73d3913860313ffb1569ef24db611f8ff7e68230d",
+   "minus-brain08-gapon-02.csv": "1d7563abbbd65f4990d585f28d2b0811a85e0df47f6a208f1ef26ec56e9a46bb",
+   "pine-fast6-ttc-01.csv": "352e86f09407d5c9ea2168771a693b6ef8603324e06af2185db31e25564ee3c4",
+   "straw-brain08-04.csv": "e08219b19e51fc622cfb82f34b0cc75d6b0c7d698bd5c1e3d71d204981b4b38f",
+   "straw-brain08-06.csv": "9498c64aa12b27dca82f7360819cb6cb4b33e165123f4540e17daddde886a7eb",
+   "minus-fast6-gapon-01.csv": "fc29c96fc6b10170ad71f02037c4e94c6c58284bc1aa884218863a37b613aa43",
+   "minus-brain08-loom-01.csv": "7639dba8e89caef0b2ece4cd29ea76f1eb016bd722773e6e4bb092d0a33db5ed",
+   "pine-brain08-loom-01.csv": "411051a32d0c1473f1f29709b99664631848499fb45f0d341171c00bdaaee19f"
+  },
+  "looming_stream": {
+   "note": "the Straw Bale laps flew without looming: offline looming2 samples recomputed from the recorded video in the flight camera's configuration (M2 round 2, session scratchpad m2r2/pilot/stream_prep.py, epipolar alignment residual 0.31 / 0.36 px), received 0.085 s after capture",
+   "stream_straw-brain08-04.npz": "99067a40c32e4fbc139269df38aa3bdf07e99a8459fbec94a6e0944c48a562e8",
+   "stream_straw-brain08-06.npz": "67029f4eb5284be3588459bb14a86fb9f2e570887428636489afe3a629d7c767"
+  }
+ },
+ "gates": {
+  "V_Straw": {
+   "flights": [
+    "straw-brain08-04",
+    "straw-brain08-06"
+   ],
+   "episodes": "every support-climb onset of the logged pilot (pilot state 'support_climb'); contact = the start of the support timer (support_since or slope_support_since) that produced it",
+   "lookback_s": 3.0,
+   "limited": "the guard limits the requested sink before contact: at some tick in [contact - lookback_s, contact) the pilot's own request is a sink (vertical_pilot < 0) and the guard's request is above it (vertical_target > vertical_pilot)",
+   "limited_fraction": 0.8,
+   "limited_pooled": "over the episodes of both laps together",
+   "after_onset_s": 0.6,
+   "windows": "the downhill spots: [contact - lookback_s, onset + after_onset_s] of every episode",
+   "level_band": 0.3,
+   "not_raised": "in the windows, at every tick where the measured vertical speed is below -level_band (descending), the guard's vertical request is at most max(the pilot's own request, 0): it may withhold sink, never add a climb the pilot did not ask for",
+   "horizontal": "in the windows, at every tick, the issued horizontal request of the guard variant is at least that of the control; descent_scale of both is reported per episode",
+   "max_new_climb": 1.0,
+   "whole_lap": "the guard's terrain climb request never exceeds max_new_climb over the whole lap (the laps flew without any terrain climb); reported: sink limiting, arrest, climb and escalated seconds and onsets per minute, and the control's climbs",
+   "pass": "limited fraction >= limited_fraction, no raised tick, no reduced tick and no whole-lap climb above max_new_climb, on the pooled episodes / both laps"
+  },
+  "V_Minus": {
+   "flights": {
+    "minus-fast6-wall-01": {
+     "floor_sink": true
+    },
+    "minus-brain08-gapon-01": {
+     "floor_sink": false
+    },
+    "minus-brain08-gapon-02": {
+     "floor_sink": false
+    }
+   },
+   "window": "from before_onset_s before the last onset of the logged governor climb (clearance_climb > 0) before the impact, to the impact (the end of the log)",
+   "before_onset_s": 1.0,
+   "max_climb": 1.0,
+   "no_climb": "the issued vertical request is at most max_climb at every tick of the window",
+   "level_band": 0.3,
+   "floor_sink": "minus-fast6-wall-01 only: the sink under way at the logged climb onset (the run of ticks with measured vz < -level_band at or last before the onset; z_ref = the height where the measured vertical speed last turned negative before it). The issued vertical request is at least 0 from a tick at which less than max_height_loss_m below z_ref has been lost, to the end of that run",
+   "max_height_loss_m": 0.3,
+   "pass": "every flight passes no_climb, and wall-01 passes floor_sink"
+  },
+  "V_Pine": {
+   "flight": "pine-fast6-ttc-01",
+   "min_vz": 1.0,
+   "climb_fraction": 0.8,
+   "climb": "the issued vertical request is at least min_vz for at least climb_fraction of the seconds in which the logged governor climbed (clearance_climb > 0; a tick lasts until the next tick)",
+   "last_s": 2.0,
+   "no_descent": "the issued vertical request is at least 0 at every tick of the last last_s before the contact (the logged impact, the end of the log)",
+   "pass": "both"
+  },
+  "Identity": {
+   "flights": [
+    "minus-fast6-wall-01",
+    "minus-brain08-gapon-01",
+    "minus-brain08-gapon-02",
+    "minus-fast6-gapon-01",
+    "minus-brain08-loom-01",
+    "pine-fast6-ttc-01",
+    "pine-brain08-loom-01",
+    "straw-brain08-04",
+    "straw-brain08-06"
+   ],
+   "variants": [
+    "--stack none",
+    "--stack shadow"
+   ],
+   "straw": "the Straw Bale laps with the looming stream (and --stack none also without it)",
+   "report_only_variants": [
+    "--stack flown --wall on",
+    "--stack flown --wall shadow",
+    "--stack on --vertical off (this tree) against --stack on (m2-hairpin)"
+   ],
+   "criterion": "per-tick arrays cvx, cvy, cvz, yaw_cmd, state, cap, climb and descent_scale bitwise identical between this tree and the baseline tree (NaN equal to NaN)",
+   "pass": "every flight and variant identical"
+  }
+ },
+ "change": "v2 scores the vertical guard version 2 with the definitions and thresholds of v1 unchanged (every gate, window, tolerance and input is v1's); v1 scored guard version 1",
+ "previous_versions": [
+  {
+   "version": 1,
+   "sha256": "977740fbc0f5c0852c18deee0a1c24d2ddc3fbd8d57e60cd13059cb7ae8b715e",
+   "frozen_at": "2026-09-26T20:16:44",
+   "file": "configs/obstacles/vertical_guard_gates_v1.json",
+   "scored_guard_version": 1,
+   "result": "docs/experiments/vertical_guard_v1_scores.json"
+  }
+ ],
+ "frozen": true,
+ "frozen_at": "2026-09-26T20:40:32",
+ "sha256": "53926ceada1062b4497fc7df1d2f435192dda8d2a58eda7e1037decbef0f291a"
+}

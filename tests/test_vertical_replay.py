@@ -26,17 +26,30 @@ def arrays(n=400, dt=.01, **columns):
 
 def test_gates_declaration_is_frozen_and_names_the_guard_version():
     gates, digest = vr.load_gates()
-    assert gates['version'] == 2 and gates['frozen'] is True and digest == gates['sha256']
+    assert gates['version'] == 3 and gates['frozen'] is True and digest == gates['sha256']
     from haltere.liftoff.visual_brain import VERTICAL_GUARD_DECLARATION, load_vertical_guard
     _, guard_digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 2
-    old, old_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v1.json'))
-    assert old['version'] == 1 and old['vertical_guard']['version'] == 1 and old_digest.startswith('977740fbc0f5')
-    assert gates['previous_versions'][0]['sha256'] == old_digest and old['gates'] == gates['gates']
+    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 3
+    v2, v2_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v2.json'))
+    v1, v1_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v1.json'))
+    assert v2['version'] == 2 and v2['vertical_guard']['version'] == 2 and v2_digest.startswith('53926ceada10')
+    assert v1['version'] == 1 and v1['vertical_guard']['version'] == 1 and v1_digest.startswith('977740fbc0f5')
+    assert [p['sha256'] for p in gates['previous_versions']] == [v2_digest, v1_digest] and gates['change']
     g = gates['gates']
-    assert g['V_Minus']['max_climb'] == 1. and g['V_Pine']['min_vz'] == 1. and g['V_Pine']['climb_fraction'] == .8
-    assert g['V_Straw']['limited_fraction'] == .8 and g['V_Minus']['max_height_loss_m'] == .3
-    assert g['V_Pine']['last_s'] == 2. and g['V_Straw']['max_new_climb'] == 1.
+    # the version-2 definitions are kept and still scored (old_definitions); none is changed silently
+    assert gates['old_definitions']['V_Straw'] == v2['gates']['V_Straw']
+    assert gates['old_definitions']['V_Pine'] == v2['gates']['V_Pine']
+    kept = {k: v for k, v in v2['gates']['V_Straw'].items() if k not in ('whole_lap', 'pass')}
+    assert {k: g['V_Straw_downhill'][k] for k in kept} == kept
+    assert {k: g['V_Minus'][k] for k in v2['gates']['V_Minus'] if k != 'pass'} == {
+        k: v for k, v in v2['gates']['V_Minus'].items() if k != 'pass'}
+    assert g['V_Minus']['no_escalation']['max_climb'] == 1. and len(g['V_Minus']['no_escalation']['flights']) == 9
+    assert (g['V_Pine']['min_vz'], g['V_Pine']['climb_fraction'], g['V_Pine']['last_s']) == (1., .8, 2.)
+    assert g['V_Pine']['mound_fraction'] == .9 and g['V_Straw_uphill']['max_escalated_per_min'] == .2
+    assert len(g['V_Straw_uphill']['flights']) == 9 and len(g['Identity']['flights']) == 21
+    assert set(gates['inputs']['stream_flights']) <= set(g['Identity']['flights'])
+    assert set(gates['inputs']['looming_stream']['sha256']) == {f'stream_{f}.npz' for f in
+                                                                gates['inputs']['stream_flights']}
 
 
 def test_identity_compares_bitwise_with_nan():
@@ -129,6 +142,56 @@ def test_score_straw_limited_raised_and_horizontal():
     climbing = arrays(n, vertical_pilot=pilot, vertical_target=target, vz=vz, vertical_climb=np.r_[np.zeros(50), 1.5,
                                                                                                    np.zeros(n-51)])
     assert vr.score_straw(climbing, control, flown, gate)['whole_lap']['ticks_guard_climb_above_limit'] == 1
+
+
+def test_score_pine_v3_counts_only_strong_logged_climb_and_the_mound():
+    """Gates v3: the answered fraction is taken over the ticks in which the logged governor itself requested >= 1 m/s
+    (its release tail and weak climbs excluded); the mound is the first logged climb episode's height request."""
+    gate = dict(min_vz=1., climb_fraction=.8, last_s=2., mound_fraction=.9)
+    log_climb = np.zeros(400)
+    log_climb[50:150] = 3.
+    log_climb[150:180] = .5                        # the release tail: v2 counted it, v3 does not
+    log_cvz = np.zeros(400)
+    log_cvz[55:150] = 3.
+    cvz = np.zeros(400)
+    cvz[60:150] = 3.                               # 90 of the 100 strong ticks; nothing during the tail
+    side = dict(stop_reason='Impact detected from flight motion')
+    guard = arrays(cvz=cvz, log_climb=log_climb, log_cvz=log_cvz)
+    r = vr.score_pine_v3(guard, side, gate)
+    assert r['answered_fraction'] == pytest.approx(.9) and r['climb_passed'] and r['no_descent_passed']
+    assert r['mound_height_fraction'] == pytest.approx(90/95, abs=1e-4) and r['mound_passed'] and r['passed']
+    assert vr.score_pine(guard, side, gate)['answered_fraction'] == pytest.approx(90/130, abs=1e-4)    # v2's
+    cvz[60:80] = 2.                                # still answered (>= 1 m/s) but a smaller height request
+    cvz[80:100] = .5
+    r = vr.score_pine_v3(arrays(cvz=cvz, log_climb=log_climb, log_cvz=log_cvz), side, gate)
+    assert not r['climb_passed'] and not r['mound_passed'] and not r['passed']
+
+
+def test_score_straw_uphill_pools_escalated_seconds_per_minute():
+    gate = dict(max_escalated_per_min=.2, max_new_climb=1.)
+    n = 6000                                       # a minute at 100 Hz
+    stage = np.zeros(n)
+    stage[1000:1015] = 2                           # 0.15 s escalated
+    climb = np.zeros(n)
+    climb[990:1030] = 1.
+    climb[1000:1015] = 2.
+    lap = arrays(n, vertical_stage=stage, vertical_climb=climb)
+    r = vr.score_straw_uphill(dict(a=lap, b=arrays(n)), gate)
+    assert r['escalated_s'] == pytest.approx(.15) and r['minutes'] == pytest.approx(2., abs=.01) and r['passed']
+    assert r['laps']['a']['escalations'] == 1 and r['laps']['a']['ticks_guard_climb_above_limit'] == 15
+    assert r['laps']['a']['climb_onsets'] == 1 and r['laps']['b']['escalated_s'] == 0.
+    stage[1000:1500] = 2
+    assert not vr.score_straw_uphill(dict(a=arrays(n, vertical_stage=stage, vertical_climb=climb)), gate)['passed']
+
+
+def test_score_minus_escalation():
+    gate = dict(max_climb=1.)
+    climb = np.zeros(400)
+    climb[100:150] = 1.
+    assert vr.score_minus_escalation(arrays(vertical_climb=climb), gate)['passed']
+    climb[120] = 1.2
+    r = vr.score_minus_escalation(arrays(vertical_climb=climb), gate)
+    assert not r['passed'] and r['max_guard_climb'] == 1.2
 
 
 def test_variant_resolution_and_tags():
