@@ -28,19 +28,22 @@ Rule (`GapAimConfig`; the runner reads its frozen values from the gap pilot decl
   side. The evidence is dropped, the applied shift returns to 0 at once (the pilot holds the ring cue's own
   aim) and nothing is confirmed for ``side_latch_s``.
 
-Version 4 of the gap pilot declaration (version 3 had the same parameters but let only same-side evidence refresh
-the commitment; it was never scored or flown) adds three rules, each off by default (version 2's behaviour, bit for
-bit):
+Version 5 of the gap pilot declaration adds three rules, each off by default (version 2's behaviour, bit for bit).
+Version 3 let only same-side evidence refresh the commitment (never scored or flown); version 4 also started
+commitments on 'occluded' decisions and held them 0.5 s (scored: it held shifts into Straw Bale gates); version 5
+starts them on one-sided evidence only and holds 0.3 s. Every version's behaviour is reproducible from its
+declaration's pilot values (``commit_occluded`` defaults to version 4's true).
 
 - Side commitment near an obstacle (``commit``). An obstacle confirmation COMMITS to its side when one of its
   confirming samples reports the obstacle close: a near column on the path the vehicle is committed to
-  (``near_on_path``, the cue's response-model path over its horizon) or the ring itself behind a near object (kind
-  ``occluded``). While committed:
+  (``near_on_path``, the cue's response-model path over its horizon); with ``commit_occluded`` (version 4) also a
+  decision with the ring itself behind a near object (kind ``occluded``), whose side flips easily and may be the
+  ring's own gate; without it (version 5) the near_on_path decision must not be 'occluded'. While committed:
   - the target stays on that side with the largest confirming |shift| seen since the commitment (it never decays;
     clipped to ``max_shift_deg``), whatever single samples say (flicker, 'clear' frames when the object fills the
     band, same-side samples below ``active_deg``);
   - fresh evidence that the obstacle is still ahead refreshes the hold: an obstacle vote for either side (an
-    opposite vote does not move the target), or a valid close sample;
+    opposite vote does not move the target), or a valid close sample (near_on_path or 'occluded');
   - the other side takes over only on much stronger opposite evidence while there is still time to complete the
     switch: ``switch_votes`` consecutive fresh opposite obstacle votes of at least ``switch_min_deg`` each, within
     ``switch_window_s`` of the commitment's start (before the vehicle has responded to it); the new side is then
@@ -83,7 +86,7 @@ class GapAimConfig:
     terrain: bool = True
     terrain_side_deg: float = 6.
     terrain_lr: float = .405
-    # Version 4 rules (module docstring); off by default, which is version 2's behaviour.
+    # Version 3-5 rules (module docstring); off by default, which is version 2's behaviour.
     commit: bool = False
     commit_hold_s: float = .5
     commit_max_s: float = 2.5
@@ -92,8 +95,10 @@ class GapAimConfig:
     switch_window_s: float = .3
     terrain_yields: bool = False
     terrain_rising_only: bool = False
+    # Whether an 'occluded' decision (the ring column itself near) can start a commitment; True in version 4.
+    commit_occluded: bool = True
 
-    SWITCHES = ('terrain', 'commit', 'terrain_yields', 'terrain_rising_only')
+    SWITCHES = ('terrain', 'commit', 'terrain_yields', 'terrain_rising_only', 'commit_occluded')
 
     def __post_init__(self):
         values = asdict(self)
@@ -175,7 +180,7 @@ class GapAim:
                            terrain_episodes=0, latch_blocks=0, ring_conflicts=0, flag_conflicts=0)
         self.engaged_seconds = 0.
         self.max_applied_deg = 0.
-        # Side commitment (version 4, see the module docstring); its counts exist only when it is declared.
+        # Side commitment (see the module docstring); its counts exist only when it is declared.
         self.commit_side = 0
         self.commit_since = self.commit_refresh = None
         self.commit_mag = 0.
@@ -222,7 +227,9 @@ class GapAim:
         entry = dict(time=stamp, shift=shift, obstacle=obstacle, terrain=side, valid=valid,
                      ring_deg=float(ring) if valid and ring is not None and np.isfinite(ring) else None)
         if c.commit:
-            entry['close'] = valid and (_flag(sample.get('near_on_path')) or sample.get('kind') == 'occluded')
+            near, occluded = _flag(sample.get('near_on_path')), sample.get('kind') == 'occluded'
+            entry['close'] = valid and (near or occluded)
+            entry['starts'] = entry['close'] if c.commit_occluded else valid and near and not occluded
             self._commit_evidence(entry, now)
         self.samples.append(entry)
         self.counts['samples'] += 1
@@ -334,7 +341,7 @@ class GapAim:
                 self.counts[f'{mode}_episodes'] += 1
             self.side, self.side_until, self.mode = sign, now+c.side_latch_s, mode
             self.target, self.decay_from = shift, None
-            if c.commit and mode == 'obstacle' and any(v['close'] for v in found[3]):
+            if c.commit and mode == 'obstacle' and any(v['starts'] for v in found[3]):
                 self.commit_side, self.commit_since, self.commit_refresh = sign, now, now
                 self.commit_mag = max(min(abs(v['shift']), c.max_shift_deg) for v in found[3])
                 self.switch_run, self.commit_blocked = 0, False

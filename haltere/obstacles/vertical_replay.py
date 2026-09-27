@@ -23,6 +23,11 @@ Variants:
 ``--looming-stream`` replaces the logged looming samples (flights flown without looming): an npz per flight
 (``{flight}`` in the path) with t_wall, ttc, distance, below_fraction, ttc_lower (NaN = None), received DELAY
 (0.085 s) after capture.
+``--gap-pilot DECLARATION`` gives the gap aim another gap pilot declaration than the tree's (file tag -gp<stem>);
+``--near-on-path`` lets the gap samples carry the logged near_on_path as the live camera's samples did (tag -nop;
+the side commitment of gap pilot version 4 reads it, version 2 never did). The per-tick arrays also carry the gap
+aim's target, applied shift, flown offset, mode, committed side, conflict and the sample it saw
+(haltere.obstacles.gap_commit_eval scores them).
 
 usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [--stack ...] flight ...
 """

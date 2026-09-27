@@ -1,12 +1,14 @@
-"""Gap pilot version 4: side commitment near an obstacle and the terrain-vote rules (haltere.liftoff.gap_aim).
+"""Gap pilot versions 4 and 5: side commitment near an obstacle and the terrain-vote rules (haltere.liftoff.gap_aim).
 
-Pins: every version 4 rule is off by default and the version 2 gap aim is unchanged by the new fields; a close
-obstacle confirmation commits, holds its side and largest shift through flicker and 'clear' frames, is refreshed by
-close samples and by any obstacle vote (the obstacle is still ahead), switches only on much stronger opposite
-evidence early enough, and is released by the hold timeout, its maximum, and ring or flag conflicts; a terrain
-episode yields to obstacle evidence; terrain votes only for confirmed rising ground with a vertical guard; shadow
-never flies it; the pillar C sample stream of minus-fast6-vg-02 (development case) is held on its free side under
-version 4 and latched out under version 2; the offline evaluation's scoring helpers. None of it is flight evidence.
+Pins: every new rule is off by default and the version 2 gap aim is unchanged by the new fields; a close obstacle
+confirmation commits, holds its side and largest shift through flicker and 'clear' frames, is refreshed by close
+samples and by any obstacle vote (the obstacle is still ahead), switches only on much stronger opposite evidence
+early enough, and is released by the hold timeout, its maximum, and ring or flag conflicts; version 5 (the declared
+one) starts commitments only on one-sided evidence (not on 'occluded' decisions, as at Straw Bale gate arches) and
+holds 0.3 s; a terrain episode yields to obstacle evidence; terrain votes only for confirmed rising ground with a
+vertical guard; shadow never flies it; the pillar C sample stream of minus-fast6-vg-02 (development case) is held on
+its free side under versions 4 and 5 and latched out under version 2; the offline evaluation's scoring helpers. None
+of it is flight evidence.
 """
 from dataclasses import asdict, replace
 import json
@@ -23,6 +25,7 @@ from tests.test_visual_assistance import SENSOR, senses
 
 V2 = GapAimConfig()
 V4 = replace(V2, commit=True, terrain_yields=True, terrain_rising_only=True)
+V5 = replace(V4, commit_hold_s=.3, commit_occluded=False)
 DT = .01
 
 
@@ -41,16 +44,18 @@ def stream(times, shifts, **kw):
 # ---------------------------------------------------------------------------------------------
 @pytest.mark.parametrize('overrides', [dict(commit=1), dict(terrain_yields='yes'), dict(switch_votes=2.5),
                                        dict(switch_min_deg=20.), dict(commit_hold_s=3.), dict(switch_window_s=0.),
-                                       dict(commit_max_s=float('nan'))])
-def test_version_4_parameters_validate(overrides):
+                                       dict(commit_max_s=float('nan')), dict(commit_occluded=0)])
+def test_new_parameters_validate(overrides):
     with pytest.raises(ValueError):
         GapAimConfig(**overrides)
 
 
-def test_every_version_4_rule_is_off_by_default():
+def test_every_new_rule_is_off_by_default_and_each_declaration_reproduces_its_version():
+    from haltere.liftoff.gap_stack import REPO_ROOT
     assert not (V2.commit or V2.terrain_yields or V2.terrain_rising_only)
-    assert GapAimConfig.from_dict({k: v for k, v in asdict(V2).items()
-                                   if k in json.load(open('configs/obstacles/gap_pilot_v2.json'))['pilot']}) == V2
+    ob = REPO_ROOT/'configs'/'obstacles'
+    load = lambda name: GapAimConfig.from_dict(json.loads((ob/name).read_text(encoding='utf-8'))['pilot'])
+    assert load('gap_pilot_v2.json') == V2 and load('gap_pilot_v4.json') == V4 and load('gap_pilot.json') == V5
 
 
 def test_the_version_2_rule_ignores_the_version_4_parameters_and_near_on_path():
@@ -68,8 +73,9 @@ def test_the_version_2_rule_ignores_the_version_4_parameters_and_near_on_path():
 # ---------------------------------------------------------------------------------------------
 # side commitment
 # ---------------------------------------------------------------------------------------------
-def test_a_close_confirmation_commits_and_holds_the_largest_shift_through_flicker():
-    aim = GapAim(V4)
+@pytest.mark.parametrize('config', [V4, V5], ids=['v4', 'v5'])
+def test_a_close_confirmation_commits_and_holds_the_largest_shift_through_flicker(config):
+    aim = GapAim(config)
     samples = (stream([1.0, 1.066], [-3., -2.5]) + [close(1.133, 0., kind='clear', near=False)]
                + stream([1.2], [-6.]) + [close(1.266, 0., kind='clear', near=False), close(1.333, 0., kind='clear',
                                                                                           near=False)]
@@ -92,11 +98,40 @@ def test_without_close_evidence_the_confirmation_does_not_commit():
         assert rows == run_aim(GapAim(V2), [dict(s, kind=kind) for s in samples], 1.8, start=.95)
 
 
-def test_an_occluded_ring_is_close_evidence():
+def test_an_occluded_decision_starts_a_commitment_only_in_version_4_and_refreshes_one_in_both():
+    occluded = [dict(sample(1.0+k*.066, -9., kind='occluded'), near_on_path=True) for k in range(2)]
     aim = GapAim(V4)
-    run_aim(aim, [dict(sample(1.0+k*.066, -9., kind='occluded'), near_on_path=False) for k in range(2)], 1.2,
-            start=.95)
+    run_aim(aim, occluded, 1.2, start=.95)
     assert aim.committed and aim.commit_side == -1
+    aim = GapAim(V5)
+    rows = run_aim(aim, occluded, 1.2, start=.95)
+    assert not aim.committed and aim.counts['commits'] == 0
+    assert rows == run_aim(GapAim(V2), occluded, 1.2, start=.95)          # version 2's confirmation, no hold
+    # started by one-sided 'gap' evidence, a commitment is refreshed and grown by same-side occluded votes
+    aim = GapAim(V5)
+    rows = run_aim(aim, stream([1.0, 1.066], [-3., -3.]) + [dict(sample(1.2+k*.25, -9., kind='occluded'),
+                                                                 near_on_path=False) for k in range(4)],
+                   2.2, start=.95)
+    assert aim.counts['commits'] == 1 and all(r[1] < 0 for r in rows if 1.1 <= r[0] <= 2.05)
+    assert at(rows, 1.4)[1] == -9.
+
+
+def test_version_5_does_not_commit_on_a_gate_arch_flicker():
+    """Straw Bale gates (straw-brain08-04, 1.5 s before a checkpoint): the inflatable arch's top crosses the band at
+    the ring and the decision flickers 'occluded' +-12 deg with near_on_path. Version 4 committed and held 12 deg
+    into the gate; version 5 does not commit and flies version 2's confirmation."""
+    shifts = [-12., -12., -12., 12., -12., -12., -12., -12., -2.5, 0., .5, 2.5, .5, .5]
+    kinds = ['occluded']*9+['gap']*5
+    t = 1.0+np.arange(len(shifts))*.056
+    flicker = [dict(sample(float(tk), s, kind=k, ring=-91.), near_on_path=k == 'occluded')
+               for tk, s, k in zip(t, shifts, kinds)]
+    v4 = GapAim(V4)
+    rows4 = run_aim(v4, flicker, 2.2, start=.95)
+    v5 = GapAim(V5)
+    rows5 = run_aim(v5, flicker, 2.2, start=.95)
+    assert v4.counts['commits'] == 1 and at(rows4, 1.9)[1] == -12.       # still held 0.5 s after the last evidence
+    assert v5.counts['commits'] == 0 and rows5 == run_aim(GapAim(V2), flicker, 2.2, start=.95)
+    assert at(rows5, 1.9)[2] == 0.
 
 
 def test_the_hold_expires_without_refreshing_evidence_and_the_shift_decays():
@@ -217,10 +252,11 @@ def test_pillar_c_version_2_steers_toward_the_pillar_and_latches_out_the_free_si
     assert IMPACT-first_right < .45 and aim.counts['latch_blocks'] >= 1           # 0.39 s before the impact
 
 
+@pytest.mark.parametrize('version', [V4, V5], ids=['v4', 'v5'])
 @pytest.mark.parametrize('terrain', ['gentle climb suppressed', 'terrain votes as version 2'])
-def test_pillar_c_version_4_holds_the_free_side_from_confirmation_to_the_impact(terrain):
+def test_pillar_c_versions_4_and_5_hold_the_free_side_from_confirmation_to_the_impact(terrain, version):
     flag = (lambda now: False) if terrain.startswith('gentle') else (lambda now: 21.6 <= now <= 22.6)
-    config = V4 if terrain.startswith('gentle') else replace(V4, terrain_rising_only=False)
+    config = version if terrain.startswith('gentle') else replace(version, terrain_rising_only=False)
     aim, rows = replay_pillar_c(config, flag)
     first_right = min(r[0] for r in rows if r[1] < 0)
     assert IMPACT-first_right >= .9                                               # about 1 s before the impact
