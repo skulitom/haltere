@@ -136,6 +136,19 @@ def test_label_lead_pairs_each_sample_with_the_teachers_label_later():
     assert torch.equal(data[3]['request'], data[0]['request'][:2*len(ticks)])
 
 
+def test_sag_mask_selects_samples_losing_height_they_were_asked_to_keep():
+    from haltere.train.fast_motor_tracking import sag_mask, sag_weights
+    request = torch.tensor([[5., 0., .2],     # asked +0.2, sinking at 1.0: sag 1.2 -> yes
+                            [5., 0., .2],     # sinking at 0.5: sag 0.7 -> no
+                            [5., 0., -1.],    # asked a fast descent, sinking at 2.5: -> no
+                            [5., 0., -.4],    # asked a gentle descent, sinking at 1.5: sag 1.1 -> yes
+                            [5., 0., 1.]])    # climbing request, flown level: sag 1.0 -> yes
+    velocity = torch.tensor([[5., 0., -1.], [5., 0., -.5], [5., 0., -2.5], [5., 0., -1.5], [5., 0., 0.]])
+    assert sag_mask(request, velocity).tolist() == [True, False, False, True, True]
+    weights = sag_weights(request, velocity, 4.)
+    assert torch.allclose(weights.mean(), torch.tensor(1.)) and torch.allclose(weights[0]/weights[1], torch.tensor(4.))
+
+
 def test_parse_gains_validates_names_and_values():
     assert parse_gains(['attitude_gain=4', 'velocity_gain=2']) == dict(attitude_gain=4., velocity_gain=2.)
     assert parse_gains([]) == {}

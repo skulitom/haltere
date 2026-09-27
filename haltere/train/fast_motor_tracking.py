@@ -581,6 +581,18 @@ def brake_weights(request, velocity, weight, **selection):
     return weights*len(weights)/weights.sum()
 
 
+def sag_mask(request, velocity, *, min_sag=1., max_descent=.5):
+    """Samples where the drone sinks below its vertical request by >= `min_sag` m/s while the request does not ask for
+    a descent faster than `max_descent` m/s (losing height it was asked to keep: the throttle must rise)."""
+    return (request[:, 2]-velocity[:, 2] >= min_sag) & (request[:, 2] > -max_descent)
+
+
+def sag_weights(request, velocity, weight, **selection):
+    """Up-weight `sag_mask` samples by `weight` (mean weight one)."""
+    weights = torch.where(sag_mask(request, velocity, **selection), float(weight), 1.)
+    return weights*len(weights)/weights.sum()
+
+
 def fit_readout(brain, features, labels, ridge, weights=None, smooth=0., step_gram=None, step_count=0,
                 smooth_rows=None):
     """Parent-centred (optionally weighted) ridge on throttle/roll/pitch rows; nothing else may change.
@@ -671,6 +683,8 @@ def main():
                         help='range of the slow-leg pilot speed in m/s (at most the nominal speed)')
     parser.add_argument('--brake-weight', type=float, default=1.,
                         help='weight of aligned, level, at-speed samples that are over-speed along the track')
+    parser.add_argument('--sag-weight', type=float, default=1.,
+                        help='weight of samples sinking >= 1 m/s below a vertical request that is not a fast descent')
     parser.add_argument('--teacher-gains', nargs='*', default=[], metavar='NAME=VALUE',
                         help='FastPDConfig overrides of the label teacher (training only), e.g. attitude_gain=4')
     parser.add_argument('--turn-relief', type=float, default=0.,
@@ -683,7 +697,8 @@ def main():
     parser.add_argument('--smooth-rows', type=float, nargs=3, default=[1., 1., 1.], metavar=('THR', 'ROLL', 'PITCH'),
                         help='per-row multipliers of --smooth (refit only)')
     args = parser.parse_args()
-    if args.ridge <= 0 or args.rounds < 1 or args.sink_weight <= 0 or args.smooth < 0 or args.brake_weight <= 0:
+    if (args.ridge <= 0 or args.rounds < 1 or args.sink_weight <= 0 or args.smooth < 0 or args.brake_weight <= 0
+            or args.sag_weight <= 0):
         raise ValueError('Use positive ridge, sink and brake weights, non-negative smoothing and at least one round')
     if not 0 < args.vertical_goal_seconds <= 2:
         raise ValueError('Use a vertical goal time in (0, 2] s')
@@ -724,7 +739,8 @@ def main():
     if args.resolve:
         source = torch.load(Path(args.resolve)/'training.pt', map_location='cpu', weights_only=False)
         if (args.smooth > 0 and 'step_gram' not in source or args.sink_weight != 1 and 'request' not in source
-                or args.brake_weight != 1 and ('request' not in source or 'velocity' not in source)):
+                or (args.brake_weight != 1 or args.sag_weight != 1)
+                and ('request' not in source or 'velocity' not in source)):
             raise ValueError('That run did not save feature steps / 3D requests / velocities')
         for key in ('checkpoint', 'profile', 'speed', 'scaled_speed', 'vertical_goal_seconds', 'steep', 'seconds',
                     'courses', 'rounds', 'retina_data', 'validation_retina_data', 'retina_dropout', 'evaluation_seeds',
@@ -774,6 +790,9 @@ def main():
         if args.sink_weight != 1:
             sink = sink_weights(torch.cat(requests_3d), args.sink_weight)
             weights = sink if weights is None else weights*sink/(weights*sink).mean()
+        if args.sag_weight != 1:
+            sag = sag_weights(torch.cat(requests_3d), torch.cat(velocities), args.sag_weight)
+            weights = sag if weights is None else weights*sag/(weights*sag).mean()
         if args.brake_weight != 1:
             brake = brake_weights(torch.cat(requests_3d), torch.cat(velocities), args.brake_weight)
             weights = brake if weights is None else weights*brake/(weights*brake).mean()
@@ -835,12 +854,13 @@ def main():
                                   note='training labels only; the deployed FastMotorPD and the pilot are unchanged')}
            if teacher_factory is not None or args.label_lead > 0 else {}),
         **({'smooth_rows': args.smooth_rows} if args.smooth_rows != [1., 1., 1.] else {}),
+        **({'sag_weight': args.sag_weight} if args.sag_weight != 1 else {}),
         resolved_training_sha256=config['resolved_training_sha256'],
         resolved_from=None if source is None else dict(
             run=args.resolve, source_sha256=source['config']['source_sha256'],
             **{k: source['config'].get(k) for k in ('ridge', 'sink_weight', 'smooth', 'balance_speed', 'brake_weight',
-                                                    'smooth_rows')
-               if k not in ('brake_weight', 'smooth_rows') or k in source['config']}),
+                                                    'smooth_rows', 'sag_weight')
+               if k not in ('brake_weight', 'smooth_rows', 'sag_weight') or k in source['config']}),
         changed_parameters=history[-1]['changed'], runtime_requires_teacher=False,
         recorded_scene_currents=training_retina is not None, evaluation=history[-1]['evaluation']))
     export(out/'candidate.pt', brain, cfg, meta, 1)
