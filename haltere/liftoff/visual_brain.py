@@ -394,13 +394,19 @@ class VisualController:
                                                  motor_contract=contract, applied=bool(lag_turn_apply))
             wall_configs = {}
             if wall_pilot:
-                # Declared once for every motor contract and course (obstacle stack only).
+                # Declared once for every course (obstacle stack only); turn-first's stopping model (the motor's
+                # measured braking) per fast motor contract, the declaration's default for any other motor.
                 from .fast_race_cue import wall_pilot_configs
                 declaration, digest = load_wall_pilot(wall_pilot)
-                wall_configs = wall_pilot_configs(declaration)
+                contract = ('fast_velocity_brain_v1' if fast_brain else
+                            'fast_velocity_pd_v1' if pd_profile == 'fast' and motor_controller == 'pd' else None)
+                wall_configs = wall_pilot_configs(declaration, contract)
+                stopping = declaration.get('turn_first_stopping') or {}
                 self.wall_pilot_declaration = dict(path=str(wall_pilot), sha256=digest, file_sha256=sha256(wall_pilot),
                                                    schema=declaration.get('schema'),
-                                                   version=declaration.get('version'), applied=bool(wall_apply))
+                                                   version=declaration.get('version'), applied=bool(wall_apply),
+                                                   motor_contract=contract,
+                                                   stopping_model=contract if contract in stopping else 'default')
             vertical_config = None
             if vertical_guard:
                 # Declared once for every motor contract and course (obstacle stack only).

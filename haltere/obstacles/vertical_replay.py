@@ -29,6 +29,7 @@ usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [-
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import os
 import sys
@@ -97,7 +98,11 @@ def build(side, tree, stack='flown', wall='off', vertical=None):
     if verticals != 'off' and not has_vertical:
         raise SystemExit('this tree has no vertical guard')
     if walls in ('on', 'shadow'):
-        kw.update(frc.wall_pilot_configs(json.loads((ob/'wall_pilot.json').read_text(encoding='utf-8'))))
+        declaration = json.loads((ob/'wall_pilot.json').read_text(encoding='utf-8'))
+        # wall-pilot version 4 declares turn-first's stopping model per motor contract (the runner passes it)
+        takes_contract = 'contract' in inspect.signature(frc.wall_pilot_configs).parameters
+        kw.update(frc.wall_pilot_configs(declaration, contract) if takes_contract
+                  else frc.wall_pilot_configs(declaration))
         kw['wall_apply'] = walls == 'on' and applied
     if verticals in ('on', 'shadow'):
         kw['vertical_guard'] = frc.vertical_guard_config(
@@ -135,7 +140,7 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     keys = ('t', 'now', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'cvx', 'cvy', 'cvz', 'yaw_cmd', 'state', 'log_cvx', 'log_cvy',
             'log_cvz', 'log_state', 'log_climb', 'cap', 'climb', 'descent_scale', 'support_since',
             'slope_support_since', 'new_sample', 'ttc', 'below', 'lower', 'vertical_pilot', 'vertical_target',
-            'vertical_factor', 'vertical_arrest', 'vertical_stage', 'vertical_climb')
+            'vertical_factor', 'vertical_arrest', 'vertical_stage', 'vertical_climb', 'turn_first', 'side_guard')
     rows = {k: [] for k in keys}
     last_ts = None
     nan = float('nan')
@@ -194,6 +199,10 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                       lower=nan if clearance is None or clearance['ttc_lower'] is None else clearance['ttc_lower'])
         if has_vertical:
             values.update(pilot.vertical_log())
+        if getattr(pilot, 'turn_first', None) is not None:
+            # 1 while a turn-first episode is active (also in shadow); the side guard (wall-pilot version 4)
+            values.update(turn_first=float(pilot.turn_first_active),
+                          side_guard=float(getattr(pilot, 'side_guard_active', False)))
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}

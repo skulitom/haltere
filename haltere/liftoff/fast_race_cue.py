@@ -35,9 +35,10 @@ and ``lag_turn_apply`` False compute and log everything without applying it
 
 Optionally (``turn_first=TurnFirstConfig``, ``ceiling_guard=CeilingGuardConfig``,
 off by default; the obstacle stack's wall-pilot declaration), two wall rules:
-at a wall with the checkpoint far off the heading the pilot turns before it
-translates (no request toward the wall, a creep speed until the bearing is
-inside a cone, bounded in time), and the TTC governor's terrain climb is kept
+at a wall it cannot stop before, with the checkpoint far off the heading or
+its marker lost, the pilot turns before it translates (no request toward the
+wall, a creep speed until the bearing is inside a cone, bounded in time), and
+the TTC governor's terrain climb is kept
 out of ceilings (unexplained alarms during a climb are walls, weak climbs are
 bounded, overhead evidence cuts the climb and bounds the vertical request).
 ``wall_apply`` False computes and logs them without applying them.
@@ -234,9 +235,14 @@ TURN_FIRST_BEARING_STATES = ('cue', 'below', 'below_weak', 'above')
 # States that end a turn-first episode: other rules own the request there.
 TURN_FIRST_HANDOFF_STATES = ('search', 'launch', 'wait', 'support_climb')
 # The wall-pilot declaration version whose rules this code implements (TurnFirstConfig, CeilingGuardConfig);
-# version 2 added the ceiling guard's overhead_min_rise, version 3 its overhead_positive (versions 1 and 2 are
-# kept for provenance and refused).
-WALL_PILOT_VERSION = 3
+# version 2 added the ceiling guard's overhead_min_rise, version 3 its overhead_positive, version 4 replaced
+# turn-first's fixed slow_speed engagement with the stopping-distance one (versions 1-3 are kept for provenance and
+# refused).
+WALL_PILOT_VERSION = 4
+# Pilot state in which the checkpoint's bearing is unknown (its marker was lost for more than 0.25 s and the pilot
+# repeats its last request): turn-first may engage there too (version 4), with the horizontal request bounded to
+# coast_creep_speed, because the direction to creep toward is not known.
+TURN_FIRST_UNKNOWN_STATES = ('coast',)
 
 
 @dataclass(frozen=True)
@@ -245,35 +251,64 @@ class TurnFirstConfig:
     beside it. Off unless a runner passes it (the wall-pilot declaration in configs/obstacles; obstacle stack only).
 
     Engage when both hold:
-    - near a wall: the clearance governor holds a stand-off (a wall that capped the request at its
-      standoff_speed or less is remembered), or its wall brake capped the request within the last
-      brake_recent_s while the horizontal speed is at most slow_speed;
-    - the checkpoint is far off the heading: its marker is clamped at a side edge or a corner (pilot state
-      'side'), or its bearing (the filtered aim bearing of a marker in view or clamped at the bottom/top edge)
-      lies engage_deg or more from the heading.
+    - near a wall, at a horizontal speed of at most max_speed: the clearance governor holds a stand-off (a wall
+      that capped the request at its standoff_speed or less is remembered) and the wall lies within the stopping
+      distance from that stand-off speed (or from the closing speed, if higher: a drone that has flown away from
+      the wall is no longer at it), or its wall brake capped the request within the last brake_recent_s and the
+      drone could not stop before the wall:
+      the remaining distance to the latest wall sample (TTC policy: its capture-time reach along its looming ray
+      minus the odometry travelled along that ray since, 0 once reached or passed; 0 without such a sample, e.g.
+      with the stopping-distance policy, which keeps none) is at most the stopping distance at the measured
+      closing speed v along
+      that ray, v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m (the motor's measured braking: its
+      delay behind the request and its deceleration, declared per motor contract);
+    - the checkpoint is far off the heading or unknown: its marker is clamped at a side edge or a corner (pilot
+      state 'side'), or its bearing (the filtered aim bearing of a marker in view or clamped at the bottom/top
+      edge) lies engage_deg or more from the heading, or the marker is lost and the pilot coasts on its last
+      request (state 'coast': after a checkpoint passage in a confined space the next marker can take 0.2-0.5 s
+      to appear; coasting on the old request carries the drone into the wall it just braked for).
     While engaged, the horizontal request loses any component toward the wall (along the looming ray that
-    capped it, taken at engagement) and is bounded to creep_speed, and the request's speed toward the wall is
-    removed at the clearance brake_slew; the vertical request and the yaw rule are unchanged, so the assisted
-    yaw keeps turning toward the checkpoint (the clamped edge ray turns with the camera). The episode ends when
-    the bearing of a marker in view (or bottom/top clamped) comes within release_deg of the heading ('aligned';
+    capped it, taken at engagement) and is bounded to creep_speed (coast_creep_speed while coasting: the
+    direction to the checkpoint is not known), and the request's speed toward the wall is removed, and its
+    horizontal speed brought to that bound, at the clearance brake_slew (beyond the usual taper); the vertical
+    request and the yaw rule are unchanged, so the assisted yaw keeps
+    turning toward the checkpoint (the clamped edge ray turns with the camera). The episode ends when the
+    bearing of a marker in view (or bottom/top clamped) comes within release_deg of the heading ('aligned';
     the ordinary speed schedule and acceleration limits then resume), when a state that owns the request takes
     over (search, launch, support climb: 'handoff'), or after max_s ('timeout'), after which it cannot engage
-    again for rearm_s: the drone never hovers at a wall indefinitely.
+    again for rearm_s: the drone never hovers at a wall indefinitely. During that rearm time the side rule still
+    never requests speed toward a wall it is near (side guard: the component along the governor's current wall
+    ray is removed, without the creep bound).
+    Declaration version 4; versions 1-3 engaged at a wall brake only at or below a fixed slow_speed (1.5 m/s),
+    not in 'coast', and had no side guard.
     """
-    slow_speed: float = 1.5
     brake_recent_s: float = 1.
     engage_deg: float = 50.
     release_deg: float = 30.
     creep_speed: float = .8
+    coast_creep_speed: float = 0.
+    max_speed: float = 3.5
+    stop_latency_s: float = .3
+    stop_deceleration: float = 3.5
+    stop_margin_m: float = .5
     max_s: float = 2.
     rearm_s: float = 2.
 
     def __post_init__(self):
-        values = list(asdict(self).values())
-        if not np.isfinite(values).all() or min(values) <= 0:
-            raise ValueError('Use finite positive turn-first parameters')
+        values = asdict(self)
+        coast = values.pop('coast_creep_speed')
+        if not np.isfinite(list(values.values())+[coast]).all() or min(values.values()) <= 0:
+            raise ValueError('Use finite positive turn-first parameters (coast_creep_speed may be 0)')
+        if not 0 <= coast <= self.creep_speed:
+            raise ValueError('Use 0 <= coast_creep_speed <= creep_speed')
         if not self.release_deg < self.engage_deg < 90:
             raise ValueError('Use release_deg < engage_deg < 90 degrees')
+
+    def stopping_distance(self, closing_speed):
+        """Distance (m) the declared motor needs to stop from `closing_speed` (m/s along the wall ray), with the
+        margin: v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m (v clipped at 0)."""
+        v = max(0., float(closing_speed))
+        return v*self.stop_latency_s+v*v/(2*self.stop_deceleration)+self.stop_margin_m
 
 
 def stopping_speed(distance, deceleration, latency, margin):
@@ -587,13 +622,19 @@ class CeilingGuardConfig:
                              'vertical_cap <= weak_climb')
 
 
-def wall_pilot_configs(declaration):
+def wall_pilot_configs(declaration, contract=None):
     """dict(turn_first=TurnFirstConfig, ceiling_guard=CeilingGuardConfig) from a wall-pilot declaration already
-    parsed (and hash-checked) by the runner; refuses another rule version. This module reads no files."""
+    parsed (and hash-checked) by the runner; refuses another rule version. Turn-first's stopping model (the motor's
+    measured braking) is declared per motor contract under 'turn_first_stopping'; a contract it does not list (or
+    None) gets its 'default' entry. This module reads no files."""
     if (declaration or {}).get('version') != WALL_PILOT_VERSION:
         raise ValueError(f'The wall-pilot declaration is version {(declaration or {}).get("version")}; the fast pilot '
                          f'implements version {WALL_PILOT_VERSION}')
-    return dict(turn_first=TurnFirstConfig(**declaration['turn_first']),
+    stopping = declaration.get('turn_first_stopping')
+    if not isinstance(stopping, dict) or not isinstance(stopping.get('default'), dict):
+        raise ValueError('A wall-pilot declaration lists turn-first stopping models per motor contract and a default')
+    model = stopping.get(contract) if isinstance(stopping.get(contract), dict) else stopping['default']
+    return dict(turn_first=TurnFirstConfig(**declaration['turn_first'], **model),
                 ceiling_guard=CeilingGuardConfig(**declaration['ceiling_guard']))
 
 
@@ -721,6 +762,9 @@ class TtcClearanceGovernor:
                                         topped=0)
         self.samples = []
         self.last_time = self.last_evidence = self.first_input = None
+        # The latest wall sample (not braked for as terrain, aged TTC < hold_ttc_s): its capture-time reach along its
+        # ray and capture position (wall_distance). Read by the pilot's turn-first rule only; the governor ignores it.
+        self.wall_evidence = None
         self.cap = self.cap_ray = self.target = None
         self.lowered_at = self.climb_hold_until = self.standoff_until = -np.inf
         self.climb = 0.
@@ -764,6 +808,16 @@ class TtcClearanceGovernor:
         """TTC now: the capture-time reach along the ray minus the odometry travelled along it."""
         left = reach-float((np.asarray(position, float)-sample['position']) @ sample['ray'])
         return max(0., left)/max(closing, .3)
+
+    def wall_distance(self, position):
+        """(remaining distance along its ray to the latest wall sample, that ray) at `position`: the capture-time
+        reach minus the odometry travelled along the ray since, at least 0 (reached or passed); (None, None) before
+        any wall sample."""
+        e = self.wall_evidence
+        if e is None:
+            return None, None
+        left = e['reach']-float((np.asarray(position, float)-e['position']) @ e['ray'])
+        return max(0., left), e['ray']
 
     def _climb_bound(self):
         """Height above the episode base at which the terrain climb is topped (the vertical guard's gentle bound
@@ -920,6 +974,8 @@ class TtcClearanceGovernor:
                         self.strong_height = height
             # graded slow-down; during an overhead hold a surface below the path is braked for like a wall
             brake_terrain = terrain and not overhead
+            if not brake_terrain and ttc < c.hold_ttc_s:
+                self.wall_evidence = dict(time=s['time'], reach=s['reach'], position=s['position'], ray=s['ray'])
             active = self.cap is not None and self.cap < max(closing, 0.)+1.
             if self.target is not None and not brake_terrain and ttc < c.hold_ttc_s:
                 self.lowered_at = now               # a wall still in view: hold the cap
@@ -1075,7 +1131,12 @@ class FastRaceCue:
         self.turn_first_block_until = -np.inf
         self.turn_first_active = False
         self.turn_first_counts = dict(episodes=0, aligned=0, handoff=0, timeout=0)
+        # what engaged each episode: the checkpoint trigger (side, bearing, coast) and the wall condition (standoff,
+        # stopping: a recent wall brake within the stopping distance)
+        self.turn_first_triggers = dict(side=0, bearing=0, coast=0, standoff=0, stopping=0)
         self.turn_first_time = 0.
+        self.side_guard_time = 0.       # seconds the side guard removed speed toward a wall outside an episode
+        self.side_guard_active = False
         # Vertical guard (off unless declared; obstacle stack only): see VerticalGuardConfig. vertical_apply False
         # computes and logs it without applying it: the flown governor then has no vertical guard and a guarded copy
         # fed the same samples reports the vertical request it would make (vertical_target).
@@ -1351,22 +1412,37 @@ class FastRaceCue:
         bearing = float(np.arctan2(self.direction[1], self.direction[0]))
         return float(abs(np.degrees((bearing-yaw+np.pi) % (2*np.pi)-np.pi)))
 
-    def _near_wall(self, speed, now):
-        """The turn-first wall condition (see TurnFirstConfig): a stand-off, or a recent wall brake at low speed."""
+    def _near_wall(self, position, velocity, now):
+        """The turn-first wall condition (see TurnFirstConfig): 'standoff' (a clearance stand-off, the wall within
+        the stopping distance from the stand-off speed or the closing speed), 'stopping' (a recent wall brake at <=
+        max_speed with the latest wall sample within the stopping distance at the closing speed), or None."""
         gov, tf = self.clearance, self.turn_first
-        if gov is None or gov.cap_ray is None:
-            return False
+        if gov is None or gov.cap_ray is None or float(np.linalg.norm(velocity[:2])) > tf.max_speed:
+            return None
+        # the latest wall sample, dead-reckoned; without one (the stopping-distance policy keeps none) it counts as
+        # reached
+        distance, ray = gov.wall_distance(position) if hasattr(gov, 'wall_distance') else (None, None)
+        if distance is None:
+            distance, ray = 0., gov.cap_ray
+        closing = float(np.asarray(velocity, float) @ np.asarray(ray, float))
         if isinstance(gov, TtcClearanceGovernor):
             standoff = now <= gov.standoff_until and gov.cap is not None
         else:
             standoff = bool(gov.sustained and gov.cap is not None and gov.cap < gov.config.standoff_speed)
-        return standoff or (now-self.wall_brake_at <= tf.brake_recent_s and speed <= tf.slow_speed)
+        if standoff and distance <= tf.stopping_distance(max(closing, gov.config.standoff_speed)):
+            return 'standoff'
+        if now-self.wall_brake_at > tf.brake_recent_s:
+            return None
+        return 'stopping' if distance <= tf.stopping_distance(closing) else None
 
-    def _turn_first(self, state, desired, velocity, yaw, now):
-        """Turn before translating at a wall (TurnFirstConfig): the limited horizontal request while an episode
-        is active (also computed in shadow), else None. Updates the episode state and its counts."""
+    def _turn_first(self, state, desired, position, velocity, yaw, now):
+        """Turn before translating at a wall (TurnFirstConfig): (the limited horizontal request, the horizontal unit
+        wall ray whose speed is removed at the brake slew, the bound on the horizontal speed that is also reached at
+        the brake slew) while an episode or the side guard (no bound: inf) is active (also computed in shadow), else
+        None. Updates the episode state and its counts."""
         tf = self.turn_first
         off = self._bearing_off_deg(yaw)
+        self.side_guard_active = False
         if self.turn_first_since is not None:
             end = ('handoff' if state in TURN_FIRST_HANDOFF_STATES or self.launching else
                    'aligned' if state in TURN_FIRST_BEARING_STATES and off is not None and off <= tf.release_deg else
@@ -1376,24 +1452,52 @@ class FastRaceCue:
                 self.turn_first_since = self.turn_first_ray = None
                 if end == 'timeout':
                     self.turn_first_block_until = now+tf.rearm_s
-        speed = float(np.linalg.norm(velocity[:2]))
-        if (self.turn_first_since is None and not self.launching and now >= self.turn_first_block_until
-                and state not in TURN_FIRST_HANDOFF_STATES and self._near_wall(speed, now)
-                and (state == 'side' or (state in TURN_FIRST_BEARING_STATES and off is not None
-                                         and off >= tf.engage_deg))):
-            ray = np.asarray(self.clearance.cap_ray, float)[:2]
-            if np.linalg.norm(ray) > 1e-6:
-                self.turn_first_since, self.turn_first_ray = now, ray/np.linalg.norm(ray)
-                self.turn_first_counts['episodes'] += 1
+        trigger = ('side' if state == 'side' else
+                   'bearing' if state in TURN_FIRST_BEARING_STATES and off is not None and off >= tf.engage_deg else
+                   'coast' if state in TURN_FIRST_UNKNOWN_STATES else None)
+        near = None
+        if (self.turn_first_since is None and not self.launching and trigger is not None
+                and state not in TURN_FIRST_HANDOFF_STATES):
+            near = self._near_wall(position, velocity, now)
+        ray = None if self.clearance is None or self.clearance.cap_ray is None else \
+            np.asarray(self.clearance.cap_ray, float)[:2]
+        if ray is None or np.linalg.norm(ray) <= 1e-6:
+            ray = None
+        else:
+            ray = ray/np.linalg.norm(ray)
+        if near is not None and ray is not None and now >= self.turn_first_block_until:
+            self.turn_first_since, self.turn_first_ray = now, ray
+            self.turn_first_counts['episodes'] += 1
+            self.turn_first_triggers[trigger] += 1
+            self.turn_first_triggers[near] += 1
         self.turn_first_active = self.turn_first_since is not None
-        if not self.turn_first_active:
-            return None
         horizontal = np.array(desired[:2], dtype=float)
+        if not self.turn_first_active:
+            if trigger == 'side' and near is not None and ray is not None:
+                # side guard (rearm after a timeout): the side rule never requests speed toward a wall it is near
+                self.side_guard_active = True
+                horizontal -= ray*max(0., float(horizontal @ ray))
+                return horizontal, ray, np.inf
+            return None
         horizontal -= self.turn_first_ray*max(0., float(horizontal @ self.turn_first_ray))
+        creep = tf.coast_creep_speed if state in TURN_FIRST_UNKNOWN_STATES else tf.creep_speed
         norm = float(np.linalg.norm(horizontal))
-        if norm > tf.creep_speed:
-            horizontal *= tf.creep_speed/norm
-        return horizontal
+        if norm > creep:
+            horizontal *= creep/norm if norm > 0 else 0.
+        return horizontal, self.turn_first_ray, creep
+
+    @staticmethod
+    def _bound_speed(previous, command, bound, dt, rate):
+        """The command with its horizontal speed brought down to `bound` at up to `rate` m/s^2 (beyond the taper),
+        its direction kept."""
+        speed = float(np.linalg.norm(command[:2]))
+        if speed <= bound:
+            return command
+        allowed = max(bound, float(np.linalg.norm(previous[:2]))-rate*dt)
+        if speed > allowed:
+            command = command.copy()
+            command[:2] *= allowed/speed
+        return command
 
     @staticmethod
     def _cap_command(previous, command, cap, ray, dt, rate, top, vertical_limits):
@@ -1585,16 +1689,18 @@ class FastRaceCue:
             self.clearance_braking = braking
             status = ('blind' if self.clearance.blind else 'brake') if braking else self.clearance.status
             self.clearance_time[status] = self.clearance_time.get(status, 0.)+dt
-        turn_first = None
+        turn_first = None               # the horizontal wall ray whose request speed turn-first removes this tick
+        turn_first_bound = np.inf       # and the bound on the horizontal request it brings the request to
         if self.turn_first is not None:
             # Turn before translating at a wall (computed in shadow too, applied only with wall_apply).
-            turn_first = self._turn_first(state, desired, velocity, yaw, now)
-            if turn_first is not None:
-                self.turn_first_time += dt
-                if self.wall_apply:
-                    desired[:2] = turn_first
+            result = self._turn_first(state, desired, position, velocity, yaw, now)
+            if result is not None:
+                if self.turn_first_active:
+                    self.turn_first_time += dt
                 else:
-                    turn_first = None
+                    self.side_guard_time += dt
+                if self.wall_apply:
+                    desired[:2], turn_first, turn_first_bound = result
         if self.velocity_command is None:
             self.velocity_command = velocity.copy()
         step = desired-self.velocity_command
@@ -1624,9 +1730,13 @@ class FastRaceCue:
             self.velocity_command = self._cap_command(previous, self.velocity_command, cap, ray, dt, slew, top,
                                                       vertical_limits)
         if turn_first is not None:
-            # ... and so does turn-first: no speed toward the wall that capped it.
+            # ... and so does turn-first: no speed toward the wall that capped it, and the creep bound (0 while the
+            # marker is lost) reached at the same slew.
             self.velocity_command = self._cap_command(previous, self.velocity_command, 0.,
-                                                      np.r_[self.turn_first_ray, 0.], dt, slew, top, vertical_limits)
+                                                      np.r_[turn_first, 0.], dt, slew, top, vertical_limits)
+            if np.isfinite(turn_first_bound):
+                self.velocity_command = self._bound_speed(previous, self.velocity_command, turn_first_bound, dt,
+                                                          slew)
         raw_ff = (self.velocity_command-previous)/max(dt, 1e-3)
         alpha = 1-np.exp(-dt/c.feedforward_time_constant)
         self.feedforward = self.feedforward+alpha*(raw_ff-self.feedforward)
@@ -1763,15 +1873,22 @@ class FastRaceCue:
         return dict(
             version=WALL_PILOT_VERSION, applied=self.wall_apply,
             turn_first=None if self.turn_first is None else dict(
-                rule='near a wall (a clearance stand-off, or a wall brake within brake_recent_s at <= slow_speed) with '
-                     'the checkpoint clamped at a side edge/corner or its bearing >= engage_deg off the heading: the '
-                     'horizontal request loses its component toward the wall (the capping looming ray) and is bounded '
-                     'to creep_speed, the speed toward the wall is removed at brake_slew, yaw keeps turning to the '
-                     'checkpoint; ends when an in-view (or bottom/top clamped) bearing is within release_deg '
-                     '(aligned), on search/launch/support climb (handoff) or after max_s (timeout, then rearm_s '
-                     'without an episode)',
+                rule='near a wall (a clearance stand-off, or a wall brake within brake_recent_s at a horizontal speed '
+                     '<= max_speed with the latest wall sample, dead-reckoned along its looming ray and 0 once reached, '
+                     'within the stopping distance v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m at the '
+                     'closing speed v along that ray) with the checkpoint clamped at a side edge/corner, its bearing '
+                     '>= engage_deg off the heading, or its marker lost (coast): the horizontal request loses its '
+                     'component toward the wall (the capping looming ray) and is bounded to creep_speed '
+                     '(coast_creep_speed while coasting), the speed toward the wall is removed at brake_slew, yaw keeps '
+                     'turning to the checkpoint; ends when an in-view (or bottom/top clamped) bearing is within '
+                     'release_deg (aligned), on search/launch/support climb (handoff) or after max_s (timeout, then '
+                     'rearm_s without an episode, during which the side rule near a wall still loses its component '
+                     'toward the wall: side guard)',
+                version_note='version 4: stopping-distance engagement up to max_speed, coast trigger and side guard '
+                             '(versions 1-3: a wall brake only at <= slow_speed 1.5 m/s)',
                 parameters=asdict(self.turn_first), counts=dict(self.turn_first_counts),
-                active_seconds=round(self.turn_first_time, 3)),
+                triggers=dict(self.turn_first_triggers), active_seconds=round(self.turn_first_time, 3),
+                side_guard_seconds=round(self.side_guard_time, 3)),
             ceiling_guard=None if self.ceiling_guard is None else dict(
                 rule='during a climb a sample without vertical evidence is terrain only if its lower-surface TTC <= '
                      'lower_ratio x its alarm TTC (else a wall); such weak terrain climbs <= weak_climb and not beyond '
