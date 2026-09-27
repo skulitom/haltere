@@ -264,3 +264,15 @@ def test_runner_flag_columns_and_refusals():
     assert all(np.isfinite(descent_view_row(pilot)))
     with pytest.raises(ValueError, match='fast pilot'):
         VisualController('missing.pt', 'missing.json', 'cpu', pilot_assistance='race-cue', descent_view='x.json')
+
+
+def test_runner_csv_tail_keeps_gap_commit_before_the_view_columns():
+    """Round-4 merge (m4): the header and every row end with the vertical-guard columns, gap_commit, then the three
+    view columns only with --descent-view on, in the same order."""
+    import inspect
+    import re
+    from haltere.liftoff import visual_brain
+    source = re.sub(r'\s+', '', inspect.getsource(visual_brain.run))
+    assert '*VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns])' in source
+    assert ('*vertical_row(controller.assistance),*commit_row(controller.assistance),'
+            '*(descent_view_row(controller.assistance)ifview_columnselse())])') in source
