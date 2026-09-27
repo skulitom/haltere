@@ -95,7 +95,11 @@ Open-loop replays of the logs (development evidence):
 1. Graded terrain climb: when the floor looms because the drone is descending,
    stop the descent first; climb hard only if the below-path TTC stays short while
    level (rising ground).
-2. brain-09 with the braking recipe above.
+2. brain-09 with the braking recipe above. Done offline ([brain-09](../brain09_braking.md)): with
+   synthetic caps, slow legs and a brake weight the best candidate brakes for 1-4.5 m/s requests
+   almost like the PD on straight legs (cap excess +0.19 against brain-08's +1.20), but it slows
+   1.5 m/s too much in the arch-turn windows and chatters 0.0051 (limit 0.0035); none of 22
+   candidates passed the frozen gates, so there is no brain-09 to fly yet.
 3. Then Minus Two again (PD and brain), a Straw Bale regression lap and Pine
    Valley with the stack on.
 
@@ -156,3 +160,35 @@ throttle up and pitch forward instead of dropping. See [descent_view.md](../desc
 
 Next: distil a brain under this pilot (6 m/s in-view descents), or fly the fast PD on Straw
 Bale with `--descent-view on` as a disclosed development test.
+
+## Round 4: brain-10, a smoother braking brain (branch m4-brain10, not flown)
+
+[brain-10](../fast_brain_10_candidate.md) was distilled under the current pilot. The descent branch
+was not flight ready and was not merged.
+
+Why brain-09b chatters:
+
+- Its pitch hunts at about 0.8 Hz in steady cruise.
+- The brain lags its teacher label by 70-90 ms at about half its amplitude.
+- The PD teacher is not stable with that much latency: +60 ms already doubles its chatter.
+
+The brain-10 recipe:
+
+- A label teacher with a slower attitude loop (gain 4) and a stronger vertical loop (gain 5).
+- Labels paired with the teacher's output 60 ms later (label lead), to anticipate the latency.
+- Longer synthetic caps, like the live governor's.
+
+Six candidates were scored on the frozen gates (`configs/brain10_gates.json` v1: brain-09's G1-G6
+plus smoothness G7 and regressions G8). All fail G3; none is selected for flight.
+
+The best-ranked is `fast-brain-10b` (sha256 `0ccf1161...`). It passes all six other gates:
+
+- It brakes for caps: in-course cap excess +0.35 m/s (brain-08 +1.20).
+- Its chatter is 0.00226 per tick, 24% below brain-08 and 56% below brain-09b.
+- It finishes 16/16 courses with no high descending pass.
+- Only readout rows 0-2 changed.
+
+G3 is the closest of any brain so far: worst window 0.89 m/s against brain-09b's 1.56. It is still
+latency-limited: even the PD with 80 ms of added delay fails G3.
+
+Flying brain-10b would be a disclosed development deviation, like brain-09b's flight.

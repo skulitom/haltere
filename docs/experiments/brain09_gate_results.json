@@ -1,0 +1,1766 @@
+{
+ "gate_file": "configs/brain09_gates.json",
+ "gate_version": 1,
+ "gate_sha256": "21ba2fcb2e325198e8fff7353ec37f8f0e5cbe1ef0207aa1e65034ccf4f1b5cc",
+ "frozen_at": "2026-09-26T12:55:47",
+ "selection_rule": "A candidate may be selected as brain-09 only if it passes every primary gate (G1, G2, G3, G5, G6) of this frozen version; among those, the lowest G5 cap_excess, then the lowest 16-course stick chatter. If none passes, none is selected for flight: candidates are ranked by the number of primary gates passed, then by the mean |settled_excess| of the G1 rows (hover and live), and the result is reported as a failed round.",
+ "selected": null,
+ "ranking": [
+  "fast-brain-09b-caps-r0001m100",
+  "fast-brain-09-caps-r0003m100b10",
+  "fast-brain-09b-caps-r0001m300",
+  "fast-brain-09b-caps-r0003m100b10",
+  "fast-brain-09b-caps-r0003m300",
+  "fast-brain-09-caps-r0003m300",
+  "fast-brain-09b-caps",
+  "fast-brain-09b-caps-r001m100",
+  "fast-brain-09b-caps-r0003m300b10",
+  "fast-brain-09-caps-r0003m100",
+  "fast-brain-09b-caps-r001m300",
+  "fast-brain-09-caps-r0001m300",
+  "fast-brain-09-caps-r001m100",
+  "fast-brain-09-caps-r001m30",
+  "fast-brain-09-caps-r003m10",
+  "fast-brain-09-caps-r003m30",
+  "fast-brain-09-caps-r01m10",
+  "fast-brain-09-caps-r01m30",
+  "fast-brain-09-caps-r03m10",
+  "fast-brain-09-caps",
+  "fast-brain-09-caps-r003m30b2",
+  "fast-brain-09-caps-r003m30b1"
+ ],
+ "references": [
+  {
+   "name": "brain08",
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "FAIL",
+    "G6_regressions": "pass"
+   },
+   "passed_primary": 1,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G5_in_course_caps": [
+     "cap_excess"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 1.269,
+   "swap_minus_pd_1s": [
+    1.065,
+    0.689,
+    0.688,
+    1.678,
+    1.469,
+    1.001,
+    0.422,
+    1.574,
+    1.574
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 1.301,
+    "4.5": 0.746,
+    "6.0": -0.472
+   },
+   "rollout_crashes": {
+    "3.5": 2,
+    "4.5": 1,
+    "6.0": 0
+   },
+   "cap_excess": 1.202,
+   "regression16": {
+    "finished": 15,
+    "crashed": 1,
+    "mean_speed": 4.804,
+    "stick_chatter": 0.00298,
+    "steep_sink_shortfall_mps": 0.157,
+    "descending_passes_high": 0
+   },
+   "switch_45_75": {
+    "n": 65,
+    "speed_min": 2.9695,
+    "regain_s": 1.9983,
+    "stick_after": 0.0113,
+    "pitch_swing": 0.6533
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.31,
+    "velocity_error_mps": 0.947
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "runner_source_sha256": "1652fd81658791ea6bea4ee41b73adf4ae82534b8580abd29a138821a84dc169"
+  },
+  {
+   "name": "fast_pd",
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "pass",
+    "G3_live_swaps": "pass",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 4,
+   "failed_checks": {
+    "G6_regressions": [
+     "finished",
+     "crashed",
+     "stick chatter",
+     "descending passes > 1.5 m above the gate",
+     "switch 45-75 stick_after (1.25 x brain-08)",
+     "weights audit: only readout rows 0-2"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.053,
+   "swap_minus_pd_1s": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "rollout_cruise_excess": {
+    "3.5": -0.042,
+    "4.5": -0.062,
+    "6.0": -0.099
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 0,
+    "6.0": 0
+   },
+   "cap_excess": -0.19,
+   "regression16": {
+    "finished": 14,
+    "crashed": 2,
+    "mean_speed": 5.121,
+    "stick_chatter": 0.00571,
+    "steep_sink_shortfall_mps": -0.132,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 60,
+    "speed_min": 3.457,
+    "regain_s": 1.2368,
+    "stick_after": 0.0155,
+    "pitch_swing": 0.9489
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.17,
+    "velocity_error_mps": 0.427
+   },
+   "audit_clean": null,
+   "checkpoint_sha256": null,
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  }
+ ],
+ "candidates": [
+  {
+   "name": "fast-brain-09b-caps-r0001m100",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.001,
+   "smooth": 100.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "pass",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 3,
+   "failed_checks": {
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "stick chatter",
+     "descending passes > 1.5 m above the gate"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.107,
+   "swap_minus_pd_1s": [
+    -0.63,
+    -1.534,
+    -1.469,
+    -0.777,
+    0.716,
+    -1.562,
+    -1.493,
+    0.117,
+    0.311
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.156,
+    "4.5": 0.182,
+    "6.0": -0.54
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 0,
+    "6.0": 0
+   },
+   "cap_excess": 0.191,
+   "regression16": {
+    "finished": 16,
+    "crashed": 0,
+    "mean_speed": 4.93,
+    "stick_chatter": 0.00508,
+    "steep_sink_shortfall_mps": 0.143,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 66,
+    "speed_min": 3.3201,
+    "regain_s": 1.1923,
+    "stick_after": 0.0123,
+    "pitch_swing": 0.6943
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.46,
+    "velocity_error_mps": 0.755
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r0003m100b10",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.003,
+   "smooth": 100.0,
+   "brake_weight": 10.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "stick chatter",
+     "descending passes > 1.5 m above the gate"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.04,
+   "swap_minus_pd_1s": [
+    -0.858,
+    -1.734,
+    -1.656,
+    -0.577,
+    0.281,
+    -1.496,
+    -1.749,
+    -0.056,
+    0.282
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.078,
+    "4.5": 0.015,
+    "6.0": -0.702
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 0,
+    "6.0": 0
+   },
+   "cap_excess": 0.126,
+   "regression16": {
+    "finished": 15,
+    "crashed": 1,
+    "mean_speed": 4.642,
+    "stick_chatter": 0.00386,
+    "steep_sink_shortfall_mps": 0.13,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 63,
+    "speed_min": 3.1058,
+    "regain_s": 1.5187,
+    "stick_after": 0.0104,
+    "pitch_swing": 0.6102
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.28,
+    "velocity_error_mps": 0.959
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "66c966fa50408fe253564a4f70445f6b254f59f043b89e1dac42036e85c8c2da",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09b-caps-r0001m300",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.001,
+   "smooth": 300.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "finished",
+     "crashed",
+     "stick chatter",
+     "descending passes > 1.5 m above the gate"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.055,
+   "swap_minus_pd_1s": [
+    -0.789,
+    -1.929,
+    -2.207,
+    -1.158,
+    0.341,
+    -1.824,
+    -1.976,
+    -0.095,
+    0.03
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.133,
+    "4.5": 0.097,
+    "6.0": -0.661
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 1,
+    "6.0": 1
+   },
+   "cap_excess": 0.137,
+   "regression16": {
+    "finished": 13,
+    "crashed": 3,
+    "mean_speed": 4.762,
+    "stick_chatter": 0.00377,
+    "steep_sink_shortfall_mps": 0.142,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 53,
+    "speed_min": 3.0067,
+    "regain_s": 1.2966,
+    "stick_after": 0.0095,
+    "pitch_swing": 0.5888
+   },
+   "evaluation8": {
+    "finished": 7,
+    "crashed": 1,
+    "mean_speed": 4.44,
+    "velocity_error_mps": 0.93
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "de802443de019a61a28e30dc7a9df11a656c7bf72a3deb442be39077296ee5d1",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09b-caps-r0003m100b10",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.003,
+   "smooth": 100.0,
+   "brake_weight": 10.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "stick chatter",
+     "descending passes > 1.5 m above the gate"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.056,
+   "swap_minus_pd_1s": [
+    -0.884,
+    -1.879,
+    -1.537,
+    -0.858,
+    -0.149,
+    -1.68,
+    -1.786,
+    -0.274,
+    0.076
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.011,
+    "4.5": -0.149,
+    "6.0": -0.972
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 0,
+    "6.0": 0
+   },
+   "cap_excess": 0.179,
+   "regression16": {
+    "finished": 16,
+    "crashed": 0,
+    "mean_speed": 4.663,
+    "stick_chatter": 0.00543,
+    "steep_sink_shortfall_mps": 0.05,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 68,
+    "speed_min": 3.1287,
+    "regain_s": 1.2591,
+    "stick_after": 0.0123,
+    "pitch_swing": 0.7336
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.37,
+    "velocity_error_mps": 0.994
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "97b6a88efa89a5cea1879fe0a8a8bf4a5a3d538e0a0c07aa3956c13f9c1d25c0",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09b-caps-r0003m300",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.003,
+   "smooth": 300.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "finished",
+     "crashed",
+     "descending passes > 1.5 m above the gate",
+     "8-course velocity error (1.05 x brain-08)"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.079,
+   "swap_minus_pd_1s": [
+    -0.625,
+    -1.743,
+    -2.23,
+    -1.14,
+    0.5,
+    -1.701,
+    -1.886,
+    -0.093,
+    0.006
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.154,
+    "4.5": 0.059,
+    "6.0": -0.761
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 1,
+    "6.0": 0
+   },
+   "cap_excess": 0.261,
+   "regression16": {
+    "finished": 13,
+    "crashed": 3,
+    "mean_speed": 4.663,
+    "stick_chatter": 0.00349,
+    "steep_sink_shortfall_mps": 0.156,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 52,
+    "speed_min": 2.8726,
+    "regain_s": 1.2113,
+    "stick_after": 0.0091,
+    "pitch_swing": 0.5714
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.38,
+    "velocity_error_mps": 1.012
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "b8967911f368391bca037f2a8d110e11ebbf9ccdfc3da2dd8b7e55b304b64b85",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r0003m300",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.003,
+   "smooth": 300.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "finished",
+     "crashed",
+     "stick chatter",
+     "8-course velocity error (1.05 x brain-08)"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.098,
+   "swap_minus_pd_1s": [
+    -0.479,
+    -1.576,
+    -1.861,
+    -0.705,
+    0.76,
+    -1.434,
+    -1.59,
+    0.251,
+    0.241
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.229,
+    "4.5": 0.196,
+    "6.0": -0.544
+   },
+   "rollout_crashes": {
+    "3.5": 1,
+    "4.5": 1,
+    "6.0": 1
+   },
+   "cap_excess": 0.189,
+   "regression16": {
+    "finished": 13,
+    "crashed": 3,
+    "mean_speed": 4.687,
+    "stick_chatter": 0.00359,
+    "steep_sink_shortfall_mps": 0.017,
+    "descending_passes_high": 0
+   },
+   "switch_45_75": {
+    "n": 55,
+    "speed_min": 2.7383,
+    "regain_s": 1.8291,
+    "stick_after": 0.0082,
+    "pitch_swing": 0.5612
+   },
+   "evaluation8": {
+    "finished": 7,
+    "crashed": 1,
+    "mean_speed": 4.28,
+    "velocity_error_mps": 1.077
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "b11ab5b55f60228d74300afb1b323bd139e29742eb4044d39283f6af963aa162",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09b-caps",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.003,
+   "smooth": 100.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "stick chatter",
+     "descending passes > 1.5 m above the gate"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.12,
+   "swap_minus_pd_1s": [
+    -0.418,
+    -1.391,
+    -1.607,
+    -0.722,
+    0.947,
+    -1.384,
+    -1.483,
+    0.107,
+    0.301
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.195,
+    "4.5": 0.144,
+    "6.0": -0.648
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 0,
+    "6.0": 0
+   },
+   "cap_excess": 0.261,
+   "regression16": {
+    "finished": 16,
+    "crashed": 0,
+    "mean_speed": 4.845,
+    "stick_chatter": 0.00486,
+    "steep_sink_shortfall_mps": 0.063,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 64,
+    "speed_min": 3.1089,
+    "regain_s": 1.3327,
+    "stick_after": 0.012,
+    "pitch_swing": 0.7016
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.48,
+    "velocity_error_mps": 0.869
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "e26f0ab9af685093a54c62bdde6970fc99c67a73c62cdcb754329343558836f2",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09b-caps-r001m100",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.01,
+   "smooth": 100.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "stick chatter",
+     "descending passes > 1.5 m above the gate",
+     "8-course velocity error (1.05 x brain-08)"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.133,
+   "swap_minus_pd_1s": [
+    -0.209,
+    -1.219,
+    -1.673,
+    -0.601,
+    1.011,
+    -1.125,
+    -1.435,
+    0.046,
+    0.243
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.202,
+    "4.5": 0.054,
+    "6.0": -0.801
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 0,
+    "6.0": 0
+   },
+   "cap_excess": 0.356,
+   "regression16": {
+    "finished": 16,
+    "crashed": 0,
+    "mean_speed": 4.761,
+    "stick_chatter": 0.00456,
+    "steep_sink_shortfall_mps": -0.333,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 66,
+    "speed_min": 3.0574,
+    "regain_s": 1.2079,
+    "stick_after": 0.0119,
+    "pitch_swing": 0.6966
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.44,
+    "velocity_error_mps": 1.015
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "0765cb5c465ec83c2953fff0527ae8eec5166bad2a82a3c26b87016473055b7f",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09b-caps-r0003m300b10",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.003,
+   "smooth": 300.0,
+   "brake_weight": 10.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "pass",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 2,
+   "failed_checks": {
+    "G2_sustained": [
+     "live steady_excess",
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "mean speed (one-sided, 0.95 x brain-08)",
+     "descending passes > 1.5 m above the gate",
+     "8-course velocity error (1.05 x brain-08)"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.153,
+   "swap_minus_pd_1s": [
+    -1.303,
+    -2.264,
+    -2.316,
+    -1.441,
+    -0.491,
+    -2.15,
+    -2.495,
+    -0.571,
+    -0.339
+   ],
+   "rollout_cruise_excess": {
+    "3.5": -0.06,
+    "4.5": -0.252,
+    "6.0": -1.098
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 0,
+    "6.0": 0
+   },
+   "cap_excess": 0.093,
+   "regression16": {
+    "finished": 15,
+    "crashed": 1,
+    "mean_speed": 4.49,
+    "stick_chatter": 0.00328,
+    "steep_sink_shortfall_mps": 0.089,
+    "descending_passes_high": 1
+   },
+   "switch_45_75": {
+    "n": 59,
+    "speed_min": 2.948,
+    "regain_s": 1.1668,
+    "stick_after": 0.0088,
+    "pitch_swing": 0.5386
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.29,
+    "velocity_error_mps": 1.194
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "18a322fa760567989b7316cefa3dc2a42c6002bc1e53e863be8d8c31aee08287",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r0003m100",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.003,
+   "smooth": 100.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps",
+    "rollout_speed",
+    "in_course_caps",
+    "evaluation8",
+    "regression16",
+    "audit"
+   ],
+   "complete": true,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "pass",
+    "G6_regressions": "FAIL"
+   },
+   "passed_primary": 1,
+   "failed_checks": {
+    "G1_cap_step": [
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ],
+    "G6_regressions": [
+     "stick chatter"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.143,
+   "swap_minus_pd_1s": [
+    -0.357,
+    -1.339,
+    -1.567,
+    -0.333,
+    0.929,
+    -1.253,
+    -1.352,
+    0.255,
+    0.46
+   ],
+   "rollout_cruise_excess": {
+    "3.5": 0.284,
+    "4.5": 0.314,
+    "6.0": -0.388
+   },
+   "rollout_crashes": {
+    "3.5": 0,
+    "4.5": 1,
+    "6.0": 0
+   },
+   "cap_excess": 0.258,
+   "regression16": {
+    "finished": 15,
+    "crashed": 1,
+    "mean_speed": 4.829,
+    "stick_chatter": 0.00382,
+    "steep_sink_shortfall_mps": 0.102,
+    "descending_passes_high": 0
+   },
+   "switch_45_75": {
+    "n": 64,
+    "speed_min": 3.2219,
+    "regain_s": 1.8833,
+    "stick_after": 0.0106,
+    "pitch_swing": 0.6183
+   },
+   "evaluation8": {
+    "finished": 8,
+    "crashed": 0,
+    "mean_speed": 4.39,
+    "velocity_error_mps": 0.841
+   },
+   "audit_clean": true,
+   "checkpoint_sha256": "2ee9af3558f1764cbaec11d7a3c2c0d988648c674862dc2bf09a4d0918a6991a",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09b-caps-r001m300",
+   "collection": "fast-brain-09b-caps",
+   "ridge": 0.01,
+   "smooth": 300.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "not run",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover settled_excess",
+     "live settled_excess"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.104,
+   "swap_minus_pd_1s": [
+    -0.44,
+    -1.502,
+    -2.168,
+    -1.041,
+    0.591,
+    -1.481,
+    -1.751,
+    -0.114,
+    -0.029
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "7ce78b837a9cf39ceffde86adf598a34ad492cd88d91c4fe2788dbe26ede8001",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r0001m300",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.001,
+   "smooth": 300.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.115,
+   "swap_minus_pd_1s": [
+    -0.558,
+    -1.628,
+    -1.785,
+    -0.653,
+    0.713,
+    -1.431,
+    -1.576,
+    0.204,
+    0.243
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "cc6b85801626659189af9f0b22b6963c5b1ea425fa4ad4297c0bccf0bdea1bb5",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r001m100",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.01,
+   "smooth": 100.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.224,
+   "swap_minus_pd_1s": [
+    -0.216,
+    -1.149,
+    -1.551,
+    -0.365,
+    0.979,
+    -1.098,
+    -1.31,
+    0.328,
+    0.383
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "fc0879315309c594b8042052f36a3bd4615da9c0e325f656331a4e00e4ce7e91",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r001m30",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.01,
+   "smooth": 30.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.287,
+   "swap_minus_pd_1s": [
+    -0.088,
+    -0.934,
+    -1.291,
+    -0.038,
+    0.883,
+    -0.809,
+    -1.121,
+    0.451,
+    0.609
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "948a91368c1e7cff2175ebc3490d4600fb6be3bbae10adefd177b1536b4e4708",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r003m10",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.03,
+   "smooth": 10.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.32,
+   "swap_minus_pd_1s": [
+    0.105,
+    -0.84,
+    -1.197,
+    0.073,
+    0.838,
+    -0.577,
+    -1.102,
+    0.553,
+    0.62
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "eadc6d6dfb92e6720cb3be514fd12fd4a532770bfbed51dce13dc9d9d22ccb1a",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r003m30",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.03,
+   "smooth": 30.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.353,
+   "swap_minus_pd_1s": [
+    0.059,
+    -0.852,
+    -1.266,
+    -0.059,
+    0.871,
+    -0.671,
+    -1.159,
+    0.462,
+    0.483
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "b90761a6a3ebf3a1230462e6a41b56a04cc63420a7d1c02247e694ddba319241",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r01m10",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.1,
+   "smooth": 10.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.412,
+   "swap_minus_pd_1s": [
+    0.134,
+    -0.956,
+    -1.457,
+    -0.053,
+    0.809,
+    -0.68,
+    -1.249,
+    0.487,
+    0.555
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "c003d2bf897067373dc30aabdf341cf79915976313d9cb0032b9fa281f3aba71",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r01m30",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.1,
+   "smooth": 30.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.427,
+   "swap_minus_pd_1s": [
+    0.087,
+    -0.848,
+    -1.37,
+    -0.117,
+    0.815,
+    -0.678,
+    -1.239,
+    0.338,
+    0.372
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "319d4eb3fd121513020f5e74e3ff2d4ff0cc7c2766898b3b97156f8d7c781d03",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r03m10",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.3,
+   "smooth": 10.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.455,
+   "swap_minus_pd_1s": [
+    0.022,
+    -0.931,
+    -1.606,
+    -0.036,
+    0.863,
+    -0.661,
+    -1.328,
+    0.481,
+    0.47
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "1223d085882d8d20826163e7006d13a195db2f94bb66cb18842b7e161702d509",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.3,
+   "smooth": 30.0,
+   "brake_weight": 5.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.491,
+   "swap_minus_pd_1s": [
+    0.044,
+    -0.798,
+    -1.551,
+    -0.132,
+    0.874,
+    -0.626,
+    -1.305,
+    0.269,
+    0.288
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "37d75b0df47600e58469ef0580a82880f50459fe75c716c1c245b8b0571fa9d8",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r003m30b2",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.03,
+   "smooth": 30.0,
+   "brake_weight": 2.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.637,
+   "swap_minus_pd_1s": [
+    0.645,
+    -0.089,
+    -0.298,
+    0.757,
+    1.354,
+    0.176,
+    -0.365,
+    0.942,
+    0.869
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "6e86551e27a632c7f04e392e02b0a4a0d5aea5993d35cc9877d6345353f0714b",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  },
+  {
+   "name": "fast-brain-09-caps-r003m30b1",
+   "collection": "fast-brain-09-caps",
+   "ridge": 0.03,
+   "smooth": 30.0,
+   "brake_weight": 1.0,
+   "measured_parts": [
+    "hover",
+    "live",
+    "swaps"
+   ],
+   "complete": false,
+   "gates": {
+    "G1_cap_step": "FAIL",
+    "G2_sustained": "FAIL",
+    "G3_live_swaps": "FAIL",
+    "G5_in_course_caps": "not run",
+    "G6_regressions": "not run"
+   },
+   "passed_primary": 0,
+   "failed_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "history gap",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6",
+     "rollout(S) crashes"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ]
+   },
+   "g1_mean_abs_settled_excess": 0.805,
+   "swap_minus_pd_1s": [
+    0.882,
+    0.23,
+    0.203,
+    1.132,
+    1.557,
+    0.535,
+    -0.009,
+    1.133,
+    1.05
+   ],
+   "rollout_cruise_excess": {},
+   "rollout_crashes": {},
+   "cap_excess": null,
+   "regression16": null,
+   "switch_45_75": null,
+   "evaluation8": null,
+   "audit_clean": null,
+   "checkpoint_sha256": "49484710dfcba4467aae943f2ee88befb52e10e9738fa49a229becaefd8dd1bc",
+   "runner_source_sha256": "1c443db0c2e3e53d8e230825dc23b9d837cd0dc5a694bdf8a47cff117e5ca0a2"
+  }
+ ],
+ "scope": "measured-drone surrogate (IdentifiedSim) and logged Minus Two states; development checks, not flight evidence"
+}
