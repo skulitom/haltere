@@ -1570,8 +1570,14 @@ class FastRaceCue:
             self.launching = False
         if self.gap_aim is not None:
             self.gap_conflict = ''
-            # Terrain side steer only while the looming governor reports terrain (a climb request).
+            # Terrain side steer only while the looming governor reports terrain (a climb request); with
+            # terrain_rising_only (gap pilot version 3) and a vertical guard, only while its climb is for confirmed
+            # rising ground (the guard's own governor: the flown one, or its shadow copy in shadow).
             terrain = self.clearance is not None and self.clearance.climb > 0
+            if self.gap_aim.config.terrain_rising_only:
+                guard = self._vertical_governor()
+                if guard is not None:
+                    terrain = guard.climb > 0 and bool(guard.escalated)
             self.gap_aim.ingest(gap, now, terrain=terrain)
             self.gap_aim.step(now, dt)
             self._set_gap_offset()
@@ -1991,7 +1997,17 @@ class FastRaceCue:
                              '_ingest; gap evidence of another ring bearing or against the ring cue\'s flag '
                              'clearance is a conflict: dropped, the ring cue\'s own aim is held for side_latch_s; '
                              'never changes the requested speed; with lag-aware turns the lead is computed on the '
-                             'bearing without the shift and the shift is added after it (not amplified)'),
+                             'bearing without the shift and the shift is added after it (not amplified)'
+                             + ('; side commitment (commit): a confirmation with one-sided close evidence '
+                                '(near_on_path, not occluded unless commit_occluded) holds its side and largest shift '
+                                'while obstacle votes or close samples keep arriving (commit_hold_s), switches only on '
+                                'switch_votes consecutive opposite votes >= switch_min_deg within switch_window_s, '
+                                'ends after commit_max_s or on a ring/flag conflict' if self.gap_aim.config.commit
+                                else '')
+                             + ('; terrain_yields: a terrain episode never latches out an obstacle confirmation'
+                                if self.gap_aim.config.terrain_yields else '')
+                             + ('; terrain_rising_only: with a vertical guard, terrain votes only while its climb is '
+                                'for confirmed rising ground' if self.gap_aim.config.terrain_rising_only else '')),
                     wall_pilot=self._wall_metadata(),
                     vertical_guard=self._vertical_metadata(),
                     clearance_response=None if self.clearance is None else dict(

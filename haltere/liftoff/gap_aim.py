@@ -28,6 +28,36 @@ Rule (`GapAimConfig`; the runner reads its frozen values from the gap pilot decl
   side. The evidence is dropped, the applied shift returns to 0 at once (the pilot holds the ring cue's own
   aim) and nothing is confirmed for ``side_latch_s``.
 
+Version 5 of the gap pilot declaration adds three rules, each off by default (version 2's behaviour, bit for bit).
+Version 3 let only same-side evidence refresh the commitment (never scored or flown); version 4 also started
+commitments on 'occluded' decisions and held them 0.5 s (scored: it held shifts into Straw Bale gates); version 5
+starts them on one-sided evidence only and holds 0.3 s. Every version's behaviour is reproducible from its
+declaration's pilot values (``commit_occluded`` defaults to version 4's true).
+
+- Side commitment near an obstacle (``commit``). An obstacle confirmation COMMITS to its side when one of its
+  confirming samples reports the obstacle close: a near column on the path the vehicle is committed to
+  (``near_on_path``, the cue's response-model path over its horizon); with ``commit_occluded`` (version 4) also a
+  decision with the ring itself behind a near object (kind ``occluded``), whose side flips easily and may be the
+  ring's own gate; without it (version 5) the near_on_path decision must not be 'occluded'. While committed:
+  - the target stays on that side with the largest confirming |shift| seen since the commitment (it never decays;
+    clipped to ``max_shift_deg``), whatever single samples say (flicker, 'clear' frames when the object fills the
+    band, same-side samples below ``active_deg``);
+  - fresh evidence that the obstacle is still ahead refreshes the hold: an obstacle vote for either side (an
+    opposite vote does not move the target), or a valid close sample (near_on_path or 'occluded');
+  - the other side takes over only on much stronger opposite evidence while there is still time to complete the
+    switch: ``switch_votes`` consecutive fresh opposite obstacle votes of at least ``switch_min_deg`` each, within
+    ``switch_window_s`` of the commitment's start (before the vehicle has responded to it); the new side is then
+    committed with the newest of those shifts. Weaker or later opposite confirmations are blocked (counted);
+  - it is released when no refreshing evidence arrived for ``commit_hold_s`` (the obstacle left the view or the
+    path), after ``commit_max_s`` in all, or by a ring or flag conflict (the checkpoint switched: the ring was
+    passed). Released, the applied shift decays over ``decay_s`` and the side latch holds as after any
+    confirmation. Terrain votes are ignored while committed.
+- Terrain yields to obstacles (``terrain_yields``): a terrain-side episode never latches out an obstacle
+  confirmation on the other side (version 2's side latch did, although obstacle votes take priority).
+- Terrain side steer only for rising ground (``terrain_rising_only``, read by `FastRaceCue`): with a vertical
+  guard declared, terrain votes count only while the guard's climb is for confirmed rising ground (not while it
+  arrests a descent or climbs gently for a floor below a sinking path).
+
 The module outputs a bearing offset only: it never changes the requested speed.
 """
 from __future__ import annotations
@@ -56,19 +86,36 @@ class GapAimConfig:
     terrain: bool = True
     terrain_side_deg: float = 6.
     terrain_lr: float = .405
+    # Version 3-5 rules (module docstring); off by default, which is version 2's behaviour.
+    commit: bool = False
+    commit_hold_s: float = .5
+    commit_max_s: float = 2.5
+    switch_votes: int = 3
+    switch_min_deg: float = 6.
+    switch_window_s: float = .3
+    terrain_yields: bool = False
+    terrain_rising_only: bool = False
+    # Whether an 'occluded' decision (the ring column itself near) can start a commitment; True in version 4.
+    commit_occluded: bool = True
+
+    SWITCHES = ('terrain', 'commit', 'terrain_yields', 'terrain_rising_only', 'commit_occluded')
 
     def __post_init__(self):
         values = asdict(self)
-        values.pop('terrain')
+        for name in self.SWITCHES:
+            if not isinstance(values.pop(name), bool):
+                raise ValueError(f'{name} is true or false')
         if not np.isfinite(list(values.values())).all() or min(values.values()) <= 0:
             raise ValueError('Use finite positive gap aim parameters')
-        for name in ('confirm', 'window'):
+        for name in ('confirm', 'window', 'switch_votes'):
             if int(getattr(self, name)) != getattr(self, name):
                 raise ValueError(f'{name} counts samples')
         if self.confirm > self.window:
             raise ValueError('confirm must not exceed window')
         if not self.max_shift_deg < 45 or not self.terrain_side_deg <= self.max_shift_deg:
             raise ValueError('Keep the shift below 45 degrees and the terrain side shift within it')
+        if not self.switch_min_deg <= self.max_shift_deg or not self.commit_hold_s < self.commit_max_s:
+            raise ValueError('Keep switch_min_deg within the shift clip and commit_hold_s below commit_max_s')
 
     @classmethod
     def from_dict(cls, d):
@@ -81,6 +128,15 @@ class GapAimConfig:
 
 def wrap_deg(a):
     return float((a+180.) % 360.-180.)
+
+
+def _flag(value):
+    """A sample's optional boolean (near_on_path): True only for a true value (None, NaN and 0 are not)."""
+    if value is None:
+        return False
+    if isinstance(value, (float, np.floating)) and not np.isfinite(value):
+        return False
+    return bool(value)
 
 
 def rotate_z(vector, degrees):
@@ -124,10 +180,27 @@ class GapAim:
                            terrain_episodes=0, latch_blocks=0, ring_conflicts=0, flag_conflicts=0)
         self.engaged_seconds = 0.
         self.max_applied_deg = 0.
+        # Side commitment (see the module docstring); its counts exist only when it is declared.
+        self.commit_side = 0
+        self.commit_since = self.commit_refresh = None
+        self.commit_mag = 0.
+        self.switch_run = 0
+        self.switch_mag = 0.
+        self.commit_blocked = False
+        self.commit_seconds = 0.
+        if self.config.commit:
+            self.counts.update(commits=0, commit_switches=0, commit_blocks=0, commit_hold_releases=0,
+                               commit_max_releases=0, commit_conflict_releases=0)
+        if self.config.terrain_yields:
+            self.counts.update(terrain_yields=0)
 
     @property
     def engaged(self):
         return self.target != 0. or abs(self.applied) > 1e-6
+
+    @property
+    def committed(self):
+        return self.commit_side != 0
 
     def ingest(self, sample, now, terrain=False):
         """Accept one gap sample (see the module docstring); returns whether it was new and fresh."""
@@ -151,14 +224,46 @@ class GapAim:
         if c.terrain and terrain and valid and lr is not None and np.isfinite(lr) and abs(lr) >= c.terrain_lr:
             side = -int(np.sign(lr))
         ring = sample.get('ring_deg')
-        self.samples.append(dict(time=stamp, shift=shift, obstacle=obstacle, terrain=side, valid=valid,
-                                 ring_deg=float(ring) if valid and ring is not None and np.isfinite(ring) else None))
+        entry = dict(time=stamp, shift=shift, obstacle=obstacle, terrain=side, valid=valid,
+                     ring_deg=float(ring) if valid and ring is not None and np.isfinite(ring) else None)
+        if c.commit:
+            near, occluded = _flag(sample.get('near_on_path')), sample.get('kind') == 'occluded'
+            entry['close'] = valid and (near or occluded)
+            entry['starts'] = entry['close'] if c.commit_occluded else valid and near and not occluded
+            self._commit_evidence(entry, now)
+        self.samples.append(entry)
         self.counts['samples'] += 1
         self.counts['obstacle_votes'] += int(obstacle != 0)
         self.counts['terrain_votes'] += int(side != 0)
         return True
 
+    def _commit_evidence(self, entry, now):
+        """Update a commitment with one fresh sample: refresh the hold while the obstacle is still ahead (an obstacle
+        vote for either side, or a close sample), grow the held shift, count the run of strong opposite votes (any
+        other sample breaks the run)."""
+        c = self.config
+        s = self.commit_side
+        if not s:
+            return
+        vote = entry['obstacle']
+        size = min(abs(entry['shift']), c.max_shift_deg)
+        if vote or entry['close']:
+            self.commit_refresh = now
+        if vote == s:
+            self.commit_mag = max(self.commit_mag, size)
+            self.switch_run = 0
+        elif vote == -s and abs(entry['shift']) >= c.switch_min_deg:
+            self.switch_run += 1
+            self.switch_mag = size
+        else:
+            self.switch_run = 0
+
     def _candidate(self, now):
+        found = self._confirmation(now)
+        return None if found is None else found[:3]
+
+    def _confirmation(self, now):
+        """(sign, clipped shift, 'obstacle' | 'terrain', confirming votes) of the confirmation rule, or None."""
         c = self.config
         if not self.samples or not 0 <= now-self.samples[-1]['time'] <= c.max_age_s or now < self.hold_until:
             return None
@@ -171,18 +276,63 @@ class GapAim:
                 votes = [s for s in voted if s[key] == sign]
                 if len(votes) >= c.confirm:
                     shift = votes[-1]['shift'] if key == 'obstacle' else sign*c.terrain_side_deg
-                    return sign, float(np.clip(shift, -c.max_shift_deg, c.max_shift_deg)), key
+                    return sign, float(np.clip(shift, -c.max_shift_deg, c.max_shift_deg)), key, votes
         return None
+
+    def _release_commit(self, why):
+        self.commit_side = 0
+        self.switch_run = 0
+        self.commit_blocked = False
+        self.counts[f'commit_{why}_releases'] += 1
+
+    def _step_committed(self, now, dt):
+        """One tick of an active commitment (release, switch or hold); returns False when it was released."""
+        c = self.config
+        if self.switch_run >= c.switch_votes and now-self.commit_since <= c.switch_window_s:
+            # much stronger opposite evidence while the vehicle has not yet responded to the commitment
+            self.commit_side = -self.commit_side
+            self.commit_since = self.commit_refresh = now
+            self.commit_mag, self.switch_run, self.commit_blocked = self.switch_mag, 0, False
+            self.counts['commit_switches'] += 1
+            self.counts['obstacle_episodes'] += 1
+        elif now-self.commit_refresh > c.commit_hold_s:
+            self._release_commit('hold')
+            return False
+        elif now-self.commit_since > c.commit_max_s:
+            self._release_commit('max')
+            return False
+        found = self._confirmation(now)
+        opposite = found is not None and found[2] == 'obstacle' and found[0] != self.commit_side
+        if opposite and not self.commit_blocked:
+            self.counts['commit_blocks'] += 1
+        self.commit_blocked = opposite
+        self.side, self.side_until, self.mode = self.commit_side, now+c.side_latch_s, 'obstacle'
+        self.target, self.decay_from = self.commit_side*self.commit_mag, None
+        room = c.slew_deg_s*dt
+        self.applied += float(np.clip(self.target-self.applied, -room, room))
+        self.commit_seconds += dt
+        return True
 
     def step(self, now, dt):
         """Advance the target and the applied shift by one control tick; returns the applied shift (deg)."""
         c = self.config
-        candidate = self._candidate(now)
+        if c.commit and self.commit_side and self._step_committed(now, dt):
+            if self.engaged:
+                self.engaged_seconds += dt
+            self.max_applied_deg = max(self.max_applied_deg, abs(self.applied))
+            return self.applied
+        found = self._confirmation(now)
+        candidate = None if found is None else found[:3]
         if candidate is not None and self.side and candidate[0] != self.side and now < self.side_until:
-            if not self.blocked:
-                self.counts['latch_blocks'] += 1
-            self.blocked = True
-            candidate = None
+            if c.terrain_yields and candidate[2] == 'obstacle' and self.mode == 'terrain':
+                # obstacle votes take priority: a terrain episode never latches out an obstacle confirmation
+                self.counts['terrain_yields'] += 1
+                self.blocked = False
+            else:
+                if not self.blocked:
+                    self.counts['latch_blocks'] += 1
+                self.blocked = True
+                candidate = None
         else:
             self.blocked = False
         if candidate is not None:
@@ -191,6 +341,12 @@ class GapAim:
                 self.counts[f'{mode}_episodes'] += 1
             self.side, self.side_until, self.mode = sign, now+c.side_latch_s, mode
             self.target, self.decay_from = shift, None
+            if c.commit and mode == 'obstacle' and any(v['starts'] for v in found[3]):
+                self.commit_side, self.commit_since, self.commit_refresh = sign, now, now
+                self.commit_mag = max(min(abs(v['shift']), c.max_shift_deg) for v in found[3])
+                self.switch_run, self.commit_blocked = 0, False
+                self.counts['commits'] += 1
+                self.target = sign*self.commit_mag
             room = c.slew_deg_s*dt
             self.applied += float(np.clip(self.target-self.applied, -room, room))
         else:
@@ -215,6 +371,8 @@ class GapAim:
         self.side_until = -np.inf
         self.hold_until = now+self.config.side_latch_s
         self.counts[f'{kind}_conflicts'] += 1
+        if self.commit_side:
+            self._release_commit('conflict')
 
     def reconcile_ring(self, ring_deg, now):
         """Forget samples of another ring bearing; a conflict when the newest valid sample (the evidence the
@@ -240,5 +398,8 @@ class GapAim:
         return False
 
     def metadata(self):
-        return dict(parameters=asdict(self.config), counts=dict(self.counts),
-                    engaged_seconds=round(self.engaged_seconds, 3), max_applied_deg=round(self.max_applied_deg, 3))
+        out = dict(parameters=asdict(self.config), counts=dict(self.counts),
+                   engaged_seconds=round(self.engaged_seconds, 3), max_applied_deg=round(self.max_applied_deg, 3))
+        if self.config.commit:
+            out['commit_seconds'] = round(self.commit_seconds, 3)
+        return out

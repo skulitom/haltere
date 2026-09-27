@@ -35,12 +35,19 @@ Round 4 replaces turn-first's fixed 1.5 m/s engagement with a stopping-distance 
 about 3 m/s with no episode. It has only been replayed open loop; see
 [Turn-first version 4](#turn-first-version-4-round-4).
 
+Round 4 answers the crash at Minus Two pillar C (`minus-fast6-vg-02`). The gap aim now holds a
+confirmed obstacle side, and a terrain vote can no longer steer toward an obstacle or latch out
+its evidence. The declaration is `gap_pilot.json` version 5. It has not been flown. It passes its
+frozen offline gates except B, which version 2 fails too, and every data set behind those passes
+had been read before version 5 was chosen. See
+[Round 4](#round-4-pillar-c-and-side-commitment).
+
 ## Flags
 
 | Flag | Default | Effect |
 |---|---|---|
 | `--obstacle-stack on\|shadow` | off | Needs `--pilot-profile fast` and `--looming-brake`. Runs the gap cue and the lag-aware turns. `shadow` runs the same processes and computations and logs them, but applies no aim shift and no lag-turn lead or heading change. It is the matched control. |
-| `--gap-cue on\|off` | on inside the stack | Component override. `on` is refused without `--obstacle-stack`. |
+| `--gap-cue on\|off` | on inside the stack | Component override. `on` is refused without `--obstacle-stack`. The pilot's gap aim follows `configs/obstacles/gap_pilot.json` version 5: [side commitment and the terrain-vote rules](#the-rules-gap_aim-version-5), not flown. |
 | `--wall-pilot on\|off` | on inside the stack | Component override for the [wall-pilot rules](#wall-pilot-rules-round-2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs them without applying them. |
 | `--vertical-guard on\|off` | on inside the stack | Component override for the [vertical guard](vertical_guard.md) (round 3: a time margin to the ground below the path, descent first, terrain climbs above 1 m/s only for rising ground; `configs/obstacles/vertical_guard.json` version 2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs it without applying it. Not flown. |
 | `--lag-turn [on\|off\|DECLARATION]` | on inside the stack, off outside | Component override. Outside the stack it keeps its earlier meaning (a bare flag means on). |
@@ -140,7 +147,12 @@ Example, brain-08 shadow run (not flown yet):
      point the same way, the larger of the two offsets is used.
    - Terrain side steer: only while the looming TTC governor requests a climb
      (expansion below the path). |ln(L/R)| >= ln 1.5 votes 6 deg toward the
-     farther side. Obstacle votes take priority.
+     farther side. Obstacle votes take priority. Since version 5, with the vertical guard on,
+     it votes only while the guard's climb is for confirmed rising ground, and a terrain episode
+     never latches out an obstacle confirmation.
+   - Side commitment (version 5): an obstacle confirmation with one-sided evidence of a close
+     obstacle holds its side without decay while the obstacle stays ahead. The details are in
+     [Round 4](#the-rules-gap_aim-version-5).
 
 The CPU fallback is refused: at about 0.3 s per frame the samples would always be
 stale. Without an in-view ring the cue publishes `no_ring` and the aim decays.
@@ -170,6 +182,8 @@ flight and are NaN or empty when the stack is off.
   - `ceiling_status`, `ceiling_climb`, `ceiling_vertical_cap`: the status, climb
     request and vertical bound of the governor that runs the ceiling guard (in
     shadow, a guarded copy fed the same samples; the flown governor is unguarded).
+- **`gap_commit`** (the last column, after the vertical-guard columns): the side the gap aim
+  is committed to (1 left, -1 right, 0 none; also in shadow), NaN without a gap aim.
 
 The sidecar's `obstacle_stack` records:
 
@@ -183,7 +197,9 @@ The sidecar's `obstacle_stack` records:
   slot was busy (`camera_skips`).
 
 `pilot_assistance.gap_aim` holds the pilot counts: samples, stale samples,
-episodes, latch blocks, conflicts and engaged seconds. `lag_turn` and
+episodes, latch blocks, conflicts and engaged seconds. From version 5 on it adds the commitment
+counts (commits, switches, blocked opposite confirmations, releases by hold, maximum and
+conflict, terrain yields) and `commit_seconds`. `lag_turn` and
 `lag_turn_declaration` record `applied`. `pilot_assistance.wall_pilot` holds the
 rules, parameters and counts of turn-first (episodes, aligned, handoff, timeout,
 active seconds; since version 4 also the triggers of each episode (side, bearing,
@@ -200,7 +216,11 @@ the rules were part of the stack.
 |---|---|---|---|
 | `configs/obstacles/gap_cue.json` | 2 | `284b3c46a819...` | before any wiring result |
 | `configs/obstacles/gap_bench_gates.json` (G8) | 1 | `db551b8813a3...` | before the first bench run |
-| `configs/obstacles/gap_pilot.json` | 2 | `67ec1f140a31...` | after the review, before any replay or bench rerun |
+| `configs/obstacles/gap_pilot.json` | 5 | `43c304204f93...` | round 4, after version 4 was scored (a disclosed revision), before version 5 was scored |
+| `configs/obstacles/gap_pilot_v4.json` | 4 | `a50d85b19566...` | round 4, before any gate was scored; kept verbatim; refused at runtime |
+| `configs/obstacles/gap_pilot_v3.json` | 3 | `3ed4316d0777...` | round 4; never scored; kept verbatim; refused at runtime |
+| `configs/obstacles/gap_pilot_v2.json` | 2 | `67ec1f140a31...` | after the review, before any replay or bench rerun; flown in rounds 2-3; kept verbatim; refused at runtime |
+| `configs/obstacles/gap_commit_gates.json` | 3 | `e520b64ed3cb...` | the round-4 gates for version 5 (versions 1 and 2 kept: `_v1`, `_v2`) |
 | `configs/obstacles/lag_turn.json` | 2 | `d4eb83da51ab...` | after the review, before any replay |
 | `configs/obstacles/gap_pilot_v1.json` | 1 | `e704a3ba0d3d...` | kept verbatim; refused at runtime |
 | `configs/obstacles/lag_turn_v1.json` (from `m2-lagturn`) | 1 | `94315b4ddc4a...` | kept verbatim; refused at runtime |
@@ -226,6 +246,10 @@ About these versions:
   the lag-turn trigger ray, and the declared interaction of the lead with the gap
   shift. The runner refuses any other version (`gap_stack.GAP_PILOT_VERSION`,
   `fast_race_cue.LAG_TURN_VERSION`).
+- **Versions 3-5 of `gap_pilot.json`** (round 4) keep every version 2 value. They add the side
+  commitment and two terrain-vote rules. Version 5 is the declared one, and the runtime refuses
+  versions 1-4. See [Round 4](#versions). Version 5 was chosen after version 4 was scored, so it
+  has no held-out offline evidence.
 
 ## Gates and results
 
@@ -968,6 +992,183 @@ Neither is in this round.
   - the kinematic motor rollout;
   - the harness building each contract's stopping model.
 
+## Round 4: pillar C and side commitment
+
+**Status: not flown.** Round 4 changes only the pilot's gap aim, in `haltere/liftoff/gap_aim.py`
+and the terrain flag in `FastRaceCue.update`. The per-frame cue, the depth process, the flags and
+the other stack rules are unchanged. The declaration is `configs/obstacles/gap_pilot.json`
+version 5. It passes its frozen offline gates except B, which version 2 fails too. All of that is
+development evidence: open-loop replays, one closed-loop surrogate and unit tests.
+
+### The crash (diagnosis)
+
+`minus-fast6-vg-02` (fast PD, stack and vertical guard on) passed pillar A and the hairpin, then
+hit pillar C at (78.3, 31.0), 23.44 s, at 5.9 m/s. The log, the video and a depth replay of the
+approach show the following. The depth replay is 385 video frames through `RelativeDepth(336, 602)`
+in one 26 s GPU chunk through the round's wrapper.
+
+| Time (s) | To the pillar face | What happened |
+|---|---|---|
+| 20.7 | 11.8 m | Pillar C's ring becomes the target. It bears 90 deg; the drone's course is 76-109 deg as it leaves the hairpin. |
+| 21.3-21.64 | 10-9 m | The hairpin's lag-turn window fades out: a lead of -10.6 deg, toward the right, falling to 0. It ended before any pillar evidence and did not contribute. |
+| 21.60-22.60 | 9.3-4.8 m | The vertical guard runs its gentle climb (stage 1, 1 m/s) for the floor below the sinking path. The governor's climb counts as terrain for the gap aim. The terrain statistic lr of -1.5 to -2.3 says the left is farther: the outer wall at x 82, 3.4 m to the right, is near. A left terrain vote of 6 deg is confirmed at 21.73, applied in full from 21.88, and held until 22.45. The course is 104-109 deg while the ring bears 85-89 deg. |
+| 22.33 | 6.1 m | First cue sample with the pillar on the path (`near_on_path`); shift -0.3 deg. |
+| 22.39, 22.45 | 5.6, 5.4 m | Right votes of -3.2 and -2.4 deg, 1.05 and 0.99 s before the impact. Their confirmation is blocked by the terrain episode's side latch (`latch_blocks` 2). The target becomes 0 and the +6 decays over 0.3 s. |
+| 22.63, 22.74-22.84 | 4.2-3.3 m | The cue reads `clear`. The pillar straddles the ring and, with the walls, lifts the band's background median above the ratio threshold. |
+| 23.05 | 2.2 m | Right confirmed at -9.5 deg, occluded, once the latch has expired, 0.39 s before the impact. The shift slews at 40 deg/s and reaches -12 at 23.35. |
+| 23.44 | 0 | Impact. The governor was `armed` with a cap rising from 2.1 to 5.5 m/s, and the PD accelerated from 4.2 to 5.9 m/s. Looming read 1.07-2.7 s and never saw the dark pillar. |
+
+- **The free side was the right, the ring side.**
+  - The ring, triangulated from the logged azimuths (hindsight, scoring only), lies at (79.6, 40.5):
+    8.9 m beyond the pillar and 1.1 m right of its right edge.
+  - The Pillar01 collider spans x 77.85-78.55, and the outer wall stands at x 81.98.
+  - Ten store runs (122-131) passed the pillar on the right, at x 79.3-80.7.
+  - The cue never voted left.
+- **The governor contributed twice:**
+  - through its climb, which enabled the terrain vote;
+  - through its rising cap, which let the PD accelerate into the approach.
+- **The lag turn did not contribute.**
+- **Would a committed shift have cleared the pillar, given the lag?** The declared fast-PD response
+  model (`response_models.json`: straight for 0.30 s, then 8 m/s² lateral) was flown from the logged
+  state, aiming at the hindsight ring plus a constant offset. That model, like the closed-loop
+  surrogate below, does not reproduce the crash: with version 2's replayed shift it passes 0.85 m to
+  the right. Only differences between its cases mean anything.
+  - From the confirmation that was possible at 22.45, a full 12 deg commitment gives only 0.11 m to
+    the right or 0.19 m to the left. The drone was drifting left at 1.5 m/s. Six degrees either way
+    hits, and from 23.05 nothing clears.
+  - The path was lost earlier, to the terrain steer. Aiming at the ring instead of +6 from 21.73 moves
+    the crossing 0.54 m to the right.
+  - A committed LEFT shift (the terrain's side) of +12 from 21.73 hits. Left clears only as a full
+    12 deg from 22.45-22.7, and only marginally.
+  - Output: `m4/pillar/lag_check.json` in the session scratchpad.
+
+### The rules (`gap_aim`, version 5)
+
+Each rule is a `GapAimConfig` field, and all are off by default. The version 2 declaration through
+this code is version 2, bit for bit (gate O).
+
+- **Side commitment** (`commit`).
+  - **When it starts.** An obstacle confirmation (2 of 3 samples, as before) commits to its side
+    when a confirming sample carries one-sided evidence of a close obstacle: `near_on_path` in a
+    decision that is not `occluded` (`commit_occluded: false`).
+  - **What it holds.** The target keeps the largest confirming |shift| since the commitment,
+    clipped to 12 deg, and never decays.
+  - **What refreshes it.** Evidence that the obstacle is still ahead: an obstacle vote for either
+    side (an opposite vote does not move the target), or a valid close sample (`near_on_path` or
+    `occluded`).
+  - **When it switches side.** Only on much stronger opposite evidence while there is time to
+    complete the switch: 3 consecutive opposite votes of at least 6 deg, within 0.3 s of the
+    commitment's start (the fast PD's declared response delay). Weaker or later opposite
+    confirmations are blocked and counted.
+  - **When it ends.** After 0.3 s without refreshing evidence (the gap cue's own `max_gap_s`),
+    after 2.5 s in all, or on a ring or flag conflict (the checkpoint switched). The side latch
+    then holds as after any confirmation, and terrain votes are ignored while committed.
+- **Terrain yields** (`terrain_yields`). A terrain episode never latches out an obstacle
+  confirmation on the other side.
+- **Terrain for rising ground only** (`terrain_rising_only`). With a vertical guard declared,
+  terrain votes count only while the guard's climb is for confirmed rising ground (its escalated
+  stage); in shadow, its copy decides. Without a vertical guard, version 2's rule is kept.
+
+### Versions
+
+- **Version 3** (`3ed4316d0777...`) was frozen with the gates before any scoring. A unit test then
+  found a problem: opposite votes did not refresh the commitment, so sustained weak opposite
+  evidence released it and, after the latch, let the other side take over. That is a switch on
+  weaker evidence. Version 3 was never scored. Its candidate replay files were generated and
+  deleted unread.
+- **Version 4** (`a50d85b19566...`) refreshes the hold on any obstacle vote. It was scored on
+  `gap_commit_gates.json` version 2 and failed A and S (below), because it held shifts:
+  - into Straw Bale gates, where the inflatable arch's top crosses the band at the ring 1-1.5 s
+    before the gate and the decision flickers `occluded` ±12 deg;
+  - into the pillar A checkpoint of store run 129, from an occluded frame on the pillar side.
+- **Version 5** (`43c304204f93...`) changes two of version 4's values: `commit_occluded` false and
+  `commit_hold_s` 0.5 -> 0.3. They were chosen after reading the version 4 results and three
+  variants on the same data:
+  - occluded alone: S 113 of 120;
+  - the shorter hold alone: S 105 of 120, and store run 129 still failing;
+  - both: 115 of 120.
+
+  **Every gate data set is therefore development data for version 5, not held-out.** Gates
+  version 3 differs from version 2 only in the candidate version.
+- **Before any freeze** the version 3 draft was checked on the eight Straw Bale development store
+  runs (4-15, not gate data). Episodes fell from 5.8-11.8 to 4.4-7.0 per minute, all 61 switches
+  were quiet, and no value changed.
+
+### Gates (`configs/obstacles/gap_commit_gates.json`, `haltere.obstacles.gap_commit_eval`)
+
+Two kinds of replay feed the gates:
+
+- **Live logs of the stack flights.** Every tick goes through `FastRaceCue` with the deployed stack
+  (`vertical_replay.py --stack on --near-on-path --gap-pilot ...`).
+- **Flights without live samples.** The teacher-basis decisions of the gap-cue evaluation are
+  replayed through `GapAim` at 100 Hz, with samples received 0.09 s after capture and ring
+  reconciliation 0.06 s after capture.
+
+Every replay is open loop.
+
+| Gate | Threshold | Version 2 | Version 4 (gates v2) | Version 5 (gates v3) |
+|---|---|---|---|---|
+| C pillar C (`minus-fast6-vg-02`, development case) | no left shift from 20.7 s; right obstacle target >= 0.9 s before the impact; held and never shrinking to the impact | left 6 deg for 103 ticks; right 0.39 s before the impact; not held | **pass**: no left; right 0.99 s before; held; -12 deg at the impact | **pass**: the same |
+| A pillar A, 25 Minus Two approaches (17 offline, 8 live) | per approach, against version 2: first left confirmation at least as far out; no more right ticks; no more aim-into-pillar ticks | first left 2.4-6.4 m | **fail**: 24 of 25. Store run 129: 147 right ticks (v2: 33), 17 into the pillar | **pass**: 25 of 25 (store run 129 back to 33) |
+| B pillar B (store 123, 127), pilot level | first -x target >= 1.0 s before the impact on both runs | 1.25 s, **0.95 s** | **fail**, identical to v2 | **fail**, identical to v2 |
+| P pillar C passes (8 store runs on the free side) | no more left ticks and no more aim-into-pillar ticks than v2 | 0 and 0 | pass | pass |
+| S clean Straw Bale laps (the 4 G3 laps, 22.6 min) | episodes/min <= v2; quiet switches >= min(v2, 95 %) | 8.87 /min; 120 of 120; p90 8.2 deg | **fail**: 6.47 /min; **101 of 120**; p90 12 deg | **pass**: 7.45 /min; 115 of 120 (95.8 %); p90 12 deg |
+| L leak test (G4) | gap-cue config unchanged; G4 re-scored identical | | pass | pass |
+| O identity: 11 logs × 4 pairs, bit for bit | stack off = the `m2-vertical` tree; v2 through this code = `m2-vertical`, commands and gap-aim state; v5 shadow commands = `m2-vertical` shadow = v2 shadow | | pass (44 of 44) | pass (44 of 44) |
+
+- **Why B fails.** At the pilot level, the 0.09 s receipt latency moves store run 127's first -x
+  target to 0.95 s before the impact. The cue-level G2 (1.04 s) used the cue's own 0.065 s.
+  Commitment cannot change a first confirmation. The gate stays as frozen and fails for version 2
+  too.
+- **The cue-level gates are unchanged:** G1, G3 and G4 fail, G2 passes.
+- **Report only:**
+  - On the Pine Valley trunk, the first right target is 0.57 s before the impact in both versions.
+    The shift at the impact is -10.2 deg under version 5, against -6.1 under version 2.
+  - The full results are in `docs/experiments/gap_commit_v4_results.json` and
+    `gap_commit_v5_results.json`.
+
+### Closed-loop surrogate (report only)
+
+The surrogate is the measured original-drone model (`IdentifiedSim`) with the fast PD, a 3-tick
+command delay and the deployed-stack `FastRaceCue`. It starts from the logged state of
+`minus-fast6-vg-02` at 21.0, 21.3 or 21.6 s.
+
+- The ring cue is the HUD marker of the hindsight ring, seen from the simulated pose.
+- The gap and looming samples are the logged ones, received when they were in flight. They are
+  therefore open loop: the cue does not see the simulated path.
+- The table gives the minimum distance of the drone's centre to the pillar footprint:
+
+| Start | Version 2 | Version 4 / 5 | Version 5 without commitment (terrain rules only) | No gap aim |
+|---|---|---|---|---|
+| 21.0 s | 0.65 m | 1.23 m | 1.23 m | 1.14 m |
+| 21.3 s | 1.00 m | 1.27 m | 1.19 m | 0.98 m |
+| 21.6 s | 0.39 m | 1.01 m | 0.97 m | 0.78 m |
+
+- **The surrogate does not reproduce the crash:** version 2 passes too. It is too agile, as the
+  response model is.
+- **In it, version 5 passes 0.3-0.6 m farther from the pillar than version 2.**
+- **Most of the gain comes from the terrain rules:** removing the terrain steer toward the pillar.
+  The commitment adds 0-0.08 m.
+- Script and output: `m4/pillar/closed_loop.py` and `closed_loop.json` in the session scratchpad.
+
+### Tests
+
+- **`tests/test_gap_commit.py`** (30 tests):
+  - the new parameters validate;
+  - every declaration reproduces its version;
+  - version 2 ignores the new fields and `near_on_path`;
+  - commitment, hold, growth, refresh, release (hold, maximum, conflicts) and switching (early,
+    weak, late, interrupted);
+  - occluded decisions start commitments only in version 4;
+  - a Straw arch flicker does not commit in version 5;
+  - terrain yields and terrain votes for rising ground only, in `FastRaceCue`;
+  - shadow;
+  - the new log column;
+  - the logged pillar-C sample stream, held under versions 4 and 5 and latched out under version 2;
+  - the evaluation helpers.
+- **`tests/test_gap_pilot.py`** pins versions 1-4 kept and refused, and version 5 keeping version
+  2's values.
+
 ## Limits
 
 - **Apart from the three live flights of round 2, nothing here is flight
@@ -1048,3 +1249,28 @@ Neither is in this round.
 - **Versions 2 and 3 were each changed after a replay** of the previous version
   (see [Declaration versions](#declaration-versions)). No replay here is held-out
   evidence for version 3.
+- **Round 4 (gap pilot version 5) has no held-out evidence.**
+  - Version 5 was chosen after version 4's results on every gate data set.
+  - Pillar C is the development case.
+  - No replay here is flight evidence. The next flights should include:
+    - a Minus Two run with the stack on;
+    - a Straw Bale lap with the stack in shadow and then on;
+    - Pine Valley with the stack on, where the terrain side steer can still vote on a confirmed
+      rising mound.
+- **The commitment holds the largest shift.**
+  - On clean Straw Bale laps the applied shift reaches 12 deg (p90), against 8.2 under version 2.
+  - The engaged time also grows.
+  - 5 of 120 checkpoint switches still had more than 4 deg in their last 0.5 s. Version 2 had none.
+- **A wrong first commitment is held.**
+  - It can last up to 2.5 s, unless 3 strong opposite votes arrive within 0.3 s.
+  - Version 5 no longer commits on `occluded` decisions. Those caused both version 4 failures.
+- **The pillar C models do not reproduce the crash.** The response model and the closed-loop
+  surrogate are both more agile than the flown stack. That version 5 clears pillar C is not shown;
+  only that it passes farther from it than version 2 in both models.
+- **The terrain rules remove the terrain side steer from the garage flights.** Version 2 used it in
+  6 of 8 Minus Two stack flights, all in the garage (a floor or an arch below the path), where there
+  is no rising ground.
+  - Its benefit on a rising mound is untested: `pine-fast6-ttc-01` has no gap samples.
+  - In shadow, the rising-ground flag comes from the guard's shadow copy.
+- **The cue still loses a pillar that straddles the ring.** It read `clear` for 0.3-0.4 s at 3-5 m.
+  The 0.3 s hold bridged it only because a near-on-path vote arrived within 0.19 s.

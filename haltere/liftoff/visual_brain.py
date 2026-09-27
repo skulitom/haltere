@@ -811,6 +811,17 @@ def vertical_row(assistance):
     return tuple(values[k] for k in VERTICAL_COLUMNS)
 
 
+# Appended after VERTICAL_COLUMNS (gap pilot version 3): the side the gap aim is committed to near an obstacle.
+COMMIT_COLUMNS = ('gap_commit',)
+
+
+def commit_row(assistance):
+    """CSV values for COMMIT_COLUMNS: the gap aim's committed side (1 left, -1 right, 0 none; also in shadow); NaN
+    without a gap aim."""
+    aim = getattr(assistance,'gap_aim',None)
+    return (float(getattr(aim,'commit_side',0)) if aim is not None else float('nan'),)
+
+
 def clearance_row(assistance):
     governor = getattr(assistance,'clearance',None)
     if governor is None:
@@ -1117,7 +1128,7 @@ def run(args):
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
-                                 *VERTICAL_COLUMNS])
+                                 *VERTICAL_COLUMNS,*COMMIT_COLUMNS])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1230,7 +1241,8 @@ def run(args):
                                  getattr(controller.assistance,'lag_turn_lead_deg',float('nan')),
                                  *gap_row(gap,controller.assistance,now),*stage_row(camera.stages),
                                  *wall_row(controller.assistance),
-                                 *vertical_row(controller.assistance)])
+                                 *vertical_row(controller.assistance),
+                                 *commit_row(controller.assistance)])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
