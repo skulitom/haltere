@@ -1,0 +1,1451 @@
+{
+ "note": "Open-loop replays of wall-pilot version 4 (configs/obstacles/wall_pilot.json, sha256 92f842a54e56...) against the frozen gates configs/obstacles/wall_pilot_gates.json (sha256 6418aea51c44...), baseline m2-vertical 935cfdb (version 3). Development evidence, never flight evidence. Harness haltere/obstacles/vertical_replay.py (both trees with this branch's harness), scores haltere/obstacles/wall_pilot_gates.py; the kinematic sensitivity, the braking measurements and the lagged-motor surrogate are scratchpad scripts (m4/hairpin/work), report only.",
+ "gates": {
+  "gates_sha256": "6418aea51c44102dfa5f37255e3daea7ead542ce430293695e19b223a789cd71",
+  "wall_pilot": {
+   "file": "configs/obstacles/wall_pilot.json",
+   "version": 4,
+   "sha256": "92f842a54e569d9eb5171969e7f2bf6521790766450d624f173158a0eef6360e"
+  },
+  "baseline_tree": {
+   "branch": "m2-vertical",
+   "commit": "935cfdb4b6d712dc2b239838ce943a8c9ee596b9",
+   "wall_pilot_version": 3,
+   "note": "the round-3 stack as flown (wall pilot version 3, vertical guard version 2); both trees are replayed with this tree's harness"
+  },
+  "W_Identity": {
+   "passed": true,
+   "gated_pairs": [
+    {
+     "flight": "minus-brain09b-vg-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain09b-vg-01",
+     "variant": "flown-woff-von",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain09b-vg-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "variant": "flown-woff-von",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "variant": "flown-woff-von",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-wall-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-wall-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-wall-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-01",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-01",
+     "variant": "flown-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-01",
+     "variant": "shadow-wshadow-vshadow",
+     "identical": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "variant": "none-woff-voff-stream",
+     "identical": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "variant": "shadow-wshadow-vshadow-stream",
+     "identical": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "variant": "none-woff-voff",
+     "identical": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "variant": "none-woff-voff-stream",
+     "identical": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "variant": "shadow-wshadow-vshadow-stream",
+     "identical": true
+    }
+   ],
+   "report_pairs": [
+    {
+     "flight": "minus-brain09b-vg-01",
+     "variant": "flown-won-von",
+     "identical": false
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "variant": "flown-won-von",
+     "identical": true
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "variant": "flown-won-von",
+     "identical": false
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "variant": "flown-won-voff",
+     "identical": false
+    },
+    {
+     "flight": "minus-fast6-wall-01",
+     "variant": "flown-won-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "variant": "flown-won-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "variant": "flown-won-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "variant": "flown-won-voff",
+     "identical": true
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "variant": "flown-won-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "variant": "flown-won-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "variant": "flown-won-voff",
+     "identical": true
+    },
+    {
+     "flight": "pine-brain08-01",
+     "variant": "flown-won-voff",
+     "identical": true
+    }
+   ]
+  },
+  "W_Shadow": {
+   "passed": true,
+   "flights": [
+    {
+     "flight": "minus-brain09b-vg-01",
+     "identical": true,
+     "shadow_episodes": [
+      [
+       21.29,
+       21.9,
+       0.61
+      ]
+     ]
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "identical": true,
+     "shadow_episodes": [
+      [
+       20.56,
+       20.99,
+       0.44
+      ]
+     ]
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "identical": true,
+     "shadow_episodes": [
+      [
+       17.04,
+       17.36,
+       0.33
+      ],
+      [
+       18.48,
+       18.62,
+       0.15
+      ],
+      [
+       19.04,
+       19.07,
+       0.03
+      ],
+      [
+       20.98,
+       21.06,
+       0.09
+      ],
+      [
+       21.17,
+       21.64,
+       0.47
+      ]
+     ]
+    },
+    {
+     "flight": "minus-fast6-wall-01",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "identical": true,
+     "shadow_episodes": []
+    },
+    {
+     "flight": "pine-brain08-01",
+     "identical": true,
+     "shadow_episodes": []
+    }
+   ]
+  },
+  "W_B09": {
+   "end_t": 21.9,
+   "window": [
+    20.4,
+    21.9
+   ],
+   "first_engagement_t": 21.29,
+   "lead_s": 0.61,
+   "episodes": [
+    [
+     21.29,
+     21.9,
+     0.61
+    ]
+   ],
+   "max_toward_after_settle": 0.0,
+   "passed": true,
+   "flight": "minus-brain09b-vg-01",
+   "baseline_report_only": {
+    "end_t": 21.9,
+    "window": [
+     20.4,
+     21.9
+    ],
+    "first_engagement_t": null,
+    "lead_s": null,
+    "episodes": [],
+    "passed": false
+   }
+  },
+  "W_B08": {
+   "end_t": 18.47,
+   "window": [
+    16.97,
+    18.47
+   ],
+   "first_engagement_t": null,
+   "lead_s": null,
+   "episodes": [],
+   "passed": false,
+   "flight": "minus-brain08-vg-01",
+   "baseline_report_only": {
+    "end_t": 18.47,
+    "window": [
+     16.97,
+     18.47
+    ],
+    "first_engagement_t": null,
+    "lead_s": null,
+    "episodes": [],
+    "passed": false
+   }
+  },
+  "W_PD": {
+   "window": [
+    20.0,
+    22.5
+   ],
+   "max_extra_toward_wall": 0.0,
+   "engaged_s": 0.44,
+   "path_deficit_m": 1.731,
+   "exit_speed": 4.615,
+   "delay_estimate_s": 0.375,
+   "episodes": [
+    [
+     20.56,
+     20.99,
+     0.44
+    ]
+   ],
+   "base_episodes": [],
+   "passed": true,
+   "flight": "minus-fast6-vg-02"
+  },
+  "W_V3case": {
+   "first_engagement_t": 20.98,
+   "max_toward_after": 0.0399,
+   "episodes": [
+    [
+     17.04,
+     17.36,
+     0.33
+    ],
+    [
+     18.48,
+     18.62,
+     0.15
+    ],
+    [
+     19.04,
+     19.07,
+     0.03
+    ],
+    [
+     20.98,
+     21.06,
+     0.09
+    ],
+    [
+     21.17,
+     21.64,
+     0.47
+    ]
+   ],
+   "passed": true,
+   "flight": "minus-fast6-gapon-01",
+   "baseline_report_only": {
+    "first_engagement_t": 20.98,
+    "max_toward_after": 0.0522,
+    "episodes": [
+     [
+      17.17,
+      17.36,
+      0.2
+     ],
+     [
+      20.98,
+      21.06,
+      0.09
+     ],
+     [
+      21.17,
+      21.64,
+      0.47
+     ]
+    ],
+    "passed": true
+   }
+  },
+  "W_Quiet": {
+   "flights": {
+    "pine-fast6-ttc-01": {
+     "full_stack": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 0.35,
+      "passed": true
+     },
+     "as_flown_with_wall": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 0.35,
+      "passed": true
+     }
+    },
+    "pine-brain08-loom-01": {
+     "full_stack": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 0.16,
+      "passed": true
+     },
+     "as_flown_with_wall": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 0.16,
+      "passed": true
+     }
+    },
+    "pine-brain08-01": {
+     "full_stack": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 0.3,
+      "passed": true
+     },
+     "as_flown_with_wall": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 0.3,
+      "passed": true
+     }
+    },
+    "straw-brain08-04": {
+     "full_stack": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 5.45,
+      "passed": true
+     }
+    },
+    "straw-brain08-06": {
+     "full_stack": {
+      "turn_first_episodes": 0,
+      "turn_first_s": 0.0,
+      "side_guard_s": 0.0,
+      "minutes": 5.45,
+      "passed": true
+     }
+    }
+   },
+   "passed": true
+  },
+  "episodes_report_only": {
+   "minus-brain09b-vg-01": {
+    "version_4": [
+     [
+      21.29,
+      21.9,
+      0.61
+     ]
+    ],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.61,
+    "max_horizontal_change": 3.182
+   },
+   "minus-brain08-vg-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "minus-fast6-vg-02": {
+    "version_4": [
+     [
+      20.56,
+      20.99,
+      0.44
+     ]
+    ],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 2.88,
+    "max_horizontal_change": 3.238
+   },
+   "minus-fast6-gapon-01": {
+    "version_4": [
+     [
+      17.04,
+      17.36,
+      0.33
+     ],
+     [
+      18.48,
+      18.62,
+      0.15
+     ],
+     [
+      19.04,
+      19.07,
+      0.03
+     ],
+     [
+      20.98,
+      21.06,
+      0.09
+     ],
+     [
+      21.17,
+      21.64,
+      0.47
+     ]
+    ],
+    "version_3": [
+     [
+      17.17,
+      17.36,
+      0.2
+     ],
+     [
+      20.98,
+      21.06,
+      0.09
+     ],
+     [
+      21.17,
+      21.64,
+      0.47
+     ]
+    ],
+    "side_guard": [],
+    "request_changed_s": 4.599,
+    "max_horizontal_change": 2.38
+   },
+   "minus-fast6-wall-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "minus-brain08-gapon-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "minus-brain08-gapon-02": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "minus-brain08-loom-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "minus-brain08-gapshadow-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "pine-fast6-ttc-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "pine-brain08-loom-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   },
+   "pine-brain08-01": {
+    "version_4": [],
+    "version_3": [],
+    "side_guard": [],
+    "request_changed_s": 0.0,
+    "max_horizontal_change": 0.0
+   }
+  },
+  "kinematic_report_only": {
+   "fit": {
+    "delay_s": 0.1,
+    "tau_s": 0.3,
+    "accel_mps2": 6.0,
+    "rms_mps": 0.4788
+   },
+   "from_t": 20.9,
+   "wall_plane": 81.84,
+   "as_flown": {
+    "max_along": 82.873,
+    "along_at_end_of_log": 81.949,
+    "crosses_plane_t": 21.86,
+    "speed_toward_at_crossing": 2.642,
+    "speed_toward_at_end_of_log": 2.548
+   },
+   "version_4": {
+    "max_along": 81.55,
+    "along_at_end_of_log": 81.457,
+    "crosses_plane_t": null,
+    "speed_toward_at_crossing": null,
+    "speed_toward_at_end_of_log": 0.725
+   },
+   "logged_along_at_end": 81.836,
+   "logged_t_end": 21.9
+  },
+  "passed": {
+   "W_Identity": true,
+   "W_Shadow": true,
+   "W_B09": true,
+   "W_B08": false,
+   "W_PD": true,
+   "W_V3case": true,
+   "W_Quiet": true
+  }
+ },
+ "braking_measurements": {
+  "minus-brain09b-vg-01": [
+   {
+    "t": 11.96,
+    "speed": 5.1,
+    "request": 4.53,
+    "delay": 0.32,
+    "decel_03": 3.64,
+    "decel_best02": 5.07
+   },
+   {
+    "t": 17.93,
+    "speed": 5.31,
+    "request": 4.72,
+    "delay": 0.19,
+    "decel_03": 3.7,
+    "decel_best02": 4.55
+   },
+   {
+    "t": 20.67,
+    "speed": 5.18,
+    "request": 4.49,
+    "delay": 0.26,
+    "decel_03": 3.88,
+    "decel_best02": 4.14
+   }
+  ],
+  "minus-fast6-vg-02": [
+   {
+    "t": 6.52,
+    "speed": 5.89,
+    "request": 5.37,
+    "delay": 0.12,
+    "decel_03": 10.39,
+    "decel_best02": 11.33
+   },
+   {
+    "t": 17.36,
+    "speed": 5.89,
+    "request": 5.32,
+    "delay": 0.11,
+    "decel_03": 6.76,
+    "decel_best02": 8.23
+   },
+   {
+    "t": 19.16,
+    "speed": 6.04,
+    "request": 5.5,
+    "delay": 0.13,
+    "decel_03": 6.41,
+    "decel_best02": 7.68
+   },
+   {
+    "t": 20.18,
+    "speed": 4.09,
+    "request": 3.57,
+    "delay": 0.17,
+    "decel_03": 6.21,
+    "decel_best02": 7.28
+   }
+  ],
+  "minus-fast6-gapon-01": [
+   {
+    "t": 6.59,
+    "speed": 5.9,
+    "request": 5.36,
+    "delay": 0.12,
+    "decel_03": 7.51,
+    "decel_best02": 8.92
+   },
+   {
+    "t": 11.81,
+    "speed": 5.9,
+    "request": 5.37,
+    "delay": 0.13,
+    "decel_03": 6.99,
+    "decel_best02": 8.38
+   },
+   {
+    "t": 16.45,
+    "speed": 5.9,
+    "request": 5.39,
+    "delay": 0.13,
+    "decel_03": 9.72,
+    "decel_best02": 10.0
+   },
+   {
+    "t": 20.57,
+    "speed": 4.72,
+    "request": 4.17,
+    "delay": 0.15,
+    "decel_03": 6.96,
+    "decel_best02": 7.7
+   }
+  ],
+  "minus-fast6-wall-01": [
+   {
+    "t": 11.34,
+    "speed": 5.9,
+    "request": 5.37,
+    "delay": 0.11,
+    "decel_03": 6.89,
+    "decel_best02": 8.33
+   },
+   {
+    "t": 12.68,
+    "speed": 5.21,
+    "request": 4.69,
+    "delay": 0.17,
+    "decel_03": 4.89,
+    "decel_best02": 6.41
+   }
+  ],
+  "minus-brain08-vg-01": [
+   {
+    "t": 11.47,
+    "speed": 5.9,
+    "request": 5.33,
+    "delay": 0.93,
+    "decel_03": 0.03,
+    "decel_best02": 0.6
+   }
+  ],
+  "minus-brain08-gapon-01": [
+   {
+    "t": 11.56,
+    "speed": 5.9,
+    "request": 5.34,
+    "delay": 0.89,
+    "decel_03": -0.61,
+    "decel_best02": 0.57
+   },
+   {
+    "t": 12.96,
+    "speed": 6.05,
+    "request": 5.48,
+    "delay": 0.44,
+    "decel_03": 2.87,
+    "decel_best02": 3.07
+   },
+   {
+    "t": 16.07,
+    "speed": 5.77,
+    "request": 5.23,
+    "delay": 0.72,
+    "decel_03": 0.06,
+    "decel_best02": 1.1
+   }
+  ],
+  "minus-brain08-gapon-02": [
+   {
+    "t": 8.17,
+    "speed": 5.45,
+    "request": 4.9,
+    "delay": 0.32,
+    "decel_03": 0.32,
+    "decel_best02": 0.37
+   },
+   {
+    "t": 16.19,
+    "speed": 5.67,
+    "request": 5.09,
+    "delay": 0.99,
+    "decel_03": -1.76,
+    "decel_best02": 0.0
+   }
+  ],
+  "minus-brain08-loom-01": [
+   {
+    "t": 11.49,
+    "speed": 5.91,
+    "request": 5.37,
+    "delay": 0.86,
+    "decel_03": 0.05,
+    "decel_best02": 0.33
+   }
+  ],
+  "pine-fast6-ttc-01": [
+   {
+    "t": 7.34,
+    "speed": 2.95,
+    "request": 2.44,
+    "delay": 0.19,
+    "decel_03": 4.21,
+    "decel_best02": 5.85
+   },
+   {
+    "t": 14.18,
+    "speed": 5.89,
+    "request": 5.31,
+    "delay": 0.11,
+    "decel_03": 9.85,
+    "decel_best02": 11.2
+   },
+   {
+    "t": 16.14,
+    "speed": 5.89,
+    "request": 5.37,
+    "delay": 0.14,
+    "decel_03": 5.58,
+    "decel_best02": 6.72
+   },
+   {
+    "t": 18.97,
+    "speed": 5.88,
+    "request": 5.35,
+    "delay": 0.12,
+    "decel_03": 6.51,
+    "decel_best02": 7.91
+   }
+  ]
+ },
+ "kinematic_sensitivity_report_only": {
+  "fitted": {
+   "model": {
+    "delay": 0.1,
+    "tau": 0.3,
+    "accel": 6.0
+   },
+   "as_flown": {
+    "max_x": 83.124,
+    "cross_t": 21.86,
+    "vx_at_cross": 2.64
+   },
+   "v4": {
+    "max_x": 81.55,
+    "cross_t": null,
+    "vx_at_cross": null
+   }
+  },
+  "braking_events": {
+   "model": {
+    "delay": 0.26,
+    "tau": 0.05,
+    "accel": 3.7
+   },
+   "as_flown": {
+    "max_x": 83.163,
+    "cross_t": 21.89,
+    "vx_at_cross": 2.73
+   },
+   "v4": {
+    "max_x": 82.055,
+    "cross_t": 22.01,
+    "vx_at_cross": 1.27
+   }
+  },
+  "slower": {
+   "model": {
+    "delay": 0.3,
+    "tau": 0.1,
+    "accel": 3.0
+   },
+   "as_flown": {
+    "max_x": 83.504,
+    "cross_t": 21.84,
+    "vx_at_cross": 2.85
+   },
+   "v4": {
+    "max_x": 82.672,
+    "cross_t": 21.87,
+    "vx_at_cross": 2.19
+   }
+  },
+  "slowest": {
+   "model": {
+    "delay": 0.35,
+    "tau": 0.1,
+    "accel": 2.5
+   },
+   "as_flown": {
+    "max_x": 83.824,
+    "cross_t": 21.78,
+    "vx_at_cross": 2.93
+   },
+   "v4": {
+    "max_x": 83.352,
+    "cross_t": 21.79,
+    "vx_at_cross": 2.75
+   }
+  }
+ },
+ "arrival_speed_bound_report_only": {
+  "room_m": 2.14,
+  "bounds_mps": {
+   "engaged_at_the_arch": 2.96,
+   "engaged_at_the_coast": 2.58
+  },
+  "definition": "largest speed at the arch passage from which the declared brain stopping model (0.3 s, 3.5 m/s^2, no margin) stops along +x within the room between the arch passage and the graze position, if turn-first engages at the passage or at the coast 0.16 s later (as replayed); brain-09b passed the arch at vx 3.2 m/s (4.1 m/s total)"
+ },
+ "lagged_surrogate_report_only": {
+  "definition": "measured surrogate + FastMotorPD fed the pilot request delayed by delay s and slewed at accel m/s^2 (a brain-09b-like braking motor); pilot nominal speed = approach speed; gate A 2.2 m before a wall plane, checkpoint B 8 m to the left 1 m before the wall, marker hidden for dropout s after A; perfect TTC toward the plane; the surrogate has no wall: min_gap_m < 0 is the depth the drone flew past the plane, max_vx_within_0p3m the speed toward it inside 0.3 m",
+  "runs": [
+   {
+    "tree": "no wall rules",
+    "mode": "none",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.0,
+    "dropout": 0.45,
+    "min_gap_m": -2.026,
+    "ticks_within_0p3m": 198,
+    "max_vx_within_0p3m": 2.929,
+    "ring_b_closest": 6.9,
+    "t_ring_b": null,
+    "passed_a": 3.39,
+    "counts": null,
+    "triggers": null
+   },
+   {
+    "tree": "m4-hairpin (version 4)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.0,
+    "dropout": 0.45,
+    "min_gap_m": -1.335,
+    "ticks_within_0p3m": 198,
+    "max_vx_within_0p3m": 2.929,
+    "ring_b_closest": 7.07,
+    "t_ring_b": null,
+    "passed_a": 3.39,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": {
+     "side": 0,
+     "bearing": 0,
+     "coast": 1,
+     "standoff": 0,
+     "stopping": 1
+    }
+   },
+   {
+    "tree": "m2-vertical (version 3)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.0,
+    "dropout": 0.45,
+    "min_gap_m": -1.858,
+    "ticks_within_0p3m": 198,
+    "max_vx_within_0p3m": 2.929,
+    "ring_b_closest": 7.24,
+    "t_ring_b": null,
+    "passed_a": 3.39,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": null
+   },
+   {
+    "tree": "no wall rules",
+    "mode": "none",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.5,
+    "dropout": 0.45,
+    "min_gap_m": -2.746,
+    "ticks_within_0p3m": 256,
+    "max_vx_within_0p3m": 3.407,
+    "ring_b_closest": 6.19,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": null,
+    "triggers": null
+   },
+   {
+    "tree": "m4-hairpin (version 4)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.5,
+    "dropout": 0.45,
+    "min_gap_m": -1.74,
+    "ticks_within_0p3m": 256,
+    "max_vx_within_0p3m": 3.407,
+    "ring_b_closest": 6.13,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": {
+     "side": 0,
+     "bearing": 0,
+     "coast": 1,
+     "standoff": 0,
+     "stopping": 1
+    }
+   },
+   {
+    "tree": "m2-vertical (version 3)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.5,
+    "dropout": 0.45,
+    "min_gap_m": -2.638,
+    "ticks_within_0p3m": 256,
+    "max_vx_within_0p3m": 3.407,
+    "ring_b_closest": 6.53,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": null
+   },
+   {
+    "tree": "no wall rules",
+    "mode": "none",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 4.0,
+    "dropout": 0.45,
+    "min_gap_m": -3.45,
+    "ticks_within_0p3m": 299,
+    "max_vx_within_0p3m": 3.92,
+    "ring_b_closest": 5.3,
+    "t_ring_b": null,
+    "passed_a": 2.54,
+    "counts": null,
+    "triggers": null
+   },
+   {
+    "tree": "m4-hairpin (version 4)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 4.0,
+    "dropout": 0.45,
+    "min_gap_m": -3.189,
+    "ticks_within_0p3m": 299,
+    "max_vx_within_0p3m": 3.92,
+    "ring_b_closest": 5.9,
+    "t_ring_b": null,
+    "passed_a": 2.54,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": {
+     "side": 1,
+     "bearing": 0,
+     "coast": 0,
+     "standoff": 0,
+     "stopping": 1
+    }
+   },
+   {
+    "tree": "m2-vertical (version 3)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 4.0,
+    "dropout": 0.45,
+    "min_gap_m": -3.434,
+    "ticks_within_0p3m": 299,
+    "max_vx_within_0p3m": 3.92,
+    "ring_b_closest": 5.54,
+    "t_ring_b": null,
+    "passed_a": 2.54,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": null
+   },
+   {
+    "tree": "no wall rules",
+    "mode": "none",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.5,
+    "dropout": 0.0,
+    "min_gap_m": -2.113,
+    "ticks_within_0p3m": 256,
+    "max_vx_within_0p3m": 3.418,
+    "ring_b_closest": 5.4,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": null,
+    "triggers": null
+   },
+   {
+    "tree": "m4-hairpin (version 4)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.5,
+    "dropout": 0.0,
+    "min_gap_m": -1.768,
+    "ticks_within_0p3m": 256,
+    "max_vx_within_0p3m": 3.414,
+    "ring_b_closest": 6.04,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": {
+     "side": 1,
+     "bearing": 0,
+     "coast": 0,
+     "standoff": 0,
+     "stopping": 1
+    }
+   },
+   {
+    "tree": "m2-vertical (version 3)",
+    "mode": "on",
+    "delay": 0.26,
+    "accel": 3.7,
+    "speed": 3.5,
+    "dropout": 0.0,
+    "min_gap_m": -2.113,
+    "ticks_within_0p3m": 256,
+    "max_vx_within_0p3m": 3.418,
+    "ring_b_closest": 5.4,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": {
+     "episodes": 0,
+     "aligned": 0,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": null
+   },
+   {
+    "tree": "no wall rules",
+    "mode": "none",
+    "delay": 0.3,
+    "accel": 3.0,
+    "speed": 3.5,
+    "dropout": 0.45,
+    "min_gap_m": -3.181,
+    "ticks_within_0p3m": 255,
+    "max_vx_within_0p3m": 3.439,
+    "ring_b_closest": 6.77,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": null,
+    "triggers": null
+   },
+   {
+    "tree": "m4-hairpin (version 4)",
+    "mode": "on",
+    "delay": 0.3,
+    "accel": 3.0,
+    "speed": 3.5,
+    "dropout": 0.45,
+    "min_gap_m": -2.261,
+    "ticks_within_0p3m": 255,
+    "max_vx_within_0p3m": 3.439,
+    "ring_b_closest": 6.68,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": {
+     "side": 0,
+     "bearing": 0,
+     "coast": 1,
+     "standoff": 0,
+     "stopping": 1
+    }
+   },
+   {
+    "tree": "m2-vertical (version 3)",
+    "mode": "on",
+    "delay": 0.3,
+    "accel": 3.0,
+    "speed": 3.5,
+    "dropout": 0.45,
+    "min_gap_m": -3.078,
+    "ticks_within_0p3m": 255,
+    "max_vx_within_0p3m": 3.439,
+    "ring_b_closest": 7.01,
+    "t_ring_b": null,
+    "passed_a": 2.91,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": null
+   },
+   {
+    "tree": "no wall rules",
+    "mode": "none",
+    "delay": 0.3,
+    "accel": 3.0,
+    "speed": 4.0,
+    "dropout": 0.45,
+    "min_gap_m": -4.084,
+    "ticks_within_0p3m": 298,
+    "max_vx_within_0p3m": 3.94,
+    "ring_b_closest": 6.4,
+    "t_ring_b": null,
+    "passed_a": 2.5500000000000003,
+    "counts": null,
+    "triggers": null
+   },
+   {
+    "tree": "m4-hairpin (version 4)",
+    "mode": "on",
+    "delay": 0.3,
+    "accel": 3.0,
+    "speed": 4.0,
+    "dropout": 0.45,
+    "min_gap_m": -3.792,
+    "ticks_within_0p3m": 298,
+    "max_vx_within_0p3m": 3.94,
+    "ring_b_closest": 6.73,
+    "t_ring_b": null,
+    "passed_a": 2.5500000000000003,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": {
+     "side": 1,
+     "bearing": 0,
+     "coast": 0,
+     "standoff": 0,
+     "stopping": 1
+    }
+   },
+   {
+    "tree": "m2-vertical (version 3)",
+    "mode": "on",
+    "delay": 0.3,
+    "accel": 3.0,
+    "speed": 4.0,
+    "dropout": 0.45,
+    "min_gap_m": -4.074,
+    "ticks_within_0p3m": 298,
+    "max_vx_within_0p3m": 3.94,
+    "ring_b_closest": 6.49,
+    "t_ring_b": null,
+    "passed_a": 2.5500000000000003,
+    "counts": {
+     "episodes": 1,
+     "aligned": 1,
+     "handoff": 0,
+     "timeout": 0
+    },
+    "triggers": null
+   }
+  ]
+ }
+}

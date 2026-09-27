@@ -226,7 +226,7 @@ def score_all(out, baseline, gates_path=GATES_PATH, runs=RUNS):
     g = gates['gates']
     wall = gates['hairpin_wall']
     result = dict(gates_sha256=digest, wall_pilot=gates['wall_pilot'], baseline_tree=gates['baseline_tree'])
-    minus = gates['flights']['logged_looming']
+    minus = gates['flights']['logged']
     straw = gates['flights']['straw_stream']
     vertical = {f: ('on' if f in gates['flights']['flown_with_vertical_guard'] else 'off') for f in minus}
 

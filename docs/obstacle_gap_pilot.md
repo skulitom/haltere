@@ -30,6 +30,11 @@ Round 3 adds a scale-free [vertical guard](vertical_guard.md) to the stack, agai
 governor's fixed 3.5 m/s terrain climb (Minus Two ceilings) and for keeping speed on the
 Straw Bale downhill. It has only been replayed open loop.
 
+Round 4 replaces turn-first's fixed 1.5 m/s engagement with a stopping-distance one
+(`wall_pilot.json` version 4), after a braking brain grazed the Minus Two hairpin wall at
+about 3 m/s with no episode. It has only been replayed open loop; see
+[Turn-first version 4](#turn-first-version-4-round-4).
+
 ## Flags
 
 | Flag | Default | Effect |
@@ -181,10 +186,12 @@ The sidecar's `obstacle_stack` records:
 episodes, latch blocks, conflicts and engaged seconds. `lag_turn` and
 `lag_turn_declaration` record `applied`. `pilot_assistance.wall_pilot` holds the
 rules, parameters and counts of turn-first (episodes, aligned, handoff, timeout,
-active seconds) and of the ceiling guard (overhead samples and engagements,
-unexplained walls, weak and suppressed climb samples);
-`pilot_assistance.wall_pilot_declaration` records its path, content and file
-sha256, version and `applied`. `obstacle_stack.components.wall_pilot` says whether
+active seconds; since version 4 also the triggers of each episode (side, bearing,
+coast; standoff, stopping) and the side-guard seconds) and of the ceiling guard
+(overhead samples and engagements, unexplained walls, weak and suppressed climb
+samples); `pilot_assistance.wall_pilot_declaration` records its path, content and file
+sha256, version, `applied`, and since version 4 the motor contract and the stopping
+model used. `obstacle_stack.components.wall_pilot` says whether
 the rules were part of the stack.
 
 ## Frozen configs
@@ -197,7 +204,9 @@ the rules were part of the stack.
 | `configs/obstacles/lag_turn.json` | 2 | `d4eb83da51ab...` | after the review, before any replay |
 | `configs/obstacles/gap_pilot_v1.json` | 1 | `e704a3ba0d3d...` | kept verbatim; refused at runtime |
 | `configs/obstacles/lag_turn_v1.json` (from `m2-lagturn`) | 1 | `94315b4ddc4a...` | kept verbatim; refused at runtime |
-| `configs/obstacles/wall_pilot.json` | 3 | `cafe4aa8c8bf...` | after the open-loop replays of versions 1 and 2, before any flight |
+| `configs/obstacles/wall_pilot.json` | 4 | `92f842a54e56...` | after the round-3 flights, with its gates, before any replay of version 4 |
+| `configs/obstacles/wall_pilot_gates.json` | 1 | `6418aea51c44...` | with version 4, before any replay of it |
+| `configs/obstacles/wall_pilot_v3.json` | 3 | `cafe4aa8c8bf...` | after the open-loop replays of versions 1 and 2, before any flight; flown in rounds 2-3; kept verbatim; refused at runtime |
 | `configs/obstacles/wall_pilot_v2.json` | 2 | `095addc577c0...` | after the replay of version 1; kept verbatim; refused at runtime |
 | `configs/obstacles/wall_pilot_v1.json` | 1 | `17fecfb1fad7...` | before any replay; kept verbatim; refused at runtime |
 
@@ -578,7 +587,8 @@ state, the causal looming samples and the visible checkpoint marker: no course
 geometry, route or per-course value.
 
 **Turn first (`TurnFirstConfig`).** This is what a pilot does at a hairpin wall:
-stop, yaw to the next gate, then go.
+stop, yaw to the next gate, then go. (This is version 3; version 4 changed the
+engagement: see [Turn-first version 4](#turn-first-version-4-round-4).)
 
 - Engage when two things hold:
   - Near a wall: the TTC governor holds a stand-off, or its wall brake capped the
@@ -756,6 +766,208 @@ with no pad and no flight, for three cases: brain-08 with the stack on, brain-08
 in shadow, and the fast PD with the stack on. Each pilot received the version 3
 rules, the sidecar record and the four log columns.
 
+## Turn-first version 4 (round 4)
+
+**Status: not flown.** Branch `m4-hairpin` (from `m2-vertical`). Only open-loop replays
+of the live logs, a kinematic estimate, a surrogate and unit tests exist. Results:
+`docs/experiments/obstacle_wall_pilot_v4_replay.json`.
+
+### Diagnosis of the Minus Two hairpin (round-3 logs)
+
+The hairpin: a gate arch at about (79.9, 18.9), then a wall plane at x of about 82
+(the wall with the green arrows), and the next ring about 90 deg to the left, up a
+corridor along that wall.
+
+- **`minus-brain09b-vg-01` (brain-09b, braked, grazed).**
+  - Approach: 5.2 m/s. The governor braked from 20.68 s (TTC 0.53 s), capping the
+    request at 4.3, then 3.0 m/s.
+  - Braking: after a 0.26 s delay, about 3.7 m/s^2 (from the brain's cap events at
+    11.96, 17.93 and 20.67 s: 0.19-0.32 s, 3.6-3.9 m/s^2).
+  - Arch: passed at (79.7, 18.7), 21.13 s, at 4.1 m/s (3.2 m/s toward the wall).
+    The governor's latest wall sample (the arch itself, TTC 0.10 s) was reached at
+    21.15 s.
+  - Marker: lost from 21.13 to 21.55 s. From 21.26 s the pilot coasted on its last
+    request, (2.85, 1.20) m/s, straight at the wall. It came back clamped at the
+    lower-left corner (state `side`) at 21.56 s, 0.34 s before the graze. The drone
+    held 2.9-3.0 m/s with 2.6-2.85 m/s toward the wall throughout.
+  - Graze at (81.84, 19.88), 21.90 s.
+  - Version 3 needed at most 1.5 m/s.
+  - Physically, the brain needed its braking to start at the arch: from 2.8 m/s,
+    stopping along x takes about 1.9 m (0.26-0.3 s delay, 3.7 m/s^2). The room from
+    the arch to contact was 2.1 m; at the side clamp only 0.95 m remained.
+- **`minus-brain08-vg-01` (brain-08, did not slow).** This was not the hairpin.
+  - At 6.4-7 m/s under 3.9 m/s caps, the brain overshot to the left of the arch and
+    hit the wall beside it at (78.1, 19.2), 18.47 s.
+  - The ring stayed in view (marker u 0.41-0.96) until the first clamp (a corner) at
+    18.28 s, 0.2 s before the impact.
+  - No turn-first trigger exists earlier, and the speed was far above any creep
+    regime. This is the brain's braking problem (the brain-09 work), not a hairpin
+    rule.
+- **`minus-fast6-vg-02` (fast PD, passed).**
+  - The governor engaged at 20.05 s (TTC 0.86 s) at 4 m/s. The PD followed the caps
+    of 2.8-2.1 m/s at once and passed the arch at 2.1 m/s.
+  - The marker was lost for 0.15 s. It reappeared in view at the left edge (47 deg
+    off), and the PD turned north at x <= 80.2 without contact.
+  - Version 3 never engaged (1.8 m/s > 1.5, and 47 deg < 50).
+- **`minus-fast6-gapon-01` (fast PD, version 3's design case).**
+  - The PD braked to a stand-off at x of about 79.7 with the marker clamped at the
+    side. The side rule then pushed it into the wall at (80.0, 18.1).
+
+### The rules (`TurnFirstConfig`, declaration version 4)
+
+Unchanged from version 3: the triggers `side` and bearing >= 50 deg, the action (no
+request along the capping looming ray, creep 0.8 m/s), the release inside 30 deg, the
+2 s timeout and the 2 s rearm. The changes:
+
+- **Stopping-distance engagement.** The fixed `slow_speed` (1.5 m/s) is gone.
+  - Engagement needs a measured horizontal speed of at most `max_speed` (3.5 m/s),
+    and one of two conditions:
+    - a wall brake within the last 1 s, with the governor's latest wall sample within
+      the stopping distance at the closing speed;
+    - a stand-off, with that sample within the stopping distance from max(closing
+      speed, the stand-off speed of 2 m/s).
+  - The latest wall sample is the newest looming sample the governor did not brake
+    for as terrain, with an aged TTC under 1.3 s. Its remaining distance is its reach
+    along its ray minus the odometry travelled along that ray, and 0 once reached or
+    passed (an arch flown through).
+  - Stopping distance: v x `stop_latency_s` + v^2 / (2 x `stop_deceleration`) +
+    0.5 m.
+  - The motor's braking is declared per motor contract, from logged cap events:
+
+    | Motor contract | Latency | Deceleration | Measured on |
+    |---|---|---|---|
+    | brain | 0.3 s | 3.5 m/s^2 | brain-09b |
+    | fast PD | 0.15 s | 6 m/s^2 | 12 events: 0.11-0.19 s, median about 6.5 m/s^2 |
+    | anything else | 0.3 s | 3.5 m/s^2 | the brain's model |
+
+    brain-08 shares the brain contract but does not brake for such requests: for it
+    the model is optimistic.
+  - Why the bound at 3.5 m/s: above it, the stopping distance exceeds every looming
+    alarm distance, so the test would no longer discriminate.
+- **Coast trigger.** While the marker is lost (state `coast`), turn-first also
+  engages, and the horizontal request is held at `coast_creep_speed` = 0. The
+  checkpoint's direction is unknown, and the stale lateral part of the last request
+  can point at the wall.
+- **Stand-off branch.** It now also needs the wall within stopping distance and the
+  speed at most `max_speed`. The surrogate showed a spurious episode without this:
+  the stand-off memory re-engaged turn-first while the drone flew away from the wall
+  at 6 m/s.
+- **The whole request is brought down at the brake slew.** In an episode, both the
+  component toward the wall and the horizontal speed above the bound are removed at
+  the brake slew (15 m/s^2). Version 3 slewed only the component toward the wall.
+  The rest followed the 0.25 s taper, which would have left a coasting request
+  drifting toward the wall.
+- **Side guard.** During the rearm after a timeout, in state `side` near a wall, the
+  side rule's request still loses its component toward the wall, without the creep
+  bound. The side rule never pushes into a wall it is near.
+- **Logs.** The sidecar counts the triggers of each episode and the side-guard
+  seconds. The declaration record names the motor contract and the stopping model.
+  The runner passes the contract.
+
+### Declaration and gates
+
+- **`configs/obstacles/wall_pilot.json` version 4** (`92f842a54e56...`, schema v2 with
+  `turn_first_stopping`): the ceiling guard is version 3's. Version 3 is kept
+  verbatim as `wall_pilot_v3.json` and refused at runtime.
+- **`configs/obstacles/wall_pilot_gates.json` version 1** (`6418aea51c44...`).
+  - Both were frozen and committed (`b36bab4`) before any replay of version 4.
+  - The Minus Two logs were inspected while version 4 was designed, so they are
+    development evidence.
+  - The Straw Bale and Pine Valley quietness replays had not been run before the
+    freeze.
+- **Changes after the freeze:** one scorer bug, not a gate change. It read a list
+  under a wrong key name, so it failed before scoring anything; the fix reads the
+  frozen file's `logged` list.
+- **Scoring:** `haltere/obstacles/wall_pilot_gates.py` scores the gates from replay
+  files made by `vertical_replay.py`. Both trees were replayed with this branch's
+  harness.
+
+| Gate | Result | Pass |
+|---|---|---|
+| W-Identity: m2-vertical vs this tree, bit for bit, with the stack off, the stack as flown with `--wall off`, and the stack in shadow, on 12 Minus/Pine logs and both Straw laps (with and without the looming stream) | 42 of 42 pairs identical | yes |
+| W-Shadow: `--wall shadow` vs `--wall off`, commands unchanged | 12 of 12 identical. Episodes are logged in shadow (brain-09b, the vg-02 PD, gapon-01) | yes |
+| W-B09: brain-09b's first engagement at least 0.5 s before the graze (the brain's delay plus about 0.2 s of slew); no request toward the wall (+x) above 0.1 m/s from 0.25 s after it | engaged at 21.29 s (coast), 0.61 s before the graze; request toward the wall at most 0.00 m/s after 21.54 s. Version 3: no episode | yes |
+| W-B08: brain-08 engagement at least 0.5 s before its impact (the task's "early enough") | no engagement (no trigger before 18.28 s; 5.5-7 m/s, above `max_speed`). Predicted by the diagnosis before the freeze | **no** |
+| W-PD: vg-02 PD hairpin: never pushed toward the wall more than version 3; engaged at most 1 s; open-loop delay estimate at most 1 s | 0.00 m/s extra toward the wall; engaged 0.44 s (20.56-20.99, coast then in view at 47 deg); path deficit 1.73 m, about 0.38 s at the 4.6 m/s exit speed | yes |
+| W-V3case: gapon-01 side push still removed (engaged from 20.9 s; toward the wall at most 0.1 m/s after 21.26 s) | engaged 20.98 s; at most 0.04 m/s (version 3: 0.05) | yes |
+| W-Quiet: zero turn-first and side-guard ticks with the full stack on, on both clean Straw Bale laps (offline looming stream, 5.45 min each) and on Pine (`pine-fast6-ttc-01`, `pine-brain08-loom-01`; `pine-brain08-01` flew without looming) | zero everywhere | yes |
+
+Report only:
+
+- **Other episodes.**
+  - `minus-fast6-gapon-01`:
+    - version 4 engages earlier at the first wall (17.04 s, a coast before the side
+      clamp; version 3 engaged at 17.17 s);
+    - version 4 adds two short coast episodes on the way to the arch, at 18.48 s
+      (0.15 s) and 19.04 s (0.03 s). The request there fell from 3.1 to 0.9 m/s. The
+      governor's cap along the old wall ray still bound a 1.08 m/s component, and
+      that wall evidence counted as passed.
+  - No episode on any brain-08 flight, on `minus-fast6-wall-01` or on Pine.
+- **Kinematic estimate.** A delayed first-order motor, driven from the logged state at
+  20.9 s by each request:
+
+  | Motor model | As flown | Version 4 |
+  |---|---|---|
+  | Fitted on brain-09b's log before the hairpin (0.1 s delay, 0.3 s time constant, 6 m/s^2) | reproduces the graze: crosses the wall at 21.86 s at 2.64 m/s (log: 21.90 s) | stops 0.29 m short, at 81.55 |
+  | Measured braking events (0.26 s, 3.7 m/s^2) | graze | still reaches the wall, at 1.27 m/s instead of 2.73 |
+  | 0.3 s, 3.0 m/s^2 | graze | graze at 2.19 m/s |
+
+  The result depends on the model.
+- **Arrival-speed bound.** With the brain model, stopping within the 2.1 m from the
+  arch to contact needs at most 2.96 m/s toward the wall at the arch if turn-first
+  engages right there, and 2.58 m/s with the 0.16 s coast delay as replayed.
+  brain-09b arrived at 3.2 m/s toward the wall (4.1 m/s in total).
+- **Lagged-motor surrogate.**
+  - Set-up: the measured surrogate, flown by the fast PD fed a request delayed
+    0.26-0.3 s and slewed at 3.0-3.7 m/s^2. The approach is at 3-4 m/s, gate A lies
+    2.2 m before a wall, B is 8 m to the left, and the marker is hidden for 0.45 s
+    after A.
+  - Every variant reaches the wall plane. The graded governor never stops such a
+    motor before a wall.
+  - Version 4 engages (coast or side, `stopping`) and cuts the depth past the plane
+    by 0.3-1.0 m against version 3 and no rules. For example, at 3.5 m/s: 1.74 m
+    against 2.64 (version 3) and 2.75 m (none).
+  - The speed on reaching the plane is unchanged, because contact comes within the
+    motor's delay after engagement.
+
+### What this means
+
+Version 4 is necessary for a braking brain at this hairpin, but not sufficient. It
+engages 0.6 s before the graze instead of never, holds the request at 0 through the
+marker gap and never requests speed toward the wall. It leaves the vg-02 PD pass and
+the Straw/Pine logs as they were, apart from a short hold at the hairpin.
+
+Whether brain-09b clears the wall depends on its real braking. The estimates range
+from a 0.3 m miss to a graze at half the speed. The physics says the brain must reach
+the arch at no more than about 2.6-3.0 m/s toward the wall, and it arrived at 3.2 m/s.
+The lever is the approach speed. Two routes:
+
+- a governor cap that accounts for the motor's delay (the graded TTC cap targets 70%
+  of the current closing speed per sample, which does not compound for a lagging
+  motor);
+- a brain that follows the caps more closely.
+
+Neither is in this round.
+
+### Tests
+
+- **`tests/test_fast_race_cue_wall.py`** (21 tests):
+  - declaration version 4 and its per-contract stopping models;
+  - versions 1-3 kept and refused;
+  - engagement at 3 m/s after a wall brake within the stopping distance, and none at
+    4 m/s;
+  - the stopping-distance decision, including the stand-off branch and a drone
+    flying away;
+  - the coast hold at 0, handed off to search;
+  - the side guard during the rearm;
+  - version-4 shadow flying the plain pilot bit for bit;
+  - the measured-surrogate hairpin per episode.
+- **`tests/test_wall_pilot_gates.py`** (6 tests):
+  - the frozen gates, and that they name this tree's declaration;
+  - the lead, fast-PD and quiet scoring on synthetic arrays;
+  - the kinematic motor rollout;
+  - the harness building each contract's stopping model.
+
 ## Limits
 
 - **Apart from the three live flights of round 2, nothing here is flight
@@ -799,6 +1011,18 @@ rules, the sidecar record and the four log columns.
     1.2 m/s toward a ceiling at about 2.1 m.
   - Turn-first never engaged on the brain flights: brain-08 never slowed below
     1.5 m/s, so its lateral overshoot after the arch turn is not addressed here.
+    Version 4 engages up to 3.5 m/s (brain-09b), but not for brain-08 at 5.5-7 m/s.
+- **Turn-first version 4 is not sufficient on its own for a lagging brain.**
+  - At the Minus Two hairpin it engages 0.6 s before brain-09b's graze. Estimates
+    range from a 0.3 m miss to a graze at half the speed.
+  - The approach speed at the arch (3.2 m/s toward the wall; the bound is about
+    2.6-3.0) decides.
+  - Its coast trigger also holds the request at 0 during short marker dropouts near
+    a wall that was braked for and counts as passed. On `minus-fast6-gapon-01` that
+    happened twice on the way to the arch: 0.18 s of hold, and the request fell from
+    3.1 to 0.9 m/s.
+  - The dead-reckoned wall distance treats a sample as a point along its ray. A wall
+    edge flown around sideways can still count as reached.
 - **Turn-first takes the looming ray as the wall direction.** That ray is the
   travel direction when the wall was seen, not the wall's normal. When they differ,
   a request within the 0.8 m/s creep speed can still have a component toward the
