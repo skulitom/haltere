@@ -711,3 +711,35 @@ What to look for:
 | Minus hairpin for braking brains | Turn-first v4 engages 0.61 s before brain-09b's graze; the lagged surrogate still reaches the wall | Approach speed: a governor cap that accounts for motor delay, or a brain that follows caps within about 0.3 s |
 | Vertical guard on Straw and Pine | Straw escalations 0 s (fixed); V-Pine fails (hillside 1 m/s vs 3.5 flown; boulder descent not arrested) | Closed-loop evidence or a new causal signal (vertical speed at each sample's capture) |
 | brain-09 chatter | fast-brain-10b 0.00226 per tick in the surrogate (brain-09b 0.00508); not flown | A live flight of the selected brain |
+
+## Round 4 (live), 2026-09-27: Minus Two with the m4 stack
+
+Branch `m4` at `9a41acb`: `--looming-brake --obstacle-stack on --descent-view on` (wall pilot v4,
+vertical guard v3, gap pilot v5, lag turn v2, descent view v1), original `[Copy] New Drone`, Anode
+seat with the viewer hidden by us, pad `seatOnly` (preflight and postflight `pads_seat_only` true),
+ground check `ground-check-30`/`-31` on pad 29. Every run is a disclosed development deviation: no
+round-4 rule passed all of its gates, and no brain is selected.
+
+| Run | Motor | Outcome |
+|---|---|---|
+| `minus-fast6-r4-01` | fast PD | Runtime stop, 0 ticks: "No fresh live image/telemetry". The ground-check script pauses the game when it ends and the run was started without resuming (operator error; the camera delivered 213 frames). Retried unchanged |
+| `minus-fast6-r4-02` | fast PD | **Pillar A** (y 5.48), **hairpin** (exit at 20.4 s), **pillar C** (y 31.5 at 22.6 s, where round 3 ended) and on to (79, 58): the furthest any 6 m/s run has flown on Minus Two. From 26.5 s the pilot followed rings standing on the garage floor down to z 0.01-0.3 m (floor contact at 27.4-28.9 s: z < 0.1 m for 1.5 s; the support climb never fired because the descent view held the sink request above -0.8 m/s, the review's major finding). At (75.9, 64.3), 0.5 m above the floor, the looming lower window read the nearby floor as rising ground (ttc_lower 0.44-1.0 s, below fraction 0.85-1.0): the guard's gentle climb (1 m/s) was escalated at 33.0 s to 3.5 m/s, the overhead cut came at 33.4 s at 2.1 m/s of climb, and the drone struck the ~2.2 m garage ceiling at (73.5, 69.4, 2.13), 34.1 s |
+| `minus-brain10b-r4-01` | fast-brain-10b | Runtime stop, 0 ticks: same paused-game operator error. Retried unchanged |
+| `minus-brain10b-r4-02` | fast-brain-10b (`0ccf1161…`) | Pillar A (y 5.84). Stick change 0.0031 per tick (brain-08's live value). At the hairpin it slowed to 2.5-2.8 m/s, then flew 5.1-5.2 m/s under 3.6 m/s governor caps; above turn-first's 3.5 m/s limit, so no episode; hairpin wall at (81.9, 19.0), 21.6 s, ~4.9 m/s |
+| `minus-brain09b-r4-01` | fast-brain-09b (round-3 candidate) | Pillar A (y 5.66). **Turn-first v4 engaged live** (coast + stopping triggers) at 22.8 s and stopped the drone at (81.1, 20.0), 0.5 m/s, short of the wall where brain-09b grazed in round 3; released aligned after 0.41 s. Accelerating out of the turn toward a 4.9 m/s request, the brain sank from 0.78 to 0.06 m at up to 1.9 m/s while the vertical request was +0.06..+0.16 m/s, and hit the floor at (80.4, 20.9), 23.7 s. Stick change 0.0063 per tick |
+
+What this shows:
+
+- The pillar C fix and the hairpin rule work live with the fast PD, and turn-first v4 stops a braking
+  brain at the hairpin wall. Neither is yet a clean pass for a brain.
+- New failure: the guard's rising-ground confirmation is fooled by a flat floor close below the path
+  (the looming lower-window TTC of a floor 0.5-0.9 m below a level path at 4-5 m/s is 0.6-1 s, and its
+  own gentle climb satisfies the "climbing" condition). Escalated climbs need a test that the floor
+  keeps approaching as the drone rises, or a bound under an overhead.
+- The descent view's suppression of the support climb (review finding) showed up live on the Minus
+  floor, not only on Straw.
+- fast-brain-10b does not follow governor caps live (+1.5 m/s); fast-brain-09b brakes but loses height
+  when it accelerates hard from low speed. Neither is a release brain.
+
+Procedure note: the ground-check script pauses the game at exit; reset (Réinitialiser) or resume, and
+confirm telemetry is streaming, before launching a run.
