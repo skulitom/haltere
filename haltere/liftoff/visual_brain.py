@@ -75,6 +75,25 @@ def load_wall_pilot(path=WALL_PILOT_DECLARATION):
     return declaration, digest
 
 
+# Declared vertical guard of the obstacle stack (sink margin, descent first, terrain climb only for rising ground).
+VERTICAL_GUARD_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'vertical_guard.json'
+
+
+def load_vertical_guard(path=VERTICAL_GUARD_DECLARATION):
+    """A frozen vertical-guard declaration and its content hash (same canonical hash as the lag-turn declaration);
+    refuses an unfrozen or edited file and another rule version than FastRaceCue implements
+    (fast_race_cue.VERTICAL_GUARD_VERSION)."""
+    from .fast_race_cue import VERTICAL_GUARD_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen vertical-guard declaration, or it changed after the freeze')
+    if declaration.get('version') != VERTICAL_GUARD_VERSION:
+        raise ValueError(f'{path} declares vertical-guard rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {VERTICAL_GUARD_VERSION}')
+    return declaration, digest
+
+
 CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
 
 
@@ -253,7 +272,8 @@ class VisualController:
                  pilot_assistance='none', assist_speed=2., motor_controller='brain', collection_route=None,
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
-                 lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True):
+                 lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
+                 vertical_guard=None, vertical_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -262,6 +282,8 @@ class VisualController:
             raise ValueError('The gap aim is part of the fast pilot profile')
         if wall_pilot and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The wall-pilot rules are part of the fast pilot profile')
+        if vertical_guard and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The vertical guard is part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -335,6 +357,7 @@ class VisualController:
         self.assistance = None
         self.lag_turn_declaration = None
         self.wall_pilot_declaration = None
+        self.vertical_guard_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -378,6 +401,16 @@ class VisualController:
                 self.wall_pilot_declaration = dict(path=str(wall_pilot), sha256=digest, file_sha256=sha256(wall_pilot),
                                                    schema=declaration.get('schema'),
                                                    version=declaration.get('version'), applied=bool(wall_apply))
+            vertical_config = None
+            if vertical_guard:
+                # Declared once for every motor contract and course (obstacle stack only).
+                from .fast_race_cue import vertical_guard_config
+                declaration, digest = load_vertical_guard(vertical_guard)
+                vertical_config = vertical_guard_config(declaration)
+                self.vertical_guard_declaration = dict(path=str(vertical_guard), sha256=digest,
+                                                       file_sha256=sha256(vertical_guard),
+                                                       schema=declaration.get('schema'),
+                                                       version=declaration.get('version'), applied=bool(vertical_apply))
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -386,6 +419,7 @@ class VisualController:
                                           velocity_scale=fast_brain['velocity_scale'] if fast_brain else None,
                                           lag_turn=lag_turn_config, lag_turn_apply=lag_turn_apply,
                                           gap_aim=gap_pilot, gap_apply=gap_apply, wall_apply=wall_apply,
+                                          vertical_guard=vertical_config, vertical_apply=vertical_apply,
                                           **wall_configs)
         elif pilot_assistance == 'race-cue':
             from .race_cue_assistance import RaceCueAssistance
@@ -685,32 +719,38 @@ def resolve_obstacle_stack(args):
     """Components from --obstacle-stack / --gap-cue / --lag-turn; everything is off by default.
 
     --obstacle-stack on|shadow (requires --pilot-profile fast and --looming-brake) runs the gap cue (depth
-    process or camera hook, the pilot's gap aim), the lag-aware turns and the wall-pilot rules (turn first at a
-    wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json); shadow runs the same processes
-    and computations and logs them but applies no aim shift, no lag-turn and no wall-pilot rule (matched
-    control). --gap-cue off, --lag-turn off and --wall-pilot off remove a component from the stack. Outside the
-    stack --lag-turn [on|DECLARATION] keeps its earlier meaning and --gap-cue on / --wall-pilot on are refused.
+    process or camera hook, the pilot's gap aim), the lag-aware turns, the wall-pilot rules (turn first at a
+    wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json) and the vertical guard (sink
+    margin, descent first, terrain climb only for rising ground; configs/obstacles/vertical_guard.json); shadow runs
+    the same processes and computations and logs them but applies no aim shift, no lag-turn, no wall-pilot rule and
+    no vertical guard (matched control). --gap-cue off, --lag-turn off, --wall-pilot off and --vertical-guard off
+    remove a component from the stack. Outside the stack --lag-turn [on|DECLARATION] keeps its earlier meaning and
+    --gap-cue on / --wall-pilot on / --vertical-guard on are refused.
     Returns dict(mode=None|'on'|'shadow', gap=bool, lag_turn=declaration path or None, apply=bool,
-    wall_pilot=declaration path or None)."""
+    wall_pilot=declaration path or None, vertical_guard=declaration path or None)."""
     mode = getattr(args,'obstacle_stack',None)
     gap_flag = getattr(args,'gap_cue',None)
     wall_flag = getattr(args,'wall_pilot',None)
+    vertical_flag = getattr(args,'vertical_guard',None)
     lag = getattr(args,'lag_turn',None)
-    if gap_flag not in (None,'on','off') or wall_flag not in (None,'on','off'):
-        raise ValueError('--gap-cue and --wall-pilot are on or off')
+    if gap_flag not in (None,'on','off') or wall_flag not in (None,'on','off') or vertical_flag not in (None,'on','off'):
+        raise ValueError('--gap-cue, --wall-pilot and --vertical-guard are on or off')
     lag_path = None if lag in (None,'off') else str(LAG_TURN_DECLARATION) if lag == 'on' else str(lag)
     if mode is None:
         if gap_flag == 'on':
             raise ValueError('The gap cue is part of the obstacle stack: use --obstacle-stack on|shadow')
         if wall_flag == 'on':
             raise ValueError('The wall-pilot rules are part of the obstacle stack: use --obstacle-stack on|shadow')
-        return dict(mode=None,gap=False,lag_turn=lag_path,apply=True,wall_pilot=None)
+        if vertical_flag == 'on':
+            raise ValueError('The vertical guard is part of the obstacle stack: use --obstacle-stack on|shadow')
+        return dict(mode=None,gap=False,lag_turn=lag_path,apply=True,wall_pilot=None,vertical_guard=None)
     if mode not in ('on','shadow'):
         raise ValueError('--obstacle-stack is on or shadow')
     if getattr(args,'pilot_profile','standard') != 'fast' or not getattr(args,'looming_brake',False):
         raise ValueError('The obstacle stack requires --pilot-profile fast and --looming-brake')
     return dict(mode=mode,gap=gap_flag != 'off',lag_turn=str(LAG_TURN_DECLARATION) if lag is None else lag_path,
-                apply=mode == 'on',wall_pilot=None if wall_flag == 'off' else str(WALL_PILOT_DECLARATION))
+                apply=mode == 'on',wall_pilot=None if wall_flag == 'off' else str(WALL_PILOT_DECLARATION),
+                vertical_guard=None if vertical_flag == 'off' else str(VERTICAL_GUARD_DECLARATION))
 
 
 def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
@@ -719,9 +759,10 @@ def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
         return None
     result = dict(mode=stack['mode'], applied=stack['apply'],
                   components=dict(looming=True, gap_cue=bool(stack['gap']), lag_turn=stack['lag_turn'] is not None,
-                                  wall_pilot=stack.get('wall_pilot') is not None),
+                                  wall_pilot=stack.get('wall_pilot') is not None,
+                                  vertical_guard=stack.get('vertical_guard') is not None),
                   note=('shadow runs the same processes and computations and logs them; no aim shift, no lag-turn '
-                        'lead or heading change and no wall-pilot rule is applied')
+                        'lead or heading change, no wall-pilot rule and no vertical guard is applied')
                   if stack['mode'] == 'shadow' else None)
     if gap_spec:
         path, declaration, digest = gap_declaration
@@ -747,6 +788,21 @@ def wall_row(assistance):
         return (float('nan'),'',float('nan'),float('nan'))
     values = log()
     return tuple(values[k] for k in WALL_COLUMNS)
+
+
+VERTICAL_COLUMNS = ('vertical_pilot','vertical_target','vertical_factor','vertical_arrest','vertical_stage',
+                    'vertical_climb')
+
+
+def vertical_row(assistance):
+    """CSV values for VERTICAL_COLUMNS: the pilot's own vertical request, the vertical guard's request (applied,
+    or intended in shadow), its sink factor, arrest (1/0), climb stage (0/1 gentle/2 rising ground) and climb; NaN
+    without the guard or before the first looming sample."""
+    log = getattr(assistance,'vertical_log',None)
+    if log is None:
+        return (float('nan'),)*len(VERTICAL_COLUMNS)
+    values = log()
+    return tuple(values[k] for k in VERTICAL_COLUMNS)
 
 
 def clearance_row(assistance):
@@ -922,7 +978,8 @@ def run(args):
                                   dynamics_profile=getattr(args,'dynamics_profile',None),
                                   lag_turn=stack['lag_turn'],lag_turn_apply=stack['apply'],
                                   gap_pilot=gap_aim_config,gap_apply=stack['apply'],
-                                  wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'])
+                                  wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'],
+                                  vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'])
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1053,7 +1110,8 @@ def run(args):
                                  'cmd_vx','cmd_vy','cmd_vz','pilot_state',
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
-                                 'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS])
+                                 'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
+                                 *VERTICAL_COLUMNS])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1165,7 +1223,8 @@ def run(args):
                                  getattr(controller.assistance,'lag_turn_weight',float('nan')),
                                  getattr(controller.assistance,'lag_turn_lead_deg',float('nan')),
                                  *gap_row(gap,controller.assistance,now),*stage_row(camera.stages),
-                                 *wall_row(controller.assistance)])
+                                 *wall_row(controller.assistance),
+                                 *vertical_row(controller.assistance)])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1235,6 +1294,8 @@ def run(args):
             pilot_meta['lag_turn_declaration'] = controller.lag_turn_declaration
         if controller.wall_pilot_declaration is not None:
             pilot_meta['wall_pilot_declaration'] = controller.wall_pilot_declaration
+        if controller.vertical_guard_declaration is not None:
+            pilot_meta['vertical_guard_declaration'] = controller.vertical_guard_declaration
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
@@ -1383,15 +1444,21 @@ def main():
     p.add_argument('--obstacle-stack',choices=['on','shadow'],default=None,
                    help='EXPERIMENTAL obstacle stack (requires --pilot-profile fast and --looming-brake): the gap cue '
                         '(frozen relative depth -> free interval beside the ring -> confirmed aim shift, '
-                        'configs/obstacles/gap_pilot.json), lag-aware turns and the wall-pilot rules (turn first at '
-                        'a wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json); shadow runs '
-                        'and logs the same processes but applies no aim shift, no lag-turn and no wall-pilot rule '
-                        '(matched control). No speed cap')
+                        'configs/obstacles/gap_pilot.json), lag-aware turns, the wall-pilot rules (turn first at '
+                        'a wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json) and the '
+                        'vertical guard (sink margin, descent first, terrain climb only for rising ground; '
+                        'configs/obstacles/vertical_guard.json); shadow runs and logs the same processes but applies '
+                        'no aim shift, no lag-turn, no wall-pilot rule and no vertical guard (matched control). No '
+                        'speed cap')
     p.add_argument('--gap-cue',choices=['on','off'],default=None,
                    help='Component override inside --obstacle-stack (default on)')
     p.add_argument('--wall-pilot',choices=['on','off'],default=None,
                    help='Component override inside --obstacle-stack (default on): turn before translating at a wall '
                         'and the ceiling guard of the terrain climb (configs/obstacles/wall_pilot.json)')
+    p.add_argument('--vertical-guard',choices=['on','off'],default=None,
+                   help='Component override inside --obstacle-stack (default on): keep a time margin to the ground '
+                        'below the path, stop a descent before any terrain climb, and climb hard only for rising '
+                        'ground (configs/obstacles/vertical_guard.json)')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

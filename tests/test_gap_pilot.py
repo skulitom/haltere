@@ -640,15 +640,19 @@ def args(**kw):
 
 
 def test_obstacle_stack_flags_resolve_to_off_by_default_components():
-    from haltere.liftoff.visual_brain import LAG_TURN_DECLARATION, WALL_PILOT_DECLARATION, resolve_obstacle_stack
+    from haltere.liftoff.visual_brain import (LAG_TURN_DECLARATION, VERTICAL_GUARD_DECLARATION,
+                                              WALL_PILOT_DECLARATION, resolve_obstacle_stack)
     default, wall = str(LAG_TURN_DECLARATION), str(WALL_PILOT_DECLARATION)
-    assert resolve_obstacle_stack(args()) == dict(mode=None, gap=False, lag_turn=None, apply=True, wall_pilot=None)
+    vertical = str(VERTICAL_GUARD_DECLARATION)
+    assert resolve_obstacle_stack(args()) == dict(mode=None, gap=False, lag_turn=None, apply=True, wall_pilot=None,
+                                                  vertical_guard=None)
     assert resolve_obstacle_stack(args(lag_turn='on'))['lag_turn'] == default
     assert resolve_obstacle_stack(args(lag_turn='x.json'))['lag_turn'] == 'x.json'
     assert resolve_obstacle_stack(args(obstacle_stack='on')) == dict(mode='on', gap=True, lag_turn=default, apply=True,
-                                                                     wall_pilot=wall)
+                                                                     wall_pilot=wall, vertical_guard=vertical)
     assert resolve_obstacle_stack(args(obstacle_stack='shadow')) == dict(mode='shadow', gap=True, lag_turn=default,
-                                                                         apply=False, wall_pilot=wall)
+                                                                         apply=False, wall_pilot=wall,
+                                                                         vertical_guard=vertical)
     assert resolve_obstacle_stack(args(obstacle_stack='on', gap_cue='off'))['gap'] is False
     assert resolve_obstacle_stack(args(obstacle_stack='on', lag_turn='off'))['lag_turn'] is None
     assert resolve_obstacle_stack(args(obstacle_stack='on', wall_pilot='off'))['wall_pilot'] is None
