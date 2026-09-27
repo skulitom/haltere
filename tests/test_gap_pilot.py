@@ -696,7 +696,9 @@ def test_repository_gap_pilot_declaration_parses_and_points_at_frozen_configs():
     from haltere.liftoff.gap_stack import GAP_PILOT_PATH, REPO_ROOT, config_sha256, load_gap_pilot
     from haltere.vision import gap_cue as gc
     declaration, digest = load_gap_pilot(GAP_PILOT_PATH)          # flights refuse an unfrozen or edited file
-    assert GapAimConfig.from_dict(declaration['pilot']) == CFG      # the declared values are the defaults
+    # version 3: the defaults (version 2's values) plus the three version 3 switches, with their default parameters
+    assert GapAimConfig.from_dict(declaration['pilot']) == replace(CFG, commit=True, terrain_yields=True,
+                                                                   terrain_rising_only=True)
     runtime = declaration['runtime']
     assert runtime['placement'] in ('camera', 'process') and runtime['stride'] in (1, 2)
     _, cue_config, _ = gc.load_config(REPO_ROOT/runtime['gap_cue_config'], require_frozen=True)
@@ -723,26 +725,40 @@ def test_gap_pilot_declaration_edits_are_refused(tmp_path):
 
 
 def test_version_1_declarations_are_kept_verbatim_and_refused_at_runtime():
-    """gap_pilot.json and lag_turn.json version 2 keep version 1's values; the v1 files are kept verbatim for
+    """lag_turn.json version 2 keeps version 1's values; gap_pilot.json version 3 keeps version 2's values (and 2
+    kept version 1's) and adds only the version 3 switches and their parameters. The older files are kept verbatim for
     provenance (their scored results) and the runtime refuses them (their rules are no longer the code's)."""
     from haltere.liftoff.fast_race_cue import LAG_TURN_VERSION
     from haltere.liftoff.gap_stack import GAP_PILOT_PATH, GAP_PILOT_VERSION, REPO_ROOT, config_sha256, load_gap_pilot
     from haltere.liftoff.visual_brain import LAG_TURN_DECLARATION, load_lag_turn_declaration
-    assert GAP_PILOT_VERSION == LAG_TURN_VERSION == 2
+    assert LAG_TURN_VERSION == 2 and GAP_PILOT_VERSION == 3
     ob = REPO_ROOT/'configs'/'obstacles'
-    for current, old, loader, first in ((GAP_PILOT_PATH, ob/'gap_pilot_v1.json', load_gap_pilot, 'e704a3ba0d3d'),
-                                        (LAG_TURN_DECLARATION, ob/'lag_turn_v1.json', load_lag_turn_declaration,
-                                         '94315b4ddc4a')):
-        v1 = json.loads(old.read_text(encoding='utf-8'))
-        v2, digest = loader(current)
-        assert v1['version'] == 1 and v1['frozen'] is True and config_sha256(v1) == v1['sha256']
-        assert v1['sha256'].startswith(first) and v2['version'] == 2 and v2['frozen'] is True
-        assert v2['previous_versions'][0]['sha256'] == v1['sha256'] and v2['previous_versions'][0]['version'] == 1
-        assert v2['change'] and digest == v2['sha256']
-        for key in ('pilot', 'runtime', 'contracts', 'response_models'):
-            assert v1.get(key) == v2.get(key)                       # values unchanged
+    v1 = json.loads((ob/'lag_turn_v1.json').read_text(encoding='utf-8'))
+    v2, digest = load_lag_turn_declaration(LAG_TURN_DECLARATION)
+    assert v1['version'] == 1 and v1['frozen'] is True and config_sha256(v1) == v1['sha256']
+    assert v1['sha256'].startswith('94315b4ddc4a') and v2['version'] == 2 and v2['frozen'] is True
+    assert v2['previous_versions'][0]['sha256'] == v1['sha256'] and v2['previous_versions'][0]['version'] == 1
+    assert v2['change'] and digest == v2['sha256']
+    for key in ('pilot', 'runtime', 'contracts', 'response_models'):
+        assert v1.get(key) == v2.get(key)                           # values unchanged
+    with pytest.raises(ValueError, match='version'):
+        load_lag_turn_declaration(ob/'lag_turn_v1.json')
+    g1 = json.loads((ob/'gap_pilot_v1.json').read_text(encoding='utf-8'))
+    g2 = json.loads((ob/'gap_pilot_v2.json').read_text(encoding='utf-8'))
+    g3, digest = load_gap_pilot(GAP_PILOT_PATH)
+    for old, version, first in ((g1, 1, 'e704a3ba0d3d'), (g2, 2, '67ec1f140a31')):
+        assert old['version'] == version and old['frozen'] is True and config_sha256(old) == old['sha256']
+        assert old['sha256'].startswith(first)
         with pytest.raises(ValueError, match='version'):
-            loader(old)
+            load_gap_pilot(ob/f'gap_pilot_v{version}.json')
+    assert [(p['version'], p['sha256']) for p in g3['previous_versions']] == [(1, g1['sha256']), (2, g2['sha256'])]
+    assert g3['version'] == 3 and g3['frozen'] is True and digest == g3['sha256'] and g3['change']
+    assert g1['pilot'] == g2['pilot'] and g2['runtime'] == g3['runtime']
+    added = {k: v for k, v in g3['pilot'].items() if k not in g2['pilot']}
+    assert {k: g3['pilot'][k] for k in g2['pilot']} == g2['pilot']           # version 2's values unchanged
+    assert set(added) == {'commit', 'commit_hold_s', 'commit_max_s', 'switch_votes', 'switch_min_deg',
+                          'switch_window_s', 'terrain_yields', 'terrain_rising_only'}
+    assert all(key in g3['pilot_notes'] for key in added)
     assert 'interaction_with_gap_aim' in load_lag_turn_declaration(LAG_TURN_DECLARATION)[0]
     notes = load_gap_pilot()[0]['runtime_notes']['placement']
     assert 'above normal' in notes and 'normal priority' not in notes

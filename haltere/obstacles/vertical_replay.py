@@ -78,8 +78,9 @@ def variant_tag(stack, wall, vertical, stream):
     return f'{stack}-w{walls}-v{vertical}'+('-stream' if stream else '')
 
 
-def build(side, tree, stack='flown', wall='off', vertical=None):
-    """The FastRaceCue variant for a flight's sidecar and its description."""
+def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None):
+    """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
+    whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json)."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -91,7 +92,8 @@ def build(side, tree, stack='flown', wall='off', vertical=None):
     if stack in ('on', 'shadow') or (stack == 'flown' and flown_on):
         kw['lag_turn'] = frc.lag_turn_for_contract(json.loads((ob/'lag_turn.json').read_text(encoding='utf-8')),
                                                    contract)
-        kw['gap_aim'] = GapAimConfig.from_dict(json.loads((ob/'gap_pilot.json').read_text(encoding='utf-8'))['pilot'])
+        declaration = Path(gap_pilot) if gap_pilot else ob/'gap_pilot.json'
+        kw['gap_aim'] = GapAimConfig.from_dict(json.loads(declaration.read_text(encoding='utf-8'))['pilot'])
     walls = 'on' if stack == 'on' else 'shadow' if stack == 'shadow' else wall if stack == 'flown' else 'off'
     verticals = resolve_vertical(stack, vertical, has_vertical)
     if verticals != 'off' and not has_vertical:
@@ -114,13 +116,29 @@ def build(side, tree, stack='flown', wall='off', vertical=None):
     return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals)
 
 
-def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None):
-    """Per-tick arrays of one flight replayed through one variant, and the pilot and description."""
+def _near_on_path(value):
+    """The logged near_on_path column (1/0/empty) as the camera's gap sample carries it (True/False/None)."""
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if not np.isfinite(value) else bool(value)
+
+
+def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
+           gap_pilot=None, near_on_path=False):
+    """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
+
+    `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
+    carry the logged near_on_path, as the live camera's samples did (the default None keeps the earlier replays;
+    the version 2 gap aim never reads it)."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
     side = json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
-    pilot, info = build(side, tree, stack, wall, vertical)
+    pilot, info = build(side, tree, stack, wall, vertical, gap_pilot)
+    info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
+    info['near_on_path'] = bool(near_on_path)
     history = pilot.pose_history
     d = pd.read_csv(Path(runs)/f'{flight}.csv', low_memory=False)
     have_gap = 'gap_age' in d and getattr(pilot, 'gap_aim', None) is not None
@@ -135,7 +153,9 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     keys = ('t', 'now', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'cvx', 'cvy', 'cvz', 'yaw_cmd', 'state', 'log_cvx', 'log_cvy',
             'log_cvz', 'log_state', 'log_climb', 'cap', 'climb', 'descent_scale', 'support_since',
             'slope_support_since', 'new_sample', 'ttc', 'below', 'lower', 'vertical_pilot', 'vertical_target',
-            'vertical_factor', 'vertical_arrest', 'vertical_stage', 'vertical_climb')
+            'vertical_factor', 'vertical_arrest', 'vertical_stage', 'vertical_climb', 'gap_target', 'gap_applied',
+            'gap_offset', 'gap_mode', 'gap_commit', 'gap_conflict', 'gap_ring', 'gap_sample_time', 'gap_shift',
+            'gap_kind', 'gap_near_on_path')
     rows = {k: [] for k in keys}
     last_ts = None
     nan = float('nan')
@@ -170,7 +190,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
             kind = r.gap_kind if isinstance(r.gap_kind, str) else ''
             gap = dict(time=now-float(r.gap_age), shift=finite(r.gap_shift) or 0., kind=kind,
                        valid=bool(r.gap_valid == 1 or r.gap_valid == '1'), ring_deg=finite(r.gap_ring_deg),
-                       lr=finite(r.gap_lr), near_on_path=None, confirmed=False)
+                       lr=finite(r.gap_lr), near_on_path=_near_on_path(r.near_on_path) if near_on_path else None,
+                       confirmed=False)
         omega = np.array([r.omega_x, r.omega_y, r.omega_z])
         extra = dict(clearance=clearance) if clearance is not None else {}
         if gap is not None:
@@ -194,6 +215,18 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                       lower=nan if clearance is None or clearance['ttc_lower'] is None else clearance['ttc_lower'])
         if has_vertical:
             values.update(pilot.vertical_log())
+        aim = getattr(pilot, 'gap_aim', None)
+        if aim is not None:
+            values.update(gap_target=aim.target, gap_applied=aim.applied, gap_offset=pilot.gap_offset_deg,
+                          gap_mode=aim.mode or '', gap_commit=float(getattr(aim, 'commit_side', 0)),
+                          gap_conflict=pilot.gap_conflict, gap_ring=pilot.gap_ring_deg,
+                          gap_sample_time=nan if gap is None else gap['time'],
+                          gap_shift=nan if gap is None else gap['shift'],
+                          gap_kind='' if gap is None else gap['kind'],
+                          gap_near_on_path=nan if gap is None or gap['near_on_path'] is None
+                          else float(gap['near_on_path']))
+        else:
+            values.update(gap_mode='', gap_conflict='', gap_kind='')
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}
@@ -434,6 +467,11 @@ def main(argv=None):
     parser.add_argument('--vertical', choices=['off', 'on', 'shadow'], default=None,
                         help='with --stack flown: off (default), on or shadow; with --stack on/shadow: off removes it')
     parser.add_argument('--looming-stream', default=None)
+    parser.add_argument('--gap-pilot', default=None,
+                        help='gap pilot declaration for the gap aim (default: the tree\'s configs/obstacles/gap_pilot.json);'
+                             ' the file tag gains -gp<stem>')
+    parser.add_argument('--near-on-path', action='store_true',
+                        help='the gap samples carry the logged near_on_path (tag suffix -nop)')
     args = parser.parse_args(argv)
     os.environ.setdefault('OMP_NUM_THREADS', '2')
     here = str(Path(__file__).resolve().parent)
@@ -444,15 +482,21 @@ def main(argv=None):
     from haltere.liftoff import fast_race_cue as frc
     vertical = resolve_vertical(args.stack, args.vertical, hasattr(frc, 'VerticalGuardConfig'))
     tag = variant_tag(args.stack, args.wall, vertical, bool(args.looming_stream))
+    if args.gap_pilot:
+        tag += f'-gp{Path(args.gap_pilot).stem}'
+    if args.near_on_path:
+        tag += '-nop'
     results = {}
     for flight in args.flights:
         arrays, pilot, info = replay(flight, args.tree, args.runs, stack=args.stack, wall=args.wall,
-                                     vertical=vertical, looming_stream=args.looming_stream)
+                                     vertical=vertical, looming_stream=args.looming_stream,
+                                     gap_pilot=args.gap_pilot, near_on_path=args.near_on_path)
         np.savez_compressed(f'{args.out}_{tag}_{flight}.npz', **arrays)
         results[flight] = summary(arrays, info)
         meta = pilot.metadata()
         results[flight]['vertical_guard_metadata'] = meta.get('vertical_guard')
         results[flight]['wall_pilot_metadata'] = meta.get('wall_pilot')
+        results[flight]['gap_aim_metadata'] = meta.get('gap_aim')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')

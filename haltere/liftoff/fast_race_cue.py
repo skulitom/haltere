@@ -1445,8 +1445,14 @@ class FastRaceCue:
             self.launching = False
         if self.gap_aim is not None:
             self.gap_conflict = ''
-            # Terrain side steer only while the looming governor reports terrain (a climb request).
+            # Terrain side steer only while the looming governor reports terrain (a climb request); with
+            # terrain_rising_only (gap pilot version 3) and a vertical guard, only while its climb is for confirmed
+            # rising ground (the guard's own governor: the flown one, or its shadow copy in shadow).
             terrain = self.clearance is not None and self.clearance.climb > 0
+            if self.gap_aim.config.terrain_rising_only:
+                guard = self._vertical_governor()
+                if guard is not None:
+                    terrain = guard.climb > 0 and bool(guard.escalated)
             self.gap_aim.ingest(gap, now, terrain=terrain)
             self.gap_aim.step(now, dt)
             self._set_gap_offset()

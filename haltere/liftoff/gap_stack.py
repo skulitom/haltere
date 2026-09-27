@@ -47,8 +47,9 @@ GRID = (36, 64)
 CONFIG_META_KEYS = ('frozen', 'frozen_at', 'sha256')
 # The gap pilot declaration version this code implements (version 2: the lag-turn lead is computed on the ring
 # cue's bearing with the gap shift removed and the shift added after it; the depth process runs above normal and
-# the camera never waits for it). Other versions are refused.
-GAP_PILOT_VERSION = 2
+# the camera never waits for it; version 3 adds side commitment near an obstacle and the terrain-vote rules of
+# haltere.liftoff.gap_aim). Other versions are refused.
+GAP_PILOT_VERSION = 3
 
 
 def _kinds():

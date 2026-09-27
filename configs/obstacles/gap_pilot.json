@@ -1,7 +1,7 @@
 {
  "schema": "haltere.liftoff.gap_pilot.v1",
- "version": 2,
- "note": "The obstacle stack's gap cue in flight (visual_brain --obstacle-stack on|shadow; off by default). 'pilot': haltere.liftoff.gap_aim.GapAimConfig, how the fast pilot confirms and applies the per-frame gap-cue shift. 'runtime': where the camera stack runs the relative depth and haltere.vision.gap_cue, and which declared response model (configs/obstacles/response_models.json, near_on_path only) each fast motor contract uses. Every pilot value is the a-priori M2 plan value (GapPilot+: 2 of 3 samples of one sign within 0.25 s, side latch 0.6 s, slew <= 40 deg/s, samples older than 0.2 s rejected, decay to 0 over 0.3 s, no speed cap; conflict and terrain-side values declared here), fitted to no flight or course; they are version 1's. Version 2 declares the interaction with the lag-aware turns and corrects the depth process's priority and hand-off (see 'change'); the runtime refuses other versions (gap_stack.GAP_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported.",
+ "version": 3,
+ "note": "The obstacle stack's gap cue in flight (visual_brain --obstacle-stack on|shadow; off by default). 'pilot': haltere.liftoff.gap_aim.GapAimConfig, how the fast pilot confirms and applies the per-frame gap-cue shift. 'runtime': where the camera stack runs the relative depth and haltere.vision.gap_cue, and which declared response model (configs/obstacles/response_models.json, near_on_path) each fast motor contract uses. Version 3 keeps every version 2 value and adds side commitment near an obstacle and two terrain-vote rules (see 'change' and 'pilot_notes'); the runtime refuses other versions (gap_stack.GAP_PILOT_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight, and every version flown is reported.",
  "pilot": {
   "active_deg": 2.0,
   "confirm": 2,
@@ -16,14 +16,30 @@
   "flag_conflict_deg": 1.0,
   "terrain": true,
   "terrain_side_deg": 6.0,
-  "terrain_lr": 0.405
+  "terrain_lr": 0.405,
+  "commit": true,
+  "commit_hold_s": 0.5,
+  "commit_max_s": 2.5,
+  "switch_votes": 3,
+  "switch_min_deg": 6.0,
+  "switch_window_s": 0.3,
+  "terrain_yields": true,
+  "terrain_rising_only": true
  },
  "pilot_notes": {
   "active_deg": "the gap cue's own episode threshold (configs/obstacles/gap_cue.json active_deg)",
   "max_shift_deg": "the gap cue's shift clip; the bound of the gap aim's own offset beside the ring. With lag-aware turns (configs/obstacles/lag_turn.json version 2) the lead is computed on the bearing without the gap shift and the shift is added after it, never amplified: during a lag-turn window the flown aim can be up to course_lead_max_deg (15) + max_shift_deg (12) deg from the ring cue's own aim",
   "conflict_deg": "a sample whose ring azimuth differs from the ring cue's by more than this describes another ring (a checkpoint switch, or a sample from a frame before it); between consecutive frames at 6 m/s the ring bearing moves about 1 deg at 20 m and about 2.5 deg at 3 m",
   "flag_conflict_deg": "the ring cue's flag clearance (aim_u beside the ring centre, haltere.vision.race_cues.flag_clearance) counts from this offset; the opposite side to the gap shift is a conflict and the ring cue's own aim is held",
-  "terrain": "terrain side steer: only while the looming TTC governor requests a climb (expansion below the flight path); |ln(L/R)| >= terrain_lr (ratio 1.5, the design study's terrain_side.py trigger) votes terrain_side_deg (half the shift clip) toward the farther side"
+  "terrain": "terrain side steer: only while the looming TTC governor requests a climb (expansion below the flight path); |ln(L/R)| >= terrain_lr (ratio 1.5, the design study's terrain_side.py trigger) votes terrain_side_deg (half the shift clip) toward the farther side",
+  "commit": "side commitment near an obstacle: an obstacle confirmation (2 of 3 samples, as before) commits to its side when one of its confirming samples reports the obstacle close: near_on_path (a near column on the path the vehicle is committed to over the cue's 1 s path horizon, from the motor's declared response model) or kind 'occluded' (the ring itself behind a near object). While committed the target stays on that side with the largest confirming |shift| since the commitment (no decay, clipped to max_shift_deg); a same-side vote or a valid close sample without a vote refreshes the hold; terrain votes are ignored; ring and flag conflicts release it as before (the checkpoint switched: the ring was passed)",
+  "commit_hold_s": "released when no refreshing evidence arrived for this long (the obstacle left the view or the path). Chosen longer than the 0.3 s dropout of the pillar evidence in minus-fast6-vg-02 (the development case: 'clear' frames while the pillar straddled the ring and, with the walls, lifted the background median) and shorter than the side latch plus decay (0.9 s)",
+  "commit_max_s": "upper bound of one commitment: an obstacle first confirmed at about 6 m is passed within 1-2 s at 3-6 m/s; continued votes re-commit",
+  "switch_votes": "much stronger opposite evidence: this many CONSECUTIVE fresh opposite obstacle votes (confirmation needs 2 of 3), each of at least switch_min_deg",
+  "switch_min_deg": "half the shift clip, three times active_deg",
+  "switch_window_s": "enough time to complete the switch: a switch is allowed only this long after the commitment began, before the vehicle has responded to it; 0.3 s is the fast PD's declared response delay (brain-08: 0.55 s), the shorter and so more conservative bound. Later opposite confirmations are blocked (counted) until the commitment is released; after the release the side latch holds as after any confirmation",
+  "terrain_yields": "obstacle votes take priority over terrain votes (as version 2 declared): a terrain episode never latches out an obstacle confirmation on the other side. In minus-fast6-vg-02 version 2's side latch of a terrain episode blocked the pillar-C obstacle evidence for 0.6 s",
+  "terrain_rising_only": "with a vertical guard declared (configs/obstacles/vertical_guard.json), terrain votes count only while the guard's climb is for confirmed rising ground (its escalated stage); not while it arrests a descent or climbs gently for the floor below a sinking path. The terrain side steer was designed for the Pine Valley mound; in 6 of 8 Minus Two stack flights it fired in the garage, and in minus-fast6-vg-02 it steered 6 deg toward pillar C for 0.7 s. Without a vertical guard version 2's rule (any governor climb) is kept. In shadow the guard's shadow copy decides"
  },
  "runtime": {
   "gap_cue_config": "configs/obstacles/gap_cue.json",
@@ -40,7 +56,7 @@
   "placement": "camera: in the camera process after the checkpoint cue and looming; process: a separate depth process fed by a one-frame slot right after capture (resize, masks and depth run while the camera computes the cue; the decision waits for that frame's cue, which the camera copies into the slot). The depth process sets its own priority class to above normal like the camera process (spawned before the runner raises its class, it would otherwise inherit the runner's below normal under Anode), and the camera never waits for it: the camera's side of the slot takes its locks without blocking (a busy slot skips that frame or cue, counted) and signals with semaphores; the depth process writes its samples to its own shared array (read by the controller without blocking) and stops on its own event, so it takes no lock or event of the camera's. process was chosen by the G8 runtime bench (configs/obstacles/gap_bench_gates.json v1, sha256 db551b8813a3..., straw-brain08-06 30-90 s replayed with Liftoff idle, version 1 runtime: depth process at the bench parent's normal class, cue read from the camera's shared memory): camera failed (14.6 Hz < 15, gap age p95 173 ms > 150), process passed (17.9 Hz, loop p95 68.3 ms, gap age p95 113 ms, checkpoint-cue latency p95 +0.1 ms over the baseline, fp16 vs fp32 0.14% p95). The version 2 runtime is re-benched from a below-normal parent (docs/obstacle_gap_pilot.md)",
   "stride": "1: every camera frame; 2: every other frame"
  },
- "change": "v2 (review of m2-wire): (1) runtime_notes said the depth process runs at normal priority, but nothing set it: spawned from an Anode-launched runner it inherited below normal and took the camera's shared-memory lock, the slot's Event and the camera's stop Event, all of which the above-normal camera takes blocking (an Event's set() also waits for the sleeping waiter to wake): a starved depth process could stall the checkpoint cue. Now above normal, and the camera never waits for it. (2) with lag-aware turns on, the lead amplified the gap shift (up to about 12 + 15 deg beside the ring); the interaction is now declared (pilot_notes.max_shift_deg). Pilot and runtime values are unchanged.",
+ "change": "v3 (round 4, pillar C of Minus Two): minus-fast6-vg-02 hit pillar C (the next ring lies 1.1 m beside its free, right edge) after (1) the terrain side steer, driven by the vertical guard's gentle floor climb after the hairpin, aimed 6 deg LEFT, toward the pillar, for 0.7 s; (2) version 2's side latch of that terrain episode blocked the gap cue's RIGHT obstacle evidence (first vote 1.05 s before the impact) for 0.6 s; (3) the right shift, confirmed 0.39 s before the impact, came too late. Version 3 adds commit (side commitment near an obstacle), terrain_yields and terrain_rising_only (pilot_notes). Every version 2 value and the runtime are unchanged; with the three switches off the gap aim is version 2's, bit for bit.",
  "previous_versions": [
   {
    "version": 1,
@@ -49,9 +65,17 @@
    "file": "configs/obstacles/gap_pilot_v1.json",
    "scored": "G8 runtime bench and the report-only wiring checks (docs/obstacle_gap_pilot.md); never flown",
    "superseded_because": "priority and hand-off wording did not match the runtime; the lag-turn interaction was not declared (see change)"
+  },
+  {
+   "version": 2,
+   "sha256": "67ec1f140a312256f205bbe444268fabb5d023df70cec9e5591d61876f08c7d6",
+   "frozen_at": "2026-09-26T01:50:59",
+   "file": "configs/obstacles/gap_pilot_v2.json",
+   "scored": "review replays and the G8 rerun (docs/obstacle_gap_pilot.md); flown on: minus-brain08-gapon-01/02, minus-fast6-gapon-01, minus-fast6-wall-01, minus-brain08-vg-01, minus-brain09b-vg-01, minus-fast6-vg-02; shadow: minus-brain08-gapshadow-01",
+   "superseded_because": "pillar C (minus-fast6-vg-02): a terrain vote toward the pillar and its side latch over the obstacle evidence; no side commitment (see change)"
   }
  ],
  "frozen": true,
- "frozen_at": "2026-09-26T01:50:59",
- "sha256": "67ec1f140a312256f205bbe444268fabb5d023df70cec9e5591d61876f08c7d6"
+ "frozen_at": "2026-09-27T01:42:31",
+ "sha256": "3ed4316d0777b987ee93d6afde10ee86fb37e9bb2a00a7c8d7650e1a81339812"
 }
