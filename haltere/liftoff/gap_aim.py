@@ -28,7 +28,9 @@ Rule (`GapAimConfig`; the runner reads its frozen values from the gap pilot decl
   side. The evidence is dropped, the applied shift returns to 0 at once (the pilot holds the ring cue's own
   aim) and nothing is confirmed for ``side_latch_s``.
 
-Version 3 of the gap pilot declaration adds three rules, each off by default (version 2's behaviour, bit for bit):
+Version 4 of the gap pilot declaration (version 3 had the same parameters but let only same-side evidence refresh
+the commitment; it was never scored or flown) adds three rules, each off by default (version 2's behaviour, bit for
+bit):
 
 - Side commitment near an obstacle (``commit``). An obstacle confirmation COMMITS to its side when one of its
   confirming samples reports the obstacle close: a near column on the path the vehicle is committed to
@@ -37,8 +39,8 @@ Version 3 of the gap pilot declaration adds three rules, each off by default (ve
   - the target stays on that side with the largest confirming |shift| seen since the commitment (it never decays;
     clipped to ``max_shift_deg``), whatever single samples say (flicker, 'clear' frames when the object fills the
     band, same-side samples below ``active_deg``);
-  - fresh evidence that the obstacle is still ahead refreshes the hold: a same-side obstacle vote, or a valid close
-    sample that votes for no side;
+  - fresh evidence that the obstacle is still ahead refreshes the hold: an obstacle vote for either side (an
+    opposite vote does not move the target), or a valid close sample;
   - the other side takes over only on much stronger opposite evidence while there is still time to complete the
     switch: ``switch_votes`` consecutive fresh opposite obstacle votes of at least ``switch_min_deg`` each, within
     ``switch_window_s`` of the commitment's start (before the vehicle has responded to it); the new side is then
@@ -81,7 +83,7 @@ class GapAimConfig:
     terrain: bool = True
     terrain_side_deg: float = 6.
     terrain_lr: float = .405
-    # Version 3 rules (module docstring); off by default, which is version 2's behaviour.
+    # Version 4 rules (module docstring); off by default, which is version 2's behaviour.
     commit: bool = False
     commit_hold_s: float = .5
     commit_max_s: float = 2.5
@@ -173,7 +175,7 @@ class GapAim:
                            terrain_episodes=0, latch_blocks=0, ring_conflicts=0, flag_conflicts=0)
         self.engaged_seconds = 0.
         self.max_applied_deg = 0.
-        # Version 3 side commitment (see the module docstring); its counts exist only when it is declared.
+        # Side commitment (version 4, see the module docstring); its counts exist only when it is declared.
         self.commit_side = 0
         self.commit_since = self.commit_refresh = None
         self.commit_mag = 0.
@@ -229,16 +231,18 @@ class GapAim:
         return True
 
     def _commit_evidence(self, entry, now):
-        """Update a commitment with one fresh sample: refresh the hold, grow the held shift, count the run of strong
-        opposite votes (any other sample breaks the run)."""
+        """Update a commitment with one fresh sample: refresh the hold while the obstacle is still ahead (an obstacle
+        vote for either side, or a close sample), grow the held shift, count the run of strong opposite votes (any
+        other sample breaks the run)."""
         c = self.config
         s = self.commit_side
         if not s:
             return
         vote = entry['obstacle']
         size = min(abs(entry['shift']), c.max_shift_deg)
-        if vote == s:
+        if vote or entry['close']:
             self.commit_refresh = now
+        if vote == s:
             self.commit_mag = max(self.commit_mag, size)
             self.switch_run = 0
         elif vote == -s and abs(entry['shift']) >= c.switch_min_deg:
@@ -246,8 +250,6 @@ class GapAim:
             self.switch_mag = size
         else:
             self.switch_run = 0
-            if vote == 0 and entry['close']:
-                self.commit_refresh = now
 
     def _candidate(self, now):
         found = self._confirmation(now)

@@ -1,11 +1,11 @@
 {
  "schema": "haltere.obstacles.gap_commit_gates.v1",
- "version": 2,
- "note": "Gates of the gap pilot's side commitment (configs/obstacles/gap_pilot.json version 4 against version 2, configs/obstacles/gap_pilot_v2.json), scored by haltere.obstacles.gap_commit_eval score. Frozen with its sha256 together with the version 3 declaration before any gate is scored. Every replay is open loop (development evidence, never flight evidence). Hindsight inputs (impact times, pillar boxes from the scene colliders and the impact anatomy, checkpoint-switch times from the logged cue) select and score ticks only. Seen before the freeze: minus-fast6-vg-02 (the development case: its log, video and depth replay; no candidate was scored on it) and the Straw Bale development store runs 4, 6, 7, 8, 9, 13, 14, 15 (report-only dev check of the candidate; not a gate). Between version 1 and 2 of these gates the version 2 and baseline-tree replays were generated (not read) and the version 3 candidate replays were generated and deleted unread.",
+ "version": 1,
+ "note": "Gates of the gap pilot's side commitment (configs/obstacles/gap_pilot.json version 3 against version 2, configs/obstacles/gap_pilot_v2.json), scored by haltere.obstacles.gap_commit_eval score. Frozen with its sha256 together with the version 3 declaration before any gate is scored. Every replay is open loop (development evidence, never flight evidence). Hindsight inputs (impact times, pillar boxes from the scene colliders and the impact anatomy, checkpoint-switch times from the logged cue) select and score ticks only. Seen before the freeze: minus-fast6-vg-02 (the development case: its log, video and depth replay; no candidate was scored on it) and the Straw Bale development store runs 4, 6, 7, 8, 9, 13, 14, 15 (report-only dev check of the candidate; not a gate).",
  "declarations": {
   "current": "configs/obstacles/gap_pilot_v2.json",
   "candidate": "configs/obstacles/gap_pilot.json",
-  "candidate_version": 4
+  "candidate_version": 3
  },
  "runs_dir": "C:/DEV/Haltere/runs/fast-stack-20260923",
  "motors": {
@@ -436,17 +436,7 @@
    "pine-brain08-loom-01"
   ]
  },
- "change": "v2: only declarations.candidate_version (3 -> 4) and the note: the gap pilot version 3 was superseded by version 4 before any gate was scored. Every gate, threshold and data set is unchanged.",
- "previous_versions": [
-  {
-   "version": 1,
-   "sha256": "b7580c96ddcffbd0424c65c4f85337c2177552ee699bf903099727c6252502f6",
-   "frozen_at": "2026-09-27T01:42:31",
-   "file": "configs/obstacles/gap_commit_gates_v1.json",
-   "scored": "never"
-  }
- ],
  "frozen": true,
- "frozen_at": "2026-09-27T01:50:02",
- "sha256": "be1cfa9fd47e350df05402572882c676cee8ddb67c152678920e2ea33949a804"
+ "frozen_at": "2026-09-27T01:42:31",
+ "sha256": "b7580c96ddcffbd0424c65c4f85337c2177552ee699bf903099727c6252502f6"
 }
