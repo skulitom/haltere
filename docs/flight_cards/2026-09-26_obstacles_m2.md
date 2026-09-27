@@ -129,3 +129,35 @@ Next: gap cue side commitment near an obstacle (pillar C); turn-first for side-c
 rings at a wall at governor caps up to ~3.5 m/s; smoother brain-09 (chatter); keep
 descents inside the camera's view on Straw Bale (fly the downhill with the nose down
 and speed kept, as the user suggested).
+
+## Round 4: brain-10, a smoother braking brain (branch m4-brain10, not flown)
+
+[brain-10](../fast_brain_10_candidate.md) was distilled under the current pilot. The descent branch
+was not flight ready and was not merged.
+
+Why brain-09b chatters:
+
+- Its pitch hunts at about 0.8 Hz in steady cruise.
+- The brain lags its teacher label by 70-90 ms at about half its amplitude.
+- The PD teacher is not stable with that much latency: +60 ms already doubles its chatter.
+
+The brain-10 recipe:
+
+- A label teacher with a slower attitude loop (gain 4) and a stronger vertical loop (gain 5).
+- Labels paired with the teacher's output 60 ms later (label lead), to anticipate the latency.
+- Longer synthetic caps, like the live governor's.
+
+Six candidates were scored on the frozen gates (`configs/brain10_gates.json` v1: brain-09's G1-G6
+plus smoothness G7 and regressions G8). All fail G3; none is selected for flight.
+
+The best-ranked is `fast-brain-10b` (sha256 `0ccf1161...`). It passes all six other gates:
+
+- It brakes for caps: in-course cap excess +0.35 m/s (brain-08 +1.20).
+- Its chatter is 0.00226 per tick, 24% below brain-08 and 56% below brain-09b.
+- It finishes 16/16 courses with no high descending pass.
+- Only readout rows 0-2 changed.
+
+G3 is the closest of any brain so far: worst window 0.89 m/s against brain-09b's 1.56. It is still
+latency-limited: even the PD with 80 ms of added delay fails G3.
+
+Flying brain-10b would be a disclosed development deviation, like brain-09b's flight.
