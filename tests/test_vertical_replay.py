@@ -202,3 +202,40 @@ def test_variant_resolution_and_tags():
     assert vr.variant_tag('on', 'off', 'on', True) == 'on-won-von-stream'
     assert vr.variant_tag('flown', 'shadow', 'off', False) == 'flown-wshadow-voff'
     assert json.dumps(vr.variant_tag('none', 'on', 'off', False)) == '"none-woff-voff"'
+
+
+def _side(stack_mode=None, contract='fast_velocity_pd_v1'):
+    """A minimal flight sidecar for build(): the camera, motor contract and pilot speeds of a fast-stack flight."""
+    from tests.test_visual_assistance import SENSOR
+    return dict(gate_sensor=SENSOR, motor_controller=dict(contract=contract),
+                obstacle_stack=dict(mode=stack_mode) if stack_mode else {},
+                pilot_assistance=dict(nominal_speed_mps=6., trained_motor_reference_mps=6.))
+
+
+def test_build_adds_the_descent_view_to_any_variant():
+    from pathlib import Path
+    from haltere.liftoff.fast_race_cue import DescentViewConfig, descent_view_config
+    tree = Path(vr.__file__).resolve().parents[2]
+    declaration = json.loads((tree/'configs'/'pilot'/'descent_view.json').read_text(encoding='utf-8'))
+    config = descent_view_config(declaration)
+    plain, info = vr.build(_side(), tree, 'none')
+    assert plain.descent_view is None and info['descent_view'] is False
+    pilot, info = vr.build(_side(), tree, 'none', descent_view=config)
+    assert isinstance(pilot.descent_view, DescentViewConfig) and info['descent_view'] is True
+    # the full round-4 stack: gap aim, wall rules, vertical guard and the view-keeping descent together
+    stack, info = vr.build(_side('on', 'fast_velocity_brain_v1'), tree, 'on', vertical='on', descent_view=config)
+    assert stack.descent_view == config and stack.vertical_guard is not None and stack.turn_first is not None
+    assert stack.gap_aim is not None and info['wall'] == 'on' and info['vertical'] == 'on'
+
+
+def test_main_refuses_an_edited_descent_view_declaration(tmp_path, monkeypatch):
+    import sys
+    from pathlib import Path
+    monkeypatch.setattr(sys, 'path', list(sys.path))
+    tree = Path(vr.__file__).resolve().parents[2]
+    declaration = json.loads((tree/'configs'/'pilot'/'descent_view.json').read_text(encoding='utf-8'))
+    declaration['descent_view']['margin_deg'] = 1.
+    edited = tmp_path/'descent_view.json'
+    edited.write_text(json.dumps(declaration), encoding='utf-8')
+    with pytest.raises(SystemExit, match='not a frozen descent-view declaration'):
+        vr.main(['no-such-flight', '--out', str(tmp_path/'x'), '--stack', 'none', '--descent-view', str(edited)])

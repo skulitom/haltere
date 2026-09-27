@@ -27,7 +27,10 @@ Variants:
 ``--near-on-path`` lets the gap samples carry the logged near_on_path as the live camera's samples did (tag -nop;
 the side commitment of gap pilot version 4 reads it, version 2 never did). The per-tick arrays also carry the gap
 aim's target, applied shift, flown offset, mode, committed side, conflict and the sample it saw
-(haltere.obstacles.gap_commit_eval scores them).
+(haltere.obstacles.gap_commit_eval scores them). ``--descent-view DECLARATION`` adds the view-keeping descent of a
+frozen descent-view declaration to any variant (tag -dv<version>; the arrays gain view_sink_bound, view_withheld and
+view_boost): with ``--stack on --near-on-path`` it is the full round-4 stack as `--obstacle-stack on --descent-view on`
+would fly it.
 
 usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [--stack ...] flight ...
 """
@@ -576,6 +579,9 @@ def main(argv=None):
                              ' the file tag gains -gp<stem>')
     parser.add_argument('--near-on-path', action='store_true',
                         help='the gap samples carry the logged near_on_path (tag suffix -nop)')
+    parser.add_argument('--descent-view', default=None, metavar='DECLARATION',
+                        help='add the view-keeping descent of a frozen descent-view declaration (e.g. '
+                             'configs/pilot/descent_view.json) to the variant; the file tag gains -dv<version>')
     args = parser.parse_args(argv)
     os.environ.setdefault('OMP_NUM_THREADS', '2')
     here = str(Path(__file__).resolve().parent)
@@ -590,17 +596,29 @@ def main(argv=None):
         tag += f'-gp{Path(args.gap_pilot).stem}'
     if args.near_on_path:
         tag += '-nop'
+    descent_view = None
+    if args.descent_view:
+        # the same frozen-declaration checks as the runner (canonical content hash, the tree's rule version)
+        from haltere.liftoff.gap_stack import config_sha256
+        declaration = json.loads(Path(args.descent_view).read_text(encoding='utf-8'))
+        if declaration.get('frozen') is not True or declaration.get('sha256') != config_sha256(declaration):
+            raise SystemExit(f'{args.descent_view} is not a frozen descent-view declaration, or it changed after the '
+                             'freeze')
+        descent_view = frc.descent_view_config(declaration)
+        tag += f'-dv{declaration["version"]}'
     results = {}
     for flight in args.flights:
         arrays, pilot, info = replay(flight, args.tree, args.runs, stack=args.stack, wall=args.wall,
                                      vertical=vertical, looming_stream=args.looming_stream,
-                                     gap_pilot=args.gap_pilot, near_on_path=args.near_on_path)
+                                     gap_pilot=args.gap_pilot, near_on_path=args.near_on_path,
+                                     descent_view=descent_view)
         np.savez_compressed(f'{args.out}_{tag}_{flight}.npz', **arrays)
         results[flight] = summary(arrays, info)
         meta = pilot.metadata()
         results[flight]['vertical_guard_metadata'] = meta.get('vertical_guard')
         results[flight]['wall_pilot_metadata'] = meta.get('wall_pilot')
         results[flight]['gap_aim_metadata'] = meta.get('gap_aim')
+        results[flight]['descent_view_metadata'] = meta.get('descent_view')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')
