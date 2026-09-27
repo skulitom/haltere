@@ -97,6 +97,45 @@ def test_default_rollout_is_unchanged_and_a_label_teacher_without_overrides_labe
         assert torch.equal(da[key], db[key])
 
 
+def test_label_lead_pairs_each_sample_with_the_teachers_label_later():
+    parent = Path('C:/DEV/Haltere/runs/motor-brain-10-tracking-05/candidate.pt')
+    if not PROFILE.exists() or not parent.exists():
+        pytest.skip('parent checkpoint or measured profile not present')
+    from haltere.liftoff.fast_rehearsal import synthetic_course
+    from haltere.train.bptt import load_checkpoint
+    from haltere.train.fast_motor_tracking import fast_contract, rollout
+    torch.set_num_threads(1)
+    profile = json.loads(PROFILE.read_text())
+    brain, cfg, _ = load_checkpoint(str(parent), 'cpu')
+    meta = torch.load(parent, map_location='cpu', weights_only=True)['visual_brain']
+    contract = fast_contract(6., .4, scaled_speed=2.4)
+    courses = [synthetic_course(1000, steep=.4), synthetic_course(1001, steep=.4)]
+    outputs = {}
+
+    def recording(lead):
+        outputs[lead] = []
+
+        class Recording(FastMotorPD):
+            def command(self, *args, **kwargs):
+                out = super().command(*args, **kwargs)
+                outputs[lead].append(out.clone())
+                return out
+        return Recording
+
+    data = {}
+    for lead in (0, 3):
+        _, data[lead] = rollout(brain, cfg, meta, profile, contract, courses, controller='pd', seconds=2.5, seed=100,
+                                collect=True, teacher_factory=recording(lead), label_lead=lead)
+    assert torch.equal(torch.stack(outputs[0]), torch.stack(outputs[3]))   # same flight either way
+    ticks = [k for k in range(250) if k > 50 and k % 5 == 0 and k*.01 >= 1. and k+3 < 250]
+    assert len(data[3]['labels']) == 2*len(ticks) and torch.equal(data[3]['features'], data[0]['features'][:2*len(ticks)])
+    expected = torch.cat([outputs[3][k+3][:, :3].clamp(-.97, .97).atanh() for k in ticks])
+    assert torch.equal(data[3]['labels'], expected)
+    assert torch.equal(data[0]['labels'], torch.cat([outputs[0][k][:, :3].clamp(-.97, .97).atanh()
+                                                     for k in range(250) if k > 50 and k % 5 == 0 and k*.01 >= 1.]))
+    assert torch.equal(data[3]['request'], data[0]['request'][:2*len(ticks)])
+
+
 def test_parse_gains_validates_names_and_values():
     assert parse_gains(['attitude_gain=4', 'velocity_gain=2']) == dict(attitude_gain=4., velocity_gain=2.)
     assert parse_gains([]) == {}

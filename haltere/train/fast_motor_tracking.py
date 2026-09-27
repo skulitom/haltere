@@ -341,13 +341,17 @@ def brake_metrics(t, request, velocity, active, events, speeds, nominal, *, sett
 def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', speed=None, seconds=150.,
             seed=0, randomize=.1, collect=False, retina_stream=None, retina_dropout=.25, dropout=.1,
             camera_period=.055, camera_latency=.06, delay_steps=3, radius=3., quadratic_drag=.0075,
-            pilot_speeds=None, caps=None, cap_fraction=0., cap_seed=None, record_brake=False, teacher_factory=None):
+            pilot_speeds=None, caps=None, cap_fraction=0., cap_seed=None, record_brake=False, teacher_factory=None,
+            label_lead=0):
     """Batched closed loop: one synthetic course per drone; controller 'pd' or 'brain'.
 
     Off by default: `pilot_speeds` (one pilot speed per course; default `speed`), `caps` (a SyntheticCapsConfig
     given to a share `cap_fraction` of the drones, drawn with `cap_seed`, default `seed`), `record_brake`
-    (adds `brake_metrics` to the result) and `teacher_factory` (profile, calibration -> the label teacher that
-    also flies controller 'pd'; default FastMotorPD). Without them the rollout is unchanged."""
+    (adds `brake_metrics` to the result), `teacher_factory` (profile, calibration -> the label teacher that
+    also flies controller 'pd'; default FastMotorPD) and `label_lead` (collect: each sample's features are paired
+    with the teacher's label `label_lead` ticks later, on the same drone if it is still flying, so the student
+    learns to anticipate its own latency; the sample's request and velocity stay those of the feature tick).
+    Without them the rollout is unchanged."""
     speed = contract['nominal_speed_mps'] if speed is None else speed
     batch = len(courses)
     device = brain.device
@@ -391,6 +395,9 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
                if retina_stream is not None else None)
     features, labels, requested, requests_3d, velocities, steps_diff = [], [], [], [], [], []
     before = None  # motor features one tick before a sample, for the command-smoothness penalty
+    if label_lead < 0 or int(label_lead) != label_lead:
+        raise ValueError('label_lead is a whole number of ticks >= 0')
+    leading = deque()  # samples waiting for their label (label_lead > 0)
     chatter, speeds, previous = [], [], None
     slow_excess = []  # measured minus requested horizontal speed when the request is below 70% of nominal
     sink_shortfall, climb_shortfall = [], []  # requested minus achieved vertical speed on descents/climbs
@@ -430,6 +437,17 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
             feedforward.append(pilots[i].feedforward)
         request = torch.tensor(np.asarray(requests), dtype=torch.float32)
         target_action = teacher.command(senses, request, torch.tensor(np.asarray(feedforward), dtype=torch.float32))
+        while leading and leading[0]['due'] == k:
+            entry = leading.popleft()
+            keep = entry['mask'] & torch.as_tensor(active)
+            if keep.any():
+                features.append(entry['m'][keep])
+                labels.append(target_action[keep, :3].clamp(-.97, .97).atanh())
+                requested.append(entry['request'][keep, :2].norm(dim=-1))
+                requests_3d.append(entry['request'][keep])
+                velocities.append(entry['velocity'][keep])
+                if entry['step'] is not None:
+                    steps_diff.append(entry['step'][keep])
         motor = state.quad.motor.mean(-1, keepdim=True)
         retina = retinal[k] if retinal is not None else torch.zeros(batch, RETINA_DIM)
         obs = brain_observation(meta, {key: value.to(device) for key, value in senses.items()}, motor.to(device),
@@ -449,13 +467,17 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
         if collect and k > 50 and k % 5 == 0 and now >= 1. and active.any():
             m = motor_features(brain, brain_state).cpu()
             mask = torch.as_tensor(active)
-            features.append(m[mask])
-            labels.append(target_action[mask, :3].clamp(-.97, .97).atanh())
-            requested.append(request[mask, :2].norm(dim=-1))
-            requests_3d.append(request[mask])
-            velocities.append(state.quad.vel[mask].clone())
-            if before is not None:
-                steps_diff.append((m-before)[mask])
+            if label_lead:
+                leading.append(dict(due=k+int(label_lead), m=m, mask=mask, request=request,
+                                    velocity=state.quad.vel.clone(), step=None if before is None else m-before))
+            else:
+                features.append(m[mask])
+                labels.append(target_action[mask, :3].clamp(-.97, .97).atanh())
+                requested.append(request[mask, :2].norm(dim=-1))
+                requests_3d.append(request[mask])
+                velocities.append(state.quad.vel[mask].clone())
+                if before is not None:
+                    steps_diff.append((m-before)[mask])
         if previous is not None:
             chatter.append(float((command[:, 1:3]-previous[:, 1:3]).abs().mean()))
         previous = command
@@ -613,7 +635,8 @@ def slow_leg_speeds(courses, share, low, high, nominal, seed):
 
 
 # collection settings a --resolve must repeat, with their value for runs made before they existed
-COLLECTION_DEFAULTS = dict(synthetic_caps=0., slow_legs=0., slow_leg_speed=[2.5, 4.5], teacher_gains=[], turn_relief=0.)
+COLLECTION_DEFAULTS = dict(synthetic_caps=0., slow_legs=0., slow_leg_speed=[2.5, 4.5], teacher_gains=[], turn_relief=0.,
+                           label_lead=0.)
 
 
 def main():
@@ -655,6 +678,8 @@ def main():
     parser.add_argument('--caps-config', dest='caps_source', default='',
                         help='SyntheticCapsConfig overrides: a JSON object or a .json file (keys starting with _ '
                              'are comments), e.g. {"hold_s": [1, 8]}')
+    parser.add_argument('--label-lead', type=float, default=0.,
+                        help='pair each sample with the teacher label this many seconds later (whole ticks; 0: off)')
     parser.add_argument('--smooth-rows', type=float, nargs=3, default=[1., 1., 1.], metavar=('THR', 'ROLL', 'PITCH'),
                         help='per-row multipliers of --smooth (refit only)')
     args = parser.parse_args()
@@ -669,6 +694,8 @@ def main():
     teacher_gains = parse_gains(args.teacher_gains)
     if not 0 <= args.turn_relief <= 1:
         raise ValueError('--turn-relief is a share in [0, 1]')
+    if not 0 <= args.label_lead <= .5 or abs(args.label_lead*100-round(args.label_lead*100)) > 1e-6:
+        raise ValueError('--label-lead is 0-0.5 s in whole 10 ms ticks')
     if args.caps_source and args.synthetic_caps <= 0:
         raise ValueError('--caps-config needs --synthetic-caps')
     if min(args.smooth_rows) < 0 or (args.smooth_rows != [1., 1., 1.] and args.smooth <= 0):
@@ -773,7 +800,8 @@ def main():
                             controller=controller, seconds=args.seconds, seed=100+round_index, collect=True,
                             retina_stream=training_retina, retina_dropout=args.retina_dropout,
                             pilot_speeds=legs, caps=caps, cap_fraction=args.synthetic_caps,
-                            record_brake=caps is not None or legs is not None, teacher_factory=teacher_factory)
+                            record_brake=caps is not None or legs is not None, teacher_factory=teacher_factory,
+                            label_lead=int(round(args.label_lead/cfg.brain.dt)))
         record(dict(stage=f'collect-{round_index}', **row, samples=len(data['labels']) if data else 0))
         if data is None:
             break
@@ -803,8 +831,9 @@ def main():
         **({'braking_data': braking} if braking != dict(synthetic_caps=0., caps_config=None, slow_legs=0.,
                                                          slow_leg_speed=[2.5, 4.5], brake_weight=1.) else {}),
         **({'label_teacher': dict(pd_config_overrides=teacher_gains, turn_relief=args.turn_relief,
+                                  label_lead_s=args.label_lead,
                                   note='training labels only; the deployed FastMotorPD and the pilot are unchanged')}
-           if teacher_factory is not None else {}),
+           if teacher_factory is not None or args.label_lead > 0 else {}),
         **({'smooth_rows': args.smooth_rows} if args.smooth_rows != [1., 1., 1.] else {}),
         resolved_training_sha256=config['resolved_training_sha256'],
         resolved_from=None if source is None else dict(
