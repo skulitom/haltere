@@ -738,8 +738,9 @@ What this shows:
   keeps approaching as the drone rises, or a bound under an overhead.
 - The descent view's suppression of the support climb (review finding) showed up live on the Minus
   floor, not only on Straw.
-- fast-brain-10b does not follow governor caps live (+1.5 m/s); fast-brain-09b brakes but loses height
-  when it accelerates hard from low speed. Neither is a release brain.
+- fast-brain-10b braked for the caps at both arches but missed them at the hairpin (+1.0 to +1.7 m/s)
+  during a false guard climb, so whether it misses caps in general is untested; fast-brain-09b brakes but
+  loses height when it accelerates hard from low speed. Neither is a release brain.
 
 Procedure note: the ground-check script pauses the game at exit; reset (Réinitialiser) or resume, and
 confirm telemetry is streaming, before launching a run.
