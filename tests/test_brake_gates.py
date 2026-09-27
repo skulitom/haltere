@@ -59,3 +59,15 @@ def test_history_gap_compares_live_and_hover_steady_speeds():
     report = dict(hover=dict(sustained=[dict(target=3.5, settled=3.6)]),
                   live=[dict(window='w', target=3.5, steady=4.1), dict(window='w', target=1., steady=1.2)])
     assert derived(report)['history_gap'] == [dict(window='w', target=3.5, gap=.5)]
+
+
+def test_brain10_gates_are_frozen_and_keep_the_brain09_tests_and_gates():
+    b10, sha10 = load_gates('configs/brain10_gates.json', require_frozen=True)
+    b09, sha09 = load_gates('configs/brain09_gates.json', require_frozen=True)
+    assert b10['version'] == 1 and b10['previous_versions'][0]['sha256'] == sha09
+    assert b10['tests'] == b09['tests'] and b10['reference'] == b09['reference']
+    for name, gate in b09['gates'].items():
+        assert b10['gates'][name] == gate
+    assert set(b10['gates'])-set(b09['gates']) == {'G7_smoothness', 'G8_regressions'}
+    chatter = {c['path']: c['value'] for c in b10['gates']['G7_smoothness']['checks']}
+    assert chatter['regression16.stick_chatter'] <= 1.15*b10['baselines']['brain08']['regression16']['stick_chatter']

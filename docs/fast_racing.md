@@ -39,6 +39,14 @@ scores a checkpoint against the frozen brain-09 surrogate gates (cap steps and s
 hover and from logged Minus Two states, logged-request swaps against the PD, rollout(S), in-course caps,
 the 16-course regressions and the weight audit). No brain-09 candidate passed all of them.
 
+Label teacher (off by default; [brain-10](fast_brain_10_candidate.md)): `--teacher-gains NAME=VALUE ...`
+overrides FastPDConfig fields of the teacher that labels the samples and flies the first round (the deployed
+FastMotorPD is unchanged), `--turn-relief F` removes a share of the along-track braking that comes only from the
+turn geometry from the labels in capped turns, `--caps-config FILE|JSON` overrides the synthetic cap settings
+(`configs/brain10_caps.json`: longer holds, like the live governor's) and `--smooth-rows T R P` scales the
+smoothness penalty per readout row. `configs/brain10_gates.json` adds smoothness and regression gates to the
+brain-09 set.
+
 DAgger in the measured-drone surrogate (`IdentifiedSim`) on seeded synthetic
 checkpoint courses with the fast pilot and a synthetic HUD marker: one round under
 the fast PD, then rounds under the brain with PD labels on the states it visits.
@@ -47,7 +55,12 @@ and their biases; the script refuses any other change. `--steep` adds 15-35°
 climbing/descending legs (needed for hills); `--scaled-speed` maps the nominal
 request to a slower apparent speed so the brain's saturating (tanh) velocity
 senses stay informative. CPU only, about 45 minutes for five rounds; it pauses on
-GPU heat if run on CUDA. Surrogate results are development checks, not flight
+GPU heat if run on CUDA. CUDA does not make it faster: one identical collection
+iteration (10 drones, 20 s, then a refit) took 39.5 s on the CPU at 2 threads and
+36.8 s on the RTX 4090 (19.1 vs 18.3 ms per 10 ms tick). The connectome step is
+only about a third of a tick; the rest is the per-drone pilot, teacher and
+simulator in Python, which stay on the CPU either way. Only the refit's linear
+algebra gains (1.2 s -> 0.1 s). Surrogate results are development checks, not flight
 evidence.
 
 ## Offline rehearsal

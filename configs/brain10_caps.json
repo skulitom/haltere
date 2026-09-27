@@ -1,0 +1,5 @@
+{
+ "_note": "brain-10 training data only (haltere.train.fast_motor_tracking --caps-config): SyntheticCapsConfig overrides that make the synthetic governor caps last longer, like the live looming governor's. Live caps in the logged flights (runs/fast-stack-20260923, 10 events at >= 3 m/s): duration median 7.3 s (1.5-17 s), minimum cap 0.4-0.7 x the speed (median 0.61; stand-offs 0.09-0.17), continuing through 13-136 deg turns. brain-09's caps held 0.5-3 s at 8 per minute. Here: 6 per minute, held 1-5 s, so the capped share of the time stays about one third while each cap lasts longer. Nothing at runtime reads this file.",
+ "rate_per_min": 6.0,
+ "hold_s": [1.0, 5.0]
+}

@@ -27,13 +27,21 @@ courses at a sustained pilot speed drawn from ``--slow-leg-speed`` (at or below
 the nominal contract speed). ``--brake-weight W`` up-weights samples that are
 aligned, level, at speed and over-speed along the track (`brake_weights`).
 Synthetic caps are training data only; nothing at runtime reads them.
+
+Label teacher (brain-10, all off by default). ``--teacher-gains k=v ...`` overrides FastPDConfig fields of the
+teacher that labels every sample and flies the first round (a slower attitude loop the connectome's latency can
+follow; the deployed FastMotorPD is unchanged). ``--turn-relief F`` shapes the request the teacher sees in capped
+turns (`capped_turn_relief`): F x the along-track braking that comes only from the turn geometry is removed, so
+the lagging student is not taught to brake below the requested speed while it turns. ``--caps-config JSON``
+overrides SyntheticCapsConfig fields (e.g. longer holds like the live governor's). ``--smooth-rows T R P``
+scales the smoothness penalty per readout row. Labels and caps are training data only.
 """
 from __future__ import annotations
 
 import argparse
 import copy
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields, replace
 import json
 from pathlib import Path
 import shutil
@@ -47,7 +55,7 @@ from .human_brain import export
 from .motor_tracking import load_recorded_retina, motor_features, retina_sequence
 from .thermal import wait_if_hot
 from ..brain.gate_senses import gate_observation
-from ..brain.motor_baseline import FastMotorPD
+from ..brain.motor_baseline import FastMotorPD, FastPDConfig
 from ..brain.retina import RETINA_DIM
 from ..liftoff.camera_pose import CameraPoseHistory
 from ..liftoff.fast_race_cue import FastRaceCue
@@ -197,6 +205,65 @@ class SyntheticCaps:
         return self.cap, self.cap_ray, 0.
 
 
+def capped_turn_relief(request, velocity, relief, *, full_deg=45., zero_deg=90., over_low=.3, over_high=1.,
+                       min_speed=1.5):
+    """Request seen by the label teacher in a capped turn (training only; the pilot's request is unchanged).
+
+    Horizontal request r (magnitude R), horizontal velocity v (speed V, unit u). The Cartesian teacher brakes along
+    the track by V - r.u; the speed magnitude alone asks V - min(R, V). The difference g = min(R, V) - r.u >= 0 is
+    the along-track braking that comes only from the turn geometry. The shaped request adds
+    relief * w_turn * w_cap * g along u, where w_turn = 1 up to `full_deg` between r and v and falls linearly to 0
+    at `zero_deg`, and w_cap (request side: the request magnitude below the speed, as under a governor cap) rises
+    linearly from 0 at V - R = `over_low` to 1 at `over_high` m/s. The vertical request and the lateral part are
+    unchanged; aligned requests, turns at or above the flown speed, hairpins beyond `zero_deg` and V < `min_speed`
+    are not shaped. request, velocity: (B, 3) world m/s."""
+    if relief <= 0:
+        return request
+    rh, vh = request[:, :2], velocity[:, :2].to(request.dtype)
+    speed, magnitude = vh.norm(dim=-1), rh.norm(dim=-1)
+    unit = vh/speed.clamp_min(1e-6)[:, None]
+    along = (rh*unit).sum(-1)
+    cosine = (along/magnitude.clamp_min(1e-6)).clamp(-1., 1.)
+    angle = torch.rad2deg(torch.arccos(cosine))
+    w_turn = ((zero_deg-angle)/(zero_deg-full_deg)).clamp(0., 1.)
+    w_cap = ((speed-magnitude-over_low)/(over_high-over_low)).clamp(0., 1.)
+    gap = (torch.minimum(magnitude, speed)-along).clamp_min(0.)
+    shift = float(relief)*w_turn*w_cap*gap*(speed >= min_speed)
+    shaped = request.clone()
+    shaped[:, :2] = rh+shift[:, None]*unit
+    return shaped
+
+
+class LabelTeacher:
+    """FastMotorPD with declared FastPDConfig overrides and optional capped-turn relief (training labels only).
+
+    With no overrides and no relief it is FastMotorPD. The teacher is never saved into or loaded by a brain."""
+
+    def __init__(self, profile, calibration, gains=None, turn_relief=0.):
+        config = replace(FastPDConfig(), **gains) if gains else None
+        self.pd = FastMotorPD(profile, calibration, config)
+        self.turn_relief = float(turn_relief)
+
+    def command(self, sensors, velocity, feedforward=None, dt=.01):
+        if self.turn_relief > 0:
+            velocity = capped_turn_relief(torch.as_tensor(velocity, dtype=torch.float32), sensors['vel_world'],
+                                          self.turn_relief)
+        return self.pd.command(sensors, velocity, feedforward, dt)
+
+
+def parse_gains(items):
+    """'name=value' strings -> FastPDConfig overrides (validated)."""
+    known = {f.name for f in fields(FastPDConfig)}
+    out = {}
+    for item in items or []:
+        key, _, value = item.partition('=')
+        if key not in known or not value:
+            raise ValueError(f'Unknown teacher gain {item!r}; known: {sorted(known)}')
+        out[key] = float(value)
+    replace(FastPDConfig(), **out)  # validates
+    return out
+
+
 def brake_metrics(t, request, velocity, active, events, speeds, nominal, *, settle=3., onset_skip=.5,
                   within=.5, aligned_deg=20., level=.5, cruise_fraction=.8, slow_fraction=.7):
     """Braking metrics of one rollout; every class is chosen from the request side, never by the excess.
@@ -274,12 +341,13 @@ def brake_metrics(t, request, velocity, active, events, speeds, nominal, *, sett
 def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', speed=None, seconds=150.,
             seed=0, randomize=.1, collect=False, retina_stream=None, retina_dropout=.25, dropout=.1,
             camera_period=.055, camera_latency=.06, delay_steps=3, radius=3., quadratic_drag=.0075,
-            pilot_speeds=None, caps=None, cap_fraction=0., cap_seed=None, record_brake=False):
+            pilot_speeds=None, caps=None, cap_fraction=0., cap_seed=None, record_brake=False, teacher_factory=None):
     """Batched closed loop: one synthetic course per drone; controller 'pd' or 'brain'.
 
     Off by default: `pilot_speeds` (one pilot speed per course; default `speed`), `caps` (a SyntheticCapsConfig
-    given to a share `cap_fraction` of the drones, drawn with `cap_seed`, default `seed`) and `record_brake`
-    (adds `brake_metrics` to the result). Without them the rollout is unchanged."""
+    given to a share `cap_fraction` of the drones, drawn with `cap_seed`, default `seed`), `record_brake`
+    (adds `brake_metrics` to the result) and `teacher_factory` (profile, calibration -> the label teacher that
+    also flies controller 'pd'; default FastMotorPD). Without them the rollout is unchanged."""
     speed = contract['nominal_speed_mps'] if speed is None else speed
     batch = len(courses)
     device = brain.device
@@ -307,7 +375,7 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
         capped = sorted(int(i) for i in np.random.default_rng([base, 1]).permutation(batch)[:int(round(cap_fraction*batch))])
         for i in capped:
             pilots[i].clearance = SyntheticCaps(caps, np.random.default_rng([base, 2, i]), pilots[i])
-    teacher = FastMotorPD(profile, calibration)
+    teacher = (FastMotorPD if teacher_factory is None else teacher_factory)(profile, calibration)
     idle = torch.tensor([[-1., 0., 0., 0.]]).repeat(batch, 1)
     queue = deque(idle.clone() for _ in range(delay_steps))
     pending = [deque() for _ in range(batch)]
@@ -491,12 +559,14 @@ def brake_weights(request, velocity, weight, **selection):
     return weights*len(weights)/weights.sum()
 
 
-def fit_readout(brain, features, labels, ridge, weights=None, smooth=0., step_gram=None, step_count=0):
+def fit_readout(brain, features, labels, ridge, weights=None, smooth=0., step_gram=None, step_count=0,
+                smooth_rows=None):
     """Parent-centred (optionally weighted) ridge on throttle/roll/pitch rows; nothing else may change.
 
     With `smooth` > 0 the fit also penalises the mean squared change of the (pre-tanh) command over one
     10 ms tick, from the collected feature steps: minimise weighted error + ridge*|delta|^2
-    + smooth*mean|step @ (parent + delta)|^2."""
+    + smooth*mean|step @ (parent + delta)|^2. `smooth_rows` (three multipliers for throttle, roll, pitch; default
+    all one) scales that penalty per row, each row then solved on its own."""
     x = torch.cat((features, torch.ones(len(features), 1)), -1).to(brain.readout.weight.device)
     y = labels.to(x.device)
     w = (torch.ones(len(x)) if weights is None else weights).to(x.device)[:, None]
@@ -504,13 +574,21 @@ def fit_readout(brain, features, labels, ridge, weights=None, smooth=0., step_gr
     gram = (x*w).T@x/w.sum()
     system = gram+ridge*torch.eye(x.shape[1], device=x.device)
     rhs = (x*w).T@(y-x@parent.T)/w.sum()
+    rows = None if smooth_rows is None or all(float(m) == 1. for m in smooth_rows) else [float(m) for m in smooth_rows]
+    if rows is not None and (len(rows) != 3 or min(rows) < 0 or smooth <= 0):
+        raise ValueError('smooth_rows takes three non-negative multipliers of a positive smooth')
     if smooth > 0:
         if step_gram is None or step_count < 1:
             raise ValueError('The smoothness penalty needs collected feature steps')
         steps = (step_gram/step_count).to(x.device, x.dtype)
-        system = system+smooth*steps
-        rhs = rhs-smooth*steps@parent.T
-    delta = torch.linalg.solve(system, rhs).T
+        if rows is None:
+            system = system+smooth*steps
+            rhs = rhs-smooth*steps@parent.T
+    if rows is None:
+        delta = torch.linalg.solve(system, rhs).T
+    else:
+        delta = torch.stack([torch.linalg.solve(system+smooth*m*steps, rhs[:, i]-smooth*m*steps@parent[i])
+                             for i, m in enumerate(rows)])
     before = {n: p.detach().cpu().clone() for n, p in brain.named_parameters()}
     with torch.no_grad():
         brain.readout.weight[:3].add_(delta[:, :-1])
@@ -535,7 +613,7 @@ def slow_leg_speeds(courses, share, low, high, nominal, seed):
 
 
 # collection settings a --resolve must repeat, with their value for runs made before they existed
-COLLECTION_DEFAULTS = dict(synthetic_caps=0., slow_legs=0., slow_leg_speed=[2.5, 4.5])
+COLLECTION_DEFAULTS = dict(synthetic_caps=0., slow_legs=0., slow_leg_speed=[2.5, 4.5], teacher_gains=[], turn_relief=0.)
 
 
 def main():
@@ -570,6 +648,15 @@ def main():
                         help='range of the slow-leg pilot speed in m/s (at most the nominal speed)')
     parser.add_argument('--brake-weight', type=float, default=1.,
                         help='weight of aligned, level, at-speed samples that are over-speed along the track')
+    parser.add_argument('--teacher-gains', nargs='*', default=[], metavar='NAME=VALUE',
+                        help='FastPDConfig overrides of the label teacher (training only), e.g. attitude_gain=4')
+    parser.add_argument('--turn-relief', type=float, default=0.,
+                        help='share of the turn-geometry braking removed from the labels in capped turns (0: off)')
+    parser.add_argument('--caps-config', dest='caps_source', default='',
+                        help='SyntheticCapsConfig overrides: a JSON object or a .json file (keys starting with _ '
+                             'are comments), e.g. {"hold_s": [1, 8]}')
+    parser.add_argument('--smooth-rows', type=float, nargs=3, default=[1., 1., 1.], metavar=('THR', 'ROLL', 'PITCH'),
+                        help='per-row multipliers of --smooth (refit only)')
     args = parser.parse_args()
     if args.ridge <= 0 or args.rounds < 1 or args.sink_weight <= 0 or args.smooth < 0 or args.brake_weight <= 0:
         raise ValueError('Use positive ridge, sink and brake weights, non-negative smoothing and at least one round')
@@ -579,6 +666,13 @@ def main():
         raise ValueError('--synthetic-caps and --slow-legs are shares in [0, 1]')
     if not 0 < args.slow_leg_speed[0] <= args.slow_leg_speed[1] <= args.speed:
         raise ValueError('The slow-leg speed range must lie in (0, nominal speed]')
+    teacher_gains = parse_gains(args.teacher_gains)
+    if not 0 <= args.turn_relief <= 1:
+        raise ValueError('--turn-relief is a share in [0, 1]')
+    if args.caps_source and args.synthetic_caps <= 0:
+        raise ValueError('--caps-config needs --synthetic-caps')
+    if min(args.smooth_rows) < 0 or (args.smooth_rows != [1., 1., 1.] and args.smooth <= 0):
+        raise ValueError('--smooth-rows takes non-negative multipliers of a positive --smooth')
     if not args.retina_data and args.validation_retina_data:
         raise ValueError('A readout fitted without scene currents is blanked at runtime; '
                          'evaluate it that way too (--validation-retina-data "")')
@@ -589,7 +683,15 @@ def main():
     brain, cfg, _ = load_checkpoint(args.checkpoint, args.device)
     meta = copy.deepcopy(torch.load(args.checkpoint, map_location='cpu', weights_only=True)['visual_brain'])
     profile = json.loads(Path(args.profile).read_text())
-    caps = SyntheticCapsConfig() if args.synthetic_caps > 0 else None
+    caps_text = (Path(args.caps_source).read_text(encoding='utf-8') if args.caps_source.endswith('.json')
+                 else args.caps_source)
+    caps_overrides = {k: tuple(v) if isinstance(v, list) else v for k, v in json.loads(caps_text).items()
+                      if not k.startswith('_')} if args.caps_source else {}
+    caps = SyntheticCapsConfig(**caps_overrides) if args.synthetic_caps > 0 else None
+    teacher_factory = None
+    if teacher_gains or args.turn_relief > 0:
+        def teacher_factory(profile, calibration):
+            return LabelTeacher(profile, calibration, teacher_gains, args.turn_relief)
     caps_config = json.loads(json.dumps(asdict(caps))) if caps is not None else None
     source = None
     if args.resolve:
@@ -649,7 +751,7 @@ def main():
             brake = brake_weights(torch.cat(requests_3d), torch.cat(velocities), args.brake_weight)
             weights = brake if weights is None else weights*brake/(weights*brake).mean()
         return fit_readout(brain, torch.cat(rows), torch.cat(targets), args.ridge, weights, args.smooth,
-                           steps, step_count)
+                           steps, step_count, smooth_rows=args.smooth_rows)
 
     if source is not None:
         rows, targets, requests = [source['features']], [source['labels']], [source['requested_speed']]
@@ -671,7 +773,7 @@ def main():
                             controller=controller, seconds=args.seconds, seed=100+round_index, collect=True,
                             retina_stream=training_retina, retina_dropout=args.retina_dropout,
                             pilot_speeds=legs, caps=caps, cap_fraction=args.synthetic_caps,
-                            record_brake=caps is not None or legs is not None)
+                            record_brake=caps is not None or legs is not None, teacher_factory=teacher_factory)
         record(dict(stage=f'collect-{round_index}', **row, samples=len(data['labels']) if data else 0))
         if data is None:
             break
@@ -700,11 +802,16 @@ def main():
         ridge=args.ridge, sink_weight=args.sink_weight, smooth=args.smooth, balance_speed=args.balance_speed,
         **({'braking_data': braking} if braking != dict(synthetic_caps=0., caps_config=None, slow_legs=0.,
                                                          slow_leg_speed=[2.5, 4.5], brake_weight=1.) else {}),
+        **({'label_teacher': dict(pd_config_overrides=teacher_gains, turn_relief=args.turn_relief,
+                                  note='training labels only; the deployed FastMotorPD and the pilot are unchanged')}
+           if teacher_factory is not None else {}),
+        **({'smooth_rows': args.smooth_rows} if args.smooth_rows != [1., 1., 1.] else {}),
         resolved_training_sha256=config['resolved_training_sha256'],
         resolved_from=None if source is None else dict(
             run=args.resolve, source_sha256=source['config']['source_sha256'],
-            **{k: source['config'].get(k) for k in ('ridge', 'sink_weight', 'smooth', 'balance_speed', 'brake_weight')
-               if k != 'brake_weight' or k in source['config']}),
+            **{k: source['config'].get(k) for k in ('ridge', 'sink_weight', 'smooth', 'balance_speed', 'brake_weight',
+                                                    'smooth_rows')
+               if k not in ('brake_weight', 'smooth_rows') or k in source['config']}),
         changed_parameters=history[-1]['changed'], runtime_requires_teacher=False,
         recorded_scene_currents=training_retina is not None, evaluation=history[-1]['evaluation']))
     export(out/'candidate.pt', brain, cfg, meta, 1)
