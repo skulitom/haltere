@@ -6694,5 +6694,1379 @@
    "climb_added_m": 0.001,
    "sag_s": 0.12
   }
+ },
+ "post_scoring_diagnostics": {
+  "note": "REPORT ONLY, after v1 was scored (nothing changed v1): the v1 gate hairpin and accelerate sets with live-like wall samples (below_fraction None, no lower TTC; motor_assist_eval.run_scenarios(live_wall_samples=True)), alone and with the horizontal governor ray (stand-in for the round-4b contact fix)",
+  "results": {
+   "brain08": {
+    "baseline": {
+     "hairpin_live": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 2,
+      "wall": 10,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.5214,
+      "height_loss_max": 0.809,
+      "max_height": 1.779,
+      "chatter": 0.005301,
+      "finish_mean": null
+     },
+     "accelerate_live": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.3985,
+      "height_loss_max": 0.736,
+      "max_height": 4.525,
+      "chatter": 0.004023,
+      "finish_mean": 10.768
+     },
+     "hairpin_live_flatray": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 2,
+      "wall": 10,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.5243,
+      "height_loss_max": 0.809,
+      "max_height": 1.815,
+      "chatter": 0.005307,
+      "finish_mean": null
+     }
+    },
+    "assist": {
+     "hairpin_live": {
+      "n": 12,
+      "finished": 1,
+      "clean": 1,
+      "crashed": 10,
+      "wall": 3,
+      "floor": 9,
+      "ceiling": 0,
+      "contacts": 11,
+      "height_loss_mean": 0.6745,
+      "height_loss_max": 0.831,
+      "max_height": 1.903,
+      "chatter": 0.006793,
+      "finish_mean": 13.62
+     },
+     "accelerate_live": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.398,
+      "height_loss_max": 0.734,
+      "max_height": 4.699,
+      "chatter": 0.004007,
+      "finish_mean": 10.683
+     },
+     "hairpin_live_flatray": {
+      "n": 12,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 7,
+      "wall": 3,
+      "floor": 7,
+      "ceiling": 0,
+      "contacts": 9,
+      "height_loss_mean": 0.6524,
+      "height_loss_max": 0.809,
+      "max_height": 1.928,
+      "chatter": 0.006909,
+      "finish_mean": 14.488
+     }
+    }
+   },
+   "brain09b": {
+    "baseline": {
+     "hairpin_live": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.1056,
+      "height_loss_max": 0.412,
+      "max_height": 1.386,
+      "chatter": 0.008271,
+      "finish_mean": null
+     },
+     "accelerate_live": {
+      "n": 6,
+      "finished": 4,
+      "clean": 4,
+      "crashed": 1,
+      "wall": 0,
+      "floor": 1,
+      "ceiling": 1,
+      "contacts": 2,
+      "height_loss_mean": 0.3417,
+      "height_loss_max": 1.002,
+      "max_height": 2.394,
+      "chatter": 0.00771,
+      "finish_mean": 11.15
+     },
+     "hairpin_live_flatray": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.1068,
+      "height_loss_max": 0.412,
+      "max_height": 1.386,
+      "chatter": 0.008278,
+      "finish_mean": null
+     }
+    },
+    "assist": {
+     "hairpin_live": {
+      "n": 12,
+      "finished": 11,
+      "clean": 11,
+      "crashed": 1,
+      "wall": 0,
+      "floor": 1,
+      "ceiling": 0,
+      "contacts": 1,
+      "height_loss_mean": 0.512,
+      "height_loss_max": 0.812,
+      "max_height": 1.326,
+      "chatter": 0.010552,
+      "finish_mean": 13.727
+     },
+     "accelerate_live": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 2,
+      "contacts": 2,
+      "height_loss_mean": 0.2073,
+      "height_loss_max": 0.543,
+      "max_height": 2.866,
+      "chatter": 0.006895,
+      "finish_mean": 10.992
+     },
+     "hairpin_live_flatray": {
+      "n": 12,
+      "finished": 12,
+      "clean": 12,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.3799,
+      "height_loss_max": 0.565,
+      "max_height": 1.612,
+      "chatter": 0.010287,
+      "finish_mean": 13.908
+     }
+    }
+   },
+   "brain10b": {
+    "baseline": {
+     "hairpin_live": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.0372,
+      "height_loss_max": 0.176,
+      "max_height": 1.615,
+      "chatter": 0.003698,
+      "finish_mean": null
+     },
+     "accelerate_live": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.1452,
+      "height_loss_max": 0.433,
+      "max_height": 2.821,
+      "chatter": 0.003082,
+      "finish_mean": 10.94
+     },
+     "hairpin_live_flatray": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.0392,
+      "height_loss_max": 0.176,
+      "max_height": 1.615,
+      "chatter": 0.003697,
+      "finish_mean": null
+     }
+    },
+    "assist": {
+     "hairpin_live": {
+      "n": 12,
+      "finished": 8,
+      "clean": 7,
+      "crashed": 2,
+      "wall": 0,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 3,
+      "height_loss_mean": 0.3036,
+      "height_loss_max": 0.808,
+      "max_height": 1.615,
+      "chatter": 0.005488,
+      "finish_mean": 14.375
+     },
+     "accelerate_live": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.1093,
+      "height_loss_max": 0.4,
+      "max_height": 3.601,
+      "chatter": 0.003265,
+      "finish_mean": 11.182
+     },
+     "hairpin_live_flatray": {
+      "n": 12,
+      "finished": 7,
+      "clean": 7,
+      "crashed": 0,
+      "wall": 2,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 2,
+      "height_loss_mean": 0.0252,
+      "height_loss_max": 0.141,
+      "max_height": 1.615,
+      "chatter": 0.005381,
+      "finish_mean": 14.494
+     }
+    }
+   }
+  }
+ },
+ "explored_not_adopted": {
+  "note": "explored after v1 was scored, development data only (attempt 1 development sets, sim seed 17; the v1 gate sets, sim seed 23, seen when v1 was scored), live-like wall samples: v1eq = the v1 rule; a = the sag bias referenced to min(request, 0); v2 = a + the lead bias only while the pilot does not ask to descend + stopping samples the lower window explains counted as terrain (the stopping change has no effect in the surrogate, whose samples carry no lower TTC). Not frozen, not adopted; diff in the session scratchpad m4b/assist/r2/v2_explored.patch",
+  "results": {
+   "brain10b": {
+    "base": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.035,
+      "height_loss_max": 0.189,
+      "max_height": 1.394,
+      "chatter": 0.003415,
+      "finish_mean": null
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 5,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": -0.0272,
+      "height_loss_max": 0.034,
+      "max_height": 1.985,
+      "chatter": 0.002448,
+      "finish_mean": 10.928
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.0372,
+      "height_loss_max": 0.176,
+      "max_height": 1.615,
+      "chatter": 0.003698,
+      "finish_mean": null
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.1452,
+      "height_loss_max": 0.433,
+      "max_height": 2.821,
+      "chatter": 0.003082,
+      "finish_mean": 10.94
+     }
+    },
+    "v2": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 7,
+      "clean": 6,
+      "crashed": 5,
+      "wall": 0,
+      "floor": 6,
+      "ceiling": 0,
+      "contacts": 6,
+      "height_loss_mean": 0.6318,
+      "height_loss_max": 0.806,
+      "max_height": 1.418,
+      "chatter": 0.00576,
+      "finish_mean": 14.11
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 5,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": -0.0467,
+      "height_loss_max": 0.003,
+      "max_height": 1.985,
+      "chatter": 0.002525,
+      "finish_mean": 11.086
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 7,
+      "clean": 6,
+      "crashed": 3,
+      "wall": 1,
+      "floor": 4,
+      "ceiling": 0,
+      "contacts": 5,
+      "height_loss_mean": 0.3391,
+      "height_loss_max": 0.807,
+      "max_height": 1.615,
+      "chatter": 0.005452,
+      "finish_mean": 14.43
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.1177,
+      "height_loss_max": 0.443,
+      "max_height": 2.842,
+      "chatter": 0.003188,
+      "finish_mean": 11.17
+     }
+    },
+    "v1eq": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 7,
+      "clean": 6,
+      "crashed": 2,
+      "wall": 0,
+      "floor": 4,
+      "ceiling": 0,
+      "contacts": 4,
+      "height_loss_mean": 0.4973,
+      "height_loss_max": 0.805,
+      "max_height": 1.9,
+      "chatter": 0.00596,
+      "finish_mean": 13.993
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 5,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": -0.0483,
+      "height_loss_max": 0.003,
+      "max_height": 1.997,
+      "chatter": 0.002522,
+      "finish_mean": 11.09
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 8,
+      "clean": 7,
+      "crashed": 2,
+      "wall": 0,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 3,
+      "height_loss_mean": 0.3036,
+      "height_loss_max": 0.808,
+      "max_height": 1.615,
+      "chatter": 0.005488,
+      "finish_mean": 14.375
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.1093,
+      "height_loss_max": 0.4,
+      "max_height": 3.601,
+      "chatter": 0.003265,
+      "finish_mean": 11.182
+     }
+    },
+    "a": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 8,
+      "clean": 8,
+      "crashed": 3,
+      "wall": 0,
+      "floor": 4,
+      "ceiling": 0,
+      "contacts": 4,
+      "height_loss_mean": 0.5653,
+      "height_loss_max": 0.801,
+      "max_height": 1.619,
+      "chatter": 0.005836,
+      "finish_mean": 14.071
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 5,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": -0.0467,
+      "height_loss_max": 0.003,
+      "max_height": 1.985,
+      "chatter": 0.002525,
+      "finish_mean": 11.086
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 8,
+      "clean": 7,
+      "crashed": 2,
+      "wall": 0,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 3,
+      "height_loss_mean": 0.2936,
+      "height_loss_max": 0.803,
+      "max_height": 1.615,
+      "chatter": 0.005496,
+      "finish_mean": 14.376
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.1177,
+      "height_loss_max": 0.443,
+      "max_height": 2.842,
+      "chatter": 0.003188,
+      "finish_mean": 11.17
+     }
+    }
+   },
+   "brain09b": {
+    "base": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 1,
+      "clean": 1,
+      "crashed": 5,
+      "wall": 11,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 11,
+      "height_loss_mean": 0.1322,
+      "height_loss_max": 0.553,
+      "max_height": 1.219,
+      "chatter": 0.007783,
+      "finish_mean": 12.85
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 6,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.2838,
+      "height_loss_max": 0.593,
+      "max_height": 1.532,
+      "chatter": 0.006358,
+      "finish_mean": 11.052
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.1056,
+      "height_loss_max": 0.412,
+      "max_height": 1.386,
+      "chatter": 0.008271,
+      "finish_mean": null
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 4,
+      "crashed": 1,
+      "wall": 0,
+      "floor": 1,
+      "ceiling": 1,
+      "contacts": 2,
+      "height_loss_mean": 0.3417,
+      "height_loss_max": 1.002,
+      "max_height": 2.394,
+      "chatter": 0.00771,
+      "finish_mean": 11.15
+     }
+    },
+    "v2": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 11,
+      "clean": 10,
+      "crashed": 1,
+      "wall": 0,
+      "floor": 2,
+      "ceiling": 0,
+      "contacts": 2,
+      "height_loss_mean": 0.4308,
+      "height_loss_max": 0.816,
+      "max_height": 1.219,
+      "chatter": 0.010507,
+      "finish_mean": 13.027
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 6,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.2125,
+      "height_loss_max": 0.457,
+      "max_height": 1.529,
+      "chatter": 0.006428,
+      "finish_mean": 11.105
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 10,
+      "clean": 6,
+      "crashed": 2,
+      "wall": 0,
+      "floor": 6,
+      "ceiling": 0,
+      "contacts": 6,
+      "height_loss_mean": 0.6095,
+      "height_loss_max": 0.812,
+      "max_height": 1.339,
+      "chatter": 0.010444,
+      "finish_mean": 13.538
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 5,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 1,
+      "contacts": 1,
+      "height_loss_mean": 0.2612,
+      "height_loss_max": 0.62,
+      "max_height": 2.398,
+      "chatter": 0.006928,
+      "finish_mean": 11.164
+     }
+    },
+    "v1eq": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 9,
+      "clean": 9,
+      "crashed": 3,
+      "wall": 0,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 3,
+      "height_loss_mean": 0.4288,
+      "height_loss_max": 0.808,
+      "max_height": 1.351,
+      "chatter": 0.010948,
+      "finish_mean": 13.017
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 6,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.142,
+      "height_loss_max": 0.39,
+      "max_height": 1.775,
+      "chatter": 0.006503,
+      "finish_mean": 11.16
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 11,
+      "clean": 11,
+      "crashed": 1,
+      "wall": 0,
+      "floor": 1,
+      "ceiling": 0,
+      "contacts": 1,
+      "height_loss_mean": 0.512,
+      "height_loss_max": 0.812,
+      "max_height": 1.326,
+      "chatter": 0.010552,
+      "finish_mean": 13.727
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 2,
+      "contacts": 2,
+      "height_loss_mean": 0.2073,
+      "height_loss_max": 0.543,
+      "max_height": 2.866,
+      "chatter": 0.006895,
+      "finish_mean": 10.992
+     }
+    },
+    "a": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 11,
+      "clean": 11,
+      "crashed": 1,
+      "wall": 0,
+      "floor": 1,
+      "ceiling": 0,
+      "contacts": 1,
+      "height_loss_mean": 0.433,
+      "height_loss_max": 0.805,
+      "max_height": 1.227,
+      "chatter": 0.010314,
+      "finish_mean": 12.999
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 6,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.2125,
+      "height_loss_max": 0.457,
+      "max_height": 1.529,
+      "chatter": 0.006428,
+      "finish_mean": 11.105
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 10,
+      "clean": 9,
+      "crashed": 2,
+      "wall": 0,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 3,
+      "height_loss_mean": 0.5823,
+      "height_loss_max": 0.811,
+      "max_height": 1.321,
+      "chatter": 0.010488,
+      "finish_mean": 13.507
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 5,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 1,
+      "contacts": 1,
+      "height_loss_mean": 0.2612,
+      "height_loss_max": 0.62,
+      "max_height": 2.398,
+      "chatter": 0.006928,
+      "finish_mean": 11.164
+     }
+    }
+   },
+   "brain08": {
+    "base": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 1,
+      "wall": 11,
+      "floor": 1,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.3838,
+      "height_loss_max": 0.811,
+      "max_height": 1.925,
+      "chatter": 0.004801,
+      "finish_mean": null
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 1,
+      "contacts": 1,
+      "height_loss_mean": 0.186,
+      "height_loss_max": 0.27,
+      "max_height": 2.384,
+      "chatter": 0.00314,
+      "finish_mean": 10.798
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 2,
+      "wall": 10,
+      "floor": 3,
+      "ceiling": 0,
+      "contacts": 12,
+      "height_loss_mean": 0.5214,
+      "height_loss_max": 0.809,
+      "max_height": 1.779,
+      "chatter": 0.005301,
+      "finish_mean": null
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.3985,
+      "height_loss_max": 0.736,
+      "max_height": 4.525,
+      "chatter": 0.004023,
+      "finish_mean": 10.768
+     }
+    },
+    "v2": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 8,
+      "wall": 1,
+      "floor": 8,
+      "ceiling": 0,
+      "contacts": 9,
+      "height_loss_mean": 0.7043,
+      "height_loss_max": 0.835,
+      "max_height": 1.566,
+      "chatter": 0.007424,
+      "finish_mean": 13.61
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 1,
+      "contacts": 1,
+      "height_loss_mean": 0.1895,
+      "height_loss_max": 0.272,
+      "max_height": 2.382,
+      "chatter": 0.003123,
+      "finish_mean": 10.758
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 1,
+      "clean": 1,
+      "crashed": 11,
+      "wall": 3,
+      "floor": 9,
+      "ceiling": 0,
+      "contacts": 11,
+      "height_loss_mean": 0.6719,
+      "height_loss_max": 0.807,
+      "max_height": 1.679,
+      "chatter": 0.006653,
+      "finish_mean": 13.64
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.4028,
+      "height_loss_max": 0.735,
+      "max_height": 4.535,
+      "chatter": 0.003958,
+      "finish_mean": 10.683
+     }
+    },
+    "v1eq": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 8,
+      "wall": 1,
+      "floor": 8,
+      "ceiling": 0,
+      "contacts": 9,
+      "height_loss_mean": 0.7058,
+      "height_loss_max": 0.816,
+      "max_height": 1.703,
+      "chatter": 0.008083,
+      "finish_mean": 13.602
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 1,
+      "contacts": 1,
+      "height_loss_mean": 0.1888,
+      "height_loss_max": 0.27,
+      "max_height": 2.395,
+      "chatter": 0.003118,
+      "finish_mean": 10.758
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 1,
+      "clean": 1,
+      "crashed": 10,
+      "wall": 3,
+      "floor": 9,
+      "ceiling": 0,
+      "contacts": 11,
+      "height_loss_mean": 0.6745,
+      "height_loss_max": 0.831,
+      "max_height": 1.903,
+      "chatter": 0.006793,
+      "finish_mean": 13.62
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.398,
+      "height_loss_max": 0.734,
+      "max_height": 4.699,
+      "chatter": 0.004007,
+      "finish_mean": 10.683
+     }
+    },
+    "a": {
+     "hairpin_dev": {
+      "n": 12,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 8,
+      "wall": 1,
+      "floor": 8,
+      "ceiling": 0,
+      "contacts": 9,
+      "height_loss_mean": 0.7043,
+      "height_loss_max": 0.835,
+      "max_height": 1.566,
+      "chatter": 0.007424,
+      "finish_mean": 13.61
+     },
+     "accel_dev": {
+      "n": 6,
+      "finished": 6,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 1,
+      "contacts": 1,
+      "height_loss_mean": 0.1895,
+      "height_loss_max": 0.272,
+      "max_height": 2.382,
+      "chatter": 0.003123,
+      "finish_mean": 10.758
+     },
+     "hairpin_v1gate": {
+      "n": 12,
+      "finished": 1,
+      "clean": 1,
+      "crashed": 11,
+      "wall": 3,
+      "floor": 9,
+      "ceiling": 0,
+      "contacts": 11,
+      "height_loss_mean": 0.6719,
+      "height_loss_max": 0.807,
+      "max_height": 1.679,
+      "chatter": 0.006653,
+      "finish_mean": 13.64
+     },
+     "accel_v1gate": {
+      "n": 6,
+      "finished": 4,
+      "clean": 3,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 3,
+      "contacts": 3,
+      "height_loss_mean": 0.4028,
+      "height_loss_max": 0.735,
+      "max_height": 4.535,
+      "chatter": 0.003958,
+      "finish_mean": 10.683
+     }
+    }
+   }
+  },
+  "quiet_replays_v2": {
+   "straw-brain08-04": {
+    "minutes": 5.45,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.0162,
+    "active_s_per_min": {
+     "request": 2.067,
+     "governor": 0.009,
+     "turn_first": 0.0,
+     "stopping": 1.153
+    },
+    "climb_added_m_per_min": 2.727,
+    "sag_s_per_min": 6.886,
+    "summary": {
+     "seconds": {
+      "request": 11.878,
+      "governor": 2.641,
+      "turn_first": 0.0,
+      "stopping": 6.335,
+      "sag": 37.541
+     },
+     "removed_m": 26.571,
+     "climb_added_m": 14.86
+    }
+   },
+   "straw-brain08-06": {
+    "minutes": 5.45,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.0223,
+    "active_s_per_min": {
+     "request": 2.486,
+     "governor": 0.16,
+     "turn_first": 0.0,
+     "stopping": 1.37
+    },
+    "climb_added_m_per_min": 2.794,
+    "sag_s_per_min": 7.438,
+    "summary": {
+     "seconds": {
+      "request": 14.597,
+      "governor": 4.746,
+      "turn_first": 0.0,
+      "stopping": 7.547,
+      "sag": 40.613
+     },
+     "removed_m": 36.252,
+     "climb_added_m": 15.215
+    }
+   },
+   "straw-brain08-01": {
+    "minutes": 1.27,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.0275,
+    "active_s_per_min": {
+     "request": 2.496,
+     "governor": 0.585,
+     "turn_first": 0.0,
+     "stopping": 1.738
+    },
+    "climb_added_m_per_min": 1.979,
+    "sag_s_per_min": 3.405,
+    "summary": {
+     "seconds": {
+      "request": 3.76,
+      "governor": 1.901,
+      "turn_first": 0.0,
+      "stopping": 2.218,
+      "sag": 4.315
+     },
+     "removed_m": 10.114,
+     "climb_added_m": 2.509
+    }
+   },
+   "straw-brain08-02": {
+    "minutes": 2.74,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.0354,
+    "active_s_per_min": {
+     "request": 4.815,
+     "governor": 0.379,
+     "turn_first": 0.0,
+     "stopping": 1.178
+    },
+    "climb_added_m_per_min": 2.023,
+    "sag_s_per_min": 5.517,
+    "summary": {
+     "seconds": {
+      "request": 14.08,
+      "governor": 5.823,
+      "turn_first": 0.0,
+      "stopping": 3.359,
+      "sag": 15.173
+     },
+     "removed_m": 29.083,
+     "climb_added_m": 5.55
+    }
+   },
+   "straw-brain08-03": {
+    "minutes": 0.99,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.0318,
+    "active_s_per_min": {
+     "request": 3.139,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 2.332
+    },
+    "climb_added_m_per_min": 0.531,
+    "sag_s_per_min": 0.828,
+    "summary": {
+     "seconds": {
+      "request": 3.415,
+      "governor": 1.163,
+      "turn_first": 0.0,
+      "stopping": 2.321,
+      "sag": 0.831
+     },
+     "removed_m": 9.459,
+     "climb_added_m": 0.527
+    }
+   },
+   "pine-brain08-01": {
+    "minutes": 0.3,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.0175,
+    "active_s_per_min": {
+     "request": 4.71,
+     "governor": 0.067,
+     "turn_first": 0.0,
+     "stopping": 0.468
+    },
+    "climb_added_m_per_min": 0.226,
+    "sag_s_per_min": 1.136,
+    "summary": {
+     "seconds": {
+      "request": 1.4,
+      "governor": 0.264,
+      "turn_first": 0.0,
+      "stopping": 0.112,
+      "sag": 0.342
+     },
+     "removed_m": 1.324,
+     "climb_added_m": 0.067
+    }
+   },
+   "pine-brain08-loom-01": {
+    "minutes": 0.16,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.0032,
+    "active_s_per_min": {
+     "request": 1.318,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0
+    },
+    "climb_added_m_per_min": 0.0,
+    "sag_s_per_min": 0.0,
+    "summary": {
+     "seconds": {
+      "request": 0.228,
+      "governor": 0.0,
+      "turn_first": 0.0,
+      "stopping": 0.0,
+      "sag": 0.0
+     },
+     "removed_m": 0.108,
+     "climb_added_m": 0.0
+    }
+   },
+   "minus-brain10b-r4-02": {
+    "minutes": 0.36,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.1261,
+    "active_s_per_min": {
+     "request": 6.175,
+     "governor": 1.391,
+     "turn_first": 0.0,
+     "stopping": 6.787
+    },
+    "climb_added_m_per_min": 0.001,
+    "sag_s_per_min": 0.083,
+    "summary": {
+     "seconds": {
+      "request": 3.669,
+      "governor": 3.063,
+      "turn_first": 0.0,
+      "stopping": 2.888,
+      "sag": 0.032
+     },
+     "removed_m": 11.076,
+     "climb_added_m": 0.001
+    }
+   },
+   "minus-brain09b-r4-01": {
+    "minutes": 0.39,
+    "turn_first": [
+     1,
+     1
+    ],
+    "removed_share": 0.1426,
+    "active_s_per_min": {
+     "request": 2.813,
+     "governor": 0.608,
+     "turn_first": 0.912,
+     "stopping": 8.894
+    },
+    "climb_added_m_per_min": 2.241,
+    "sag_s_per_min": 7.12,
+    "summary": {
+     "seconds": {
+      "request": 2.927,
+      "governor": 3.018,
+      "turn_first": 0.412,
+      "stopping": 4.071,
+      "sag": 2.808
+     },
+     "removed_m": 12.58,
+     "climb_added_m": 0.896
+    }
+   },
+   "minus-brain09b-vg-01": {
+    "minutes": 0.36,
+    "turn_first": [
+     1,
+     1
+    ],
+    "removed_share": 0.1197,
+    "active_s_per_min": {
+     "request": 1.972,
+     "governor": 0.575,
+     "turn_first": 1.671,
+     "stopping": 8.547
+    },
+    "climb_added_m_per_min": 0.925,
+    "sag_s_per_min": 4.246,
+    "summary": {
+     "seconds": {
+      "request": 2.104,
+      "governor": 2.35,
+      "turn_first": 0.632,
+      "stopping": 3.311,
+      "sag": 1.565
+     },
+     "removed_m": 10.487,
+     "climb_added_m": 0.339
+    }
+   },
+   "minus-brain08-vg-01": {
+    "minutes": 0.31,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.152,
+    "active_s_per_min": {
+     "request": 8.77,
+     "governor": 2.598,
+     "turn_first": 0.0,
+     "stopping": 7.082
+    },
+    "climb_added_m_per_min": 0.108,
+    "sag_s_per_min": 1.169,
+    "summary": {
+     "seconds": {
+      "request": 3.803,
+      "governor": 1.938,
+      "turn_first": 0.0,
+      "stopping": 2.696,
+      "sag": 0.358
+     },
+     "removed_m": 12.997,
+     "climb_added_m": 0.033
+    }
+   },
+   "minus-brain08-gapon-01": {
+    "minutes": 0.32,
+    "turn_first": [
+     0,
+     0
+    ],
+    "removed_share": 0.1512,
+    "active_s_per_min": {
+     "request": 9.973,
+     "governor": 3.303,
+     "turn_first": 0.0,
+     "stopping": 6.89
+    },
+    "climb_added_m_per_min": 0.416,
+    "sag_s_per_min": 2.359,
+    "summary": {
+     "seconds": {
+      "request": 4.124,
+      "governor": 2.47,
+      "turn_first": 0.0,
+      "stopping": 2.531,
+      "sag": 0.76
+     },
+     "removed_m": 13.238,
+     "climb_added_m": 0.131
+    }
+   }
+  }
  }
 }

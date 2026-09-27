@@ -12,7 +12,10 @@ fast race-cue pilot with any pilot keyword arguments (the round-4 stack, the des
   (a hairpin). Rings at `height_m`. The marker disappears for `dropout_s` after the R2 pass (the live Minus hairpin: 0.45 s).
   Synthetic looming at 18 Hz, received 0.085 s after capture: the time to contact of the travel ray (horizontal
   velocity direction) with the wall segment, when the ray meets it within 20 m and within 55 deg of the heading
-  (below_fraction 0.5, ttc_lower = ttc: a wall); otherwise no evidence. Scoring only: the wall is a plane the drone
+  (below_fraction 0.5, ttc_lower = ttc: a wall, as the frozen motor-assist gates v1 score it; with
+  ``live_wall_samples=True``, report only, below_fraction None and no lower-surface TTC, as the live Minus Two wall
+  samples: below_fraction was missing in 78-100% of the short-TTC samples of the round-3/4 logs and the lower window
+  explained 0-7% of the brains' ones); otherwise no evidence. Scoring only: the wall is a plane the drone
   contacts when its centre comes within 0.3 m (arm radius) inside the segment, a floor at 0 and a ceiling at
   `ceiling_m` (the Minus Two garage: ~2.2 m).
 - ``accelerate``: stop-then-accelerate. From the ground (launch as above) ring R1 lies `near_m` ahead at `height_m`: the
@@ -158,7 +161,7 @@ def run_scenarios(controller, profile, scenarios, *, flat_governor_ray=False, **
 @torch.no_grad()
 def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=None, seconds=14., seed=17,
                    randomize=.1, dropout=.1, camera_period=.055, camera_latency=.06, delay_steps=3, radius=1.5,
-                   quadratic_drag=.0075, record=False):
+                   quadratic_drag=.0075, record=False, live_wall_samples=False):
     from ..train.fast_motor_tracking import brain_observation
     meta, cfg, brain = controller['meta'], controller['cfg'], controller['brain']
     contract = controller['contract']
@@ -247,8 +250,9 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
                 heading /= max(np.linalg.norm(heading), 1e-9)
                 hit = _wall_hit(positions[i], velocities[i], heading, sc['walls'])
                 sample = (dict(time=now, ttc=None, distance=None, below_fraction=None, ttc_lower=None) if hit is None
-                          else dict(time=now, ttc=hit[0]/hit[1], distance=hit[0], below_fraction=.5,
-                                    ttc_lower=hit[0]/hit[1]))
+                          else dict(time=now, ttc=hit[0]/hit[1], distance=hit[0],
+                                    below_fraction=None if live_wall_samples else .5,
+                                    ttc_lower=None if live_wall_samples else hit[0]/hit[1]))
                 looming[i].append((now+LOOMING_DELAY, sample))
                 next_loom[i] = now+LOOMING_PERIOD
         senses = sim.sensors(state)
