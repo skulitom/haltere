@@ -1,0 +1,490 @@
+{
+ "declaration": "configs/pilot/descent_view.json",
+ "version": 1,
+ "sha256": "8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d",
+ "scope": "open-loop replay of logged flights (the recorded motion does not respond); development evidence, not flight evidence",
+ "region": {
+  "x": [
+   -50.0,
+   -25.0
+  ],
+  "y": [
+   120.0,
+   195.0
+  ],
+  "vy_max": -0.5
+ },
+ "flights": [
+  {
+   "flight": "straw-brain08-04",
+   "downhill_s": 55.11,
+   "replay_fidelity": {
+    "cmd_vs_log_horizontal_p99": 0.0,
+    "state_match": 1.0
+   },
+   "measured": {
+    "horizontal_speed": 3.94,
+    "vz": -0.74,
+    "lower_edge_deg": -13.5,
+    "path_below_edge_fraction": 0.517
+   },
+   "variants": {
+    "baseline": {
+     "request_below_edge_fraction": 0.544,
+     "bounded_path_below_edge_fraction": 0.577,
+     "request_horizontal_speed": 4.06,
+     "request_vz": -0.75,
+     "request_sink_m": 45.2,
+     "request_path_p10_deg": -24.5,
+     "state_seconds": {
+      "cue": 22.08,
+      "below": 28.07,
+      "below_weak": 0.0,
+      "support_climb": 2.37,
+      "coast": 1.65,
+      "side": 0.67
+     }
+    },
+    "descent_view": {
+     "request_below_edge_fraction": 0.075,
+     "bounded_path_below_edge_fraction": 0.35,
+     "request_horizontal_speed": 5.77,
+     "request_vz": -0.5,
+     "request_sink_m": 31.1,
+     "request_path_p10_deg": -10.7,
+     "state_seconds": {
+      "cue": 23.2,
+      "below": 26.94,
+      "below_weak": 0.0,
+      "support_climb": 2.38,
+      "coast": 1.65,
+      "side": 0.67
+     },
+     "limiting_s": 34.81,
+     "boost_s": 7.15,
+     "withheld_sink_m": 40.99
+    }
+   },
+   "support_climb_onsets": [
+    {
+     "t": 72.31,
+     "x": -38.3,
+     "y": 161.3,
+     "z": 21.48,
+     "downhill": true,
+     "lower_edge_deg": -14.4,
+     "baseline": {
+      "request_below_edge_fraction": 0.81,
+      "request_horizontal_speed": 3.2,
+      "request_vz": -1.14,
+      "request_sink_m": 3.4
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.96,
+      "request_vz": -0.56,
+      "request_sink_m": 1.67
+     }
+    },
+    {
+     "t": 176.96,
+     "x": -36.7,
+     "y": 165.2,
+     "z": 22.21,
+     "downhill": true,
+     "lower_edge_deg": -13.2,
+     "baseline": {
+      "request_below_edge_fraction": 0.59,
+      "request_horizontal_speed": 3.8,
+      "request_vz": -0.98,
+      "request_sink_m": 2.92
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.12,
+      "request_horizontal_speed": 5.77,
+      "request_vz": -0.41,
+      "request_sink_m": 1.23
+     }
+    },
+    {
+     "t": 283.4,
+     "x": -38.0,
+     "y": 163.8,
+     "z": 21.95,
+     "downhill": true,
+     "lower_edge_deg": -15.1,
+     "baseline": {
+      "request_below_edge_fraction": 0.76,
+      "request_horizontal_speed": 3.38,
+      "request_vz": -1.06,
+      "request_sink_m": 3.18
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.9,
+      "request_vz": -0.41,
+      "request_sink_m": 1.23
+     }
+    },
+    {
+     "t": 288.48,
+     "x": -36.8,
+     "y": 146.0,
+     "z": 17.94,
+     "downhill": true,
+     "lower_edge_deg": -14.1,
+     "baseline": {
+      "request_below_edge_fraction": 0.82,
+      "request_horizontal_speed": 3.09,
+      "request_vz": -1.3,
+      "request_sink_m": 3.88
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.97,
+      "request_vz": -0.73,
+      "request_sink_m": 2.18
+     }
+    }
+   ]
+  },
+  {
+   "flight": "straw-brain08-06",
+   "downhill_s": 54.88,
+   "replay_fidelity": {
+    "cmd_vs_log_horizontal_p99": 0.0,
+    "state_match": 1.0
+   },
+   "measured": {
+    "horizontal_speed": 3.93,
+    "vz": -0.74,
+    "lower_edge_deg": -13.5,
+    "path_below_edge_fraction": 0.536
+   },
+   "variants": {
+    "baseline": {
+     "request_below_edge_fraction": 0.526,
+     "bounded_path_below_edge_fraction": 0.566,
+     "request_horizontal_speed": 4.02,
+     "request_vz": -0.75,
+     "request_sink_m": 44.6,
+     "request_path_p10_deg": -26.4,
+     "state_seconds": {
+      "cue": 19.26,
+      "below": 29.22,
+      "below_weak": 0.21,
+      "support_climb": 3.55,
+      "coast": 1.53,
+      "side": 0.51
+     }
+    },
+    "descent_view": {
+     "request_below_edge_fraction": 0.068,
+     "bounded_path_below_edge_fraction": 0.336,
+     "request_horizontal_speed": 5.69,
+     "request_vz": -0.49,
+     "request_sink_m": 30.2,
+     "request_path_p10_deg": -10.5,
+     "state_seconds": {
+      "cue": 21.1,
+      "below": 27.4,
+      "below_weak": 0.21,
+      "support_climb": 3.53,
+      "coast": 1.53,
+      "side": 0.51
+     },
+     "limiting_s": 34.14,
+     "boost_s": 8.02,
+     "withheld_sink_m": 42.63
+    }
+   },
+   "support_climb_onsets": [
+    {
+     "t": 71.54,
+     "x": -38.6,
+     "y": 163.4,
+     "z": 21.9,
+     "downhill": true,
+     "lower_edge_deg": -16.0,
+     "baseline": {
+      "request_below_edge_fraction": 0.58,
+      "request_horizontal_speed": 3.63,
+      "request_vz": -1.1,
+      "request_sink_m": 3.3
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.91,
+      "request_vz": -0.44,
+      "request_sink_m": 1.3
+     }
+    },
+    {
+     "t": 76.75,
+     "x": -37.1,
+     "y": 145.1,
+     "z": 17.73,
+     "downhill": true,
+     "lower_edge_deg": -14.1,
+     "baseline": {
+      "request_below_edge_fraction": 0.82,
+      "request_horizontal_speed": 3.06,
+      "request_vz": -1.33,
+      "request_sink_m": 3.96
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.98,
+      "request_vz": -0.75,
+      "request_sink_m": 2.24
+     }
+    },
+    {
+     "t": 177.51,
+     "x": -35.7,
+     "y": 163.7,
+     "z": 21.9,
+     "downhill": true,
+     "lower_edge_deg": -14.6,
+     "baseline": {
+      "request_below_edge_fraction": 0.6,
+      "request_horizontal_speed": 3.97,
+      "request_vz": -1.03,
+      "request_sink_m": 3.1
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.03,
+      "request_horizontal_speed": 5.89,
+      "request_vz": -0.57,
+      "request_sink_m": 1.71
+     }
+    },
+    {
+     "t": 182.98,
+     "x": -35.5,
+     "y": 144.0,
+     "z": 17.43,
+     "downhill": true,
+     "lower_edge_deg": -13.9,
+     "baseline": {
+      "request_below_edge_fraction": 0.82,
+      "request_horizontal_speed": 3.0,
+      "request_vz": -1.38,
+      "request_sink_m": 4.13
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.99,
+      "request_vz": -0.81,
+      "request_sink_m": 2.43
+     }
+    },
+    {
+     "t": 282.63,
+     "x": -36.8,
+     "y": 165.8,
+     "z": 22.31,
+     "downhill": true,
+     "lower_edge_deg": -12.7,
+     "baseline": {
+      "request_below_edge_fraction": 0.62,
+      "request_horizontal_speed": 3.53,
+      "request_vz": -0.99,
+      "request_sink_m": 2.96
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.15,
+      "request_horizontal_speed": 5.72,
+      "request_vz": -0.4,
+      "request_sink_m": 1.19
+     }
+    },
+    {
+     "t": 287.84,
+     "x": -36.1,
+     "y": 147.1,
+     "z": 18.21,
+     "downhill": true,
+     "lower_edge_deg": -13.7,
+     "baseline": {
+      "request_below_edge_fraction": 0.83,
+      "request_horizontal_speed": 3.04,
+      "request_vz": -1.32,
+      "request_sink_m": 3.96
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.98,
+      "request_vz": -0.75,
+      "request_sink_m": 2.26
+     }
+    }
+   ]
+  },
+  {
+   "flight": "straw-brain08-01",
+   "downhill_s": 10.97,
+   "replay_fidelity": {
+    "cmd_vs_log_horizontal_p99": 3.6813,
+    "state_match": 0.9764
+   },
+   "measured": {
+    "horizontal_speed": 3.67,
+    "vz": -0.59,
+    "lower_edge_deg": -16.7,
+    "path_below_edge_fraction": 0.164
+   },
+   "variants": {
+    "baseline": {
+     "request_below_edge_fraction": 0.193,
+     "bounded_path_below_edge_fraction": 0.409,
+     "request_horizontal_speed": 4.66,
+     "request_vz": -0.52,
+     "request_sink_m": 6.9,
+     "request_path_p10_deg": -18.9,
+     "state_seconds": {
+      "cue": 5.95,
+      "below": 1.74,
+      "below_weak": 0.53,
+      "support_climb": 1.8,
+      "coast": 0.52,
+      "side": 0.0
+     }
+    },
+    "descent_view": {
+     "request_below_edge_fraction": 0.064,
+     "bounded_path_below_edge_fraction": 0.158,
+     "request_horizontal_speed": 5.72,
+     "request_vz": -0.63,
+     "request_sink_m": 7.1,
+     "request_path_p10_deg": -11.2,
+     "state_seconds": {
+      "cue": 7.71,
+      "below": 1.74,
+      "below_weak": 0.53,
+      "support_climb": 0.0,
+      "coast": 0.56,
+      "side": 0.0
+     },
+     "limiting_s": 7.63,
+     "boost_s": 1.45,
+     "withheld_sink_m": 4.25
+    }
+   },
+   "support_climb_onsets": [
+    {
+     "t": 71.22,
+     "x": -35.9,
+     "y": 163.2,
+     "z": 21.82,
+     "downhill": true,
+     "lower_edge_deg": -12.7,
+     "baseline": {
+      "request_below_edge_fraction": 0.71,
+      "request_horizontal_speed": 3.57,
+      "request_vz": -1.04,
+      "request_sink_m": 3.09
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.23,
+      "request_horizontal_speed": 5.74,
+      "request_vz": -0.86,
+      "request_sink_m": 2.58
+     }
+    },
+    {
+     "t": 72.86,
+     "x": -35.6,
+     "y": 157.8,
+     "z": 20.68,
+     "downhill": true,
+     "lower_edge_deg": -16.7,
+     "baseline": {
+      "request_below_edge_fraction": 0.38,
+      "request_horizontal_speed": 4.06,
+      "request_vz": -0.73,
+      "request_sink_m": 2.55
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.98,
+      "request_vz": -0.78,
+      "request_sink_m": 2.34
+     }
+    },
+    {
+     "t": 74.48,
+     "x": -35.2,
+     "y": 153.4,
+     "z": 19.69,
+     "downhill": true,
+     "lower_edge_deg": -21.0,
+     "baseline": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.12,
+      "request_vz": -0.41,
+      "request_sink_m": 1.92
+     },
+     "descent_view": {
+      "request_below_edge_fraction": 0.0,
+      "request_horizontal_speed": 5.97,
+      "request_vz": -0.87,
+      "request_sink_m": 2.59
+     }
+    }
+   ]
+  },
+  {
+   "flight": "straw-fast6-03",
+   "downhill_s": 54.61,
+   "replay_fidelity": {
+    "cmd_vs_log_horizontal_p99": 2.2382,
+    "state_match": 1.0
+   },
+   "measured": {
+    "horizontal_speed": 3.9,
+    "vz": -0.73,
+    "lower_edge_deg": -13.5,
+    "path_below_edge_fraction": 0.522
+   },
+   "variants": {
+    "baseline": {
+     "request_below_edge_fraction": 0.659,
+     "bounded_path_below_edge_fraction": 0.636,
+     "request_horizontal_speed": 3.22,
+     "request_vz": -1.13,
+     "request_sink_m": 61.8,
+     "request_path_p10_deg": -59.6,
+     "state_seconds": {
+      "cue": 17.84,
+      "below": 34.81,
+      "below_weak": 0.0,
+      "support_climb": 0.0,
+      "coast": 0.13,
+      "side": 1.83
+     }
+    },
+    "descent_view": {
+     "request_below_edge_fraction": 0.392,
+     "bounded_path_below_edge_fraction": 0.524,
+     "request_horizontal_speed": 5.81,
+     "request_vz": -0.96,
+     "request_sink_m": 52.5,
+     "request_path_p10_deg": -16.7,
+     "state_seconds": {
+      "cue": 17.84,
+      "below": 34.81,
+      "below_weak": 0.0,
+      "support_climb": 0.0,
+      "coast": 0.13,
+      "side": 1.83
+     },
+     "limiting_s": 32.44,
+     "boost_s": 8.78,
+     "withheld_sink_m": 42.37
+    }
+   },
+   "support_climb_onsets": []
+  }
+ ]
+}

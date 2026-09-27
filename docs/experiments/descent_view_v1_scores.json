@@ -1,0 +1,522 @@
+{
+ "gates_file": "configs/pilot/descent_view_gates.json",
+ "gates_version": 1,
+ "gates_sha256": "d2b1e4bb312f1aa29f1fe2843d8b3bb55184ace6e6f0e1ed07ad49eb6e41e030",
+ "descent_view": {
+  "file": "configs/pilot/descent_view.json",
+  "version": 1,
+  "sha256": "8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d",
+  "commit": "67d013b"
+ },
+ "scope": "measured surrogate (IdentifiedSim) on seeded synthetic courses with scoring-only hills; development evidence, not flight evidence",
+ "controllers": {
+  "pd": {
+   "gates": {
+    "contacts_reduced": {
+     "threshold": ">= 75% fewer than the baseline, and no course with contacts where the baseline had none",
+     "baseline": 22,
+     "result": 11,
+     "reduction": 0.5,
+     "new_contact_courses": [],
+     "contact_s": {
+      "baseline": 97.19,
+      "result": 15.17
+     },
+     "pass": false
+    },
+    "crashes_not_more": {
+     "threshold": "<= baseline",
+     "baseline": 0,
+     "result": 0,
+     "pass": true
+    },
+    "finishes_not_fewer": {
+     "threshold": ">= baseline",
+     "baseline": 28,
+     "result": 28,
+     "pass": true
+    },
+    "path_below_view": {
+     "threshold": "<= 5% of the descent time",
+     "baseline": 0.4864,
+     "result": 0.3646,
+     "descent_s": {
+      "baseline": 343.9,
+      "result": 316.7
+     },
+     "pass": false
+    },
+    "path_below_view_viewable": {
+     "threshold": "<= 5% of the descent time on hill legs no steeper than 12 deg",
+     "baseline": 0.063,
+     "result": 0.0518,
+     "descent_s": {
+      "baseline": 96.3,
+      "result": 94.8
+     },
+     "pass": false
+    },
+    "high_passes": {
+     "threshold": "<= baseline + 1",
+     "baseline": 2,
+     "result": 13,
+     "pass": false
+    },
+    "course_time": {
+     "threshold": "paired mean <= baseline x 1.03",
+     "baseline": 60.71,
+     "result": 55.2,
+     "paired": 20,
+     "ratio": 0.9093,
+     "pass": true
+    },
+    "flat_unchanged": {
+     "threshold": "same finishes and crashes, paired mean time within +-2%",
+     "baseline": {
+      "finished": 8,
+      "crashed": 0,
+      "mean_s": 52.76
+     },
+     "result": {
+      "finished": 8,
+      "crashed": 0,
+      "mean_s": 50.5
+     },
+     "paired": 8,
+     "ratio": 0.9571,
+     "pass": false
+    }
+   },
+   "report": {
+    "stick_chatter": {
+     "baseline": 0.0058,
+     "result": 0.0053
+    },
+    "support_climbs": {
+     "baseline": 0,
+     "result": 9
+    },
+    "per_set": {
+     "steep:3000-3007": {
+      "baseline": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 7,
+       "contact_s": 51.85,
+       "descent_s": 110.29,
+       "below_view_s": 74.34,
+       "below_view_fraction": 0.674,
+       "high_passes": 1,
+       "mean_finish_s": 68.99
+      },
+      "result": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 2,
+       "contact_s": 1.29,
+       "descent_s": 113.96,
+       "below_view_s": 55.91,
+       "below_view_fraction": 0.4906,
+       "high_passes": 6,
+       "mean_finish_s": 64.04
+      }
+     },
+     "hill:6000-6011": {
+      "baseline": {
+       "courses": 12,
+       "finished": 12,
+       "crashed": 0,
+       "contacts": 15,
+       "contact_s": 45.34,
+       "descent_s": 233.56,
+       "below_view_s": 92.91,
+       "below_view_fraction": 0.3978,
+       "high_passes": 1,
+       "mean_finish_s": 55.19
+      },
+      "result": {
+       "courses": 12,
+       "finished": 12,
+       "crashed": 0,
+       "contacts": 9,
+       "contact_s": 13.88,
+       "descent_s": 202.77,
+       "below_view_s": 59.56,
+       "below_view_fraction": 0.2937,
+       "high_passes": 5,
+       "mean_finish_s": 49.31
+      }
+     },
+     "flat:3000-3007": {
+      "baseline": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 0,
+       "contact_s": 0,
+       "descent_s": 34.47,
+       "below_view_s": 9.53,
+       "below_view_fraction": 0.2765,
+       "high_passes": 0,
+       "mean_finish_s": 52.76
+      },
+      "result": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 0,
+       "contact_s": 0,
+       "descent_s": 35.33,
+       "below_view_s": 8.04,
+       "below_view_fraction": 0.2276,
+       "high_passes": 2,
+       "mean_finish_s": 50.5
+      }
+     }
+    }
+   },
+   "passed": false
+  },
+  "brain08": {
+   "gates": {
+    "contacts_reduced": {
+     "threshold": ">= 75% fewer than the baseline, and no course with contacts where the baseline had none",
+     "baseline": 26,
+     "result": 8,
+     "reduction": 0.692,
+     "new_contact_courses": [],
+     "contact_s": {
+      "baseline": 105.16,
+      "result": 21.45
+     },
+     "pass": false
+    },
+    "crashes_not_more": {
+     "threshold": "<= baseline",
+     "baseline": 0,
+     "result": 0,
+     "pass": true
+    },
+    "finishes_not_fewer": {
+     "threshold": ">= baseline",
+     "baseline": 28,
+     "result": 28,
+     "pass": true
+    },
+    "path_below_view": {
+     "threshold": "<= 5% of the descent time",
+     "baseline": 0.5598,
+     "result": 0.5327,
+     "descent_s": {
+      "baseline": 417.8,
+      "result": 432.8
+     },
+     "pass": false
+    },
+    "path_below_view_viewable": {
+     "threshold": "<= 5% of the descent time on hill legs no steeper than 12 deg",
+     "baseline": 0.1507,
+     "result": 0.1997,
+     "descent_s": {
+      "baseline": 118.4,
+      "result": 112.8
+     },
+     "pass": false
+    },
+    "high_passes": {
+     "threshold": "<= baseline + 1",
+     "baseline": 1,
+     "result": 24,
+     "pass": false
+    },
+    "course_time": {
+     "threshold": "paired mean <= baseline x 1.03",
+     "baseline": 65.39,
+     "result": 67.71,
+     "paired": 20,
+     "ratio": 1.0354,
+     "pass": false
+    },
+    "flat_unchanged": {
+     "threshold": "same finishes and crashes, paired mean time within +-2%",
+     "baseline": {
+      "finished": 8,
+      "crashed": 0,
+      "mean_s": 55.8
+     },
+     "result": {
+      "finished": 8,
+      "crashed": 0,
+      "mean_s": 55.88
+     },
+     "paired": 8,
+     "ratio": 1.0014,
+     "pass": true
+    }
+   },
+   "report": {
+    "stick_chatter": {
+     "baseline": 0.00292,
+     "result": 0.00322
+    },
+    "support_climbs": {
+     "baseline": 0,
+     "result": 0
+    },
+    "per_set": {
+     "steep:3000-3007": {
+      "baseline": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 8,
+       "contact_s": 32.85,
+       "descent_s": 139.69,
+       "below_view_s": 100.55,
+       "below_view_fraction": 0.7198,
+       "high_passes": 1,
+       "mean_finish_s": 71.6
+      },
+      "result": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 2,
+       "contact_s": 2.83,
+       "descent_s": 156.95,
+       "below_view_s": 96.19,
+       "below_view_fraction": 0.6129,
+       "high_passes": 8,
+       "mean_finish_s": 76.56
+      }
+     },
+     "hill:6000-6011": {
+      "baseline": {
+       "courses": 12,
+       "finished": 12,
+       "crashed": 0,
+       "contacts": 18,
+       "contact_s": 72.31,
+       "descent_s": 278.12,
+       "below_view_s": 133.36,
+       "below_view_fraction": 0.4795,
+       "high_passes": 0,
+       "mean_finish_s": 61.25
+      },
+      "result": {
+       "courses": 12,
+       "finished": 12,
+       "crashed": 0,
+       "contacts": 6,
+       "contact_s": 18.62,
+       "descent_s": 275.81,
+       "below_view_s": 134.34,
+       "below_view_fraction": 0.4871,
+       "high_passes": 14,
+       "mean_finish_s": 61.81
+      }
+     },
+     "flat:3000-3007": {
+      "baseline": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 0,
+       "contact_s": 0,
+       "descent_s": 39.56,
+       "below_view_s": 15.24,
+       "below_view_fraction": 0.3852,
+       "high_passes": 0,
+       "mean_finish_s": 55.8
+      },
+      "result": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 0,
+       "contact_s": 0,
+       "descent_s": 38.35,
+       "below_view_s": 10.31,
+       "below_view_fraction": 0.2688,
+       "high_passes": 2,
+       "mean_finish_s": 55.88
+      }
+     }
+    }
+   },
+   "passed": false
+  },
+  "brain09b": {
+   "gates": {
+    "contacts_reduced": {
+     "threshold": ">= 75% fewer than the baseline, and no course with contacts where the baseline had none",
+     "baseline": 26,
+     "result": 16,
+     "reduction": 0.385,
+     "new_contact_courses": [],
+     "contact_s": {
+      "baseline": 65.96,
+      "result": 23.24
+     },
+     "pass": false
+    },
+    "crashes_not_more": {
+     "threshold": "<= baseline",
+     "baseline": 0,
+     "result": 0,
+     "pass": true
+    },
+    "finishes_not_fewer": {
+     "threshold": ">= baseline",
+     "baseline": 28,
+     "result": 28,
+     "pass": true
+    },
+    "path_below_view": {
+     "threshold": "<= 5% of the descent time",
+     "baseline": 0.5349,
+     "result": 0.4579,
+     "descent_s": {
+      "baseline": 305.8,
+      "result": 351.1
+     },
+     "pass": false
+    },
+    "path_below_view_viewable": {
+     "threshold": "<= 5% of the descent time on hill legs no steeper than 12 deg",
+     "baseline": 0.1896,
+     "result": 0.2865,
+     "descent_s": {
+      "baseline": 78.9,
+      "result": 88.4
+     },
+     "pass": false
+    },
+    "high_passes": {
+     "threshold": "<= baseline + 1",
+     "baseline": 3,
+     "result": 17,
+     "pass": false
+    },
+    "course_time": {
+     "threshold": "paired mean <= baseline x 1.03",
+     "baseline": 62.69,
+     "result": 63.13,
+     "paired": 20,
+     "ratio": 1.0069,
+     "pass": true
+    },
+    "flat_unchanged": {
+     "threshold": "same finishes and crashes, paired mean time within +-2%",
+     "baseline": {
+      "finished": 8,
+      "crashed": 0,
+      "mean_s": 55.72
+     },
+     "result": {
+      "finished": 8,
+      "crashed": 0,
+      "mean_s": 55.42
+     },
+     "paired": 8,
+     "ratio": 0.9946,
+     "pass": true
+    }
+   },
+   "report": {
+    "stick_chatter": {
+     "baseline": 0.00532,
+     "result": 0.00525
+    },
+    "support_climbs": {
+     "baseline": 0,
+     "result": 5
+    },
+    "per_set": {
+     "steep:3000-3007": {
+      "baseline": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 10,
+       "contact_s": 27.17,
+       "descent_s": 112.45,
+       "below_view_s": 77.86,
+       "below_view_fraction": 0.6924,
+       "high_passes": 1,
+       "mean_finish_s": 68.98
+      },
+      "result": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 7,
+       "contact_s": 6.14,
+       "descent_s": 122.78,
+       "below_view_s": 60.11,
+       "below_view_fraction": 0.4896,
+       "high_passes": 4,
+       "mean_finish_s": 71.2
+      }
+     },
+     "hill:6000-6011": {
+      "baseline": {
+       "courses": 12,
+       "finished": 12,
+       "crashed": 0,
+       "contacts": 16,
+       "contact_s": 38.79,
+       "descent_s": 193.3,
+       "below_view_s": 85.69,
+       "below_view_fraction": 0.4433,
+       "high_passes": 2,
+       "mean_finish_s": 58.5
+      },
+      "result": {
+       "courses": 12,
+       "finished": 12,
+       "crashed": 0,
+       "contacts": 9,
+       "contact_s": 17.1,
+       "descent_s": 228.27,
+       "below_view_s": 100.62,
+       "below_view_fraction": 0.4408,
+       "high_passes": 11,
+       "mean_finish_s": 57.75
+      }
+     },
+     "flat:3000-3007": {
+      "baseline": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 0,
+       "contact_s": 0,
+       "descent_s": 38.66,
+       "below_view_s": 10.2,
+       "below_view_fraction": 0.2638,
+       "high_passes": 0,
+       "mean_finish_s": 55.72
+      },
+      "result": {
+       "courses": 8,
+       "finished": 8,
+       "crashed": 0,
+       "contacts": 0,
+       "contact_s": 0,
+       "descent_s": 37.39,
+       "below_view_s": 9.8,
+       "below_view_fraction": 0.2621,
+       "high_passes": 2,
+       "mean_finish_s": 55.42
+      }
+     }
+    }
+   },
+   "passed": false
+  }
+ },
+ "all_passed": false
+}

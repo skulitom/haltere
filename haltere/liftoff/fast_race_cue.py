@@ -725,6 +725,76 @@ def vertical_guard_config(declaration):
     return VerticalGuardConfig(**declaration['vertical_guard'])
 
 
+# The descent-view declaration version whose rule this code implements (DescentViewConfig); runners refuse others.
+DESCENT_VIEW_VERSION = 1
+# States whose horizontal request follows the speed schedule toward the ring (the view rule may restore it).
+DESCENT_VIEW_BOOST_STATES = ('cue', 'below', 'below_weak')
+
+
+@dataclass(frozen=True)
+class DescentViewConfig:
+    """View-keeping descent of the fast pilot. Off unless a runner passes it (the descent-view declaration in configs/pilot).
+
+    The camera looks 30 degrees up with a 42 degree vertical half field of view, so its lower image edge lies about
+    12 degrees below the body x axis. A drag-light quadrotor flies level at race speed with the nose within a few
+    degrees of level, so in steady flight a descent steeper than about 12-14 degrees points below the image: no camera
+    cue sees the ground the drone descends toward. On the Straw Bale downhill the default pilot slowed to half speed
+    for every bottom-clipped ring (the brake pitched the nose 10-20 degrees up, which lifted the lower image edge and
+    clipped rings that lay only 5-10 degrees down), then asked for 20-30 degree descents at 3 m/s and sank into the
+    ~12 degree hillside. This rule keeps the flight path in view instead, and steepens beyond it only late:
+    1. View bound: the pilot's own requested sink is bounded so that the flight path, made of the MEASURED horizontal
+       velocity and the requested vertical speed, points at least margin_deg (cue_margin_deg while the ring is in
+       view) inside the camera's lower image edge at the MEASURED attitude (the exact projection through the
+       calibrated camera, roll included). The lowest in-view vertical speed per 1 m/s of horizontal speed is low-passed
+       with attitude_time_constant: the pitch of a lagging motor oscillates, and a bound that followed it would drive
+       the oscillation. A slower or nose-up (braking) drone may sink less; a hovering drone sinks at most free_sink.
+       A climb is never changed.
+    2. Keep speed: a ring clipped at the bottom edge does not lower the horizontal request (below_speed_fraction of
+       the schedule instead of FastCueConfig.below_speed_fraction; 1 keeps the schedule), and the descent-path
+       governor is not fed while the view bound withholds sink and never cuts below descent_min_scale.
+    3. More speed, not less: while the bound withholds sink toward a ring ahead (states cue, below, below_weak), the
+       horizontal request rises toward the speed schedule's (at most the declared speed), all the way once boost_sink
+       is withheld: a faster drone descends further in view, and accelerating pitches the nose down.
+    4. Throttle up: the requested sink grows at up to sink_acceleration m/s^2 (instead of the pilot's 5 m/s^2), so the
+       motors are not asked for deep throttle cuts to start a descent.
+    5. Steep late: a ring that stays clipped below (the pilot's unbroken bottom clip) for more than late_after_s lies
+       more steeply below than the view allows; the margin then falls at late_rate_deg_s, down to late_max_deg below
+       the lower image edge, so a steep leg is flown shallow first (in view, where a convex crest follows the upper
+       checkpoint) and steep late (toward the lower checkpoint) instead of steep from the start.
+    Reads only the measured attitude, velocity, the ring cue and the camera calibration: no height above ground, no
+    course geometry. Declaration version 1.
+    """
+    margin_deg: float = 3.
+    free_sink: float = .3
+    below_speed_fraction: float = 1.
+    descent_min_scale: float = .75
+    boost_sink: float = .3
+    sink_acceleration: float = 2.5
+    attitude_time_constant: float = 1.
+    cue_margin_deg: float = 3.
+    late_after_s: float = .75
+    late_rate_deg_s: float = 6.
+    late_max_deg: float = 20.
+
+    def __post_init__(self):
+        values = list(asdict(self).values())
+        if not np.isfinite(values).all() or min(values) < 0:
+            raise ValueError('Use finite non-negative descent-view parameters')
+        if not 0 < self.below_speed_fraction <= 1 or not 0 < self.descent_min_scale <= 1:
+            raise ValueError('below_speed_fraction and descent_min_scale are fractions in (0, 1]')
+        if not max(self.margin_deg, self.cue_margin_deg, self.late_max_deg) < 40 or not self.sink_acceleration > 0:
+            raise ValueError('Use view margins below 40 degrees and a positive sink acceleration')
+
+
+def descent_view_config(declaration):
+    """The DescentViewConfig of a descent-view declaration already parsed (and hash-checked) by the runner; refuses
+    another rule version. This module reads no files."""
+    if (declaration or {}).get('version') != DESCENT_VIEW_VERSION:
+        raise ValueError(f'The descent-view declaration is version {(declaration or {}).get("version")}; the fast '
+                         f'pilot implements version {DESCENT_VIEW_VERSION}')
+    return DescentViewConfig(**declaration['descent_view'])
+
+
 class TtcClearanceGovernor:
     """Graded speed cap along the looming ray and a terrain climb from TTC samples.
 
@@ -1042,7 +1112,7 @@ class FastRaceCue:
     def __init__(self, sensor, pose_history, speed=6., *, reference_speed=2., config=None,
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
-                 ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True):
+                 ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -1149,6 +1219,17 @@ class FastRaceCue:
         self.vertical_target = float('nan')    # the vertical request the guard makes (applied or, in shadow, intended)
         self.vertical_limiting = False         # the applied guard withheld part of the pilot's sink this tick
         self.vertical_time = dict(limiting=0., arrest=0., climb=0.)
+        # View-keeping descent (off unless declared): see DescentViewConfig.
+        if descent_view is not None and not isinstance(descent_view, DescentViewConfig):
+            raise ValueError('Pass a DescentViewConfig (or None) for the view-keeping descent')
+        self.descent_view = descent_view
+        self.schedule_speed = float('nan')     # the speed schedule's horizontal speed toward the ring this tick
+        self.view_bound = float('nan')         # the largest sink keeping the path in view this tick
+        self.view_withheld = 0.                # sink the view bound withheld from the pilot's own request this tick
+        self.view_boost = False                # the horizontal request was raised to the speed schedule this tick
+        self.view_time = dict(limiting=0., boost=0.)
+        self.view_withheld_integral = 0.       # metres of sink withheld (integral of view_withheld)
+        self.view_slope = None                 # low-passed lowest vertical speed per 1 m/s of horizontal speed in view
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -1256,6 +1337,7 @@ class FastRaceCue:
 
     def _desired(self, position, velocity, yaw, now):
         c = self.config
+        self.schedule_speed = float('nan')
         horizontal_speed = np.linalg.norm(velocity[:2])
         if self.direction is None:
             return np.array([0., 0., 1.5 if self.launching else 0.]), 'wait'
@@ -1283,6 +1365,7 @@ class FastRaceCue:
         alignment = max(0., float(reference @ dh))
         fraction = c.min_speed_fraction+(1-c.min_speed_fraction)*alignment**2
         speed = self.speed*fraction
+        self.schedule_speed = float(speed)
         slope = d[2]/max(np.linalg.norm(d[:2]), 1e-6)
         if self.below:
             # The target lies below the lower image edge, i.e. at least as steep
@@ -1291,7 +1374,9 @@ class FastRaceCue:
             # follow terrain down a hill, and forward pitch soon brings the
             # marker back into view. Weight the response by the evidence.
             w = self.below_weight
-            horizontal = speed*(1-w)+min(speed, max(c.edge_speed, c.below_speed_fraction*speed))*w
+            below_fraction = (c.below_speed_fraction if self.descent_view is None
+                              else self.descent_view.below_speed_fraction)
+            horizontal = speed*(1-w)+min(speed, max(c.edge_speed, below_fraction*speed))*w
             clipped_s = max(0., now-self.below_since) if self.below_since is not None else 0.
             margin = min(c.below_slope_margin_max_deg, c.below_slope_margin_deg+c.below_slope_growth_deg_s*clipped_s)
             sink = min(c.vertical_down, horizontal*np.tan(np.radians(min(self.edge_depression+margin, 80.))))
@@ -1602,6 +1687,20 @@ class FastRaceCue:
             # or hill. Sink gently near and above that plane; the support rule
             # below still recognises contact because the cap exceeds 0.8 m/s.
             desired[2] = max(desired[2], -min(c.vertical_down, c.surface_sink+c.surface_sink_per_m*max(0., position[2])))
+        dv = self.descent_view
+        if dv is not None:
+            # View-keeping descent (DescentViewConfig): bound the pilot's own sink so that the flight path stays inside
+            # the camera's lower field of view, given the measured attitude and horizontal velocity.
+            margin = dv.cue_margin_deg if state == 'cue' else dv.margin_deg
+            if dv.late_max_deg > 0 and state == 'below' and self.below_since is not None:
+                late = dv.late_rate_deg_s*max(0., now-self.below_since-dv.late_after_s)
+                margin = max(-dv.late_max_deg, margin-late)
+            self.view_bound = self._view_sink_bound(velocity, rotation, margin, yaw, dt)
+            self.view_withheld = max(0., float(-desired[2])-self.view_bound)
+            if self.view_withheld > 0:
+                desired[2] = -self.view_bound
+            self.view_withheld_integral += dt*self.view_withheld
+            self.view_time['limiting'] += dt*(self.view_withheld > 0)
         # Descent path angle: a vehicle that keeps falling short of the requested
         # sink rate would pass above a lower checkpoint. Slow horizontally in
         # proportion so the flight path keeps the requested slope. A vehicle
@@ -1612,12 +1711,24 @@ class FastRaceCue:
         contact = (self.vertical_guard is not None and self.vertical_apply
                    and (self.support_since is not None or self.slope_support_since is not None))
         if (self.velocity_command is not None and self.velocity_command[2] < -c.descent_sink and not self.launching
-                and not self.vertical_limiting and not contact):
+                and not self.vertical_limiting and not contact and not (dv is not None and self.view_withheld > 0)):
             shortfall = max(0., float(velocity[2]-self.velocity_command[2]))
         self.descent_shortfall += (1-np.exp(-dt/c.descent_time_constant))*(shortfall-self.descent_shortfall)
         self.descent_scale = float(np.clip(1-(self.descent_shortfall-c.descent_free)/c.descent_span,
-                                           c.descent_min_scale, 1.))
+                                           c.descent_min_scale if dv is None else max(c.descent_min_scale,
+                                                                                      dv.descent_min_scale), 1.))
         desired[:2] *= self.descent_scale
+        self.view_boost = False
+        if (dv is not None and self.view_withheld > 0 and state in DESCENT_VIEW_BOOST_STATES
+                and not self.launching and np.isfinite(self.schedule_speed)):
+            # More speed, not less: a ring below needs a steeper path than the view allows at this speed. The horizontal
+            # request rises toward the speed schedule's in proportion to the withheld sink (all of it at boost_sink).
+            norm = float(np.linalg.norm(desired[:2]))
+            if 1e-6 < norm < self.schedule_speed:
+                share = min(1., self.view_withheld/max(dv.boost_sink, 1e-9))
+                desired[:2] *= (norm+share*(self.schedule_speed-norm))/norm
+                self.view_boost = True
+                self.view_time['boost'] += dt
         # Support: a requested descent the vehicle cannot achieve means contact
         # below (terrain or an object), not a controller fault. Climb briefly.
         if self.climb_until is not None and now < self.climb_until:
@@ -1726,6 +1837,9 @@ class FastRaceCue:
             up = max(up, self.clearance.vertical.arrest_acceleration)
         down = (c.vertical_command_acceleration if vertical_cap is None
                 else max(c.vertical_command_acceleration, self.clearance.ceiling.vertical_slew))
+        if dv is not None and vertical_cap is None and self.velocity_command[2] <= 0:
+            # Throttle up: a descent starts at up to sink_acceleration (no deep throttle cut).
+            down = min(down, dv.sink_acceleration)
         step[2] = np.clip(step[2], -down*dt, up*dt)
         previous = self.velocity_command.copy()
         self.velocity_command = self.velocity_command+step
@@ -1801,6 +1915,66 @@ class FastRaceCue:
         if self.clearance_shadow is not None and self.clearance_shadow.vertical is not None:
             return self.clearance_shadow
         return None
+
+    def _view_sink_bound(self, velocity, rotation, margin_deg=None, yaw=0., dt=0.):
+        """Largest sink (m/s, at least free_sink) at which the flight path made of the measured horizontal velocity and
+        that sink points margin_deg inside the camera's lower image edge, at the measured attitude (DescentViewConfig).
+
+        In camera coordinates (y down, z along the optical axis) the path's direction per 1 m/s of horizontal speed is
+        a + vz*b, with a the measured horizontal direction and b the world vertical; it lies inside the lower edge by
+        the margin when y/z <= kappa = tan(atan(cy/f) - margin), which is linear in vz. The lowest vz per 1 m/s of
+        horizontal speed is low-passed with attitude_time_constant (the attitude of a lagging motor oscillates), then
+        scaled by the measured horizontal speed. Below 0.5 m/s the heading replaces the velocity direction."""
+        dv = self.descent_view
+        margin = dv.margin_deg if margin_deg is None else margin_deg
+        speed = float(np.hypot(velocity[0], velocity[1]))
+        direction = (np.array([velocity[0], velocity[1], 0.])/speed if speed > .5
+                     else np.array([np.cos(yaw), np.sin(yaw), 0.]))
+        to_cam = self.camera.body_to_cam() @ np.asarray(rotation, float).T
+        a, b = to_cam @ direction, to_cam @ np.array([0., 0., 1.])
+        kappa = float(np.tan(np.arctan(self.camera.cy/self.camera.f)-np.radians(margin)))
+        den = kappa*float(b[2])-float(b[1])
+        # the lowest vertical speed per 1 m/s of horizontal speed with the path in view (0 when the camera cannot help)
+        lowest = (float(a[1])-kappa*float(a[2]))/den if den > 1e-6 else 0.
+        if self.view_slope is None or dv.attitude_time_constant <= 0:
+            self.view_slope = lowest
+        else:
+            self.view_slope += (1-np.exp(-dt/dv.attitude_time_constant))*(lowest-self.view_slope)
+        return float(max(dv.free_sink, -speed*self.view_slope))
+
+    def descent_view_log(self):
+        """Per-tick view-keeping values for logs (NaN when the rule is not declared): the sink bound, the sink withheld
+        from the pilot's own request, and whether the horizontal request was raised (1/0)."""
+        if self.descent_view is None:
+            nan = float('nan')
+            return dict(view_sink_bound=nan, view_withheld=nan, view_boost=nan)
+        return dict(view_sink_bound=float(self.view_bound), view_withheld=float(self.view_withheld),
+                    view_boost=float(self.view_boost))
+
+    def descent_view_summary(self):
+        """Seconds limiting and boosting and metres of sink withheld (None when the rule is not declared)."""
+        if self.descent_view is None:
+            return None
+        return dict(seconds={k: round(v, 3) for k, v in self.view_time.items()},
+                    withheld_m=round(self.view_withheld_integral, 3))
+
+    def _descent_view_metadata(self):
+        if self.descent_view is None:
+            return None
+        return dict(
+            version=DESCENT_VIEW_VERSION,
+            rule='view bound: the pilot\'s own requested sink is bounded so that the flight path (measured horizontal '
+                 'velocity, requested vertical speed) points margin_deg (cue_margin_deg with the ring in view) inside '
+                 'the camera\'s lower image edge at the measured attitude (exact projection, roll included; the lowest '
+                 'in-view vertical speed per 1 m/s low-passed with attitude_time_constant), at least free_sink; keep '
+                 'speed: a bottom-clipped ring keeps below_speed_fraction of the speed schedule, the descent-path '
+                 'governor is not fed while the bound withholds sink and never cuts below descent_min_scale; more speed: '
+                 'while the bound withholds sink toward a ring ahead (cue, below, below_weak) the horizontal request '
+                 'rises toward the speed schedule\'s (fully at boost_sink); throttle up: the requested sink grows at up '
+                 'to sink_acceleration; steep late: after late_after_s of unbroken bottom clip the margin falls at '
+                 'late_rate_deg_s down to late_max_deg below the lower image edge',
+            input='measured attitude and velocity and the camera calibration; no height above ground, no course geometry',
+            parameters=asdict(self.descent_view), **self.descent_view_summary())
 
     @staticmethod
     def _guard_vertical(governor, pilot, climb, velocity):
@@ -1941,7 +2115,7 @@ class FastRaceCue:
                     no_evidence='no constraint beyond dead-reckoned memory unless blind_after_s is finite')
 
     def metadata(self):
-        return dict(mode='race-cue', profile=self.profile,
+        out = dict(mode='race-cue', profile=self.profile,
                     goal_source='visible next-checkpoint ring with local flag clearance',
                     visible_race_cues=True, runtime_route_oracle=False,
                     local_flag_clearance=True, visible_route_arrows_for_clearance_side=True,
@@ -2017,3 +2191,6 @@ class FastRaceCue:
                         counts=dict(self.clearance.counts),
                         status_seconds={k: round(v, 3) for k, v in self.clearance_time.items()}),
                     limitations='Race guidance only; no freestyle objective, obstacle model or completed-lap inference')
+        if self.descent_view is not None:
+            out['descent_view'] = self._descent_view_metadata()     # absent when the rule is off (default unchanged)
+        return out

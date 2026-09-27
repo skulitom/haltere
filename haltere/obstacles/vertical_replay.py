@@ -84,9 +84,10 @@ def variant_tag(stack, wall, vertical, stream):
     return f'{stack}-w{walls}-v{vertical}'+('-stream' if stream else '')
 
 
-def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None):
+def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
-    whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json)."""
+    whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
+    optional DescentViewConfig added to any variant."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -117,13 +118,16 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None):
         kw['vertical_apply'] = verticals == 'on' and applied
     if not applied:
         kw.update(lag_turn_apply=False, gap_apply=False)
+    if descent_view is not None:
+        kw['descent_view'] = descent_view
     pa = side['pilot_assistance']
     speed = float(pa.get('nominal_speed_mps') or 6.)
     reference = float(pa.get('trained_motor_reference_mps') or speed)
     yaw_curve = tuple(pa.get('yaw_curve') or frc.DEFAULT_YAW_CURVE)
     pilot = frc.FastRaceCue(side['gate_sensor'], CameraPoseHistory(), speed, reference_speed=reference,
                             yaw_curve=yaw_curve, calibration=CALIBRATION, **kw)
-    return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals)
+    return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
+                       descent_view=descent_view is not None)
 
 
 def _near_on_path(value):
@@ -136,17 +140,17 @@ def _near_on_path(value):
 
 
 def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
-           gap_pilot=None, near_on_path=False):
+           gap_pilot=None, near_on_path=False, descent_view=None):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
     carry the logged near_on_path, as the live camera's samples did (the default None keeps the earlier replays;
-    the version 2 gap aim never reads it)."""
+    the version 2 gap aim never reads it). ``descent_view``: an optional DescentViewConfig added to any variant."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
     side = json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
-    pilot, info = build(side, tree, stack, wall, vertical, gap_pilot)
+    pilot, info = build(side, tree, stack, wall, vertical, gap_pilot, descent_view)
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['near_on_path'] = bool(near_on_path)
     history = pilot.pose_history
@@ -166,6 +170,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
             'vertical_factor', 'vertical_arrest', 'vertical_stage', 'vertical_climb', 'turn_first', 'side_guard',
             'gap_target', 'gap_applied', 'gap_offset', 'gap_mode', 'gap_commit', 'gap_conflict', 'gap_ring',
             'gap_sample_time', 'gap_shift', 'gap_kind', 'gap_near_on_path')
+    if descent_view is not None:
+        keys += ('view_sink_bound', 'view_withheld', 'view_boost')
     rows = {k: [] for k in keys}
     last_ts = None
     nan = float('nan')
@@ -241,6 +247,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                           else float(gap['near_on_path']))
         else:
             values.update(gap_mode='', gap_conflict='', gap_kind='')
+        if descent_view is not None:
+            values.update(pilot.descent_view_log())
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}
