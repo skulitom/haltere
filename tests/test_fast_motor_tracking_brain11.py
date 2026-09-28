@@ -30,9 +30,10 @@ def run(caps, seconds=6., velocity=(6., 0., 0.)):
 def test_default_caps_record_and_event_stream_are_the_brain10_ones():
     config = SyntheticCapsConfig()
     record = caps_record(config)
-    assert set(record) == set(asdict(config))-{'climb_share', 'climb', 'climb_s'}
+    brain12 = {'brake_rate_max', 'release_max'}   # brain-12 rate ranges: recorded only when on
+    assert set(record) == set(asdict(config))-{'climb_share', 'climb', 'climb_s'}-brain12
     assert caps_record(None) is None
-    assert set(caps_record(SyntheticCapsConfig(climb_share=.5))) == set(asdict(config))
+    assert set(caps_record(SyntheticCapsConfig(climb_share=.5))) == set(asdict(config))-brain12
     every = SyntheticCapsConfig(rate_per_min=6000., absolute_share=1., absolute=(2., 2.), hold_s=(1., 1.))
     caps = SyntheticCaps(every, np.random.default_rng(3), pilot())
     ticks = run(caps)

@@ -34,6 +34,17 @@ brain-11 parts (configs/brain11_gates.json; a gate file without their tests does
 - in_course_caps2: in_course_caps with another declared cap configuration (e.g. wider rays and climbing caps).
 - full_pilot: the deployed pilot (--obstacle-stack on --descent-view on) in the descent surrogate.
 
+brain-12 parts (configs/brain12_gates.json; run only when declared, so earlier gate files run as before):
+- capped_turns_right / accelerate_right: capped_turns / accelerate with other declared cases (the mirror images of the
+  brain-11 cases: turns and bearings to the right).
+- r4b_windows: round-4b live windows replayed from their logged states: a hairpin approach (speed over the capped
+  request and at the logged impact, with and without the motor assist computed from the surrogate's state) and a
+  downhill (height kept at the live contact along the live path, horizontal speed kept on the descent).
+- hairpins: the motor-assist harness's hairpin scenarios (haltere.liftoff.motor_assist_eval) under the deployed pilot,
+  with and without the motor assist.
+- full_pilot with `motor_assist: true` flies the deployed pilot with the motor assist (--motor-assist on); regression16
+  with declared `seeds`, `groups` and `sim_seed` runs the pinned harness on those courses.
+
 usage: python -m haltere.train.brake_gates CHECKPOINT|pd --gates configs/brain09_gates.json --out report.json
        [--parts hover,live,swaps,rollout_speed,in_course_caps,evaluation8,regression16,audit] [--run RUN_DIR]
 """
@@ -66,6 +77,8 @@ META_KEYS = ('frozen', 'frozen_at', 'sha256')
 PARTS = ('hover', 'live', 'swaps', 'rollout_speed', 'in_course_caps', 'evaluation8', 'regression16', 'audit')
 # brain-11 parts: run by default only when the gate file declares their tests (a brain-09/10 file runs PARTS only)
 NEW_PARTS = ('r4_windows', 'swaps_delayed', 'capped_turns', 'accelerate', 'in_course_caps2', 'full_pilot')
+# brain-12 parts: likewise run only when the gate file declares their tests
+PARTS12 = ('capped_turns_right', 'accelerate_right', 'r4b_windows', 'hairpins')
 DT = .01
 CONTRACT_KEYS = ('nominal_speed_mps', 'goal_seconds', 'velocity_scale', 'vertical_goal_seconds')
 
@@ -790,10 +803,13 @@ def full_pilot_tests(ctl, profile, spec):
     contract) in the descent surrogate (haltere.liftoff.descent_rehearsal.run_batch: scoring-only hills, contacts,
     passes high above a checkpoint), on the declared course sets. Per set: its summary; overall: finishes and crashes
     of all courses, contacts on the terrain sets, high passes, stick chatter over the flat and steep courses and the
-    mean finish time of the steep and hill sets."""
+    mean finish time of the steep and hill sets. With `motor_assist: true` (brain-12) the pilot also carries the motor
+    assist of the contract (--motor-assist on; the fast PD has no entry)."""
     from ..liftoff import descent_rehearsal as dr
     from .deployed_pilot import deployed_pilot_kwargs
-    kwargs, record = deployed_pilot_kwargs(spec['contract_brain'] if ctl.kind == 'brain' else spec['contract_pd'])
+    assist = dict(motor_assist=True) if spec.get('motor_assist') else {}
+    kwargs, record = deployed_pilot_kwargs(spec['contract_brain'] if ctl.kind == 'brain' else spec['contract_pd'],
+                                           **assist)
     controller = dict(kind=ctl.kind, meta=ctl.meta, cfg=ctl.cfg, brain=ctl.brain if ctl.kind == 'brain' else None,
                       contract=ctl.contract if ctl.kind == 'brain' else None)
     out = dict(declarations=record, sets={})
@@ -822,6 +838,123 @@ def full_pilot_tests(ctl, profile, spec):
                           stick_chatter_16=round(float(np.mean([r['stick_chatter'] for r in smooth])), 5),
                           mean_finish_terrain_s=round(float(np.mean([r['finish_s'] for r in timed])), 2) if timed else None)
     return out
+
+
+def _controller_dict(ctl):
+    return dict(kind=ctl.kind, meta=ctl.meta, cfg=ctl.cfg, brain=ctl.brain if ctl.kind == 'brain' else None,
+                contract=ctl.contract if ctl.kind == 'brain' else None)
+
+
+def hairpin_tests(ctl, profile, spec):
+    """brain-12: the motor-assist harness's hairpin scenarios (haltere.liftoff.motor_assist_eval.hairpin_set of the
+    declared parameter set, sim seed, seconds) under the deployed pilot for the motor contract, per declared variant:
+    'assist' (--motor-assist on: the contract's motor assist) or 'no_assist'. Per variant: the scenario counts of
+    haltere.liftoff.motor_assist_gates.scenario_counts (clean = finished without a wall, floor, ceiling contact or a crash)
+    and per-scenario rows."""
+    from ..liftoff import motor_assist_eval as mae
+    from ..liftoff.motor_assist_gates import scenario_counts
+    from .deployed_pilot import deployed_pilot_kwargs
+    contract = spec['contract_brain'] if ctl.kind == 'brain' else spec['contract_pd']
+    scenarios = mae.hairpin_set(spec['set'])
+    out = {}
+    for variant in spec['variants']:
+        if variant not in ('assist', 'no_assist'):
+            raise ValueError(f'Unknown hairpin variant {variant}')
+        kwargs, record = deployed_pilot_kwargs(contract, motor_assist=variant == 'assist')
+        rows, _ = mae.run_scenarios(_controller_dict(ctl), profile, scenarios, pilot_kwargs=kwargs,
+                                    seconds=spec['seconds'], seed=spec['sim_seed'])
+        keep = ('params', 'finished', 'crashed', 'finish_s', 'wall_contact', 'wall_contact_speed', 'floor_contact',
+                'ceiling_contact', 'min_height_m', 'max_height_m', 'min_wall_gap_m', 'stick_chatter')
+        out[variant] = dict(declarations=record, assist_applied='motor_assist' in kwargs, counts=scenario_counts(rows),
+                            rows=[{k: r.get(k) for k in keep} for r in rows])
+        time.sleep(spec.get('rest_s', 0.))
+    return out
+
+
+def _nearest_along(path_xy, points_xy):
+    """Index of the nearest point of `path_xy` (N, 2) for each of `points_xy` (M, 2)."""
+    d = ((points_xy[:, None, :]-path_xy[None, :, :])**2).sum(-1)
+    return d.argmin(1)
+
+
+def r4b_window_tests(ctl, profile, spec, reference_contract):
+    """brain-12: round-4b live windows replayed from the logged state (brain warmed on the recorded inputs; the PD's
+    stick filter on the logged trajectory), with the logged world request (all three axes) and the logged yaw stick
+    (replay_window), for this controller, FastMotorPD, FastMotorPD with `extra_delay_ticks` of added command delay and
+    the logged commands open loop (plant validity), against the live flight. Offline scoring only: the logged positions
+    locate the live contact.
+
+    - kind 'hairpin' (t0 .. t_end, the tick 0.05 s before the logged impact): |v_h| at t_end and the mean speed excess
+      |v_h| - |request_h| over [cap_t + skip_s, t_end]. With `assist` the same window is also flown with the motor
+      assist of the contract applied to the logged pilot's own request with the binding caps of an open-loop replay of
+      the logged pilot through the flown stack (haltere.liftoff.motor_assist_eval.live_window); the PD has no entry.
+    - kind 'downhill' (t0 .. t_end, the live contact starting at contact_t0): for each replayed tick the nearest live
+      position (horizontal) of the window; the height margin over the live contact onset = the lowest replayed height
+      minus the live height at the nearest live point, over the ticks whose nearest live point lies within `onset_s` of
+      contact_t0 (the live drone touched the ground there, before the ground held it up: > 0 passes above it; None
+      when the replay never comes near it); and the mean horizontal speed shortfall
+      |request_h| - |v_h| and sink excess request_z - v_z over [t0 + skip_s, contact_t0) (keeping speed on the
+      descent)."""
+    _check_recorded_contract(ctl, reference_contract)
+    rows, flights = [], {}
+    modes = (('controller', 'controller', 0), ('pd', 'pd', 0), ('pd_delayed', 'pd', spec.get('extra_delay_ticks', 0)),
+             ('logged', 'logged', 0))
+    for w in spec['windows']:
+        name = w['flight']
+        flight = flights.setdefault(name, Flight(spec['flights_dir'], name))
+        k0, k_end = flight.index(float(w['t0'])), flight.index(float(w['t_end']))
+        H = k_end-k0+1
+        request, _, _ = _window_inputs(flight, k0, H)
+        live_pos = flight.d[['x', 'y', 'z']].to_numpy(float)[k0+1:k0+1+H]
+        live_vel = flight.vel[k0+1:k0+1+H]
+        row = dict(name=w['name'], kind=w['kind'], flight=name, t0=round(float(flight.t[k0]), 3),
+                   t_end=round(float(flight.t[k_end]), 3), span_s=round(H*DT, 2))
+        tracks = {'live': (live_pos, live_vel)}
+        for tag, mode, extra in modes:
+            tracks[tag] = replay_window(ctl, profile, flight, k0, H, mode, warm_s=spec['warm_s'], extra_delay=extra)
+        if w['kind'] == 'hairpin' and w.get('assist') and ctl.kind == 'brain':
+            from ..liftoff import motor_assist_eval as mae
+            from ..liftoff import visual_brain as vb
+            from ..liftoff.fast_race_cue import motor_assist_for_contract
+            declaration, digest = vb.load_motor_assist()
+            assist = motor_assist_for_contract(declaration, spec['contract_brain'])
+            arrays, sources, _ = mae.window_sources(name, str(Path(__file__).resolve().parents[2]), declaration,
+                                                    spec['flights_dir'])
+            res = mae.live_window(ctl, profile, flight, float(flight.t[k0]), H*DT+1e-6, assist=assist, arrays=arrays,
+                                  sources=sources, warm_s=spec['warm_s'])
+            row['assist_declaration'] = dict(version=declaration.get('version'), sha256=digest)
+            tracks['controller_assist'] = (res['pos'][:H], res['vel'][:H])
+        t = flight.t[k0+1:k0+1+H]
+        for tag, (pos, vel) in tracks.items():
+            n = min(len(vel), H)
+            vh = np.linalg.norm(vel[:n, :2], axis=-1)
+            rh = np.linalg.norm(request[:n, :2], axis=-1)
+            if w['kind'] == 'hairpin':
+                c0 = int(np.searchsorted(t[:n], float(w['cap_t'])+float(w.get('skip_s', 0.))))
+                row[f'{tag}_speed_end'] = round(float(vh[n-1]), 3)
+                row[f'{tag}_capped_excess'] = round(float((vh[c0:n]-rh[c0:n]).mean()), 3) if c0 < n else None
+                row[f'{tag}_min_z'] = round(float(pos[:n, 2].min()), 3)
+            else:
+                # the live contact onset: live points within onset_s of contact_t0 (before the ground held the drone up)
+                lo, hi = (float(w['contact_t0'])+float(a) for a in w['onset_s'])
+                c0 = int(np.searchsorted(flight.t[k0+1:k0+1+H], lo))
+                c1 = int(np.searchsorted(flight.t[k0+1:k0+1+H], hi))
+                nearest = _nearest_along(live_pos[:, :2], pos[:n, :2])
+                touch = (nearest >= c0) & (nearest <= c1)
+                margin = pos[:n, 2]-live_pos[nearest, 2]
+                c0 = int(np.searchsorted(flight.t[k0+1:k0+1+H], float(w['contact_t0'])))
+                s0 = int(np.searchsorted(t[:n], float(flight.t[k0])+float(w.get('skip_s', 0.))))
+                s1 = min(c0, n)
+                row[f'{tag}_contact_margin'] = round(float(margin[touch].min()), 3) if touch.any() else None
+                row[f'{tag}_reached_contact'] = bool(touch.any())
+                row[f'{tag}_speed_shortfall'] = round(float((rh[s0:s1]-vh[s0:s1]).mean()), 3) if s0 < s1 else None
+                row[f'{tag}_sink_excess'] = (round(float((request[s0:s1, 2]-vel[s0:s1, 2]).mean()), 3)
+                                             if s0 < s1 else None)
+        for key in ('speed_end', 'contact_margin'):
+            if row.get(f'logged_{key}') is not None and row.get(f'live_{key}') is not None:
+                row[f'logged_minus_live_{key}'] = round(row[f'logged_{key}']-row[f'live_{key}'], 3)
+        rows.append(row)
+    return rows
 
 
 def _courses(spec):
@@ -912,6 +1045,13 @@ def regression16(ctl, spec, out_dir, tree):
     env = dict(os.environ, HALTERE_TREE=str(tree), OMP_NUM_THREADS='2', CUDA_VISIBLE_DEVICES='')
     cmd = [sys.executable, str(harness), '--out', str(result), '--controllers', ctl.kind, '--checkpoint', ctl.path,
            '--trace', str(trace), '--rest', '0', '--label', spec.get('label', 'brake-gates')]
+    # brain-12: declared course seeds, groups and sim seed (absent: the harness defaults, as every earlier gate file)
+    if 'seeds' in spec:
+        cmd += ['--seeds', *(str(int(s)) for s in spec['seeds'])]
+    if 'groups' in spec:
+        cmd += ['--groups', ','.join(f'{name}:{steep}' for name, steep in spec['groups'])]
+    if 'sim_seed' in spec:
+        cmd += ['--sim-seed', str(int(spec['sim_seed']))]
     subprocess.run(cmd, check=True, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     summary = json.loads(result.read_text())['controllers'][ctl.kind]
     bins = summary['switch_bins']
@@ -1039,10 +1179,10 @@ def main():
         previous = json.loads(out.read_text())
         if (previous.get('tests_sha256') == report['tests_sha256'] and previous.get('source_sha256') == report['source_sha256']
                 and previous.get('checkpoint_sha256') == report['checkpoint_sha256']):
-            report.update({k: v for k, v in previous.items() if k in PARTS+NEW_PARTS})
-    parts = [p for p in args.parts.split(',') if p] or [*PARTS, *(p for p in NEW_PARTS if p in tests)]
+            report.update({k: v for k, v in previous.items() if k in PARTS+NEW_PARTS+PARTS12})
+    parts = [p for p in args.parts.split(',') if p] or [*PARTS, *(p for p in NEW_PARTS+PARTS12 if p in tests)]
     for part in parts:
-        if part not in PARTS+NEW_PARTS:
+        if part not in PARTS+NEW_PARTS+PARTS12:
             raise ValueError(f'Unknown part {part}')
         begin = time.time()
         if part == 'hover':
@@ -1073,6 +1213,15 @@ def main():
             report['in_course_caps2'] = in_course_caps(ctl, profile, tests['in_course_caps2'])
         elif part == 'full_pilot':
             report['full_pilot'] = full_pilot_tests(ctl, profile, tests['full_pilot'])
+        elif part == 'capped_turns_right':
+            report['capped_turns_right'] = capped_turn_tests(ctl, profile, tests['capped_turns_right'],
+                                                             reference_contract)
+        elif part == 'accelerate_right':
+            report['accelerate_right'] = accelerate_tests(ctl, profile, tests['accelerate_right'])
+        elif part == 'r4b_windows':
+            report['r4b_windows'] = r4b_window_tests(ctl, profile, tests['r4b_windows'], reference_contract)
+        elif part == 'hairpins':
+            report['hairpins'] = hairpin_tests(ctl, profile, tests['hairpins'])
         report['timing'][part] = round(time.time()-begin, 1)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(report, indent=1, default=float))
