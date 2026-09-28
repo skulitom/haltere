@@ -1,0 +1,75 @@
+{
+ "schema": "haltere.liftoff.motor_assist.v1",
+ "version": 1,
+ "note": "Pilot-level help for lagging brain motor contracts (haltere.liftoff.fast_race_cue.MotorAssistConfig; visual_brain --motor-assist on|off|DECLARATION, off by default, recorded in the flight-log sidecar under pilot_assistance.motor_assist and motor_assist_declaration; CSV columns assist_pilot_vx/vy/vz, assist_horizontal, assist_vertical, assist_source only when on). Declared per motor contract, never per course or per brain: the entry of the brain contract (fast_velocity_brain_v1: fast-brain-08, fast-brain-09b and fast-brain-10b) applies to every brain of that contract; the fast PD contract has no entry and flies bit-identically with the flag on. Generic and causal: it reads the measured velocity, the pilot's own rule states (its final request, the looming governor's cap and samples, turn-first, the ceiling guard's overhead bound) and nothing of the course: no geometry, route, logged position or per-course value. It answers the round-4 live failures on Minus Two (2026-09-27): fast-brain-10b flew 5.1-5.2 m/s under 3.6 m/s governor caps into the hairpin wall (minus-brain10b-r4-02), and fast-brain-09b, stopped short of that wall by turn-first v4, sank from 0.78 to 0.06 m while it accelerated out of the stop toward a 4.9 m/s request with a level vertical request (minus-brain09b-r4-01). Those two live logs were inspected to design the rule: any replay of them is development evidence. The values were chosen in two development rounds on development scenario sets only (see development_results), never on the gate sets of configs/pilot/motor_assist_gates.json, which were frozen with this declaration before any gate run. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze, and every version is reported. Surrogate results and open-loop replays are development evidence, never flight evidence.",
+ "rule": "Both parts act on the pilot's final request (after every other rule and the command slews); the motor receives the assisted request while the pilot keeps its own request as its state (its rules read that on the next tick). The support rule and the descent-path shortfall compare the measured vertical speed with the vertical request the motor received. (1) Cap tracking: for each binding cap of cap_sources - 'request' (the pilot's final horizontal request itself in the pilot states request_states: the speed schedule, side and bottom-edge speeds and every cap already applied; bound = its magnitude, direction = its direction), 'governor' (the looming governor's cap along the horizontal part of its ray while it bounds the request), 'turn_first' (a turn-first episode or side guard: no speed toward the wall, and the creep bound), 'stopping' (while stop_confirm wall samples - not below-path terrain - with a TTC under stop_ttc_s arrived within stop_window_s and the newest looming sample with evidence is one of them: the speed from which the motor stops within the remaining distance to the governor's latest wall sample, v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m, applied as a bound itself) - the measured horizontal speed along its direction beyond bound + cap_deadband lowers the bound by cap_gain x (excess - cap_deadband), at most cap_max, the extra reduction moving at up to cap_rise/cap_fall m/s^2; the request never reverses along its own direction and points away from a wall by at most cap_reverse. (2) Sag compensation: the vertical request rises by sag_gain x (final vertical request - measured vertical speed - sag_deadband) when positive, plus sag_lead_gain x (|assisted horizontal request - measured horizontal velocity| - sag_lead_deadband) when positive while the measured horizontal speed is at most sag_lead_max_speed; nothing while the drone climbs more than sag_climb_margin faster than the request; at most sag_max, moving at up to sag_rise/sag_fall m/s^2; not while launching or in a support climb; never above the pilot's vertical_up nor the ceiling guard's overhead bound.",
+ "contracts": {
+  "fast_velocity_brain_v1": {
+   "cap_sources": [
+    "request",
+    "governor",
+    "turn_first",
+    "stopping"
+   ],
+   "request_states": [
+    "cue",
+    "below",
+    "below_weak",
+    "side"
+   ],
+   "cap_deadband": 0.3,
+   "cap_gain": 2.0,
+   "cap_max": 3.0,
+   "cap_reverse": 1.0,
+   "cap_rise": 8.0,
+   "cap_fall": 8.0,
+   "stop_ttc_s": 1.3,
+   "stop_confirm": 2,
+   "stop_window_s": 0.25,
+   "stop_latency_s": 0.3,
+   "stop_deceleration": 3.5,
+   "stop_margin_m": 0.5,
+   "sag_deadband": 0.3,
+   "sag_gain": 1.0,
+   "sag_lead_gain": 0.3,
+   "sag_lead_deadband": 0.5,
+   "sag_lead_max_speed": 2.5,
+   "sag_climb_margin": 0.3,
+   "sag_max": 1.0,
+   "sag_rise": 5.0,
+   "sag_fall": 2.0
+  },
+  "fast_velocity_pd_v1": null
+ },
+ "parameter_notes": {
+  "cap_tracking": "cap_deadband 0.3 m/s ignores speed noise and small lags; cap_gain 2 and cap_max 3 m/s (development sweeps with the other parts as in attempt 1: gain 1.5 was no better for fast-brain-10b, 9 of 12 development hairpins finished either way, and worse for brain-08, 1 against 5; gain 3 with cap_rise 15 m/s^2, without the stopping source, gave brain-09b 4 floor contacts in 12); cap_rise/cap_fall 8 m/s^2 keep the change below the clearance brake_slew (15 m/s^2); cap_reverse 1 m/s bounds a reversal away from a wall (a scripted full stop from 5.5 m/s already makes fast-brain-10b climb 0.55 m, brake.json; a reversal pitches it further back). request_states are the states in which the pilot's request points at a checkpoint it sees (not coast, search, launch, above or support climb).",
+  "stopping": "stop_latency_s 0.3 s and stop_deceleration 3.5 m/s^2 are the wall pilot v4's measured stopping model of this contract (brain-09b on minus-brain09b-vg-01; configs/obstacles/wall_pilot.json turn_first_stopping), stop_margin_m its 0.5 m. stop_ttc_s 1.3 s is the governor's hold_ttc_s/ttc_target and stop_confirm/stop_window_s its 2 samples in 0.25 s (the governor itself needs 3 below 0.8 s): the governor's TTC thresholds were chosen for the fast PD, and a brain that follows 0.3 s late must start braking about 1 s before a wall at 5-6 m/s. The newest-sample condition ends the bound as soon as a clear sample arrives (a gate arch flown through leaves a remaining distance of 0, which would otherwise ask for a stop). Without this source every brain hit every development hairpin wall (v1_nostop in development_results).",
+  "sag": "live logs at < 2.5 m/s horizontal speed: the vertical shortfall (request 0.25 s earlier minus measured) grows with the horizontal lead the pilot asks the motor to accelerate by: brain-08 +0.56-0.73 m/s at 0.5-3 m/s lead (1.7 above 3), brain-09b 0.16 at 1-2 and 0.52 at 2-3, the fast PD 0.17 and 0.47; brain-09b's r4 episode lost 0.71 m at a 57 deg tilt with a +0.09 m/s mean vertical request. sag_lead_gain 0.3 per m/s of lead beyond 0.5 m/s, only at <= 2.5 m/s (at race speed a lead is a turn, not an acceleration from rest; without the speed bound the development hairpins gained ceiling contacts), plus the feedback sag_gain 1 beyond a 0.3 m/s deadband; sag_max 1 m/s, rise 5 m/s^2, fall 2 m/s^2.",
+  "support_rule": "the pilot's support rule (ground contact: a requested descent the vehicle does not achieve) and the descent-path shortfall compare the measured vertical speed with the vertical request the motor received: a sink the assist withheld is not the vehicle failing to descend. With the assist off that request is the pilot's own (bit-identical)."
+ },
+ "lever_evidence": {
+  "question": "height kept while accelerating from low speed: bound the growth of the horizontal request, or add a climb bias?",
+  "surrogate": "stop-then-accelerate from the logged state of minus-brain09b-r4-01 at the turn-first release (22.95 s, brain warmed on the recorded inputs) and from a hover, horizontal request to 5 m/s, level vertical request, 3 s (session scratchpad m4b/assist/accel.json, attempt 1). Height lost: brain-09b from the log 1.61 m with the pilot's slew, 0.86 / 1.35 / 1.59 m with the horizontal request slewed at 1.5 / 2.5 / 4 m/s^2 (1.2-2.3 s slower to 4 m/s or never), 1.15 / 1.21 m with the request at most 0.75 / 1.5 m/s above the measured speed (0.75 stalled the brain), and 1.19 / 0.85 / 0.33 m with a 0.3 / 0.6 / 1.0 m/s climb bias at the pilot's own slew; from a hover 1.28 m, slews 0.88-1.38 m, bias 1.01 / 0.65 / 0.03 m. brain-08 from the log: 2.51 m, slews 2.20-2.47, bias 1.87 / 1.24 / 0.61. fast-brain-10b: 0.87 m from the log, bias 0.56 / 0.34 / 0.05. The climb bias cuts the loss monotonically for every brain without slowing the acceleration; the slew bound is inconsistent and costs 0.4-2 s. The rule therefore holds a climb bias; it does not bound the horizontal request growth.",
+  "live_logs": "session scratchpad m4b/assist/r2/sag_logs.json (see sag above)"
+ },
+ "not_included": {
+  "governor_horizontal": "attempt 1 also applied the looming governor's cap to the horizontal request only (development hairpins finished by fast-brain-10b 7 -> 9-10 of 12, its floor contacts 3-4 -> 0). That is the round-4b contact fix of the clearance brake along an up-tilted ray (minus-fast6-r4-02), owned by another branch, and is not duplicated here; the gates' report-only hairpin_flatray part shows how the two compose",
+  "turn_first_max_speed": "raising turn-first's 3.5 m/s engagement limit for this contract (considered as the task asked): with the stopping source it changed nothing or added floor contacts in development (brain-10b 7 -> 6/12, brain-09b 12 -> 12/12 finished; without the stopping source brain-10b 1/12 with 7 floor contacts: a hard stop from race speed makes a brain climb, then sink). The stopping source bounds the approach speed instead",
+  "climb_compensation": "lowering the vertical request while a braking brain climbs faster than asked: development hairpins finished brain-09b 11 -> 9 and fast-brain-10b 10 -> 9 of 12 (attempt 1, g4 -> g7); left out",
+  "tilt_term": "a climb bias of 1/cos(tilt) - 1 while sinking: development hairpins finished fast-brain-10b 7 -> 4 and brain-09b 12 -> 10 of 12 (attempt 1, s1 -> s1t); left out",
+  "horizontal_slew_bound": "see lever_evidence"
+ },
+ "development_results": {
+  "scope": "attempt 1 (uncommitted, cut off by a usage limit; its sweeps are disclosed as development runs): repro.json (the surrogate reproduces both live failures), accel.json, brake.json, sweep1-6.jsonl (hairpin_dev: turn 20/60/90 deg x arch 7/11 m x wall 2.1/2.6 m, accel_dev: height 0.8/1.2 m x bearing 0/90/150 deg, sim seed 17; 18 variants), dev16/ (flat and steep 5000-5007, brain-10b and brain-09b). Attempt 2: devcheck.jsonl, the same development sets, this version and ablations. None of these sets or seeds is a gate set.",
+  "repro": "logged world request replayed from the logged state (brain warmed on the recorded inputs): minus-brain10b-r4-02 from 20.2 s: speed at the window end 4.85 m/s (live 4.93); from 17.8 s: 5.00 (live 5.03), min height 0.71 (live 0.72). minus-brain09b-r4-01 from 22.95 s: lowest height 0.06 m (live 0.08). The logged commands replayed open loop: 4.87 m/s and 0.07 m. The surrogate reproduces both failures",
+  "this_version_hairpin_dev": "clean passes (finished, no contact) of 12: fast-brain-10b 0 -> 8 (walls 12 -> 0, floor 0 -> 3), brain-09b 0 -> 11 (walls 12 -> 0, floor 0 -> 1), brain-08 0 -> 4 (walls 11 -> 1, floor 1 -> 7)",
+  "this_version_accel_dev": "mean height loss brain-09b 0.284 -> 0.142 m; brain-08 0.186 -> 0.189; fast-brain-10b -0.03 -> -0.05 (it does not sag here); finishes and contacts unchanged",
+  "ablations_hairpin_dev_clean": "without the stopping source 0 / 0 / 0 (brain-10b / 09b / 08; every wall hit); without the lead bias 7 / 12 / 3; without any sag compensation 4 / 5 / 1 (floor contacts 6 / 7 / 9)",
+  "floor_contacts_left": "traced (attempt 2, trace_10b.txt): after the stop, the governor's stand-off cap along a looming ray captured while the braking brain climbed (ray z 0.72) cut the pilot's own vertical request to -1.8 m/s as it re-accelerated toward the next ring; the brain followed it to the floor. This is the up-tilted-ray brake the round-4b contact fix addresses, not the assist",
+  "dev16_attempt1": "flat and steep 5000-5007 with a close variant (attempt 1's g7, which also had governor_horizontal and a climb compensation): fast-brain-10b 16/16 finished, no crash, chatter 0.00274 -> 0.0028 (flat) and 0.00286 -> 0.0029 (steep), mean finish 59.86 -> 59.84 s and 64.03 -> 64.01 s, contacts 1 -> 1, high passes 9 -> 6 (steep)"
+ },
+ "previous_versions": [],
+ "frozen": true,
+ "frozen_at": "2026-09-27T16:51:07",
+ "sha256": "eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02"
+}

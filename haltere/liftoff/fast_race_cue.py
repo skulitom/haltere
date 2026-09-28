@@ -49,6 +49,12 @@ the path scales the pilot's own sink, a descent is stopped before any terrain cl
 confirmation and stays gentle until rising ground is confirmed, and the descent-path governor does not cut speed
 for a sink the guard withheld or that contact prevents. ``vertical_apply`` False computes and logs it without
 applying it.
+
+Optionally (``motor_assist=MotorAssistConfig``, off by default; declared per motor contract in
+configs/pilot, for the brain contract only), the request a lagging brain receives is adjusted after
+every other rule: speed it flies beyond a binding cap lowers that cap in proportion (and a stopping model bounds the
+speed toward a confirmed wall), and a bounded climb bias is added while it sinks below its vertical request or is asked
+to accelerate hard from low speed. The pilot keeps its own request as its state.
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -917,6 +923,118 @@ def contact_support_config(declaration):
     if declaration['version'] < 2:
         return None
     return ContactSupportConfig(**declaration['contact_support'])
+# The motor-assist declaration version whose rule this code implements (MotorAssistConfig); runners refuse others.
+MOTOR_ASSIST_VERSION = 1
+# The binding caps whose direction cap tracking can follow (MotorAssistConfig.cap_sources).
+MOTOR_ASSIST_SOURCES = ('request', 'governor', 'turn_first', 'stopping')
+# Pilot states whose own vertical request the sag compensation leaves alone (they own the vertical request).
+MOTOR_ASSIST_SAG_EXCLUDED = ('launch', 'support_climb')
+
+
+@dataclass(frozen=True)
+class MotorAssistConfig:
+    """Pilot-level help for a lagging brain motor contract (fast_velocity_brain_v1). Off unless a runner passes it (the
+    motor-assist declaration in configs/pilot, declared per motor contract; the fast PD contract has no
+    entry and flies unchanged).
+
+    The fast brains follow the pilot's velocity request late and weakly: fast-brain-10b flew 5.1-5.2 m/s under 3.6 m/s
+    governor caps into the Minus Two hairpin wall (minus-brain10b-r4-02), and fast-brain-09b sank 0.7 m to the floor while
+    it accelerated out of a turn-first stop toward a 4.9 m/s request with a level vertical request
+    (minus-brain09b-r4-01). The surrogate reproduces both from the logged requests. Both rules act on the pilot's final
+    request (after every other rule and the command slews): the motor receives the assisted request, while the pilot's
+    own request stays its internal state (FastRaceCue.pilot_command) and is what its rules read on the next tick. Only
+    the support rule and the descent-path shortfall compare the measured vertical speed with the vertical request the
+    motor received (a sink the assist withheld is not the vehicle failing to descend).
+    1. Cap tracking: for each binding cap of a declared source (cap_sources), with a horizontal unit direction h and a
+       bound c on the request's speed along h, the measured horizontal speed along h beyond c + cap_deadband lowers that
+       bound by cap_gain x the excess beyond the deadband (at most cap_max), so a brain that lags converges to the cap
+       instead of flying through it. The extra reduction of each source moves at up to cap_rise (growing) and cap_fall
+       (shrinking) m/s^2 and acts only while its source binds. Sources:
+       - 'request': the pilot's final horizontal request itself (h its direction, c its magnitude) in the pilot states
+         request_states: the speed schedule, the side and bottom-edge speeds and every cap the pilot already applied;
+       - 'governor': the looming governor's cap along the horizontal part of its ray, while it bounds the request;
+       - 'turn_first': a turn-first episode or side guard: no speed toward the wall (c = 0), and its creep bound along
+         the request;
+       - 'stopping': the motor's stopping model on the governor's latest wall sample: once stop_confirm wall samples
+         (not below-path terrain) with a TTC under stop_ttc_s arrived within stop_window_s, the newest of them being the
+         newest looming sample with evidence, the speed along that sample's horizontal ray is bounded (directly, not only
+         beyond the deadband) by the speed from which the motor stops within the remaining distance,
+         v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m. The governor's TTC thresholds suit the fast PD;
+         a brain that follows 0.3 s late must start braking earlier. A clear sample (a gate arch flown through) ends it.
+       The request never reverses along its own direction ('request' stops at 0) and points away from a wall (the
+       other sources) by at most cap_reverse m/s: a hard reversal pitches a brain back so far that it climbs.
+    2. Sag compensation: the vertical request rises by
+       - sag_gain x the shortfall beyond sag_deadband while the measured vertical speed lies more than sag_deadband
+         below the pilot's final vertical request (the brain sinks faster than asked), plus
+       - sag_lead_gain x the horizontal velocity change the motor is asked for beyond sag_lead_deadband (|assisted
+         horizontal request - measured horizontal velocity|), while the measured horizontal speed is at most
+         sag_lead_max_speed (0: at any speed): a brain pitches hard to accelerate from low speed and its sink starts
+         before any feedback sees it (live logs: at < 2.5 m/s the vertical shortfall grows 0.2-0.65 m/s per 1 m/s of
+         lead; brain-09b tilted 57 deg out of the turn-first stop),
+       at most sag_max, moving at up to sag_rise (growing) and sag_fall (shrinking) m/s^2; nothing while the drone
+       already climbs more than sag_climb_margin faster than the pilot's request, while launching or in a support
+       climb, and never above the pilot's vertical_up nor the ceiling guard's vertical bound during an overhead hold.
+    Reads only the measured velocity, the pilot's own rule states and the governor's looming samples: no course
+    geometry, route or per-course value. Declaration version 1.
+    """
+    cap_sources: tuple = MOTOR_ASSIST_SOURCES
+    request_states: tuple = ('cue', 'below', 'below_weak', 'side')
+    cap_deadband: float = .3
+    cap_gain: float = 2.
+    cap_max: float = 3.
+    cap_reverse: float = 1.
+    cap_rise: float = 8.
+    cap_fall: float = 8.
+    stop_ttc_s: float = 1.3
+    stop_confirm: int = 2
+    stop_window_s: float = .25
+    stop_latency_s: float = .3
+    stop_deceleration: float = 3.5
+    stop_margin_m: float = .5
+    sag_deadband: float = .3
+    sag_gain: float = 1.
+    sag_lead_gain: float = .3
+    sag_lead_deadband: float = .5
+    sag_lead_max_speed: float = 2.5
+    sag_climb_margin: float = .3
+    sag_max: float = 1.
+    sag_rise: float = 5.
+    sag_fall: float = 2.
+
+    def __post_init__(self):
+        values = {k: v for k, v in asdict(self).items() if k not in ('cap_sources', 'request_states')}
+        if not np.isfinite(list(values.values())).all() or min(values.values()) < 0:
+            raise ValueError('Use finite non-negative motor-assist parameters')
+        for name in ('cap_gain', 'cap_rise', 'cap_fall', 'sag_rise', 'sag_fall', 'stop_ttc_s', 'stop_window_s',
+                     'stop_deceleration'):
+            if not getattr(self, name) > 0:
+                raise ValueError(f'{name} must be positive')
+        if not set(self.cap_sources) <= set(MOTOR_ASSIST_SOURCES) or len(set(self.cap_sources)) != len(self.cap_sources):
+            raise ValueError(f'cap_sources are distinct names from {MOTOR_ASSIST_SOURCES}')
+        if not all(isinstance(s, str) for s in self.request_states):
+            raise ValueError('request_states are pilot state names')
+        if int(self.stop_confirm) != self.stop_confirm or self.stop_confirm < 1:
+            raise ValueError('stop_confirm counts samples')
+
+
+def motor_assist_for_contract(declaration, contract):
+    """The `MotorAssistConfig` that a motor-assist declaration already parsed (and hash-checked) by the runner assigns
+    to a motor contract ('contracts': {contract: parameters or None}), or None when the contract has none (the fast PD);
+    refuses another rule version. This module reads no files."""
+    if (declaration or {}).get('version') != MOTOR_ASSIST_VERSION:
+        raise ValueError(f'The motor-assist declaration is version {(declaration or {}).get("version")}; the fast '
+                         f'pilot implements version {MOTOR_ASSIST_VERSION}')
+    contracts = declaration.get('contracts')
+    if not isinstance(contracts, dict):
+        raise ValueError('A motor-assist declaration lists its motor contracts')
+    entry = contracts.get(contract)
+    if entry is None:
+        return None
+    entry = dict(entry)
+    for key in ('cap_sources', 'request_states'):
+        if key in entry:
+            entry[key] = tuple(entry[key])
+    return MotorAssistConfig(**entry)
 
 
 class TtcClearanceGovernor:
@@ -1251,7 +1369,7 @@ class FastRaceCue:
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
                  ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None,
-                 contact_support=None, clearance_brake=None):
+                 contact_support=None, clearance_brake=None, motor_assist=None):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -1398,6 +1516,22 @@ class FastRaceCue:
         self.contact_fired = False             # the rule started a support climb this tick
         self.contact_time = dict(valid=0., suspected=0., gain_updates=0.)
         self.contact_onsets = 0
+        # Motor assist (off unless declared for the motor contract): see MotorAssistConfig. With it, velocity_command
+        # after update() is the assisted request the motor receives; pilot_command keeps the pilot's own request, which
+        # is restored as the pilot's state at the start of the next update().
+        if motor_assist is not None and not isinstance(motor_assist, MotorAssistConfig):
+            raise ValueError('Pass a MotorAssistConfig (or None) for the motor assist')
+        self.motor_assist = motor_assist
+        self.pilot_command = None
+        self.assist_extra = {name: 0. for name in MOTOR_ASSIST_SOURCES}   # current extra reduction per source (m/s)
+        self.assist_sag = 0.                   # current climb added by the sag compensation (m/s)
+        self.assist_horizontal = 0.            # horizontal request removed this tick (m/s)
+        self.assist_vertical = 0.              # vertical request added this tick (m/s)
+        self.assist_source = ''                # the source whose cap tracking removed the most this tick
+        self.assist_sources = []               # binding caps of this tick: (source, horizontal unit ray, bound)
+        self.assist_time = {name: 0. for name in MOTOR_ASSIST_SOURCES+('sag',)}
+        self.assist_removed = 0.               # metres of horizontal request travel removed (integral)
+        self.assist_added = 0.                 # metres of climb requested by the sag compensation (integral)
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -1819,6 +1953,99 @@ class FastRaceCue:
         size = float(np.linalg.norm(step))
         return step*(top/size) if size > top else step
 
+    def _assist_sources(self, state, cap, ray, turn_first, turn_first_bound, position=None, now=None):
+        """The binding caps of this tick for cap tracking (MotorAssistConfig): (source, horizontal unit direction, bound
+        on the request's speed along it), from the pilot's own final request (pilot_command)."""
+        a = self.motor_assist
+        command = self.pilot_command
+        out = []
+        norm = float(np.linalg.norm(command[:2]))
+        if 'request' in a.cap_sources and state in a.request_states and not self.launching and norm > 1e-6:
+            out.append(('request', command[:2]/norm, norm))
+        if 'governor' in a.cap_sources and cap is not None and ray is not None:
+            flat = np.asarray(ray, float)[:2]
+            size = float(np.linalg.norm(flat))
+            # the governor bounds the request this tick (it braked, or the request sits at the cap)
+            binds = self.clearance_braking or float(command @ np.asarray(ray, float)) >= cap-.05
+            if size >= .5 and binds:
+                out.append(('governor', flat/size, float(cap)))
+        if 'turn_first' in a.cap_sources and turn_first is not None:
+            out.append(('turn_first', np.asarray(turn_first, float), 0.))
+            if np.isfinite(turn_first_bound) and norm > 1e-6:
+                out.append(('turn_first', command[:2]/norm, float(turn_first_bound)))
+        gov = self.clearance
+        if ('stopping' in a.cap_sources and isinstance(gov, TtcClearanceGovernor) and position is not None
+                and gov.samples):
+            # the motor's stopping model on the latest wall sample, while recent short-TTC wall samples confirm it and
+            # the newest looming sample with evidence is one of them (a clear sample, e.g. past a gate arch, ends it)
+            terrain = gov.config.terrain_fraction
+            recent = [x for x in gov.samples if now-x['received'] <= a.stop_window_s and x['ttc'] < a.stop_ttc_s
+                      and (x['below'] is None or x['below'] < terrain)]
+            distance, wall = gov.wall_distance(position)
+            if len(recent) >= a.stop_confirm and recent[-1] is gov.samples[-1] and distance is not None:
+                flat = np.asarray(wall, float)[:2]
+                size = float(np.linalg.norm(flat))
+                if size >= .5:
+                    bound = stopping_speed(distance, a.stop_deceleration, a.stop_latency_s, a.stop_margin_m)
+                    out.append(('stopping', flat/size, float(bound)))
+        return out
+
+    def _motor_assist(self, command, velocity, dt, state, sources, vertical_cap=None):
+        """The assisted request (MotorAssistConfig) for the pilot's own final request `command`; updates the rule's
+        state, per-tick log values and seconds."""
+        a, c = self.motor_assist, self.config
+        out = np.array(command, dtype=float)
+        vh = np.asarray(velocity[:2], float)
+        self.assist_sources = sources
+        # 1. cap tracking: per source, the extra reduction follows gain x (excess - deadband), rate-limited
+        targets = {name: 0. for name in MOTOR_ASSIST_SOURCES}
+        for name, h, bound in sources:
+            excess = float(vh @ h)-bound
+            targets[name] = max(targets[name], float(np.clip(a.cap_gain*(excess-a.cap_deadband), 0., a.cap_max)))
+        for name in MOTOR_ASSIST_SOURCES:
+            x = self.assist_extra[name]
+            self.assist_extra[name] = float(x+np.clip(targets[name]-x, -a.cap_fall*dt, a.cap_rise*dt))
+        removed, top = {}, 0.
+        before = out[:2].copy()
+        for name, h, bound in sources:
+            x = self.assist_extra[name]
+            if x <= 0 and name != 'stopping':
+                continue                       # the stopping model's bound applies as a cap of its own
+            along = float(out[:2] @ h)
+            limit = max(0., bound-x) if name == 'request' else max(-a.cap_reverse, bound-x)
+            if along > limit:
+                out[:2] -= h*(along-limit)
+                removed[name] = removed.get(name, 0.)+along-limit
+        self.assist_source = ''
+        for name, amount in removed.items():
+            self.assist_time[name] += dt
+            if amount > top:
+                top, self.assist_source = amount, name
+        self.assist_horizontal = float(np.linalg.norm(before-out[:2]))
+        self.assist_removed += dt*max(0., float(np.linalg.norm(before))-float(np.linalg.norm(out[:2])))
+        # 2. sag compensation: climb while the measured vertical speed lies below the request, and while the motor is
+        # asked to accelerate hard from low speed
+        target = 0.
+        if state not in MOTOR_ASSIST_SAG_EXCLUDED and not self.launching:
+            shortfall = float(out[2]-velocity[2])
+            if shortfall > a.sag_deadband:
+                target = a.sag_gain*(shortfall-a.sag_deadband)
+            if a.sag_lead_gain > 0 and (a.sag_lead_max_speed <= 0 or float(np.linalg.norm(vh)) <= a.sag_lead_max_speed):
+                lead = float(np.linalg.norm(out[:2]-vh))
+                target += a.sag_lead_gain*max(0., lead-a.sag_lead_deadband)
+            if -shortfall > a.sag_climb_margin:
+                target = 0.                    # already climbing faster than asked
+            target = float(np.clip(target, 0., a.sag_max))
+        self.assist_sag = float(self.assist_sag+np.clip(target-self.assist_sag, -a.sag_fall*dt, a.sag_rise*dt))
+        vertical = out[2]
+        if self.assist_sag > 0:
+            ceiling = c.vertical_up if vertical_cap is None else min(c.vertical_up, vertical_cap)
+            out[2] = max(out[2], min(out[2]+self.assist_sag, ceiling))
+        self.assist_vertical = float(out[2]-vertical)
+        self.assist_time['sag'] += dt*(self.assist_vertical > 0)
+        self.assist_added += dt*self.assist_vertical
+        return out
+
     def update(self, senses, omega, detection, capture_time, now, clearance=None, gap=None):
         """One control tick. `clearance`, when given, is a causal forward-clearance sample:
         dict(time=capture time, ttc=s or None, distance=m or None, below_fraction=0..1 or None,
@@ -1829,6 +2056,12 @@ class FastRaceCue:
         `gap`, when given and a gap aim is declared, is the latest causal gap-cue sample
         (haltere.liftoff.camera_process.gap_sample); without a declared gap aim it is ignored."""
         c = self.config
+        # The request the motor received on the previous tick: the support rule and the descent-path shortfall compare
+        # the measured vertical speed with it. It is the pilot's own request unless a motor assist changed it.
+        issued = self.velocity_command
+        if self.motor_assist is not None and self.pilot_command is not None:
+            # the pilot's own request is its state; the assisted one only went to the motor
+            self.velocity_command = self.pilot_command
         position = senses['pos'][0].cpu().numpy().astype(float)
         velocity = senses['vel_world'][0].cpu().numpy().astype(float)
         rotation = quat_wxyz_to_mat(senses['quat'][0].cpu().numpy())
@@ -1894,9 +2127,9 @@ class FastRaceCue:
         # timers run: contact) are no shortfall: the horizontal request is not cut for them (keep speed).
         contact = (self.vertical_guard is not None and self.vertical_apply
                    and (self.support_since is not None or self.slope_support_since is not None))
-        if (self.velocity_command is not None and self.velocity_command[2] < -c.descent_sink and not self.launching
+        if (issued is not None and issued[2] < -c.descent_sink and not self.launching
                 and not self.vertical_limiting and not contact and not (dv is not None and self.view_withheld > 0)):
-            shortfall = max(0., float(velocity[2]-self.velocity_command[2]))
+            shortfall = max(0., float(velocity[2]-issued[2]))
         self.descent_shortfall += (1-np.exp(-dt/c.descent_time_constant))*(shortfall-self.descent_shortfall)
         self.descent_scale = float(np.clip(1-(self.descent_shortfall-c.descent_free)/c.descent_span,
                                            c.descent_min_scale if dv is None else max(c.descent_min_scale,
@@ -1915,20 +2148,22 @@ class FastRaceCue:
                 self.view_time['boost'] += dt
         if self.contact_support is not None:
             # Contact support (ContactSupportConfig): a ground reaction the thrust cannot explain starts the climb.
-            self._contact_step(now, issued_at, velocity, rotation, dt)
+            # It compares the measured vertical speed with the request the motor received (`issued`), as the older
+            # support rules below do; without a motor assist that is the pilot's own request (unchanged).
+            self._contact_step(now, issued_at, velocity, rotation, dt, issued)
         # Support: a requested descent the vehicle cannot achieve means contact
         # below (terrain or an object), not a controller fault. Climb briefly.
         if self.climb_until is not None and now < self.climb_until:
             desired[2] = max(desired[2], 1.)
             state = 'support_climb'
-        elif (self.velocity_command is not None and self.velocity_command[2] < -.8
-              and velocity[2] > max(-.25, self.velocity_command[2]+.6)):
+        elif (issued is not None and issued[2] < -.8
+              and velocity[2] > max(-.25, issued[2]+.6)):
             self.support_since = now if self.support_since is None else self.support_since
             self.slope_support_since = None
             if now-self.support_since > c.support_after_s:
                 self.climb_until, self.support_since = now+c.support_climb_s, None
-        elif (self.velocity_command is not None and self.velocity_command[2] < -.8
-              and velocity[2] > self.velocity_command[2]+c.support_slope_shortfall
+        elif (issued is not None and issued[2] < -.8
+              and velocity[2] > issued[2]+c.support_slope_shortfall
               and self.calibration is not None and self.issued_throttle is not None
               and self.issued_throttle < self.calibration[2]-c.support_thrust_margin):
             # Thrust well below hover would reach the requested sink within a
@@ -2067,6 +2302,11 @@ class FastRaceCue:
         raw_ff = (self.velocity_command-previous)/max(dt, 1e-3)
         alpha = 1-np.exp(-dt/c.feedforward_time_constant)
         self.feedforward = self.feedforward+alpha*(raw_ff-self.feedforward)
+        if self.motor_assist is not None:
+            # Motor assist (MotorAssistConfig): the motor receives the assisted request, the pilot keeps its own.
+            self.pilot_command = self.velocity_command.copy()
+            sources = self._assist_sources(state, cap, ray, turn_first, turn_first_bound, position, now)
+            self.velocity_command = self._motor_assist(self.pilot_command, velocity, dt, state, sources, vertical_cap)
         self.state = state
         self.state_time[state] = self.state_time.get(state, 0.)+dt
         # Yaw faces the observed checkpoint; searching turns toward its last side.
@@ -2149,9 +2389,14 @@ class FastRaceCue:
             self.view_slope += (1-np.exp(-dt/dv.attitude_time_constant))*(lowest-self.view_slope)
         return float(max(dv.free_sink, -speed*self.view_slope))
 
-    def _contact_step(self, now, issued_at, velocity, rotation, dt):
+    def _contact_step(self, now, issued_at, velocity, rotation, dt, issued=None):
         """One tick of contact support (ContactSupportConfig): the window's unexplained upward specific force, the
-        thrust gain in free air, and a support climb (climb_until) after hold_s of contact conditions."""
+        thrust gain in free air, and a support climb (climb_until) after hold_s of contact conditions. `issued`: the
+        velocity request the motor received on the previous tick (update() passes it; it differs from the pilot's own
+        request, self.velocity_command at this point, only with a motor assist, whose declaration has the support rules
+        compare the measured vertical speed with the request the motor received); None reads self.velocity_command."""
+        if issued is None:
+            issued = self.velocity_command
         cs, c = self.contact_support, self.config
         g = CONTACT_GRAVITY
         self.contact_fired = False
@@ -2186,7 +2431,7 @@ class FastRaceCue:
         unexplained = (observed-self.contact_gain)*thrust
         self.contact_unexplained = float(unexplained)
         armed = not self.launching and now-self.contact_first >= cs.arm_after_s
-        command = float(self.velocity_command[2]) if self.velocity_command is not None else float('nan')
+        command = float(issued[2]) if issued is not None else float('nan')
         vz = float(velocity[2])
         climbing = self.climb_until is not None and now < self.climb_until
         suspect = (armed and not climbing and command <= -cs.sink_min and vz >= command+cs.shortfall
@@ -2241,6 +2486,52 @@ class FastRaceCue:
             return None
         return dict(seconds={k: round(v, 3) for k, v in self.view_time.items()},
                     withheld_m=round(self.view_withheld_integral, 3))
+
+    def motor_assist_log(self):
+        """Per-tick motor-assist values for logs (NaN / '' when the rule is not declared): the pilot's own request, the
+        horizontal request removed and the climb added this tick, and the cap-tracking source that removed the most."""
+        if self.motor_assist is None:
+            nan = float('nan')
+            return dict(assist_pilot_vx=nan, assist_pilot_vy=nan, assist_pilot_vz=nan, assist_horizontal=nan,
+                        assist_vertical=nan, assist_source='')
+        own = self.pilot_command if self.pilot_command is not None else self.velocity_command
+        own = np.full(3, np.nan) if own is None else own
+        return dict(assist_pilot_vx=float(own[0]), assist_pilot_vy=float(own[1]), assist_pilot_vz=float(own[2]),
+                    assist_horizontal=float(self.assist_horizontal), assist_vertical=float(self.assist_vertical),
+                    assist_source=self.assist_source)
+
+    def motor_assist_summary(self):
+        """Seconds each part acted and metres of request changed (None when the rule is not declared)."""
+        if self.motor_assist is None:
+            return None
+        return dict(seconds={k: round(v, 3) for k, v in self.assist_time.items()},
+                    removed_m=round(self.assist_removed, 3), climb_added_m=round(self.assist_added, 3))
+
+    def _motor_assist_metadata(self):
+        if self.motor_assist is None:
+            return None
+        return dict(
+            version=MOTOR_ASSIST_VERSION,
+            rule='cap tracking: for each binding cap of cap_sources (request: the pilot\'s final horizontal request in '
+                 'request_states, bound its own magnitude; governor: the looming cap along the horizontal part of its '
+                 'ray while it bounds the request; turn_first: no speed toward the wall and the creep bound; stopping: '
+                 'while stop_confirm wall samples with TTC < stop_ttc_s arrived within stop_window_s and the newest '
+                 'looming sample is one of them, the speed from which the motor stops within the remaining distance to '
+                 'the latest wall sample, v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m, applied as a '
+                 'bound itself), the measured horizontal speed along it beyond bound + cap_deadband lowers the bound by '
+                 'cap_gain x the excess beyond the deadband (at most cap_max; rate cap_rise/cap_fall m/s^2; the request '
+                 'never reverses along its own direction and points away from a wall by at most cap_reverse); sag '
+                 'compensation: sag_gain x (the final vertical request - the measured vertical speed - sag_deadband) '
+                 'when positive, plus sag_lead_gain x (|assisted horizontal request - measured horizontal velocity| - '
+                 'sag_lead_deadband) when positive at a horizontal speed <= sag_lead_max_speed (0: any), none while '
+                 'climbing more than sag_climb_margin faster than the request, at most sag_max, rate sag_rise/sag_fall, '
+                 'not while launching or in a support climb, never above vertical_up or an overhead bound; the pilot '
+                 'keeps its own request as its state, and the support rule and the descent-path shortfall compare the '
+                 'measured vertical speed with the vertical request the motor received',
+            input='measured velocity, the pilot\'s own rule states and the looming governor\'s samples; no course '
+                  'geometry',
+            parameters={k: (list(v) if isinstance(v, tuple) else v) for k, v in asdict(self.motor_assist).items()},
+            **self.motor_assist_summary())
 
     def _descent_view_metadata(self):
         if self.descent_view is None:
@@ -2514,4 +2805,6 @@ class FastRaceCue:
                 input='measured velocity and attitude, the issued throttle and the pad calibration; no height above '
                       'ground, no course geometry',
                 parameters=asdict(self.contact_support), **self.contact_summary())
+        if self.motor_assist is not None:
+            out['motor_assist'] = self._motor_assist_metadata()     # absent when the rule is off (default unchanged)
         return out

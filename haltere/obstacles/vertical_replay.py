@@ -31,7 +31,11 @@ aim's target, applied shift, flown offset, mode, committed side, conflict and th
 frozen descent-view declaration to any variant (tag -dv<version>; the arrays gain view_sink_bound, view_withheld and
 view_boost): with ``--stack on --near-on-path`` it is the full round-4 stack as `--obstacle-stack on --descent-view on`
 would fly it. The gates (``score``) are versioned: version 4 scores guard v4 against the m4 tree (guard v3), with the
-round-4 live flights replayed as flown (their stack variants tagged -nop-dv1).
+round-4 live flights replayed as flown (their stack variants tagged -nop-dv1). ``--motor-assist DECLARATION`` adds the
+motor assist of a frozen motor-assist declaration for the flight's motor contract (tag -ma<version>; nothing for a
+contract without an entry, the fast PD): the arrays gain the pilot's own request (assist_pilot_vx/vy/vz),
+assist_horizontal, assist_vertical and assist_source, while cvx/cvy/cvz are the assisted request. The recorded motion
+does not respond to it either.
 
 usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [--stack ...] flight ...
 """
@@ -89,12 +93,14 @@ def variant_tag(stack, wall, vertical, stream):
 
 
 def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None, contact_support=None,
-          wall_pilot=None):
+          wall_pilot=None, motor_assist=None):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
     whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
     optional DescentViewConfig added to any variant; ``contact_support``: an optional ContactSupportConfig (descent
     view version 2). ``wall_pilot``: the wall-pilot declaration of the wall rules (default: the tree's
-    configs/obstacles/wall_pilot.json; e.g. the kept version 4 to replay the round-4 stack as flown)."""
+    configs/obstacles/wall_pilot.json; e.g. the kept version 4 to replay the round-4 stack as flown).
+    ``motor_assist``: an optional motor-assist declaration (parsed and hash-checked) whose entry for the flight's motor
+    contract is added to any variant."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -129,6 +135,11 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         kw['descent_view'] = descent_view
     if contact_support is not None:
         kw['contact_support'] = contact_support
+    assist = None
+    if motor_assist is not None:
+        assist = frc.motor_assist_for_contract(motor_assist, contract)
+        if assist is not None:
+            kw['motor_assist'] = assist
     pa = side['pilot_assistance']
     speed = float(pa.get('nominal_speed_mps') or 6.)
     reference = float(pa.get('trained_motor_reference_mps') or speed)
@@ -137,7 +148,7 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
                             yaw_curve=yaw_curve, calibration=CALIBRATION, **kw)
     return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
                        descent_view=descent_view is not None, contact_support=contact_support is not None,
-                       wall_pilot=None if wall_pilot is None else str(wall_pilot))
+                       wall_pilot=None if wall_pilot is None else str(wall_pilot), motor_assist=assist is not None)
 
 
 def _near_on_path(value):
@@ -151,7 +162,7 @@ def _near_on_path(value):
 
 def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
-           wall_pilot=None):
+           wall_pilot=None, motor_assist=None, sources=None):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -163,13 +174,16 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     is the brain in shadow). ``wall_pilot``: the wall-pilot declaration of the wall rules (default: the tree's). With
     a tree whose pilot measures the clearance brake's sink (brake_log), the arrays also carry brake_added_sink,
     brake_sink_left, brake_sink_withheld, brake_reference (the vertical request before the brake), the cap's ray
-    (brake_ray_x/y/z) and braking (1 while the cap bound the request)."""
+    (brake_ray_x/y/z) and braking (1 while the cap bound the request). ``motor_assist``: an optional motor-assist
+    declaration (see build); with it, a list passed as ``sources`` receives each tick's binding caps
+    (FastRaceCue.assist_sources) and pilot state (not saved)."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
     side = json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
     pilot, info = build(side, tree, stack, wall, vertical, gap_pilot, descent_view, contact_support,
-                        **({} if wall_pilot is None else dict(wall_pilot=wall_pilot)))
+                        **({} if wall_pilot is None else dict(wall_pilot=wall_pilot)),
+                        **({} if motor_assist is None else dict(motor_assist=motor_assist)))
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['throttle_column'] = throttle_column
     info['near_on_path'] = bool(near_on_path)
@@ -198,6 +212,9 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     if has_brake_log:
         keys += ('brake_added_sink', 'brake_sink_left', 'brake_sink_withheld', 'brake_reference', 'brake_ray_x',
                  'brake_ray_y', 'brake_ray_z', 'braking')
+    if motor_assist is not None:
+        keys += ('assist_pilot_vx', 'assist_pilot_vy', 'assist_pilot_vz', 'assist_horizontal', 'assist_vertical',
+                 'assist_source')
     rows = {k: [] for k in keys}
     last_ts = None
     nan = float('nan')
@@ -281,6 +298,13 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
             # brake_reference: the vertical request before the clearance brake (after the guard and the ceiling cap);
             # braking: 1 while the clearance cap bound the request
             values.update(pilot.brake_log(), braking=float(pilot.clearance_braking))
+        if motor_assist is not None:
+            if hasattr(pilot, 'motor_assist_log'):
+                values.update(pilot.motor_assist_log())
+            else:
+                values['assist_source'] = ''
+            if sources is not None:
+                sources.append((list(getattr(pilot, 'assist_sources', [])), pilot.state))
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}
@@ -620,6 +644,9 @@ def main(argv=None):
     parser.add_argument('--wall-pilot', default=None, metavar='DECLARATION',
                         help='wall-pilot declaration of the wall rules (default: the tree\'s '
                              'configs/obstacles/wall_pilot.json); the file tag gains -wp<version>')
+    parser.add_argument('--motor-assist', default=None, metavar='DECLARATION',
+                        help='add the motor assist of a frozen motor-assist declaration (configs/pilot/motor_assist.json) '
+                             'for the motor contract of each flight; the file tag gains -ma<version>')
     args = parser.parse_args(argv)
     os.environ.setdefault('OMP_NUM_THREADS', '2')
     here = str(Path(__file__).resolve().parent)
@@ -658,12 +685,20 @@ def main(argv=None):
             raise SystemExit(f'{args.wall_pilot} is not a frozen wall-pilot declaration, or it changed after the freeze')
         tag += f'-wp{declaration["version"]}'
         extra['wall_pilot'] = args.wall_pilot
+    motor_assist = None
+    if args.motor_assist:
+        from haltere.liftoff.gap_stack import config_sha256
+        motor_assist = json.loads(Path(args.motor_assist).read_text(encoding='utf-8'))
+        if motor_assist.get('frozen') is not True or motor_assist.get('sha256') != config_sha256(motor_assist):
+            raise SystemExit(f'{args.motor_assist} is not a frozen motor-assist declaration, or it changed after the '
+                             'freeze')
+        tag += f'-ma{motor_assist["version"]}'
     results = {}
     for flight in args.flights:
         arrays, pilot, info = replay(flight, args.tree, args.runs, stack=args.stack, wall=args.wall,
                                      vertical=vertical, looming_stream=args.looming_stream,
                                      gap_pilot=args.gap_pilot, near_on_path=args.near_on_path,
-                                     descent_view=descent_view, **extra)
+                                     descent_view=descent_view, motor_assist=motor_assist, **extra)
         np.savez_compressed(f'{args.out}_{tag}_{flight}.npz', **arrays)
         results[flight] = summary(arrays, info)
         meta = pilot.metadata()
@@ -673,6 +708,7 @@ def main(argv=None):
         results[flight]['descent_view_metadata'] = meta.get('descent_view')
         if contact_support is not None:
             results[flight]['contact_support_metadata'] = meta.get('contact_support')
+        results[flight]['motor_assist_metadata'] = meta.get('motor_assist')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')

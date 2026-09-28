@@ -121,6 +121,33 @@ def resolve_descent_view(args):
     return str(DESCENT_VIEW_DECLARATION) if flag == 'on' else str(flag)
 
 
+# Declared pilot-level help for lagging brain motor contracts (--motor-assist on; off by default).
+MOTOR_ASSIST_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'motor_assist.json'
+
+
+def load_motor_assist(path=MOTOR_ASSIST_DECLARATION):
+    """A frozen motor-assist declaration and its content hash (same canonical hash as the lag-turn declaration);
+    refuses an unfrozen or edited file and another rule version than FastRaceCue implements
+    (fast_race_cue.MOTOR_ASSIST_VERSION)."""
+    from .fast_race_cue import MOTOR_ASSIST_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen motor-assist declaration, or it changed after the freeze')
+    if declaration.get('version') != MOTOR_ASSIST_VERSION:
+        raise ValueError(f'{path} declares motor-assist rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {MOTOR_ASSIST_VERSION}')
+    return declaration, digest
+
+
+def resolve_motor_assist(args):
+    """The motor-assist declaration path of --motor-assist (on: the default declaration; off/absent: None)."""
+    flag = getattr(args,'motor_assist',None)
+    if flag in (None,'off'):
+        return None
+    return str(MOTOR_ASSIST_DECLARATION) if flag == 'on' else str(flag)
+
+
 CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
 
 
@@ -300,7 +327,7 @@ class VisualController:
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
-                 vertical_guard=None, vertical_apply=True, descent_view=None):
+                 vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -313,6 +340,8 @@ class VisualController:
             raise ValueError('The vertical guard is part of the fast pilot profile')
         if descent_view and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The view-keeping descent is part of the fast pilot profile')
+        if motor_assist and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The motor assist is part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -388,6 +417,7 @@ class VisualController:
         self.wall_pilot_declaration = None
         self.vertical_guard_declaration = None
         self.descent_view_declaration = None
+        self.motor_assist_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -461,6 +491,20 @@ class VisualController:
                                                      file_sha256=sha256(descent_view),
                                                      schema=declaration.get('schema'),
                                                      version=declaration.get('version'), applied=True)
+            if motor_assist:
+                # Declared per motor contract (the brain's lag), never per course; a contract without an entry (the
+                # fast PD) flies unchanged and the sidecar records that nothing was applied.
+                from .fast_race_cue import motor_assist_for_contract
+                declaration, digest = load_motor_assist(motor_assist)
+                contract = ('fast_velocity_brain_v1' if fast_brain else
+                            'fast_velocity_pd_v1' if pd_profile == 'fast' and motor_controller == 'pd' else None)
+                assist_config = motor_assist_for_contract(declaration, contract)
+                if assist_config is not None:
+                    descent_kw['motor_assist'] = assist_config
+                self.motor_assist_declaration = dict(path=str(motor_assist), sha256=digest,
+                                                     file_sha256=sha256(motor_assist), schema=declaration.get('schema'),
+                                                     version=declaration.get('version'), motor_contract=contract,
+                                                     applied=assist_config is not None)
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -891,6 +935,21 @@ def descent_view_row(assistance):
     return tuple(values[k] for k in descent_view_columns(assistance))
 
 
+MOTOR_ASSIST_COLUMNS = ('assist_pilot_vx','assist_pilot_vy','assist_pilot_vz','assist_horizontal','assist_vertical',
+                        'assist_source')
+
+
+def motor_assist_row(assistance):
+    """CSV values for MOTOR_ASSIST_COLUMNS (written only with --motor-assist on, after the view columns): the pilot's own
+    request (cmd_v* is the assisted request the motor received), the horizontal request removed and the climb added this
+    tick, and the cap-tracking source that removed the most ('' none); NaN when no entry applies to the contract."""
+    log = getattr(assistance,'motor_assist_log',None)
+    if log is None:
+        return (float('nan'),)*(len(MOTOR_ASSIST_COLUMNS)-1)+('',)
+    values = log()
+    return tuple(values[k] for k in MOTOR_ASSIST_COLUMNS)
+
+
 def clearance_row(assistance):
     governor = getattr(assistance,'clearance',None)
     if governor is None:
@@ -1043,6 +1102,7 @@ def run(args):
         raise FileExistsError('Use new log and video paths')
     stack = resolve_obstacle_stack(args)
     descent_view = resolve_descent_view(args)
+    motor_assist = resolve_motor_assist(args)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
         from .gap_aim import GapAimConfig
@@ -1067,8 +1127,9 @@ def run(args):
                                   gap_pilot=gap_aim_config,gap_apply=stack['apply'],
                                   wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'],
                                   vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
-                                  descent_view=descent_view)
+                                  descent_view=descent_view,motor_assist=motor_assist)
     view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
+    assist_columns = MOTOR_ASSIST_COLUMNS if controller.motor_assist_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1200,7 +1261,7 @@ def run(args):
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
-                                 *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns])
+                                 *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1315,7 +1376,8 @@ def run(args):
                                  *wall_row(controller.assistance),
                                  *vertical_row(controller.assistance),
                                  *commit_row(controller.assistance),
-                                 *(descent_view_row(controller.assistance) if view_columns else ())])
+                                 *(descent_view_row(controller.assistance) if view_columns else ()),
+                                 *(motor_assist_row(controller.assistance) if assist_columns else ())])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1389,6 +1451,8 @@ def run(args):
             pilot_meta['vertical_guard_declaration'] = controller.vertical_guard_declaration
         if controller.descent_view_declaration is not None:
             pilot_meta['descent_view_declaration'] = controller.descent_view_declaration
+        if controller.motor_assist_declaration is not None:
+            pilot_meta['motor_assist_declaration'] = controller.motor_assist_declaration
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
@@ -1558,6 +1622,13 @@ def main():
                         'keep speed for bottom-clipped rings, more speed rather than less for a steeper path, gentle '
                         'sink onset, steep only late for rings that stay clipped below (on: '
                         'configs/pilot/descent_view.json; recorded in the flight-log metadata)')
+    p.add_argument('--motor-assist',default=None,metavar='on|off|DECLARATION',
+                   help='EXPERIMENTAL pilot-level help for lagging brain motor contracts (off by default): a brain that '
+                        'flies faster than a binding cap along its direction gets a lower request until it converges, a '
+                        'stopping model bounds its speed toward a confirmed wall, and a brain that sinks below its '
+                        'vertical request or is asked to accelerate hard from low speed gets a bounded climb bias (on: '
+                        'configs/pilot/motor_assist.json, declared per motor contract; the fast PD has no entry and flies '
+                        'unchanged; recorded in the flight-log metadata)')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)
