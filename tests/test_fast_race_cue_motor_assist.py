@@ -5,7 +5,8 @@ These tests pin the rule on synthetic states: cap tracking of the binding caps (
 governor's cap, turn-first's wall ray and creep bound, the stopping model), its bounded reversal and rate limits, the
 sag compensation and its exclusions, that the pilot keeps its own request as its state while the support rule reads the
 request the motor received, the frozen declaration and runner wiring, and that the pilot with the rule off (default,
-and the full round-4 stack) is bit-identical to m4 (3decaac). Version 2 (the declaration the runner flies): the slew
+and the full round-4 stack) is bit-identical to m4 (3decaac). Versions 2 and 3 (version 3 is the declaration the
+runner flies: version 2's rule without the approach's climb exclusion): the slew
 bound on the assist's change, the wall-ahead gate of the stopping source with its memory, the floored approach source
 and its climb exclusion, no governor tracking during a stand-off, and version 1 rebuilt bit-identically from its kept
 declaration (the digest computed on `git archive m4b`). The surrogate scenarios are in
@@ -31,7 +32,8 @@ AHEAD = cue_toward([20., 0., 0.])
 
 
 def assist(**kw):
-    """A version-2 rule (the code's defaults are the declared brain entry)."""
+    """A version-3 rule (the code's defaults are the declared brain entry; version 2 differs only in
+    approach_climb_max)."""
     from haltere.liftoff.fast_race_cue import MotorAssistConfig
     return MotorAssistConfig(**kw)
 
@@ -74,11 +76,11 @@ def bare(config):
 def test_config_validation():
     from haltere.liftoff.fast_race_cue import MOTOR_ASSIST_SOURCES
     assert set(MOTOR_ASSIST_SOURCES) == {'request', 'governor', 'turn_first', 'stopping', 'approach'}
-    assert assist().cap_sources == MOTOR_ASSIST_SOURCES and assist().version == 2
+    assert assist().cap_sources == MOTOR_ASSIST_SOURCES and assist().version == 3 and assist().approach_climb_max == 3.5
     assert assist_v1().cap_sources == MOTOR_ASSIST_SOURCES[:4] and assist_v1().slew == 0.
     for bad in (dict(cap_gain=0.), dict(cap_deadband=-.1), dict(sag_max=float('nan')), dict(cap_sources=('wall',)),
                 dict(cap_sources=('request', 'request')), dict(stop_confirm=1.5), dict(stop_deceleration=0.),
-                dict(sag_lead_gain=-.1), dict(request_states=(1,)), dict(stop_gate='never'), dict(version=3),
+                dict(sag_lead_gain=-.1), dict(request_states=(1,)), dict(stop_gate='never'), dict(version=4),
                 dict(wall_ahead_deg=0.), dict(slew=-1.), dict(approach_climb_max=float('nan')), dict(version=1)):
         with pytest.raises(ValueError):
             assist(**bad)
@@ -92,13 +94,13 @@ def test_config_validation():
 def test_contract_entries_and_version():
     from haltere.liftoff.fast_race_cue import (MOTOR_ASSIST_V1_FIELDS, MOTOR_ASSIST_VERSION, MOTOR_ASSIST_VERSIONS,
                                                motor_assist_for_contract)
-    assert MOTOR_ASSIST_VERSION == 2 and MOTOR_ASSIST_VERSIONS == (1, 2)
+    assert MOTOR_ASSIST_VERSION == 3 and MOTOR_ASSIST_VERSIONS == (1, 2, 3)
     declaration = dict(version=MOTOR_ASSIST_VERSION, contracts=dict(
         fast_velocity_brain_v1=dict(cap_sources=['request', 'stopping'], request_states=['cue'], cap_gain=2.),
         fast_velocity_pd_v1=None))
     config = motor_assist_for_contract(declaration, 'fast_velocity_brain_v1')
     assert config.cap_sources == ('request', 'stopping') and config.request_states == ('cue',) and config.cap_gain == 2.
-    assert config.version == 2 and config.slew == 15.
+    assert config.version == 3 and config.slew == 15.
     # a version-1 entry is rebuilt as version 1 flew it; it carries no version-2 field
     old = dict(version=1, contracts=dict(fast_velocity_brain_v1=dict(cap_gain=2.)))
     rebuilt = motor_assist_for_contract(old, 'fast_velocity_brain_v1')
@@ -315,7 +317,7 @@ def test_the_support_rule_reads_the_vertical_request_the_motor_received():
 def test_metadata_records_the_rule_and_its_activity():
     pilot, _ = run(motor_assist=assist(), velocity=(6., 0., -1.), cue=cue_toward([10., 12., 0.]), seconds=.5)
     meta = pilot.metadata()['motor_assist']
-    assert meta['version'] == 2 and meta['parameters']['cap_sources'] == ['request', 'governor', 'turn_first', 'stopping',
+    assert meta['version'] == 3 and meta['parameters']['cap_sources'] == ['request', 'governor', 'turn_first', 'stopping',
                                                                           'approach']
     assert set(meta['seconds']) == {'request', 'governor', 'turn_first', 'stopping', 'approach', 'sag'}
     assert set(meta['v2_seconds']) == {'wall_ahead', 'slew_limited', 'approach', 'stopping'}
@@ -449,13 +451,14 @@ def test_v2_wall_ahead_conditions():
 
 
 def test_v2_no_approach_while_the_pilots_own_path_climbs():
-    """A surface looming while the pilot follows its checkpoint up (rising ground: the vertical guard's) gets no
-    approach bound; version 2 reads the pilot's vertical request before the governor and the guard."""
-    config = assist()
+    """Version 2: a surface looming while the pilot follows its checkpoint up gets no approach bound (the pilot's
+    vertical request before the governor and the guard above approach_climb_max 0.3 m/s). Version 3 declares the
+    exclusion out (3.5 m/s, the pilot's vertical_up): it also switched the approach off while the pilot climbed back to
+    the ring height after a turn."""
     up = lambda x: cue_toward([22.-x, 0., 4.])                           # the ring well above: the pilot climbs
-    _, rows = wall_run_v2(config, cue=up, wall_x=9., seconds=1.6)
+    _, rows = wall_run_v2(assist(approach_climb_max=.3, version=2), cue=up, wall_x=9., seconds=1.6)
     assert not any('approach' in r['sources'] for r in rows)
-    _, rows = wall_run_v2(assist(approach_climb_max=10.), cue=up, wall_x=9., seconds=1.6)
+    _, rows = wall_run_v2(assist(), cue=up, wall_x=9., seconds=1.6)
     assert any('approach' in r['sources'] for r in rows)
 
 
@@ -644,9 +647,11 @@ def test_scenario_wall_geometry():
 # ---------------------------------------------------------------------------------------------
 # The frozen declaration and gates
 # ---------------------------------------------------------------------------------------------
-DECLARATION_SHA256 = 'f3f3502247d766b8b59529350746ca53e6c24a66bc818dc1f4494e65e2e36901'
+DECLARATION_SHA256 = '7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772'
+V2_DECLARATION_SHA256 = 'f3f3502247d766b8b59529350746ca53e6c24a66bc818dc1f4494e65e2e36901'
 V1_DECLARATION_SHA256 = 'eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02'
-GATES_SHA256 = '8d7ce785478697b490b370ab09b2cc359be90231a7a43dde249f306ecac47264'
+GATES_SHA256 = 'f75a45e4e4f5ccdfda2dcf62cef81ea4ef07e086a79b38aa12e1d959527da5fc'
+V2_GATES_SHA256 = '8d7ce785478697b490b370ab09b2cc359be90231a7a43dde249f306ecac47264'
 V1_GATES_SHA256 = '9abfb80d9ff95a65d0b6400bef0133966aa0de83644c4f55980d1ef34cb7e3c5'
 
 
@@ -654,13 +659,13 @@ def test_frozen_declaration_assigns_the_rule_to_the_brain_contract_only(tmp_path
     from haltere.liftoff.fast_race_cue import MotorAssistConfig, motor_assist_for_contract
     from haltere.liftoff.visual_brain import MOTOR_ASSIST_DECLARATION, load_motor_assist
     declaration, digest = load_motor_assist()
-    assert digest == DECLARATION_SHA256 and declaration['version'] == 2
+    assert digest == DECLARATION_SHA256 and declaration['version'] == 3
     # the declared brain entry is the code's default rule; the fast PD (and any other contract) has none
     assert motor_assist_for_contract(declaration, 'fast_velocity_brain_v1') == MotorAssistConfig()
     assert motor_assist_for_contract(declaration, 'fast_velocity_pd_v1') is None
     assert 'fast_velocity_pd_v1' in declaration['contracts']
-    assert declaration['previous_versions'][0]['sha256'] == V1_DECLARATION_SHA256
-    # an edited copy or another version is refused; the runner refuses the kept version 1
+    assert [v['sha256'] for v in declaration['previous_versions']] == [V1_DECLARATION_SHA256, V2_DECLARATION_SHA256]
+    # an edited copy or another version is refused; the runner refuses the kept versions 1 and 2
     edited = json.loads(MOTOR_ASSIST_DECLARATION.read_text(encoding='utf-8'))
     edited['contracts']['fast_velocity_brain_v1']['cap_gain'] = 3.
     path = tmp_path/'edited.json'
@@ -668,38 +673,45 @@ def test_frozen_declaration_assigns_the_rule_to_the_brain_contract_only(tmp_path
     with pytest.raises(ValueError, match='frozen'):
         load_motor_assist(path)
     from haltere.train.brake_gates import gates_sha256
-    other = dict(declaration, version=3)
+    other = dict(declaration, version=4)
     other['sha256'] = gates_sha256(other)
     path.write_text(json.dumps(other), encoding='utf-8')
     with pytest.raises(ValueError, match='version'):
         load_motor_assist(path)
-    kept = MOTOR_ASSIST_DECLARATION.with_name('motor_assist_v1.json')
-    with pytest.raises(ValueError, match='version 1'):
-        load_motor_assist(kept)
-    v1 = json.loads(kept.read_text(encoding='utf-8'))
-    assert v1['version'] == 1 and v1['sha256'] == V1_DECLARATION_SHA256 == gates_sha256(v1)
+    for version, digest in ((1, V1_DECLARATION_SHA256), (2, V2_DECLARATION_SHA256)):
+        kept = MOTOR_ASSIST_DECLARATION.with_name(f'motor_assist_v{version}.json')
+        with pytest.raises(ValueError, match=f'version {version}'):
+            load_motor_assist(kept)
+        old = json.loads(kept.read_text(encoding='utf-8'))
+        assert old['version'] == version and old['sha256'] == digest == gates_sha256(old)
+        assert motor_assist_for_contract(old, 'fast_velocity_brain_v1').version == version
+    v2 = motor_assist_for_contract(json.loads(MOTOR_ASSIST_DECLARATION.with_name('motor_assist_v2.json').read_text(
+        encoding='utf-8')), 'fast_velocity_brain_v1')
+    assert v2 == MotorAssistConfig(approach_climb_max=.3, version=2)
 
 
 def test_frozen_gates_name_the_frozen_declaration():
     from haltere.liftoff.motor_assist_gates import load_gates
     gates, digest, declaration = load_gates()
-    assert digest == GATES_SHA256 and gates['version'] == 2
+    assert digest == GATES_SHA256 and gates['version'] == 3
     assert gates['motor_assist']['sha256'] == DECLARATION_SHA256 == declaration['sha256']
     assert set(gates['controllers']) == {'brain11cw13', 'brain09b', 'brain10b'}
-    # the held-out hairpin set, seeds and hill courses differ from every development set of either version
+    # the held-out hairpin set, seeds and hill courses differ from every set either earlier version was designed or
+    # scored on
     h = gates['hairpin']
-    assert h['sim_seed'] not in (17, 23) and gates['passthrough']['sim_seed'] not in (17, 23)
-    assert not set(h['set']['turn_deg']) & {20., 60., 90., 45., 75., 105.}
-    assert not set(h['set']['arch_m']) & {7., 11., 8., 13.} and not set(h['set']['wall_m']) & {2.1, 2.6, 2.3, 3.}
-    assert gates['course_sets']['hill'] == ['hill:6300-6311']
+    assert h['sim_seed'] not in (17, 23, 31) and gates['passthrough']['sim_seed'] not in (17, 23, 31)
+    assert not set(h['set']['turn_deg']) & {20., 60., 90., 45., 75., 105., 35., 85., 115.}
+    assert not set(h['set']['arch_m']) & {7., 11., 8., 13., 9., 12.}
+    assert not set(h['set']['wall_m']) & {2.1, 2.6, 2.3, 3., 2.4, 2.8}
+    assert gates['course_sets']['hill'] == ['hill:6400-6411'] and gates['gates']['warning']['mode'] == 'final'
     r = gates['replays']
-    assert not set(r['minus_heldout']) & set(r['minus_development'])
-    assert 'minus-brain11cw13-r4b-noassist-01' in r['minus_development']
-    assert r['quiet_heldout'] == ['straw-brain11cw13-r4b-noassist-02']
-    # the kept version-1 gates still load, with the kept version-1 declaration
-    v1, v1_digest, v1_declaration = load_gates(REPO_GATES_V1)
-    assert v1_digest == V1_GATES_SHA256 and v1_declaration['sha256'] == V1_DECLARATION_SHA256
-    assert gates['previous_versions'][0]['sha256'] == V1_GATES_SHA256
+    assert r['minus_heldout'] == [] and r['quiet_heldout'] == [] and len(r['minus_development']) == 16
+    # the kept gates still load, each with the declaration it scored
+    for path, digest, declared in ((REPO_GATES_V1, V1_GATES_SHA256, V1_DECLARATION_SHA256),
+                                   (REPO_GATES_V2, V2_GATES_SHA256, V2_DECLARATION_SHA256)):
+        old, old_digest, old_declaration = load_gates(path)
+        assert old_digest == digest and old_declaration['sha256'] == declared
+    assert [v['sha256'] for v in gates['previous_versions']] == [V1_GATES_SHA256, V2_GATES_SHA256]
 
 
 def test_gate_replay_metrics_on_a_synthetic_log():
@@ -722,9 +734,14 @@ def test_gate_replay_metrics_on_a_synthetic_log():
     assert m['active_s_per_min']['approach'] == pytest.approx(.2/(t[-1]/60), abs=1e-3)
     assert m['stop_model_removed_share'] > 0 and m['removed_share'] >= m['stop_model_removed_share']
     assert warning_s(a) == pytest.approx(t[-1]-t[107]) and warning_s(a, window_s=1.) == pytest.approx(t[-1]-t[280])
+    # gates v3: the final continuous cut that reaches the end (the ramp at 100-120 is a separate, earlier cut)
+    assert warning_s(a, mode='final') == pytest.approx(t[-1]-t[280])
+    a['cvx'][:] = 5.
+    assert warning_s(a, mode='final') is None
 
 
 REPO_GATES_V1 = Path(__file__).resolve().parents[1]/'configs'/'pilot'/'motor_assist_gates_v1.json'
+REPO_GATES_V2 = Path(__file__).resolve().parents[1]/'configs'/'pilot'/'motor_assist_gates_v2.json'
 
 
 def test_replay_harness_adds_nothing_for_the_fast_pd():

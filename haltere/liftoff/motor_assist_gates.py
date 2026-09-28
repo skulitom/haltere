@@ -462,8 +462,12 @@ def replay_variants(gates, tree, baseline_tree):
     full = ['--stack', 'on', '--near-on-path', '--throttle-column', 'command_thr']
     dv = lambda t: ['--descent-view', str(Path(t)/'configs'/'pilot'/'descent_view.json')]
     ma = lambda t, name: ['--motor-assist', str(Path(t)/'configs'/'pilot'/name)]
+    # the declaration the gates score: the tree's, or the kept file of that version when a later one replaced it
+    version = gates['motor_assist']['version']
+    current = json.loads((Path(tree)/'configs'/'pilot'/'motor_assist.json').read_text(encoding='utf-8'))
+    scored = 'motor_assist.json' if current.get('version') == version else f'motor_assist_v{version}.json'
     return dict(this_full=(tree, 'this', full+dv(tree)),
-                this_full_ma2=(tree, 'this', full+dv(tree)+ma(tree, 'motor_assist.json')),
+                this_full_ma=(tree, 'this', full+dv(tree)+ma(tree, scored)),
                 this_full_ma1=(tree, 'this', full+dv(tree)+ma(tree, 'motor_assist_v1.json')),
                 this_default=(tree, 'this', ['--stack', 'none']),
                 base_full=(baseline_tree, 'base', full+dv(baseline_tree)),
@@ -570,20 +574,30 @@ def replay_metrics(a, x_before=73., plan_below=2., own_at_least=3., min_duration
                 stop_model_removed_share=round(float(removed[stop_model].sum())/own_travel, 4))
 
 
-def warning_s(a, cut=1., window_s=3.):
-    """Seconds before the log's end (the impact) at which the assisted horizontal request first falls `cut` m/s or more
-    below the pilot's own, within the last window_s (None: never)."""
+def warning_s(a, cut=1., window_s=3., mode='first', gap_s=.1, end_s=.3):
+    """Seconds before the log's end (the impact) at which the assisted horizontal request falls `cut` m/s or more below
+    the pilot's own (None: never). mode 'first' (gates v2): the first such tick within the last window_s. mode 'final'
+    (gates v3): the start of the final run of such ticks (gaps of at most gap_s) that reaches within end_s of the end."""
     t = np.asarray(a['t'], float)
     ho = np.hypot(np.asarray(a['assist_pilot_vx'], float), np.asarray(a['assist_pilot_vy'], float))
     ha = np.hypot(np.asarray(a['cvx'], float), np.asarray(a['cvy'], float))
-    k = np.flatnonzero((t >= t[-1]-window_s) & (ho-ha >= cut))
-    return None if not len(k) else round(float(t[-1]-t[k[0]]), 3)
+    if mode == 'first':
+        k = np.flatnonzero((t >= t[-1]-window_s) & (ho-ha >= cut))
+        return None if not len(k) else round(float(t[-1]-t[k[0]]), 3)
+    k = np.flatnonzero(ho-ha >= cut)
+    if not len(k) or t[-1]-t[k[-1]] > end_s:
+        return None
+    s = len(k)-1
+    while s > 0 and t[k[s]]-t[k[s-1]] <= gap_s:
+        s -= 1
+    return round(float(t[-1]-t[k[s]]), 3)
 
 
 def score_replays_v2(gates, prefix, baseline_prefix, runs):
     """The version-2 open-loop replay gates (identity, minus_plan, warning, quiet, slew) from replays_v2's files."""
     from ..obstacles.vertical_replay import identical, onsets
     r, g = gates['replays'], gates['gates']
+    ma = f"-ma{gates['motor_assist']['version']}"
     streamed = set(r['stream_flights'])
     tag = lambda kind, flight: r['tags'][kind+('_stream' if flight in streamed else '')]
     full = lambda flight, suffix='': tag('full', flight)+suffix
@@ -597,8 +611,8 @@ def score_replays_v2(gates, prefix, baseline_prefix, runs):
                                    _replay(baseline_prefix, tag(kind, flight), flight))
             pairs.append(dict(flight=flight, variant=f'{tag(kind, flight)}, assist off', identical=bool(same), keys=keys))
         if _contract(runs, flight) == 'fast_velocity_pd_v1':
-            same, keys = identical(_replay(prefix, full(flight, '-ma2'), flight), _replay(prefix, full(flight), flight))
-            pairs.append(dict(flight=flight, variant='fast PD, --motor-assist on (version 2) vs off', identical=bool(same),
+            same, keys = identical(_replay(prefix, full(flight, ma), flight), _replay(prefix, full(flight), flight))
+            pairs.append(dict(flight=flight, variant=f'fast PD, --motor-assist on ({ma[1:]}) vs off', identical=bool(same),
                               keys=keys))
         else:
             same, keys = identical(_replay(prefix, full(flight, '-ma1'), flight),
@@ -607,7 +621,7 @@ def score_replays_v2(gates, prefix, baseline_prefix, runs):
                               identical=bool(same), keys=keys))
     out['identity'] = gate(g['identity'], None, dict(pairs=len(pairs), identical=sum(p['identical'] for p in pairs)),
                            all(p['identical'] for p in pairs), pairs=pairs)
-    metrics = {f: replay_metrics(_replay(prefix, full(f, '-ma2'), f), **g['minus_plan']) for f in brains}
+    metrics = {f: replay_metrics(_replay(prefix, full(f, ma), f), **g['minus_plan']) for f in brains}
     gm = g['minus_plan']
     rows = [dict(flight=f, heldout=f in r['minus_heldout'], **{k: metrics[f][k] for k in (
         'planned_crawl_episodes', 'lowest_plan_before', 'lowest_assisted_before', 'wall_ahead_s_per_min')})
@@ -618,7 +632,7 @@ def score_replays_v2(gates, prefix, baseline_prefix, runs):
                              all(not x['planned_crawl_episodes'] for x in rows))
     gw = g['warning']
     rows = [dict(flight=f, development_case=True,
-                 warning_s=warning_s(_replay(prefix, full(f, '-ma2'), f), gw['cut'], gw['window_s']))
+                 warning_s=warning_s(_replay(prefix, full(f, ma), f), gw['cut'], gw['window_s'], gw.get('mode', 'first')))
             for f in r['warning_flights']]
     out['warning'] = gate(f"development cases: the assisted request {gw['cut']} m/s below the pilot's own >= "
                           f"{gw['min_s']} s before the wall impact", None, rows,
@@ -626,7 +640,7 @@ def score_replays_v2(gates, prefix, baseline_prefix, runs):
     gq = g['quiet']
     rows = []
     for f in r['quiet_development']+r['quiet_heldout']:
-        on, off = _replay(prefix, full(f, '-ma2'), f), _replay(prefix, full(f), f)
+        on, off = _replay(prefix, full(f, ma), f), _replay(prefix, full(f), f)
         m = metrics[f]
         rows.append(dict(flight=f, heldout=f in r['quiet_heldout'], minutes=m['minutes'],
                          turn_first_episodes=[len(onsets(np.nan_to_num(off['turn_first']) > 0)),

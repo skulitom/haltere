@@ -924,10 +924,12 @@ def contact_support_config(declaration):
         return None
     return ContactSupportConfig(**declaration['contact_support'])
 # The motor-assist declaration version whose rule this code implements (MotorAssistConfig); runners fly only this one.
-# MOTOR_ASSIST_VERSIONS are the versions this code can rebuild for replays: version 1 is kept for provenance
-# (configs/pilot/motor_assist_v1.json) and refused by the runner; its entries get MOTOR_ASSIST_V1_FIELDS.
-MOTOR_ASSIST_VERSION = 2
-MOTOR_ASSIST_VERSIONS = (1, 2)
+# MOTOR_ASSIST_VERSIONS are the versions this code can rebuild for replays: versions 1 and 2 are kept for provenance
+# (configs/pilot/motor_assist_v1.json, motor_assist_v2.json) and refused by the runner; version-1 entries get
+# MOTOR_ASSIST_V1_FIELDS. Version 3 is version 2's rule with the approach's climb exclusion declared out
+# (approach_climb_max = vertical_up: the pilot never asks for more).
+MOTOR_ASSIST_VERSION = 3
+MOTOR_ASSIST_VERSIONS = (1, 2, 3)
 # The binding caps whose direction cap tracking can follow (MotorAssistConfig.cap_sources); 'approach' is version 2's.
 MOTOR_ASSIST_SOURCES = ('request', 'governor', 'turn_first', 'stopping', 'approach')
 # Pilot states whose own vertical request the sag compensation leaves alone (they own the vertical request).
@@ -988,7 +990,8 @@ class MotorAssistConfig:
     Reads only the measured velocity, the pilot's own rule states and the governor's looming samples: no course
     geometry, route or per-course value.
 
-    Version 2 (declaration version 2; the round-4b review of version 1: its assisted request stepped by up to 4.5 m/s
+    Versions 2 and 3 (version 3 is version 2 with approach_climb_max 3.5; the round-4b review of version 1: its
+    assisted request stepped by up to 4.5 m/s
     per tick, and its stopping source asked brains for 0.01-0.4 m/s at the Minus Two first arch, before pillar A and at
     the 90-degree arch, where the pilot flies on through a gate arch):
     3. Slew: the assist's change of the request (assisted - the pilot's own) moves per tick by at most slew x dt (slew:
@@ -1006,7 +1009,9 @@ class MotorAssistConfig:
     5. Approach: outside a wall-ahead condition the confirmed wall samples of the stopping source feed the 'approach'
        source instead: the same stopping model on the same distance, its bound never below floor_speed, and none while
        the pilot's own vertical request before the looming governor and the vertical guard exceeds approach_climb_max
-       (a surface looming while the pilot follows its checkpoint up is rising ground, the vertical guard's). The assist
+       (a surface looming while the pilot follows its checkpoint up is rising ground, the vertical guard's; version 3
+       declares 3.5 m/s, the pilot's vertical_up, so never: version 2's 0.3 m/s also switched the approach off while
+       the pilot climbed back to the ring height after a turn, and its held-out hairpins failed). The assist
        thus plans a lagging brain down toward a surface ahead that may be a gate arch it will fly through, to a speed
        from which it can still stop in the room behind that arch, and never plans it to a stop there. Cap tracking of
        the two bounds shares one extra reduction (MOTOR_ASSIST_EXTRA_KEY), so a wall-ahead condition that starts
@@ -1044,7 +1049,7 @@ class MotorAssistConfig:
     standoff_tracking: bool = False
     stop_memory_s: float = 1.
     floor_speed: float = 2.5
-    approach_climb_max: float = .3
+    approach_climb_max: float = 3.5
     version: int = MOTOR_ASSIST_VERSION
 
     def __post_init__(self):
