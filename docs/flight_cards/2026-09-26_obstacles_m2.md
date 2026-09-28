@@ -1270,3 +1270,30 @@ Optional matched control for (a): the same stack in shadow, which isolates the o
 | Straw downhill ground contact | Contact support reacts 0.4-1.2 s into every audited slide; nothing prevents the slides; brains do not fly the view rule's 6 m/s descents; the audit cannot gate (video FP 0.32/min) | A brain distilled under the view rule; a contact-audit v2 validated with terrain-height or chase-view labels, frozen before scoring; then Straw 3/3 with no audited contact |
 | Vertical guard on Pine | v4 keeps the mound, costs hillside climb (V-Pine 74.3%; one escalation lost on `pine-brain08-01`) | Closed-loop evidence or a causal signal the camera does not publish yet |
 | Minus floor and arch | Wall v5 removes the brake-made floor skim in replay; the guard's gentle climb still starts on the floor misread | Live (a); a guard rule that uses a looming quality signal |
+
+## Round 4b (live), 2026-09-28: m4b stack on Minus Two and Straw Bale
+
+Branch `m4b` at `b4d9e2c`: `--looming-brake --obstacle-stack on --descent-view on` (wall pilot v5,
+vertical guard v4, descent view v2 with contact support, gap pilot v5, lag turn v2). The motor assist
+(v1) was flown only as a no-op with the fast PD: the round-4b review found its request steps by up to
+4.5 m/s per tick and nearly stops brains before pillar A and the arches, so the brain runs flew
+without it (`--motor-assist` off, the plan's no-assist diagnostic). Original `[Copy] New Drone`, pad 30
+`seatOnly` in every preflight/postflight, ground checks 32 (Minus) and 33 (Straw, after the level change).
+Every run is a disclosed development deviation: every round-4b rule fails at least one of its frozen
+gates and no brain is selected (fast-brain-11-b-cw13 passes 8/12). Contacts are from the offline
+`haltere.liftoff.contact_audit` (its video false-positive check failed, so counts are indicative).
+
+| Run | Motor | Outcome |
+|---|---|---|
+| `minus-fast6-r4b-01` | fast PD | **44.8 s, the longest 6 m/s Minus Two run.** Pillar A (y 5.47), hairpin (exit 23.7 s), pillar C (25.8 s), past round 4's floor-and-ceiling spot (y 69.4 at 35.8 s) with no floor contact (min z 0.16 m, audit 0 contacts) and no terrain climb (max z 1.13 m), on to (59, 97). Then, turning toward a ring clamped at the left edge, it clipped the leg of an arch whose ring sits near the arch edge, at ~6 m/s, (51.1, 93.5); the governor held a stand-off status with a 1 m/s cap along a stale ray while the pilot asked 6 m/s, and the gap cue did not shift the aim |
+| `minus-brain11cw13-r4b-noassist-01` | fast-brain-11-b-cw13 (`44cca3c4…`), no assist | Pillar A (y 5.64); braked to ~3.5 m/s under 3.8 m/s caps at the arch. At the hairpin the looming TTC fell from ~1 s to 0.2 s while the governor stayed armed, the cap dropped to 3.5 m/s only ~0.5 s before the wall, turn-first engaged for 0.05 s, and it hit the wall at (81.9, 20.0) at 3.7 m/s, 23.6 s. Stick change 0.0038 per tick |
+| `straw-brain11cw13-r4b-noassist-01` | fast-brain-11-b-cw13 | Not flown: preflight refused (a `rustc.exe` compile in the user's desktop session used 5.3 cores) |
+| `straw-brain11cw13-r4b-noassist-02` | fast-brain-11-b-cw13, no assist | **Lap 1 in 1:42.988** (fast-brain-08's first laps: 1:46.358, 1:46.072), including the hill and the downhill: **one audited ground contact on the downhill** (79.4-80.0 s at (-36.6, 132.8), 5.2 m/s, a support climb; fast-brain-08: 6-7 audited slides per 3-lap race). Stick change 0.0030 per tick (fast-brain-08 0.0031). 8 s into lap 2 the next ring marker dropped out after the lap arch; coasting at 5.6 m/s on a request that turned right, it clipped the leg of the second start arch at (27.1, -0.5), 112.4 s |
+
+What this shows:
+
+- The round-4b guard and the brake-without-sink fix removed round 4's floor skim and ceiling climb live.
+- fast-brain-11 is the first braking brain to fly a full Straw Bale lap, faster than fast-brain-08's laps
+  and with fewer downhill contacts in this one lap; one lap is not a repeatability result.
+- New failures: arch legs beside rings (Minus at 44.8 s, Straw start arch in lap 2 while coasting), and
+  the brain hairpin still needs earlier braking (the looming warning comes ~0.5 s before the wall).
