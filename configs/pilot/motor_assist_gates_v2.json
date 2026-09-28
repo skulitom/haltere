@@ -1,11 +1,11 @@
 {
- "schema": "haltere.liftoff.motor_assist_gates.v3",
- "version": 3,
- "note": "Offline gates of the motor assist version 3 (configs/pilot/motor_assist.json), scored by haltere.liftoff.motor_assist_gates (score). The gates of version 2 with new held-out surrogate sets (hairpins turn 50/80/110 deg x arch 10/14 m x wall 2.5/2.9 m, sim seed 41; hill courses 6400-6411, sim seed 41; pass-through report seed 41), disjoint from every set either version was designed or scored on, and one definition fixed: the warning gate (version 2's metric returned the window length because the assist was already cutting at the window start, 3 s before the impact) now measures the start of the final continuous cut that reaches the impact. Frozen with the declaration before any run of these sets. The replay gates read the same live logs as version 2; all of them were replayed through version 2 and are development cases for this version (named). Baseline: the m4b pilot as the runner builds it for the motor contract without the assist. The surrogate is development evidence, never flight evidence. The hash covers everything except frozen/frozen_at/sha256; each gate is scored once. Versions 1 and 2 of these gates are kept.",
+ "schema": "haltere.liftoff.motor_assist_gates.v2",
+ "version": 2,
+ "note": "Offline gates of the motor assist version 2 (configs/pilot/motor_assist.json), scored by haltere.liftoff.motor_assist_gates (score). Frozen with the rule version, after its design on development sets only (the declaration's development_results) and before any run of the held-out parts below. Every scenario and course gate compares the assist with the baseline on the same scenarios, courses, drones and surrogate: the baseline is the m4b pilot as the runner builds it for the motor contract (--looming-brake --obstacle-stack on --descent-view on: lag turn v2, gap pilot v5 without gap samples, wall pilot v5, vertical guard v4, descent view v2 with contact support) without the assist. The hairpin and pass-through sets and the hill seeds are new and disjoint from every development set; the replay gates use the live logs, of which the Minus Two brain logs minus-brain03-01 ... minus-brain08-slow35-01 and the Straw Bale lap straw-brain11cw13-r4b-noassist-02 were never replayed through any version of the assist (held out) and the rest are development cases (named). The surrogate is development evidence, never flight evidence: no Liftoff walls, terrain, contact physics or HUD rules, synthetic looming. The hash covers everything except frozen/frozen_at/sha256; each gate is scored once per rule version. Version 1 of these gates (motor_assist_gates_v1.json) is kept.",
  "motor_assist": {
   "file": "configs/pilot/motor_assist.json",
-  "version": 3,
-  "sha256": "7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772"
+  "version": 2,
+  "sha256": "f3f3502247d766b8b59529350746ca53e6c24a66bc818dc1f4494e65e2e36901"
  },
  "previous_versions": [
   {
@@ -13,12 +13,6 @@
    "file": "configs/pilot/motor_assist_gates_v1.json",
    "sha256": "9abfb80d9ff95a65d0b6400bef0133966aa0de83644c4f55980d1ef34cb7e3c5",
    "scored": "motor assist version 1: 12 of 16 (0c3f56c)"
-  },
-  {
-   "version": 2,
-   "file": "configs/pilot/motor_assist_gates_v2.json",
-   "sha256": "8d7ce785478697b490b370ab09b2cc359be90231a7a43dde249f306ecac47264",
-   "scored": "motor assist version 2: 8 of 11 (87514c9)"
   }
  ],
  "baseline": "the m4b pilot (2a5bccb) for the motor contract without the motor assist: bit-identical to this tree with the assist off (the identity gate)",
@@ -27,7 +21,7 @@
   "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
   "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
   "seconds": 150.0,
-  "sim_seed": 41
+  "sim_seed": 31
  },
  "parts": [
   "hairpin",
@@ -60,47 +54,47 @@
  },
  "course_sets": {
   "hill": [
-   "hill:6400-6411"
+   "hill:6300-6311"
   ],
-  "definitions": "descent_rehearsal.course_set: hill = hill_course(seed) with hills; seeds 6400-6411 are new (version 1 used 6000-6011, version 2 6300-6311)"
+  "definitions": "descent_rehearsal.course_set: hill = hill_course(seed) with hills (the descent gates' kind; seeds 6300-6311 are new: the descent gates and version 1 used 6000-6011)"
  },
  "hairpin": {
   "set": {
    "turn_deg": [
-    50.0,
-    80.0,
-    110.0
+    35.0,
+    85.0,
+    115.0
    ],
    "arch_m": [
-    10.0,
-    14.0
+    9.0,
+    12.0
    ],
    "wall_m": [
-    2.5,
-    2.9
+    2.4,
+    2.8
    ]
   },
   "seconds": 16.0,
-  "sim_seed": 41,
-  "definition": "motor_assist_eval.hairpin_scenario for every combination (12), as version 1 defines it (from the ground, north 20 m to R1, a right turn of turn_deg to the arch R2 arch_m further, a wall wall_m behind R2 across that leg (12 m wide), R3 6 m to the left and 1 m before the wall, R4 15 m further left; rings 0.8 m high, a 2.2 m ceiling, the marker lost for 0.45 s after R2). Development sets (not scored): turn 20/60/90, 45/75/105 and 35/85/115 deg, arch 7/11, 8/13 and 9/12 m, wall 2.1/2.6, 2.3/3.0 and 2.4/2.8 m, seeds 17, 23 and 31"
+  "sim_seed": 31,
+  "definition": "motor_assist_eval.hairpin_scenario for every combination (12), as version 1 defines it (from the ground, north 20 m to R1, a right turn of turn_deg to the arch R2 arch_m further, a wall wall_m behind R2 across that leg (12 m wide), R3 6 m to the left and 1 m before the wall, R4 15 m further left; rings 0.8 m high, a 2.2 m ceiling, the marker lost for 0.45 s after R2). Development sets (not scored): turn 20/60/90 and 45/75/105 deg, arch 7/11 and 8/13 m, wall 2.1/2.6 and 2.3/3.0 m, seeds 17 and 23"
  },
  "passthrough": {
   "set": {
    "turn_deg": [
-    30.0,
-    80.0
+    15.0,
+    70.0
    ],
    "see_through_m": [
-    1.5,
-    2.0
+    1.25,
+    1.75
    ],
    "surface_m": [
     0.0,
-    0.25
+    0.5
    ]
   },
   "seconds": 16.0,
-  "sim_seed": 41,
+  "sim_seed": 31,
   "definition": "REPORT, not a gate: motor_assist_eval.passthrough_scenario for every combination (8): a gate arch flown through with a looming-only surface surface_m beyond the ring, read until see_through_m, clear beyond; the lowest horizontal speed from 1.5 s before to 0.5 s after the arch pass. Development (pt17: turn 0/45/90, see-through 1/2 m, seed 17) showed that the governor's own stand-off holds a slowed brain near 1 m/s there, and the fast PD dips too although it passes these Minus arches live at 3.5-4 m/s, so the scenario's looming is not validated against Liftoff"
  },
  "windows": {
@@ -192,7 +186,9 @@
    "minus-brain09b-vg-01",
    "minus-brain09b-r4-01",
    "minus-brain10b-r4-02",
-   "minus-brain11cw13-r4b-noassist-01",
+   "minus-brain11cw13-r4b-noassist-01"
+  ],
+  "minus_heldout": [
    "minus-brain03-01",
    "minus-brain04-02",
    "minus-brain05-01",
@@ -201,7 +197,6 @@
    "minus-brain08-01",
    "minus-brain08-slow35-01"
   ],
-  "minus_heldout": [],
   "warning_flights": [
    "minus-brain11cw13-r4b-noassist-01",
    "minus-brain10b-r4-02"
@@ -213,23 +208,12 @@
    "straw-brain08-04",
    "straw-brain08-06",
    "pine-brain08-01",
-   "pine-brain08-loom-01",
+   "pine-brain08-loom-01"
+  ],
+  "quiet_heldout": [
    "straw-brain11cw13-r4b-noassist-02"
   ],
-  "quiet_heldout": [],
-  "variants": "this tree: vertical_replay --stack on --near-on-path --throttle-column command_thr --descent-view configs/pilot/descent_view.json [--motor-assist configs/pilot/motor_assist.json | configs/pilot/motor_assist_v1.json] and --stack none; the baseline tree the same without the assist and with its configs/pilot/motor_assist.json (version 1); the looming streams for the stream flights",
-  "minus_replayed_by_v2": [
-   "minus-brain03-01",
-   "minus-brain04-02",
-   "minus-brain05-01",
-   "minus-brain06-01",
-   "minus-brain07-01",
-   "minus-brain08-01",
-   "minus-brain08-slow35-01"
-  ],
-  "quiet_replayed_by_v2": [
-   "straw-brain11cw13-r4b-noassist-02"
-  ]
+  "variants": "this tree: vertical_replay --stack on --near-on-path --throttle-column command_thr --descent-view configs/pilot/descent_view.json [--motor-assist configs/pilot/motor_assist.json | configs/pilot/motor_assist_v1.json] and --stack none; the baseline tree the same without the assist and with its configs/pilot/motor_assist.json (version 1); the looming streams for the stream flights"
  },
  "gates": {
   "hairpin": {
@@ -258,10 +242,7 @@
   "warning": {
    "min_s": 1.0,
    "cut": 1.0,
-   "window_s": 3.0,
-   "mode": "final",
-   "gap_s": 0.1,
-   "end_s": 0.3
+   "window_s": 3.0
   },
   "quiet": {
    "stopping_s_per_min_max": 0.5,
@@ -277,15 +258,15 @@
  "definitions": {
   "hairpin": "per brain over the 12 held-out hairpins. A contact is the drone centre within 0.3 m of the wall plane, below 0.05 m after the first ring, above the ceiling - 0.1 m, or a surrogate crash; a clean pass finishes all four rings with none. Clean passes >= the baseline's + 6; wall contacts <= floor(25% of the baseline's); floor contacts <= the baseline's + 1; ceiling contacts <= the baseline's + 1 (the contact-support false fire of about 2 of 12 drones is in both)",
   "hill": "per brain over the 12 held-out hill courses (the Straw-like closed loop; no looming there, so the stopping model is idle and this checks the rest of the rule): finishes >= the baseline's; crashes <= the baseline's; mean stick chatter <= 1.15 x; mean finish time over the courses both finish <= 1.02 x (the proposed course-time bound); terrain contacts <= the baseline's + 1; passes > 1.5 m high <= the baseline's + 2",
-  "minus_plan": "open loop, every Minus Two brain log (all development cases for this version): no planned stop or crawl before the hairpin: no run of >= 0.1 s, before the logged drone first reaches x = 73 m, in which the stopping model's bound (assist_plan: approach or stopping) is below 2.0 m/s while the pilot's own horizontal request is at least 3.0 m/s (the first arch, pillar A and the 90-degree arch lie before x = 73 m). Offline scoring uses the logged position; the rule does not",
-  "warning": "open loop, DEVELOPMENT cases (the two brain logs that hit the hairpin wall): the start of the final run of ticks (gaps of at most 0.1 s) in which the assisted horizontal request is 1.0 m/s or more below the pilot's own, that reaches within 0.3 s of the logged impact (the log's end), counted back from the impact; >= 1.0 s (the governor's cap dropped 0.72 s before the impact on minus-brain11cw13-r4b-noassist-01). Version 2's definition took the first such tick within the last 3 s and returned 3.0 s on both logs",
-  "quiet": "open loop, every Straw Bale and Pine Valley brain lap with looming samples (all development cases for this version): the stopping source (a wall-ahead condition) is the source that removed the most on <= 0.5 s per minute; the horizontal request travel removed on ticks attributed to the stopping model (approach or stopping) <= 2% of the pilot's own request travel (an upper bound of the course time lost: the recorded drone does not slow); by every source <= 3% (version 1's quiet bound); no more turn-first episodes than without the assist",
+  "minus_plan": "open loop, every Minus Two brain log (development and held-out): no planned stop or crawl before the hairpin: no run of >= 0.1 s, before the logged drone first reaches x = 73 m, in which the stopping model's bound (assist_plan: approach or stopping) is below 2.0 m/s while the pilot's own horizontal request is at least 3.0 m/s (the first arch, pillar A and the 90-degree arch lie before x = 73 m). Offline scoring uses the logged position; the rule does not",
+  "warning": "open loop, DEVELOPMENT cases (the two brain logs that hit the hairpin wall): the time before the logged impact (the log's end) at which the assisted horizontal request first falls 1.0 m/s or more below the pilot's own, within the last 3 s; >= 1.0 s (the governor's cap dropped 0.72 s before the impact on minus-brain11cw13-r4b-noassist-01)",
+  "quiet": "open loop, every Straw Bale and Pine Valley brain lap with looming samples (development and held-out): the stopping source (a wall-ahead condition) is the source that removed the most on <= 0.5 s per minute; the horizontal request travel removed on ticks attributed to the stopping model (approach or stopping) <= 2% of the pilot's own request travel (an upper bound of the course time lost: the recorded drone does not slow); by every source <= 3% (version 1's quiet bound); no more turn-first episodes than without the assist",
   "slew": "every brain replay with the assist: on every tick with dt > 1e-4 s, the change of (assisted - own) is at most 15 m/s^2 x dt horizontally (vector norm) and vertically (+1e-6)",
   "identity": "(a) the pilot with the assist off (the full stack and the default pilot) on this tree equals the baseline tree on every identity flight; (b) the fast PD with --motor-assist on (version 2) equals it off; (c) the kept version-1 declaration replayed through this tree equals the baseline tree's version 1 on the brain logs"
  },
  "reported_not_gated": "the pass-through arches, the live windows, floor/ceiling details, chatter on the scenario sets, the approach seconds per minute, the per-log assisted request minima (open-loop cap tracking dips while the recorded drone does not slow)",
  "scope": "measured surrogate (IdentifiedSim) on seeded synthetic scenarios and courses, and open-loop replays of live logs; development evidence, not flight evidence",
  "frozen": true,
- "frozen_at": "2026-09-28T09:12:35",
- "sha256": "f75a45e4e4f5ccdfda2dcf62cef81ea4ef07e086a79b38aa12e1d959527da5fc"
+ "frozen_at": "2026-09-28T07:53:00",
+ "sha256": "8d7ce785478697b490b370ab09b2cc359be90231a7a43dde249f306ecac47264"
 }

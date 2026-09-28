@@ -923,12 +923,25 @@ def contact_support_config(declaration):
     if declaration['version'] < 2:
         return None
     return ContactSupportConfig(**declaration['contact_support'])
-# The motor-assist declaration version whose rule this code implements (MotorAssistConfig); runners refuse others.
-MOTOR_ASSIST_VERSION = 1
-# The binding caps whose direction cap tracking can follow (MotorAssistConfig.cap_sources).
-MOTOR_ASSIST_SOURCES = ('request', 'governor', 'turn_first', 'stopping')
+# The motor-assist declaration version whose rule this code implements (MotorAssistConfig); runners fly only this one.
+# MOTOR_ASSIST_VERSIONS are the versions this code can rebuild for replays: versions 1 and 2 are kept for provenance
+# (the kept version-1 and version-2 declarations in configs/pilot) and refused by the runner; version-1 entries get
+# MOTOR_ASSIST_V1_FIELDS. Version 3 is version 2's rule with the approach's climb exclusion declared out
+# (approach_climb_max = vertical_up: the pilot never asks for more).
+MOTOR_ASSIST_VERSION = 3
+MOTOR_ASSIST_VERSIONS = (1, 2, 3)
+# The binding caps whose direction cap tracking can follow (MotorAssistConfig.cap_sources); 'approach' is version 2's.
+MOTOR_ASSIST_SOURCES = ('request', 'governor', 'turn_first', 'stopping', 'approach')
 # Pilot states whose own vertical request the sag compensation leaves alone (they own the vertical request).
 MOTOR_ASSIST_SAG_EXCLUDED = ('launch', 'support_climb')
+# Version 2's wall-ahead condition: states in which the checkpoint's bearing is unknown (its marker is lost).
+MOTOR_ASSIST_UNKNOWN_STATES = ('coast', 'search')
+# Version 2: sources whose cap tracking shares another source's extra reduction (one stopping model, two conditions).
+MOTOR_ASSIST_EXTRA_KEY = {'approach': 'stopping'}
+# The version-2 fields as version 1 flew them (no slew bound, the stopping source at any wall sample, no floor): a
+# version-1 declaration entry is rebuilt with these values (replays only; the runner refuses version 1).
+MOTOR_ASSIST_V1_FIELDS = dict(slew=0., stop_gate='any', floor_speed=0., stop_memory_s=0., wall_ahead_deg=50.,
+                              wall_ahead_standoff=True, standoff_tracking=True, approach_climb_max=float('inf'))
 
 
 @dataclass(frozen=True)
@@ -975,9 +988,38 @@ class MotorAssistConfig:
        already climbs more than sag_climb_margin faster than the pilot's request, while launching or in a support
        climb, and never above the pilot's vertical_up nor the ceiling guard's vertical bound during an overhead hold.
     Reads only the measured velocity, the pilot's own rule states and the governor's looming samples: no course
-    geometry, route or per-course value. Declaration version 1.
+    geometry, route or per-course value.
+
+    Versions 2 and 3 (version 3 is version 2 with approach_climb_max 3.5; the round-4b review of version 1: its
+    assisted request stepped by up to 4.5 m/s
+    per tick, and its stopping source asked brains for 0.01-0.4 m/s at the Minus Two first arch, before pillar A and at
+    the 90-degree arch, where the pilot flies on through a gate arch):
+    3. Slew: the assist's change of the request (assisted - the pilot's own) moves per tick by at most slew x dt (slew:
+       the clearance brake_slew), as a horizontal vector and vertically each, as the clearance brake bounds its own
+       steps, on onsets and on releases; the motor's request then changes per tick by at most the pilot's own change
+       plus slew x dt in each. slew 0: unbounded (version 1).
+    4. Wall ahead (stop_gate 'wall_ahead'; 'any' is version 1): the stopping source acts only while a wall-ahead
+       condition holds, the conditions turn-first reads: the checkpoint beyond the view to the side (pilot state
+       'side'), its bearing wall_ahead_deg or more off the heading (a marker in view or clamped at the bottom/top edge),
+       its marker lost ('coast', 'search'), a turn-first episode or its side guard, or (wall_ahead_standoff) the looming
+       governor's stand-off. There the next checkpoint does not lie through the surface ahead. The stop then keeps the
+       latest wall sample's dead-reckoned distance for stop_memory_s after the last confirmation (a wall at arm's length
+       stops looming: the live samples read no evidence within ~2 m) unless a newer looming sample with evidence is not
+       a wall sample (a clear view ends it).
+    5. Approach: outside a wall-ahead condition the confirmed wall samples of the stopping source feed the 'approach'
+       source instead: the same stopping model on the same distance, its bound never below floor_speed, and none while
+       the pilot's own vertical request before the looming governor and the vertical guard exceeds approach_climb_max
+       (a surface looming while the pilot follows its checkpoint up is rising ground, the vertical guard's; version 3
+       declares 3.5 m/s, the pilot's vertical_up, so never: version 2's 0.3 m/s also switched the approach off while
+       the pilot climbed back to the ring height after a turn, and its held-out hairpins failed). The assist
+       thus plans a lagging brain down toward a surface ahead that may be a gate arch it will fly through, to a speed
+       from which it can still stop in the room behind that arch, and never plans it to a stop there. Cap tracking of
+       the two bounds shares one extra reduction (MOTOR_ASSIST_EXTRA_KEY), so a wall-ahead condition that starts
+       mid-approach (the arch passed, the next marker to the side or lost) carries it over.
+    6. standoff_tracking False: no cap tracking of the governor's cap while the governor holds a stand-off (it holds the
+       drone at or below its stand-off speed by itself; tracking beyond that asks a slow brain to back away).
     """
-    cap_sources: tuple = MOTOR_ASSIST_SOURCES
+    cap_sources: tuple = ('request', 'governor', 'turn_first', 'stopping', 'approach')
     request_states: tuple = ('cue', 'below', 'below_weak', 'side')
     cap_deadband: float = .3
     cap_gain: float = 2.
@@ -1000,11 +1042,33 @@ class MotorAssistConfig:
     sag_max: float = 1.
     sag_rise: float = 5.
     sag_fall: float = 2.
+    slew: float = 15.
+    stop_gate: str = 'wall_ahead'
+    wall_ahead_deg: float = 50.
+    wall_ahead_standoff: bool = False
+    standoff_tracking: bool = False
+    stop_memory_s: float = 1.
+    floor_speed: float = 2.5
+    approach_climb_max: float = 3.5
+    version: int = MOTOR_ASSIST_VERSION
 
     def __post_init__(self):
-        values = {k: v for k, v in asdict(self).items() if k not in ('cap_sources', 'request_states')}
+        values = {k: v for k, v in asdict(self).items() if k not in ('cap_sources', 'request_states', 'stop_gate',
+                                                                    'approach_climb_max')}
         if not np.isfinite(list(values.values())).all() or min(values.values()) < 0:
             raise ValueError('Use finite non-negative motor-assist parameters')
+        if np.isnan(self.approach_climb_max):
+            raise ValueError('approach_climb_max is a vertical speed (inf: no bound)')
+        if self.version not in MOTOR_ASSIST_VERSIONS:
+            raise ValueError(f'The fast pilot implements motor-assist versions {MOTOR_ASSIST_VERSIONS}')
+        if self.stop_gate not in ('any', 'wall_ahead'):
+            raise ValueError("stop_gate is 'any' (version 1) or 'wall_ahead'")
+        if not 0 < self.wall_ahead_deg < 180:
+            raise ValueError('Use 0 < wall_ahead_deg < 180 degrees')
+        if self.version == 1 and ('approach' in self.cap_sources or any(
+                getattr(self, k) != v for k, v in MOTOR_ASSIST_V1_FIELDS.items())):
+            raise ValueError('A version-1 motor assist has the version-1 fields (MOTOR_ASSIST_V1_FIELDS) and no '
+                             "'approach' source")
         for name in ('cap_gain', 'cap_rise', 'cap_fall', 'sag_rise', 'sag_fall', 'stop_ttc_s', 'stop_window_s',
                      'stop_deceleration'):
             if not getattr(self, name) > 0:
@@ -1020,10 +1084,13 @@ class MotorAssistConfig:
 def motor_assist_for_contract(declaration, contract):
     """The `MotorAssistConfig` that a motor-assist declaration already parsed (and hash-checked) by the runner assigns
     to a motor contract ('contracts': {contract: parameters or None}), or None when the contract has none (the fast PD);
-    refuses another rule version. This module reads no files."""
-    if (declaration or {}).get('version') != MOTOR_ASSIST_VERSION:
-        raise ValueError(f'The motor-assist declaration is version {(declaration or {}).get("version")}; the fast '
-                         f'pilot implements version {MOTOR_ASSIST_VERSION}')
+    refuses a rule version this code does not implement (MOTOR_ASSIST_VERSIONS; the runner itself flies only
+    MOTOR_ASSIST_VERSION). A version-1 entry is rebuilt as version 1 flew (MOTOR_ASSIST_V1_FIELDS). This module reads
+    no files."""
+    version = (declaration or {}).get('version')
+    if version not in MOTOR_ASSIST_VERSIONS:
+        raise ValueError(f'The motor-assist declaration is version {version}; the fast pilot implements versions '
+                         f'{MOTOR_ASSIST_VERSIONS}')
     contracts = declaration.get('contracts')
     if not isinstance(contracts, dict):
         raise ValueError('A motor-assist declaration lists its motor contracts')
@@ -1031,10 +1098,17 @@ def motor_assist_for_contract(declaration, contract):
     if entry is None:
         return None
     entry = dict(entry)
+    if 'version' in entry:
+        raise ValueError('The rule version is the declaration\'s, not a contract entry\'s')
+    if version == 1:
+        if set(entry) & set(MOTOR_ASSIST_V1_FIELDS):
+            raise ValueError('A version-1 declaration has no version-2 fields')
+        entry.update(MOTOR_ASSIST_V1_FIELDS)
+        entry.setdefault('cap_sources', MOTOR_ASSIST_SOURCES[:4])
     for key in ('cap_sources', 'request_states'):
         if key in entry:
             entry[key] = tuple(entry[key])
-    return MotorAssistConfig(**entry)
+    return MotorAssistConfig(**entry, version=version)
 
 
 class TtcClearanceGovernor:
@@ -1532,6 +1606,15 @@ class FastRaceCue:
         self.assist_time = {name: 0. for name in MOTOR_ASSIST_SOURCES+('sag',)}
         self.assist_removed = 0.               # metres of horizontal request travel removed (integral)
         self.assist_added = 0.                 # metres of climb requested by the sag compensation (integral)
+        # Version 2 (see MotorAssistConfig): the slewed change of the request (assisted - own), the wall-ahead condition
+        # of this tick, and the stopping source's memory (receipt times of the newest wall sample, of the latest
+        # confirmation and of the newest looming sample with evidence that is no wall sample).
+        self.assist_delta = np.zeros(3)
+        self.assist_wall_ahead = False
+        self.assist_plan = float('nan')        # the stopping model's bound this tick (approach or stopping; NaN: none)
+        self.assist_seen_at = -np.inf
+        self.assist_wall_at = self.assist_confirmed_at = self.assist_clear_at = -np.inf
+        self.assist_v2_time = dict(wall_ahead=0., slew_limited=0., approach=0., stopping=0.)
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -1967,13 +2050,18 @@ class FastRaceCue:
             size = float(np.linalg.norm(flat))
             # the governor bounds the request this tick (it braked, or the request sits at the cap)
             binds = self.clearance_braking or float(command @ np.asarray(ray, float)) >= cap-.05
-            if size >= .5 and binds:
+            gov = self.clearance
+            standoff = (not a.standoff_tracking and isinstance(gov, TtcClearanceGovernor) and now is not None
+                        and now <= gov.standoff_until)
+            if size >= .5 and binds and not standoff:
                 out.append(('governor', flat/size, float(cap)))
         if 'turn_first' in a.cap_sources and turn_first is not None:
             out.append(('turn_first', np.asarray(turn_first, float), 0.))
             if np.isfinite(turn_first_bound) and norm > 1e-6:
                 out.append(('turn_first', command[:2]/norm, float(turn_first_bound)))
         gov = self.clearance
+        if a.stop_gate != 'any':
+            return out+self._assist_stop_sources(position, now)
         if ('stopping' in a.cap_sources and isinstance(gov, TtcClearanceGovernor) and position is not None
                 and gov.samples):
             # the motor's stopping model on the latest wall sample, while recent short-TTC wall samples confirm it and
@@ -1990,6 +2078,72 @@ class FastRaceCue:
                     out.append(('stopping', flat/size, float(bound)))
         return out
 
+    def _assist_wall_sample(self, sample):
+        """A looming sample the stopping source counts as a wall: TTC under stop_ttc_s, not below-path terrain."""
+        terrain = self.clearance.config.terrain_fraction
+        return sample['ttc'] < self.motor_assist.stop_ttc_s and (sample['below'] is None or sample['below'] < terrain)
+
+    def _assist_wall_ahead(self, state, yaw, now):
+        """Version 2's wall-ahead condition (MotorAssistConfig): the next checkpoint does not lie through the surface
+        ahead. The checkpoint's marker is clamped at a side edge, lies wall_ahead_deg or more off the heading, or is lost;
+        or a turn-first episode or its side guard is active; or the looming governor holds a stand-off."""
+        a = self.motor_assist
+        if self.launching:
+            return False
+        if state == 'side' or state in MOTOR_ASSIST_UNKNOWN_STATES:
+            return True
+        off = self._bearing_off_deg(yaw)
+        if state in TURN_FIRST_BEARING_STATES and off is not None and off >= a.wall_ahead_deg:
+            return True
+        if self.turn_first_active or self.side_guard_active:
+            return True
+        gov = self.clearance
+        return bool(a.wall_ahead_standoff and isinstance(gov, TtcClearanceGovernor) and gov.cap is not None
+                    and now <= gov.standoff_until)
+
+    def _assist_stop_sources(self, position, now):
+        """Version 2's stopping-model sources (MotorAssistConfig 4): 'stopping' while a wall-ahead condition holds (with
+        its memory), else 'approach' (floored at floor_speed) while recent short-TTC wall samples confirm a wall and the
+        newest looming sample with evidence is one of them. Updates the memory from the samples received since the
+        previous tick."""
+        a, gov = self.motor_assist, self.clearance
+        if not isinstance(gov, TtcClearanceGovernor) or position is None:
+            return []
+        for x in gov.samples:
+            if x['received'] > self.assist_seen_at:
+                if self._assist_wall_sample(x):
+                    self.assist_wall_at = max(self.assist_wall_at, x['received'])
+                else:
+                    self.assist_clear_at = max(self.assist_clear_at, x['received'])
+        if gov.samples:
+            self.assist_seen_at = max(self.assist_seen_at, max(x['received'] for x in gov.samples))
+        recent = [x for x in gov.samples if now-x['received'] <= a.stop_window_s and self._assist_wall_sample(x)]
+        confirmed = bool(gov.samples) and len(recent) >= a.stop_confirm and recent[-1] is gov.samples[-1]
+        if confirmed:
+            self.assist_confirmed_at = now
+        distance, wall = gov.wall_distance(position)
+        if distance is None:
+            return []
+        flat = np.asarray(wall, float)[:2]
+        size = float(np.linalg.norm(flat))
+        if size < .5:
+            return []
+        bound = stopping_speed(distance, a.stop_deceleration, a.stop_latency_s, a.stop_margin_m)
+        if self.assist_wall_ahead:
+            remembered = (now-self.assist_confirmed_at <= a.stop_memory_s
+                          and self.assist_wall_at > self.assist_clear_at)
+            if 'stopping' in a.cap_sources and (confirmed or remembered):
+                return [('stopping', flat/size, float(bound))]
+            return []
+        if 'approach' not in a.cap_sources or not confirmed:
+            return []
+        # rising ground is the vertical guard's, not a surface to brake for: no approach while the pilot's own path
+        # toward its checkpoint climbs (its vertical request before the looming governor and the vertical guard, whose
+        # terrain climb can read a wall ahead as rising ground: minus-brain10b-r4-02's hairpin)
+        if np.isfinite(self.pilot_vertical) and self.pilot_vertical > a.approach_climb_max:
+            return []
+        return [('approach', flat/size, float(max(bound, a.floor_speed)))]
+
     def _motor_assist(self, command, velocity, dt, state, sources, vertical_cap=None):
         """The assisted request (MotorAssistConfig) for the pilot's own final request `command`; updates the rule's
         state, per-tick log values and seconds."""
@@ -1997,20 +2151,29 @@ class FastRaceCue:
         out = np.array(command, dtype=float)
         vh = np.asarray(velocity[:2], float)
         self.assist_sources = sources
-        # 1. cap tracking: per source, the extra reduction follows gain x (excess - deadband), rate-limited
+        # 1. cap tracking: per source, the extra reduction follows gain x (excess - deadband), rate-limited; version 2's
+        # approach and stopping bounds are one stopping model and share one extra reduction (a wall-ahead condition
+        # that starts mid-approach carries it over)
+        key = lambda name: MOTOR_ASSIST_EXTRA_KEY.get(name, name)
         targets = {name: 0. for name in MOTOR_ASSIST_SOURCES}
         for name, h, bound in sources:
             excess = float(vh @ h)-bound
-            targets[name] = max(targets[name], float(np.clip(a.cap_gain*(excess-a.cap_deadband), 0., a.cap_max)))
+            targets[key(name)] = max(targets[key(name)],
+                                     float(np.clip(a.cap_gain*(excess-a.cap_deadband), 0., a.cap_max)))
         for name in MOTOR_ASSIST_SOURCES:
             x = self.assist_extra[name]
             self.assist_extra[name] = float(x+np.clip(targets[name]-x, -a.cap_fall*dt, a.cap_rise*dt))
         removed, top = {}, 0.
         before = out[:2].copy()
+        plans = [bound for name, _, bound in sources if name in ('stopping', 'approach')]
+        self.assist_plan = float(min(plans)) if plans else float('nan')
+        if a.stop_gate != 'any':
+            for name in ('approach', 'stopping'):
+                self.assist_v2_time[name] += dt*any(n == name for n, _, _ in sources)
         for name, h, bound in sources:
-            x = self.assist_extra[name]
-            if x <= 0 and name != 'stopping':
-                continue                       # the stopping model's bound applies as a cap of its own
+            x = self.assist_extra[key(name)]
+            if x <= 0 and name not in ('stopping', 'approach'):
+                continue                       # the stopping model's bounds apply as caps of their own
             along = float(out[:2] @ h)
             limit = max(0., bound-x) if name == 'request' else max(-a.cap_reverse, bound-x)
             if along > limit:
@@ -2021,8 +2184,6 @@ class FastRaceCue:
             self.assist_time[name] += dt
             if amount > top:
                 top, self.assist_source = amount, name
-        self.assist_horizontal = float(np.linalg.norm(before-out[:2]))
-        self.assist_removed += dt*max(0., float(np.linalg.norm(before))-float(np.linalg.norm(out[:2])))
         # 2. sag compensation: climb while the measured vertical speed lies below the request, and while the motor is
         # asked to accelerate hard from low speed
         target = 0.
@@ -2041,6 +2202,22 @@ class FastRaceCue:
         if self.assist_sag > 0:
             ceiling = c.vertical_up if vertical_cap is None else min(c.vertical_up, vertical_cap)
             out[2] = max(out[2], min(out[2]+self.assist_sag, ceiling))
+        if a.slew > 0:
+            # 3. slew (version 2): the assist's change of the request moves by at most slew x dt per tick
+            # (the horizontal change as a vector and the vertical change each, as the clearance brake bounds its own
+            # horizontal and vertical steps)
+            command = np.asarray(command, dtype=float)
+            step = (out-command)-self.assist_delta
+            size, room = float(np.linalg.norm(step[:2])), a.slew*dt
+            limited = size > room or abs(float(step[2])) > room
+            if size > room:
+                step[:2] *= room/size
+            step[2] = float(np.clip(step[2], -room, room))
+            self.assist_v2_time['slew_limited'] += dt*limited
+            self.assist_delta = self.assist_delta+step
+            out = command+self.assist_delta
+        self.assist_horizontal = float(np.linalg.norm(before-out[:2]))
+        self.assist_removed += dt*max(0., float(np.linalg.norm(before))-float(np.linalg.norm(out[:2])))
         self.assist_vertical = float(out[2]-vertical)
         self.assist_time['sag'] += dt*(self.assist_vertical > 0)
         self.assist_added += dt*self.assist_vertical
@@ -2305,6 +2482,9 @@ class FastRaceCue:
         if self.motor_assist is not None:
             # Motor assist (MotorAssistConfig): the motor receives the assisted request, the pilot keeps its own.
             self.pilot_command = self.velocity_command.copy()
+            if self.motor_assist.stop_gate != 'any':
+                self.assist_wall_ahead = self._assist_wall_ahead(state, yaw, now)
+                self.assist_v2_time['wall_ahead'] += dt*self.assist_wall_ahead
             sources = self._assist_sources(state, cap, ray, turn_first, turn_first_bound, position, now)
             self.velocity_command = self._motor_assist(self.pilot_command, velocity, dt, state, sources, vertical_cap)
         self.state = state
@@ -2493,25 +2673,40 @@ class FastRaceCue:
         if self.motor_assist is None:
             nan = float('nan')
             return dict(assist_pilot_vx=nan, assist_pilot_vy=nan, assist_pilot_vz=nan, assist_horizontal=nan,
-                        assist_vertical=nan, assist_source='')
+                        assist_vertical=nan, assist_source='', assist_plan=nan, assist_wall_ahead=nan)
         own = self.pilot_command if self.pilot_command is not None else self.velocity_command
         own = np.full(3, np.nan) if own is None else own
         return dict(assist_pilot_vx=float(own[0]), assist_pilot_vy=float(own[1]), assist_pilot_vz=float(own[2]),
                     assist_horizontal=float(self.assist_horizontal), assist_vertical=float(self.assist_vertical),
-                    assist_source=self.assist_source)
+                    assist_source=self.assist_source, assist_plan=float(self.assist_plan),
+                    assist_wall_ahead=float(self.assist_wall_ahead))
 
     def motor_assist_summary(self):
-        """Seconds each part acted and metres of request changed (None when the rule is not declared)."""
+        """Seconds each part acted and metres of request changed (None when the rule is not declared); version 2 adds
+        the seconds with a wall-ahead condition, with the slew bound limiting and with a floor raising a limit."""
         if self.motor_assist is None:
             return None
-        return dict(seconds={k: round(v, 3) for k, v in self.assist_time.items()},
-                    removed_m=round(self.assist_removed, 3), climb_added_m=round(self.assist_added, 3))
+        out = dict(seconds={k: round(v, 3) for k, v in self.assist_time.items()},
+                   removed_m=round(self.assist_removed, 3), climb_added_m=round(self.assist_added, 3))
+        if self.motor_assist.version >= 2:
+            out['v2_seconds'] = {k: round(v, 3) for k, v in self.assist_v2_time.items()}
+        return out
 
     def _motor_assist_metadata(self):
         if self.motor_assist is None:
             return None
+        v2 = ('; version 2: the assist\'s change of the request (assisted - own) moves per tick by at most slew x dt, '
+              'horizontally (vector) and vertically each; with stop_gate wall_ahead the stopping source acts only while '
+              'a wall-ahead condition holds (the checkpoint marker side-clamped, wall_ahead_deg or more off the heading '
+              'or lost, a turn-first episode or side guard, or with wall_ahead_standoff the governor\'s stand-off), '
+              'keeping the latest wall sample for stop_memory_s after its last confirmation unless a newer non-wall '
+              'sample arrives; otherwise its confirmed samples feed the approach source, the same stopping model with its '
+              'bound never below floor_speed and none while the pilot\'s vertical request before the governor and the '
+              'guard exceeds approach_climb_max (cap tracking of the two shares one extra reduction); without '
+              'standoff_tracking no cap tracking of the governor\'s cap during its stand-off'
+              if self.motor_assist.version >= 2 else '')
         return dict(
-            version=MOTOR_ASSIST_VERSION,
+            version=self.motor_assist.version,
             rule='cap tracking: for each binding cap of cap_sources (request: the pilot\'s final horizontal request in '
                  'request_states, bound its own magnitude; governor: the looming cap along the horizontal part of its '
                  'ray while it bounds the request; turn_first: no speed toward the wall and the creep bound; stopping: '
@@ -2527,7 +2722,7 @@ class FastRaceCue:
                  'climbing more than sag_climb_margin faster than the request, at most sag_max, rate sag_rise/sag_fall, '
                  'not while launching or in a support climb, never above vertical_up or an overhead bound; the pilot '
                  'keeps its own request as its state, and the support rule and the descent-path shortfall compare the '
-                 'measured vertical speed with the vertical request the motor received',
+                 'measured vertical speed with the vertical request the motor received'+v2,
             input='measured velocity, the pilot\'s own rule states and the looming governor\'s samples; no course '
                   'geometry',
             parameters={k: (list(v) if isinstance(v, tuple) else v) for k, v in asdict(self.motor_assist).items()},

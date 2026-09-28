@@ -1,0 +1,79 @@
+{
+ "note": "POST-SCORING DIAGNOSIS of motor assist version 2 (nothing here changed version 2): the held-out hairpin set of gates v2 (turn 35/85/115 x arch 9/12 x wall 2.4/2.8, sim seed 31) flown with version 1 and with version 2 without its approach_climb_max (v2fnoclimb), same surrogate and pilot (session scratchpad m5/brake/harness_dev.py, trace_one.py). The version-2 rows (v2fgs) reproduce the gate run exactly.",
+ "counts": {
+  "brain09b_h31_v1": {
+   "clean": 10,
+   "finished": 11,
+   "wall": 0,
+   "floor": 2,
+   "ceiling": 0,
+   "crashed": 1
+  },
+  "brain09b_h31_v2fgs": {
+   "clean": 6,
+   "finished": 6,
+   "wall": 2,
+   "floor": 4,
+   "ceiling": 0,
+   "crashed": 4
+  },
+  "brain09b_h31_v2fnoclimb": {
+   "clean": 9,
+   "finished": 9,
+   "wall": 0,
+   "floor": 2,
+   "ceiling": 1,
+   "crashed": 2
+  },
+  "brain10b_h31_v1": {
+   "clean": 10,
+   "finished": 11,
+   "wall": 1,
+   "floor": 0,
+   "ceiling": 1,
+   "crashed": 0
+  },
+  "brain10b_h31_v2fgs": {
+   "clean": 4,
+   "finished": 5,
+   "wall": 6,
+   "floor": 0,
+   "ceiling": 1,
+   "crashed": 0
+  },
+  "brain10b_h31_v2fnoclimb": {
+   "clean": 8,
+   "finished": 9,
+   "wall": 1,
+   "floor": 0,
+   "ceiling": 1,
+   "crashed": 0
+  },
+  "brain11cw13_h31_v1": {
+   "clean": 10,
+   "finished": 10,
+   "wall": 0,
+   "floor": 0,
+   "ceiling": 0,
+   "crashed": 0
+  },
+  "brain11cw13_h31_v2fgs": {
+   "clean": 5,
+   "finished": 5,
+   "wall": 6,
+   "floor": 0,
+   "ceiling": 0,
+   "crashed": 0
+  },
+  "brain11cw13_h31_v2fnoclimb": {
+   "clean": 10,
+   "finished": 10,
+   "wall": 0,
+   "floor": 0,
+   "ceiling": 0,
+   "crashed": 0
+  }
+ },
+ "cause": "approach_climb_max 0.3 m/s switched the approach bound off while the pilot climbed back to the ring height after the sag of an 85-115 deg turn (pilot vertical request 0.37-0.62 m/s). Example: fast-brain-11-b-cw13, turn 115 deg, arch 9 m, wall 2.4 m: version 1 bounded 6.0 -> 3.3 m/s from 7.75 s; with the exclusion nothing braked before the arch pass at 8.18 s and the drone reached the wall at 4.25 m/s. On the clean Straw Bale laps the pilot vertical request at approach ticks spans 0-1 m/s (median 0.5-0.8): no threshold separates the two.",
+ "straw_without_the_exclusion": "development replays (straw-brain08-01/-02/-03/-04/-06): approach 1.70-3.29 s/min, stopping 0.02-0.12 s/min, request travel removed by the stopping model 0.87-1.98%, by every source 1.98-4.18%"
+}

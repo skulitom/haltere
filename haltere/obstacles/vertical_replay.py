@@ -214,7 +214,7 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                  'brake_ray_y', 'brake_ray_z', 'braking')
     if motor_assist is not None:
         keys += ('assist_pilot_vx', 'assist_pilot_vy', 'assist_pilot_vz', 'assist_horizontal', 'assist_vertical',
-                 'assist_source')
+                 'assist_source', 'assist_plan', 'assist_wall_ahead')
     rows = {k: [] for k in keys}
     last_ts = None
     nan = float('nan')
@@ -304,7 +304,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
             else:
                 values['assist_source'] = ''
             if sources is not None:
-                sources.append((list(getattr(pilot, 'assist_sources', [])), pilot.state))
+                sources.append((list(getattr(pilot, 'assist_sources', [])), pilot.state,
+                                bool(getattr(pilot, 'assist_wall_ahead', False))))
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}

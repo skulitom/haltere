@@ -936,16 +936,18 @@ def descent_view_row(assistance):
 
 
 MOTOR_ASSIST_COLUMNS = ('assist_pilot_vx','assist_pilot_vy','assist_pilot_vz','assist_horizontal','assist_vertical',
-                        'assist_source')
+                        'assist_source','assist_plan','assist_wall_ahead')
 
 
 def motor_assist_row(assistance):
     """CSV values for MOTOR_ASSIST_COLUMNS (written only with --motor-assist on, after the view columns): the pilot's own
     request (cmd_v* is the assisted request the motor received), the horizontal request removed and the climb added this
-    tick, and the cap-tracking source that removed the most ('' none); NaN when no entry applies to the contract."""
+    tick, the cap-tracking source that removed the most ('' none), and (motor assist version 2) the stopping model's
+    bound this tick (assist_plan: approach or stopping, NaN none) and the wall-ahead condition (1/0); NaN when no entry
+    applies to the contract."""
     log = getattr(assistance,'motor_assist_log',None)
     if log is None:
-        return (float('nan'),)*(len(MOTOR_ASSIST_COLUMNS)-1)+('',)
+        return tuple('' if k == 'assist_source' else float('nan') for k in MOTOR_ASSIST_COLUMNS)
     values = log()
     return tuple(values[k] for k in MOTOR_ASSIST_COLUMNS)
 
