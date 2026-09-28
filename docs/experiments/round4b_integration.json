@@ -1,0 +1,7730 @@
+{
+ "scope": "Round-4b integration on branch m4b (m4 c953758 + m4b-guard, m4b-contact, m4b-assist, m4b-brain11). Open-loop replays of 24 logged flights (the recorded motion does not respond to the requests), the descent surrogate (IdentifiedSim, scoring-only hills, no looming) and the motor-assist harness's synthetic hairpin and stop-then-accelerate scenarios. Development evidence only; nothing here is flight evidence. The three round-4 live logs were read by every round-4b branch and are development cases.",
+ "trees": {
+  "m4": "git archive of m4 c953758 (code identical to 3decaac)",
+  "m4b": "git archive of the merged m4b code (a68d5a0)",
+  "harness": "m4b haltere/obstacles/vertical_replay.py"
+ },
+ "replay_variants": {
+  "m4_full": "--stack on --near-on-path --throttle-column command_thr --descent-view (v1), m4 tree",
+  "m4b_full": "--stack on --near-on-path --throttle-column command_thr --descent-view (v2), m4b tree: guard v4, wall pilot v5, descent view v2 with contact support",
+  "m4b_full_wp4": "m4b_full with the kept wall pilot v4 (isolates the clearance-brake floor)",
+  "m4b_full_dv1": "m4b_full with the kept descent view v1 (isolates contact support)",
+  "m4b_full_dv1_wp4": "m4b_full with both kept (isolates guard v4 against m4_full)",
+  "m4b_full_ma": "m4b_full + --motor-assist (v1; no entry for the fast PD)",
+  "streams": "the Straw laps and pine-brain08-01 use the offline looming stream of M2 round 2"
+ },
+ "identity": {
+  "summary": {
+   "pairs": 81,
+   "identical": 81
+  },
+  "pairs": {
+   "m4b_none vs m4_none": {
+    "minus-fast6-wall-01": "identical",
+    "minus-brain08-gapon-01": "identical",
+    "minus-brain08-gapon-02": "identical",
+    "minus-fast6-gapon-01": "identical",
+    "minus-brain08-loom-01": "identical",
+    "minus-fast6-vg-02": "identical",
+    "minus-brain08-vg-01": "identical",
+    "minus-brain09b-vg-01": "identical",
+    "minus-brain08-gapshadow-01": "identical",
+    "minus-fast6-r4-02": "identical",
+    "minus-brain10b-r4-02": "identical",
+    "minus-brain09b-r4-01": "identical",
+    "pine-fast6-ttc-01": "identical",
+    "pine-brain08-loom-01": "identical",
+    "pine-brain08-01": "identical",
+    "straw-brain08-04": "identical",
+    "straw-brain08-06": "identical",
+    "straw-brain08-01": "identical",
+    "straw-brain08-02": "identical",
+    "straw-brain08-03": "identical",
+    "straw-fast6-01": "identical",
+    "straw-fast6-02": "identical",
+    "straw-fast6-03": "identical",
+    "straw-fast6-arc-01": "identical"
+   },
+   "m4b_shadow vs m4_shadow": {
+    "minus-fast6-wall-01": "identical",
+    "minus-brain08-gapon-01": "identical",
+    "minus-brain08-gapon-02": "identical",
+    "minus-fast6-gapon-01": "identical",
+    "minus-brain08-loom-01": "identical",
+    "minus-fast6-vg-02": "identical",
+    "minus-brain08-vg-01": "identical",
+    "minus-brain09b-vg-01": "identical",
+    "minus-brain08-gapshadow-01": "identical",
+    "minus-fast6-r4-02": "identical",
+    "minus-brain10b-r4-02": "identical",
+    "minus-brain09b-r4-01": "identical",
+    "pine-fast6-ttc-01": "identical",
+    "pine-brain08-loom-01": "identical",
+    "pine-brain08-01": "identical",
+    "straw-brain08-04": "identical",
+    "straw-brain08-06": "identical",
+    "straw-brain08-01": "identical",
+    "straw-brain08-02": "identical",
+    "straw-brain08-03": "identical",
+    "straw-fast6-01": "identical",
+    "straw-fast6-02": "identical",
+    "straw-fast6-03": "identical",
+    "straw-fast6-arc-01": "identical"
+   },
+   "m4b_none_dv1 vs m4_none_dv1": {
+    "minus-fast6-wall-01": "identical",
+    "minus-brain08-gapon-01": "identical",
+    "minus-brain08-gapon-02": "identical",
+    "minus-fast6-gapon-01": "identical",
+    "minus-brain08-loom-01": "identical",
+    "minus-fast6-vg-02": "identical",
+    "minus-brain08-vg-01": "identical",
+    "minus-brain09b-vg-01": "identical",
+    "minus-brain08-gapshadow-01": "identical",
+    "minus-fast6-r4-02": "identical",
+    "minus-brain10b-r4-02": "identical",
+    "minus-brain09b-r4-01": "identical",
+    "pine-fast6-ttc-01": "identical",
+    "pine-brain08-loom-01": "identical",
+    "pine-brain08-01": "identical",
+    "straw-brain08-04": "identical",
+    "straw-brain08-06": "identical",
+    "straw-brain08-01": "identical",
+    "straw-brain08-02": "identical",
+    "straw-brain08-03": "identical",
+    "straw-fast6-01": "identical",
+    "straw-fast6-02": "identical",
+    "straw-fast6-03": "identical",
+    "straw-fast6-arc-01": "identical"
+   },
+   "m4b_none_ma vs m4_none": {
+    "minus-fast6-gapon-01": "identical",
+    "minus-fast6-r4-02": "identical",
+    "minus-fast6-vg-02": "identical",
+    "minus-fast6-wall-01": "identical",
+    "pine-fast6-ttc-01": "identical",
+    "straw-fast6-01": "identical",
+    "straw-fast6-02": "identical",
+    "straw-fast6-03": "identical",
+    "straw-fast6-arc-01": "identical"
+   }
+  }
+ },
+ "flights": {
+  "minus-fast6-wall-01": {
+   "motor": "pd",
+   "streamed": false,
+   "end_t": 13.41,
+   "m4": {
+    "guard_climb_s": 0.83,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.26,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.83,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.26,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true
+  },
+  "minus-brain08-gapon-01": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 19.07,
+   "m4": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.19,
+    "min_cvz": -0.4,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.19,
+    "min_cvz": -0.25,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 1.3,
+    "brake_added_max": 0.22,
+    "brake_withheld_s": 1.3,
+    "brake_withheld_max": 0.22,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 1.04,
+    "max_dh": 0.03,
+    "max_dz": 0.23,
+    "windows": [
+     {
+      "t": [
+       16.96,
+       18.0
+      ],
+      "x": 74.2,
+      "y": 11.6,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 0.23,
+      "dvz_mean": 0.18,
+      "dspeed_mean": -0.02
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 1.04,
+    "max_dh": 0.03,
+    "max_dz": 0.23,
+    "windows": [
+     {
+      "t": [
+       16.96,
+       18.0
+      ],
+      "x": 74.2,
+      "y": 11.6,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 0.23,
+      "dvz_mean": 0.18,
+      "dspeed_mean": -0.02
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 6.89,
+    "max_dh": 4.84,
+    "max_dz": 0.61,
+    "windows": [
+     {
+      "t": [
+       3.68,
+       3.92
+      ],
+      "x": 3.4,
+      "y": -0.0,
+      "z": 0.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.99,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.51
+     },
+     {
+      "t": [
+       6.29,
+       7.21
+      ],
+      "x": 15.5,
+      "y": 0.1,
+      "z": 0.86,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 4.47,
+      "max_dz": 0.47,
+      "dvz_mean": 0.1,
+      "dspeed_mean": -1.77
+     },
+     {
+      "t": [
+       11.08,
+       13.96
+      ],
+      "x": 43.4,
+      "y": 2.3,
+      "z": 0.48,
+      "states": [
+       "coast",
+       "cue",
+       "search"
+      ],
+      "max_dh": 4.84,
+      "max_dz": 0.47,
+      "dvz_mean": 0.05,
+      "dspeed_mean": -1.69
+     },
+     {
+      "t": [
+       15.76,
+       19.07
+      ],
+      "x": 67.6,
+      "y": 9.9,
+      "z": 0.73,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "max_dh": 4.76,
+      "max_dz": 0.61,
+      "dvz_mean": 0.07,
+      "dspeed_mean": -1.97
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.19,
+    "min_cvz": -0.25,
+    "max_cvz": 1.51,
+    "contact_onsets": [],
+    "brake_added_s": 1.3,
+    "brake_added_max": 0.22,
+    "brake_withheld_s": 1.3,
+    "brake_withheld_max": 0.22,
+    "brake_left_s": 0.0,
+    "assist_h_s": 6.4,
+    "assist_h_max": 4.84,
+    "assist_v_s": 2.3,
+    "assist_v_max": 0.61,
+    "assist_sources": {
+     "governor": 1.04,
+     "request": 3.17,
+     "stopping": 2.19
+    }
+   }
+  },
+  "minus-brain08-gapon-02": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 18.58,
+   "m4": {
+    "guard_climb_s": 0.37,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.35,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.37,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.24,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.6,
+    "brake_added_max": 0.13,
+    "brake_withheld_s": 0.6,
+    "brake_withheld_max": 0.13,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.56,
+    "max_dh": 0.01,
+    "max_dz": 0.13,
+    "windows": [
+     {
+      "t": [
+       17.35,
+       17.9
+      ],
+      "x": 75.2,
+      "y": 12.2,
+      "z": 0.84,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.13,
+      "dvz_mean": 0.11,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.56,
+    "max_dh": 0.01,
+    "max_dz": 0.13,
+    "windows": [
+     {
+      "t": [
+       17.35,
+       17.9
+      ],
+      "x": 75.2,
+      "y": 12.2,
+      "z": 0.84,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.13,
+      "dvz_mean": 0.11,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 8.77,
+    "max_dh": 5.72,
+    "max_dz": 0.64,
+    "windows": [
+     {
+      "t": [
+       3.69,
+       3.91
+      ],
+      "x": 3.4,
+      "y": -0.0,
+      "z": 0.61,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.97,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.51
+     },
+     {
+      "t": [
+       6.27,
+       9.72
+      ],
+      "x": 15.4,
+      "y": 0.1,
+      "z": 0.86,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 5.2,
+      "max_dz": 0.63,
+      "dvz_mean": 0.05,
+      "dspeed_mean": -2.13
+     },
+     {
+      "t": [
+       11.48,
+       13.91
+      ],
+      "x": 44.1,
+      "y": 2.3,
+      "z": 0.56,
+      "states": [
+       "coast",
+       "cue"
+      ],
+      "max_dh": 5.72,
+      "max_dz": 0.35,
+      "dvz_mean": 0.04,
+      "dspeed_mean": -1.87
+     },
+     {
+      "t": [
+       15.83,
+       18.58
+      ],
+      "x": 67.1,
+      "y": 9.9,
+      "z": 0.62,
+      "states": [
+       "below",
+       "cue",
+       "side"
+      ],
+      "max_dh": 4.95,
+      "max_dz": 0.64,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -2.41
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.37,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.24,
+    "max_cvz": 1.53,
+    "contact_onsets": [],
+    "brake_added_s": 0.6,
+    "brake_added_max": 0.13,
+    "brake_withheld_s": 0.6,
+    "brake_withheld_max": 0.13,
+    "brake_left_s": 0.0,
+    "assist_h_s": 8.64,
+    "assist_h_max": 5.72,
+    "assist_v_s": 2.29,
+    "assist_v_max": 0.64,
+    "assist_sources": {
+     "governor": 0.84,
+     "request": 5.45,
+     "stopping": 2.37
+    }
+   }
+  },
+  "minus-fast6-gapon-01": {
+   "motor": "pd",
+   "streamed": false,
+   "end_t": 21.64,
+   "m4": {
+    "guard_climb_s": 1.38,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 1.07,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.42,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 1.38,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 1.07,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.42,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 1.58,
+    "brake_added_max": 0.33,
+    "brake_withheld_s": 1.58,
+    "brake_withheld_max": 0.33,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.55,
+    "max_dh": 0.03,
+    "max_dz": 0.33,
+    "windows": [
+     {
+      "t": [
+       16.71,
+       16.98
+      ],
+      "x": 71.0,
+      "y": 10.7,
+      "z": 0.81,
+      "states": [
+       "below_weak"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 0.33,
+      "dvz_mean": 0.22,
+      "dspeed_mean": -0.02
+     },
+     {
+      "t": [
+       20.9,
+       21.15
+      ],
+      "x": 79.1,
+      "y": 18.7,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "side"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.21,
+      "dvz_mean": 0.12,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.55,
+    "max_dh": 0.03,
+    "max_dz": 0.33,
+    "windows": [
+     {
+      "t": [
+       16.71,
+       16.98
+      ],
+      "x": 71.0,
+      "y": 10.7,
+      "z": 0.81,
+      "states": [
+       "below_weak"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 0.33,
+      "dvz_mean": 0.22,
+      "dspeed_mean": -0.02
+     },
+     {
+      "t": [
+       20.9,
+       21.15
+      ],
+      "x": 79.1,
+      "y": 18.7,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "side"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.21,
+      "dvz_mean": 0.12,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true
+  },
+  "minus-brain08-loom-01": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 12.89,
+   "m4": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 2.8,
+    "max_dh": 5.85,
+    "max_dz": 0.54,
+    "windows": [
+     {
+      "t": [
+       3.68,
+       3.89
+      ],
+      "x": 3.4,
+      "y": -0.0,
+      "z": 0.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.97,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.5
+     },
+     {
+      "t": [
+       6.28,
+       7.1
+      ],
+      "x": 15.5,
+      "y": 0.1,
+      "z": 0.84,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 4.97,
+      "max_dz": 0.31,
+      "dvz_mean": 0.05,
+      "dspeed_mean": -2.63
+     },
+     {
+      "t": [
+       10.52,
+       10.67
+      ],
+      "x": 40.8,
+      "y": 2.0,
+      "z": 0.4,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 1.31,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.84
+     },
+     {
+      "t": [
+       10.98,
+       12.55
+      ],
+      "x": 43.6,
+      "y": 2.2,
+      "z": 0.43,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 5.85,
+      "max_dz": 0.54,
+      "dvz_mean": 0.08,
+      "dspeed_mean": -2.8
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 1.79,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0,
+    "assist_h_s": 2.64,
+    "assist_h_max": 5.85,
+    "assist_v_s": 0.91,
+    "assist_v_max": 0.54,
+    "assist_sources": {
+     "governor": 0.43,
+     "request": 0.77,
+     "stopping": 1.46
+    }
+   }
+  },
+  "minus-fast6-vg-02": {
+   "motor": "pd",
+   "streamed": false,
+   "end_t": 23.44,
+   "m4": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.44,
+    "view_limiting_s": 0.28,
+    "min_cvz": -0.31,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.44,
+    "view_limiting_s": 0.28,
+    "min_cvz": -0.31,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 3.7,
+    "brake_added_max": 0.19,
+    "brake_withheld_s": 3.7,
+    "brake_withheld_max": 0.19,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 2.04,
+    "max_dh": 0.01,
+    "max_dz": 0.2,
+    "windows": [
+     {
+      "t": [
+       6.65,
+       7.49
+      ],
+      "x": 18.3,
+      "y": 0.1,
+      "z": 0.69,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.2,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       7.86,
+       8.26
+      ],
+      "x": 20.2,
+      "y": 0.3,
+      "z": 0.76,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.12,
+      "dvz_mean": 0.1,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       8.91,
+       9.91
+      ],
+      "x": 25.1,
+      "y": -1.0,
+      "z": 0.71,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.1,
+      "dvz_mean": 0.08,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 2.04,
+    "max_dh": 0.01,
+    "max_dz": 0.2,
+    "windows": [
+     {
+      "t": [
+       6.65,
+       7.49
+      ],
+      "x": 18.3,
+      "y": 0.1,
+      "z": 0.69,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.2,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       7.86,
+       8.26
+      ],
+      "x": 20.2,
+      "y": 0.3,
+      "z": 0.76,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.12,
+      "dvz_mean": 0.1,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       8.91,
+       9.91
+      ],
+      "x": 25.1,
+      "y": -1.0,
+      "z": 0.71,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.1,
+      "dvz_mean": 0.08,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true
+  },
+  "minus-brain08-vg-01": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 18.47,
+   "m4": {
+    "guard_climb_s": 0.75,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.34,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.75,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.54,
+    "brake_added_max": 0.14,
+    "brake_withheld_s": 0.54,
+    "brake_withheld_max": 0.14,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.59,
+    "max_dh": 0.01,
+    "max_dz": 0.14,
+    "windows": [
+     {
+      "t": [
+       17.24,
+       17.81
+      ],
+      "x": 75.1,
+      "y": 12.3,
+      "z": 0.76,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.14,
+      "dvz_mean": 0.12,
+      "dspeed_mean": -0.01
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.59,
+    "max_dh": 0.01,
+    "max_dz": 0.14,
+    "windows": [
+     {
+      "t": [
+       17.24,
+       17.81
+      ],
+      "x": 75.1,
+      "y": 12.3,
+      "z": 0.76,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.01,
+      "max_dz": 0.14,
+      "dvz_mean": 0.12,
+      "dspeed_mean": -0.01
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 6.33,
+    "max_dh": 5.36,
+    "max_dz": 0.66,
+    "windows": [
+     {
+      "t": [
+       3.68,
+       3.9
+      ],
+      "x": 3.4,
+      "y": -0.0,
+      "z": 0.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.93,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.5
+     },
+     {
+      "t": [
+       6.21,
+       7.19
+      ],
+      "x": 15.1,
+      "y": 0.1,
+      "z": 0.87,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 4.45,
+      "max_dz": 0.45,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -1.39
+     },
+     {
+      "t": [
+       10.31,
+       10.42
+      ],
+      "x": 38.9,
+      "y": 1.9,
+      "z": 0.47,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.37,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.27
+     },
+     {
+      "t": [
+       10.93,
+       13.6
+      ],
+      "x": 42.6,
+      "y": 2.2,
+      "z": 0.48,
+      "states": [
+       "above",
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "max_dh": 5.36,
+      "max_dz": 0.66,
+      "dvz_mean": 0.08,
+      "dspeed_mean": -1.68
+     },
+     {
+      "t": [
+       15.8,
+       18.47
+      ],
+      "x": 67.4,
+      "y": 9.9,
+      "z": 0.8,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "max_dh": 5.23,
+      "max_dz": 0.51,
+      "dvz_mean": 0.12,
+      "dspeed_mean": -2.61
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.75,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 2.0,
+    "contact_onsets": [],
+    "brake_added_s": 0.54,
+    "brake_added_max": 0.14,
+    "brake_withheld_s": 0.54,
+    "brake_withheld_max": 0.14,
+    "brake_left_s": 0.0,
+    "assist_h_s": 5.67,
+    "assist_h_max": 5.36,
+    "assist_v_s": 2.38,
+    "assist_v_max": 0.66,
+    "assist_sources": {
+     "governor": 0.8,
+     "request": 2.7,
+     "stopping": 2.18
+    }
+   }
+  },
+  "minus-brain09b-vg-01": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 21.9,
+   "m4": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.61,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.34,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.61,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.34,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 3.59,
+    "brake_added_max": 0.11,
+    "brake_withheld_s": 3.59,
+    "brake_withheld_max": 0.11,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 1.37,
+    "max_dh": 0.0,
+    "max_dz": 0.12,
+    "windows": [
+     {
+      "t": [
+       12.37,
+       13.24
+      ],
+      "x": 47.8,
+      "y": 2.6,
+      "z": 0.78,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.12,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       18.19,
+       18.41
+      ],
+      "x": 70.7,
+      "y": 10.6,
+      "z": 0.75,
+      "states": [
+       "below"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.09,
+      "dvz_mean": 0.07,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       21.0,
+       21.24
+      ],
+      "x": 79.3,
+      "y": 18.4,
+      "z": 0.73,
+      "states": [
+       "below_weak",
+       "coast"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.09,
+      "dvz_mean": 0.08,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 1.37,
+    "max_dh": 0.0,
+    "max_dz": 0.12,
+    "windows": [
+     {
+      "t": [
+       12.37,
+       13.24
+      ],
+      "x": 47.8,
+      "y": 2.6,
+      "z": 0.78,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.12,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       18.19,
+       18.41
+      ],
+      "x": 70.7,
+      "y": 10.6,
+      "z": 0.75,
+      "states": [
+       "below"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.09,
+      "dvz_mean": 0.07,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       21.0,
+       21.24
+      ],
+      "x": 79.3,
+      "y": 18.4,
+      "z": 0.73,
+      "states": [
+       "below_weak",
+       "coast"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.09,
+      "dvz_mean": 0.08,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 6.77,
+    "max_dh": 5.63,
+    "max_dz": 0.7,
+    "windows": [
+     {
+      "t": [
+       3.39,
+       3.41
+      ],
+      "x": 2.1,
+      "y": 0.1,
+      "z": 0.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.12,
+      "max_dz": 0.02,
+      "dvz_mean": 0.01,
+      "dspeed_mean": -0.08
+     },
+     {
+      "t": [
+       3.77,
+       4.69
+      ],
+      "x": 2.8,
+      "y": 0.1,
+      "z": 0.96,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.7,
+      "dvz_mean": 0.43,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       6.4,
+       6.82
+      ],
+      "x": 15.6,
+      "y": 0.0,
+      "z": 0.7,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 4.8,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -3.07
+     },
+     {
+      "t": [
+       11.57,
+       13.93
+      ],
+      "x": 43.7,
+      "y": 2.2,
+      "z": 0.76,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 4.42,
+      "max_dz": 0.2,
+      "dvz_mean": 0.07,
+      "dspeed_mean": -1.25
+     },
+     {
+      "t": [
+       17.35,
+       19.01
+      ],
+      "x": 66.4,
+      "y": 9.3,
+      "z": 0.77,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 5.63,
+      "max_dz": 0.33,
+      "dvz_mean": 0.02,
+      "dspeed_mean": -1.91
+     },
+     {
+      "t": [
+       20.27,
+       21.9
+      ],
+      "x": 76.4,
+      "y": 16.0,
+      "z": 0.77,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "max_dh": 4.87,
+      "max_dz": 0.05,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -1.53
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.61,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.34,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 3.59,
+    "brake_added_max": 0.11,
+    "brake_withheld_s": 3.59,
+    "brake_withheld_max": 0.11,
+    "brake_left_s": 0.0,
+    "assist_h_s": 4.66,
+    "assist_h_max": 5.63,
+    "assist_v_s": 2.42,
+    "assist_v_max": 0.7,
+    "assist_sources": {
+     "governor": 0.21,
+     "request": 0.72,
+     "stopping": 3.12,
+     "turn_first": 0.61
+    }
+   }
+  },
+  "minus-brain08-gapshadow-01": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 13.09,
+   "m4": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 3.73,
+    "max_dh": 6.06,
+    "max_dz": 0.6,
+    "windows": [
+     {
+      "t": [
+       3.68,
+       3.9
+      ],
+      "x": 3.3,
+      "y": -0.0,
+      "z": 0.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.97,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.51
+     },
+     {
+      "t": [
+       6.17,
+       7.99
+      ],
+      "x": 14.9,
+      "y": 0.2,
+      "z": 0.89,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 5.09,
+      "max_dz": 0.46,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -2.34
+     },
+     {
+      "t": [
+       11.2,
+       13.09
+      ],
+      "x": 43.8,
+      "y": 2.4,
+      "z": 0.5,
+      "states": [
+       "above",
+       "cue"
+      ],
+      "max_dh": 6.06,
+      "max_dz": 0.6,
+      "dvz_mean": 0.08,
+      "dspeed_mean": -2.26
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.23,
+    "max_cvz": 1.84,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0,
+    "assist_h_s": 3.72,
+    "assist_h_max": 6.06,
+    "assist_v_s": 1.07,
+    "assist_v_max": 0.6,
+    "assist_sources": {
+     "governor": 0.5,
+     "request": 1.78,
+     "stopping": 1.44
+    }
+   }
+  },
+  "minus-fast6-r4-02": {
+   "motor": "pd",
+   "streamed": false,
+   "end_t": 34.09,
+   "m4": {
+    "guard_climb_s": 0.83,
+    "guard_escalated_s": 0.34,
+    "guard_max_climb": 3.5,
+    "escalations": [
+     32.9
+    ],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.53,
+    "view_limiting_s": 0.27,
+    "min_cvz": -0.5,
+    "max_cvz": 2.74
+   },
+   "m4b": {
+    "guard_climb_s": 0.83,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.53,
+    "view_limiting_s": 0.25,
+    "min_cvz": -0.38,
+    "max_cvz": 1.61,
+    "contact_onsets": [],
+    "brake_added_s": 7.1,
+    "brake_added_max": 0.8,
+    "brake_withheld_s": 7.1,
+    "brake_withheld_max": 0.8,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 6.66,
+    "max_dh": 0.75,
+    "max_dz": 2.25,
+    "windows": [
+     {
+      "t": [
+       20.13,
+       21.23
+      ],
+      "x": 80.4,
+      "y": 20.0,
+      "z": 0.97,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.09,
+      "max_dz": 0.43,
+      "dvz_mean": 0.3,
+      "dspeed_mean": -0.04
+     },
+     {
+      "t": [
+       26.02,
+       26.06
+      ],
+      "x": 76.7,
+      "y": 46.8,
+      "z": 0.73,
+      "states": [
+       "below_weak",
+       "side"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.12,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       26.4,
+       30.74
+      ],
+      "x": 76.3,
+      "y": 47.3,
+      "z": 0.77,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "max_dh": 0.21,
+      "max_dz": 0.5,
+      "dvz_mean": 0.29,
+      "dspeed_mean": 0.02
+     },
+     {
+      "t": [
+       31.83,
+       32.29
+      ],
+      "x": 77.7,
+      "y": 62.3,
+      "z": 0.45,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       32.9,
+       33.66
+      ],
+      "x": 75.4,
+      "y": 66.0,
+      "z": 0.84,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "max_dh": 0.75,
+      "max_dz": 2.25,
+      "dvz_mean": -0.94,
+      "dspeed_mean": 0.34
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.77,
+    "max_dh": 0.75,
+    "max_dz": 2.25,
+    "windows": [
+     {
+      "t": [
+       32.9,
+       33.66
+      ],
+      "x": 75.4,
+      "y": 66.0,
+      "z": 0.84,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "max_dh": 0.75,
+      "max_dz": 2.25,
+      "dvz_mean": -0.94,
+      "dspeed_mean": 0.34
+     }
+    ]
+   },
+   "wall_share": {
+    "seconds": 5.86,
+    "max_dh": 2.28,
+    "max_dz": 1.0,
+    "windows": [
+     {
+      "t": [
+       20.13,
+       21.23
+      ],
+      "x": 80.4,
+      "y": 20.0,
+      "z": 0.97,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.09,
+      "max_dz": 0.43,
+      "dvz_mean": 0.3,
+      "dspeed_mean": -0.04
+     },
+     {
+      "t": [
+       26.02,
+       26.06
+      ],
+      "x": 76.7,
+      "y": 46.8,
+      "z": 0.73,
+      "states": [
+       "below_weak",
+       "side"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.12,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       26.4,
+       30.74
+      ],
+      "x": 76.3,
+      "y": 47.3,
+      "z": 0.77,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "max_dh": 2.28,
+      "max_dz": 1.0,
+      "dvz_mean": 0.03,
+      "dspeed_mean": -0.28
+     },
+     {
+      "t": [
+       31.83,
+       32.29
+      ],
+      "x": 77.7,
+      "y": 62.3,
+      "z": 0.45,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true,
+   "windows": {
+    "floor skim 26.4-29.7": {
+     "m4": {
+      "min_cvz": -0.47,
+      "max_cvz": 0.0,
+      "max_h": 3.62,
+      "min_h": 1.11,
+      "escalated_ticks": 0,
+      "max_guard_climb": 0.0,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 4.09
+     },
+     "m4b": {
+      "min_cvz": -0.0,
+      "max_cvz": 0.04,
+      "max_h": 3.61,
+      "min_h": 1.11,
+      "escalated_ticks": 0,
+      "max_guard_climb": 0.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.52,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 4.09
+     },
+     "m4b_ma": null
+    },
+    "guard 32.3-33.5": {
+     "m4": {
+      "min_cvz": 0.0,
+      "max_cvz": 2.74,
+      "max_h": 4.55,
+      "min_h": 2.85,
+      "escalated_ticks": 34,
+      "max_guard_climb": 3.5,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 4.68
+     },
+     "m4b": {
+      "min_cvz": 0.0,
+      "max_cvz": 0.96,
+      "max_h": 4.61,
+      "min_h": 3.58,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 4.68
+     },
+     "m4b_ma": null
+    }
+   }
+  },
+  "minus-brain10b-r4-02": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 21.57,
+   "m4": {
+    "guard_climb_s": 1.27,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.89,
+    "min_cvz": -0.75,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 1.27,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.89,
+    "min_cvz": -0.75,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.67,
+    "brake_added_max": 0.07,
+    "brake_withheld_s": 0.67,
+    "brake_withheld_max": 0.07,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.66,
+    "max_dh": 0.0,
+    "max_dz": 0.07,
+    "windows": [
+     {
+      "t": [
+       13.19,
+       13.84
+      ],
+      "x": 49.3,
+      "y": 2.8,
+      "z": 0.72,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.66,
+    "max_dh": 0.0,
+    "max_dz": 0.07,
+    "windows": [
+     {
+      "t": [
+       13.19,
+       13.84
+      ],
+      "x": 49.3,
+      "y": 2.8,
+      "z": 0.72,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 5.51,
+    "max_dh": 4.95,
+    "max_dz": 0.45,
+    "windows": [
+     {
+      "t": [
+       3.29,
+       3.38
+      ],
+      "x": 1.5,
+      "y": 0.1,
+      "z": 0.62,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.49,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.28
+     },
+     {
+      "t": [
+       6.48,
+       7.5
+      ],
+      "x": 15.8,
+      "y": 0.1,
+      "z": 0.88,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 4.57,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -2.01
+     },
+     {
+      "t": [
+       7.83,
+       8.05
+      ],
+      "x": 22.2,
+      "y": 0.1,
+      "z": 0.55,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.35,
+      "dvz_mean": 0.21,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       11.62,
+       11.68
+      ],
+      "x": 40.7,
+      "y": 2.0,
+      "z": 0.84,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.51,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.42
+     },
+     {
+      "t": [
+       12.24,
+       13.6
+      ],
+      "x": 44.2,
+      "y": 2.3,
+      "z": 0.81,
+      "states": [
+       "below",
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 4.62,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -2.62
+     },
+     {
+      "t": [
+       17.55,
+       18.85
+      ],
+      "x": 67.2,
+      "y": 9.6,
+      "z": 0.86,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 4.95,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -2.34
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 1.27,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.89,
+    "min_cvz": -0.75,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.67,
+    "brake_added_max": 0.07,
+    "brake_withheld_s": 0.67,
+    "brake_withheld_max": 0.07,
+    "brake_left_s": 0.0,
+    "assist_h_s": 5.16,
+    "assist_h_max": 4.95,
+    "assist_v_s": 0.55,
+    "assist_v_max": 0.45,
+    "assist_sources": {
+     "governor": 0.5,
+     "request": 2.18,
+     "stopping": 2.48
+    }
+   },
+   "windows": {
+    "hairpin 20.0-21.6": {
+     "m4": {
+      "min_cvz": -0.09,
+      "max_cvz": 1.0,
+      "max_h": 5.33,
+      "min_h": 3.62,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 5.25
+     },
+     "m4b": {
+      "min_cvz": -0.09,
+      "max_cvz": 1.0,
+      "max_h": 5.33,
+      "min_h": 3.62,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 5.25
+     },
+     "m4b_ma": {
+      "min_cvz": -0.09,
+      "max_cvz": 1.45,
+      "max_h": 5.33,
+      "min_h": 0.33,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": 0.45,
+      "assist_h_max": 4.7,
+      "speed_measured": 5.25
+     }
+    }
+   }
+  },
+  "minus-brain09b-r4-01": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 23.68,
+   "m4": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.4,
+    "view_limiting_s": 0.11,
+    "min_cvz": -0.48,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.4,
+    "view_limiting_s": 0.11,
+    "min_cvz": -0.48,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 3.66,
+    "brake_added_max": 0.13,
+    "brake_withheld_s": 3.66,
+    "brake_withheld_max": 0.13,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 2.12,
+    "max_dh": 0.0,
+    "max_dz": 0.13,
+    "windows": [
+     {
+      "t": [
+       6.99,
+       7.88
+      ],
+      "x": 18.8,
+      "y": 0.1,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.13,
+      "dvz_mean": 0.11,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       13.48,
+       14.27
+      ],
+      "x": 48.4,
+      "y": 2.7,
+      "z": 0.74,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.11,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       22.04,
+       22.58
+      ],
+      "x": 78.6,
+      "y": 17.8,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.05,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 2.12,
+    "max_dh": 0.0,
+    "max_dz": 0.13,
+    "windows": [
+     {
+      "t": [
+       6.99,
+       7.88
+      ],
+      "x": 18.8,
+      "y": 0.1,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.13,
+      "dvz_mean": 0.11,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       13.48,
+       14.27
+      ],
+      "x": 48.4,
+      "y": 2.7,
+      "z": 0.74,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.11,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       22.04,
+       22.58
+      ],
+      "x": 78.6,
+      "y": 17.8,
+      "z": 0.71,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.05,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 8.5,
+    "max_dh": 5.34,
+    "max_dz": 1.0,
+    "windows": [
+     {
+      "t": [
+       3.41,
+       3.41
+      ],
+      "x": 2.2,
+      "y": 0.1,
+      "z": 0.62,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.1,
+      "max_dz": 0.01,
+      "dvz_mean": 0.01,
+      "dspeed_mean": -0.1
+     },
+     {
+      "t": [
+       3.78,
+       4.73
+      ],
+      "x": 2.8,
+      "y": 0.1,
+      "z": 0.97,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.66,
+      "dvz_mean": 0.42,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       6.34,
+       8.5
+      ],
+      "x": 15.2,
+      "y": 0.0,
+      "z": 0.69,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 4.72,
+      "max_dz": 0.16,
+      "dvz_mean": 0.02,
+      "dspeed_mean": -1.36
+     },
+     {
+      "t": [
+       12.76,
+       14.54
+      ],
+      "x": 44.4,
+      "y": 2.3,
+      "z": 0.73,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "max_dh": 5.34,
+      "max_dz": 0.16,
+      "dvz_mean": 0.04,
+      "dspeed_mean": -1.72
+     },
+     {
+      "t": [
+       18.1,
+       19.58
+      ],
+      "x": 66.7,
+      "y": 9.4,
+      "z": 0.74,
+      "states": [
+       "below",
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 5.32,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -2.17
+     },
+     {
+      "t": [
+       20.01,
+       20.23
+      ],
+      "x": 73.8,
+      "y": 12.6,
+      "z": 0.84,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.16,
+      "dvz_mean": 0.1,
+      "dspeed_mean": 0.0
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 0.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.4,
+    "view_limiting_s": 0.11,
+    "min_cvz": -0.48,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 3.66,
+    "brake_added_max": 0.13,
+    "brake_withheld_s": 3.66,
+    "brake_withheld_max": 0.13,
+    "brake_left_s": 0.0,
+    "assist_h_s": 5.2,
+    "assist_h_max": 5.34,
+    "assist_v_s": 4.04,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.23,
+     "request": 1.12,
+     "stopping": 3.51,
+     "turn_first": 0.36
+    }
+   },
+   "windows": {
+    "release 22.8-23.7": {
+     "m4": {
+      "min_cvz": -0.01,
+      "max_cvz": 0.29,
+      "max_h": 4.92,
+      "min_h": 0.68,
+      "escalated_ticks": 0,
+      "max_guard_climb": 0.0,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 3.6
+     },
+     "m4b": {
+      "min_cvz": 0.0,
+      "max_cvz": 0.29,
+      "max_h": 4.92,
+      "min_h": 0.68,
+      "escalated_ticks": 0,
+      "max_guard_climb": 0.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.01,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 3.6
+     },
+     "m4b_ma": {
+      "min_cvz": 0.0,
+      "max_cvz": 1.29,
+      "max_h": 4.92,
+      "min_h": 0.81,
+      "escalated_ticks": 0,
+      "max_guard_climb": 0.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.01,
+      "assist_v_max": 1.0,
+      "assist_h_max": 1.99,
+      "speed_measured": 3.6
+     }
+    }
+   }
+  },
+  "pine-fast6-ttc-01": {
+   "motor": "pd",
+   "streamed": false,
+   "end_t": 21.23,
+   "m4": {
+    "guard_climb_s": 5.74,
+    "guard_escalated_s": 3.97,
+    "guard_max_climb": 3.5,
+    "escalations": [
+     4.55,
+     18.44
+    ],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 1.3,
+    "min_cvz": -0.69,
+    "max_cvz": 3.5
+   },
+   "m4b": {
+    "guard_climb_s": 5.74,
+    "guard_escalated_s": 3.36,
+    "guard_max_climb": 3.5,
+    "escalations": [
+     4.55,
+     19.05
+    ],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 1.3,
+    "min_cvz": -0.69,
+    "max_cvz": 3.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.78,
+    "brake_added_max": 0.43,
+    "brake_withheld_s": 0.78,
+    "brake_withheld_max": 0.43,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 1.49,
+    "max_dh": 0.4,
+    "max_dz": 2.68,
+    "windows": [
+     {
+      "t": [
+       16.23,
+       17.03
+      ],
+      "x": 58.1,
+      "y": -16.8,
+      "z": 5.1,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.11,
+      "max_dz": 0.43,
+      "dvz_mean": 0.21,
+      "dspeed_mean": -0.07
+     },
+     {
+      "t": [
+       18.63,
+       19.31
+      ],
+      "x": 68.4,
+      "y": -9.5,
+      "z": 6.01,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.4,
+      "max_dz": 2.68,
+      "dvz_mean": -1.26,
+      "dspeed_mean": 0.12
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.68,
+    "max_dh": 0.4,
+    "max_dz": 2.68,
+    "windows": [
+     {
+      "t": [
+       18.63,
+       19.31
+      ],
+      "x": 68.4,
+      "y": -9.5,
+      "z": 6.01,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.4,
+      "max_dz": 2.68,
+      "dvz_mean": -1.26,
+      "dspeed_mean": 0.12
+     }
+    ]
+   },
+   "wall_share": {
+    "seconds": 0.81,
+    "max_dh": 0.11,
+    "max_dz": 0.43,
+    "windows": [
+     {
+      "t": [
+       16.23,
+       17.03
+      ],
+      "x": 58.1,
+      "y": -16.8,
+      "z": 5.1,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.11,
+      "max_dz": 0.43,
+      "dvz_mean": 0.21,
+      "dspeed_mean": -0.07
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true,
+   "windows": {
+    "mound 4.3-6.0": {
+     "m4": {
+      "min_cvz": 0.32,
+      "max_cvz": 3.5,
+      "max_h": 6.0,
+      "min_h": 5.84,
+      "escalated_ticks": 145,
+      "max_guard_climb": 3.5,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 6.19
+     },
+     "m4b": {
+      "min_cvz": 0.32,
+      "max_cvz": 3.5,
+      "max_h": 6.0,
+      "min_h": 5.84,
+      "escalated_ticks": 145,
+      "max_guard_climb": 3.5,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 6.19
+     },
+     "m4b_ma": null
+    },
+    "backside 6.3-7.4": {
+     "m4": {
+      "min_cvz": -0.54,
+      "max_cvz": -0.14,
+      "max_h": 5.71,
+      "min_h": 4.97,
+      "escalated_ticks": 0,
+      "max_guard_climb": 0.0,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 3.36
+     },
+     "m4b": {
+      "min_cvz": -0.54,
+      "max_cvz": -0.14,
+      "max_h": 5.71,
+      "min_h": 4.97,
+      "escalated_ticks": 0,
+      "max_guard_climb": 0.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 3.36
+     },
+     "m4b_ma": null
+    },
+    "hillside 15.2-16.9": {
+     "m4": {
+      "min_cvz": -0.43,
+      "max_cvz": 1.0,
+      "max_h": 6.0,
+      "min_h": 4.61,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 6.23
+     },
+     "m4b": {
+      "min_cvz": 0.0,
+      "max_cvz": 1.0,
+      "max_h": 6.0,
+      "min_h": 4.52,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.43,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 6.23
+     },
+     "m4b_ma": null
+    },
+    "end 17.6-21.3": {
+     "m4": {
+      "min_cvz": -0.69,
+      "max_cvz": 3.28,
+      "max_h": 6.0,
+      "min_h": 3.74,
+      "escalated_ticks": 229,
+      "max_guard_climb": 3.5,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 6.02
+     },
+     "m4b": {
+      "min_cvz": -0.69,
+      "max_cvz": 3.18,
+      "max_h": 6.0,
+      "min_h": 3.74,
+      "escalated_ticks": 168,
+      "max_guard_climb": 3.5,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 6.02
+     },
+     "m4b_ma": null
+    }
+   }
+  },
+  "pine-brain08-loom-01": {
+   "motor": "brain",
+   "streamed": false,
+   "end_t": 9.56,
+   "m4": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": 0.05,
+    "max_cvz": 1.5
+   },
+   "m4b": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": 0.05,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 0.21,
+    "max_dh": 0.9,
+    "max_dz": 0.01,
+    "windows": [
+     {
+      "t": [
+       3.73,
+       3.93
+      ],
+      "x": 3.0,
+      "y": -1.6,
+      "z": 0.61,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.9,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.5
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 0.0,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": 0.05,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0,
+    "assist_h_s": 0.21,
+    "assist_h_max": 0.9,
+    "assist_v_s": 0.0,
+    "assist_v_max": 0.01,
+    "assist_sources": {
+     "request": 0.21
+    }
+   }
+  },
+  "pine-brain08-01": {
+   "motor": "brain",
+   "streamed": true,
+   "end_t": 17.96,
+   "m4": {
+    "guard_climb_s": 4.17,
+    "guard_escalated_s": 1.0,
+    "guard_max_climb": 3.5,
+    "escalations": [
+     16.96
+    ],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.13,
+    "max_cvz": 3.46
+   },
+   "m4b": {
+    "guard_climb_s": 3.8,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.13,
+    "max_cvz": 1.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 1.0,
+    "max_dh": 0.16,
+    "max_dz": 3.19,
+    "windows": [
+     {
+      "t": [
+       16.96,
+       17.96
+      ],
+      "x": 63.7,
+      "y": -12.8,
+      "z": 3.63,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.16,
+      "max_dz": 3.19,
+      "dvz_mean": -2.6,
+      "dspeed_mean": 0.12
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 1.0,
+    "max_dh": 0.16,
+    "max_dz": 3.19,
+    "windows": [
+     {
+      "t": [
+       16.96,
+       17.96
+      ],
+      "x": 63.7,
+      "y": -12.8,
+      "z": 3.63,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.16,
+      "max_dz": 3.19,
+      "dvz_mean": -2.6,
+      "dspeed_mean": 0.12
+     }
+    ]
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 5.75,
+    "max_dh": 2.41,
+    "max_dz": 1.0,
+    "windows": [
+     {
+      "t": [
+       3.74,
+       3.94
+      ],
+      "x": 3.0,
+      "y": -1.6,
+      "z": 0.63,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.86,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.46
+     },
+     {
+      "t": [
+       6.14,
+       7.02
+      ],
+      "x": 13.6,
+      "y": -4.6,
+      "z": 1.58,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.66,
+      "dvz_mean": 0.5,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       7.47,
+       7.6
+      ],
+      "x": 20.8,
+      "y": -6.9,
+      "z": 1.65,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.1,
+      "dvz_mean": 0.08,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       8.79,
+       9.15
+      ],
+      "x": 27.1,
+      "y": -9.8,
+      "z": 1.79,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.13,
+      "dvz_mean": 0.07,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       12.68,
+       12.73
+      ],
+      "x": 45.9,
+      "y": -19.8,
+      "z": 2.7,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.55,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.46
+     },
+     {
+      "t": [
+       13.18,
+       13.65
+      ],
+      "x": 48.4,
+      "y": -21.1,
+      "z": 2.88,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 0.63,
+      "max_dz": 0.32,
+      "dvz_mean": 0.09,
+      "dspeed_mean": -0.22
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 3.8,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.13,
+    "max_cvz": 1.66,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0,
+    "assist_h_s": 1.58,
+    "assist_h_max": 2.41,
+    "assist_v_s": 4.85,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "request": 1.31,
+     "stopping": 0.29
+    }
+   },
+   "windows": {
+    "hillside 16.5-18.0": {
+     "m4": {
+      "min_cvz": 0.89,
+      "max_cvz": 3.46,
+      "max_h": 6.0,
+      "min_h": 3.74,
+      "escalated_ticks": 101,
+      "max_guard_climb": 3.5,
+      "support_ticks": 0,
+      "contact_fires": null,
+      "brake_added_max": null,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 5.6
+     },
+     "m4b": {
+      "min_cvz": 0.27,
+      "max_cvz": 1.0,
+      "max_h": 6.0,
+      "min_h": 3.86,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": null,
+      "assist_h_max": null,
+      "speed_measured": 5.6
+     },
+     "m4b_ma": {
+      "min_cvz": 0.27,
+      "max_cvz": 1.44,
+      "max_h": 6.0,
+      "min_h": 1.76,
+      "escalated_ticks": 0,
+      "max_guard_climb": 1.0,
+      "support_ticks": 0,
+      "contact_fires": 0,
+      "brake_added_max": 0.0,
+      "assist_v_max": 0.44,
+      "assist_h_max": 2.33,
+      "speed_measured": 5.6
+     }
+    }
+   }
+  },
+  "straw-brain08-04": {
+   "motor": "brain",
+   "streamed": true,
+   "end_t": 326.83,
+   "m4": {
+    "guard_climb_s": 9.55,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     177.69,
+     289.23
+    ],
+    "logged_support_onsets": [
+     72.31,
+     176.96,
+     283.4,
+     288.48
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.26,
+    "min_cvz": -1.37,
+    "max_cvz": 1.62
+   },
+   "m4b": {
+    "guard_climb_s": 9.55,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     71.83,
+     76.97,
+     78.27,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97,
+     289.5
+    ],
+    "logged_support_onsets": [
+     72.31,
+     176.96,
+     283.4,
+     288.48
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.26,
+    "min_cvz": -1.49,
+    "max_cvz": 1.62,
+    "contact_onsets": [
+     71.83,
+     76.97,
+     78.27,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97
+    ],
+    "brake_added_s": 1.37,
+    "brake_added_max": 0.07,
+    "brake_withheld_s": 1.37,
+    "brake_withheld_max": 0.07,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 12.65,
+    "max_dh": 0.81,
+    "max_dz": 2.31,
+    "windows": [
+     {
+      "t": [
+       14.83,
+       14.88
+      ],
+      "x": 65.5,
+      "y": 2.6,
+      "z": 1.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       71.83,
+       72.61
+      ],
+      "x": -38.4,
+      "y": 162.7,
+      "z": 21.76,
+      "states": [
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 2.05,
+      "dvz_mean": 0.96,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       76.99,
+       79.29
+      ],
+      "x": -36.9,
+      "y": 144.8,
+      "z": 17.65,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.1,
+      "max_dz": 2.24,
+      "dvz_mean": 1.12,
+      "dspeed_mean": 0.01
+     },
+     {
+      "t": [
+       80.73,
+       81.7
+      ],
+      "x": -36.3,
+      "y": 132.1,
+      "z": 14.33,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 2.02,
+      "dvz_mean": 1.27,
+      "dspeed_mean": 0.01
+     },
+     {
+      "t": [
+       176.85,
+       178.7
+      ],
+      "x": -36.8,
+      "y": 165.7,
+      "z": 22.29,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.62,
+      "max_dz": 2.31,
+      "dvz_mean": 0.19,
+      "dspeed_mean": 0.13
+     },
+     {
+      "t": [
+       181.92,
+       184.31
+      ],
+      "x": -36.2,
+      "y": 146.8,
+      "z": 18.14,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.08,
+      "max_dz": 2.23,
+      "dvz_mean": 1.09,
+      "dspeed_mean": 0.01
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.14,
+    "max_dh": 0.0,
+    "max_dz": 0.07,
+    "windows": [
+     {
+      "t": [
+       14.83,
+       14.88
+      ],
+      "x": 65.5,
+      "y": 2.6,
+      "z": 1.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.07,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       227.73,
+       227.77
+      ],
+      "x": 65.7,
+      "y": 2.9,
+      "z": 1.53,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.06,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 12.51,
+    "max_dh": 0.81,
+    "max_dz": 2.31,
+    "windows": [
+     {
+      "t": [
+       71.83,
+       72.61
+      ],
+      "x": -38.4,
+      "y": 162.7,
+      "z": 21.76,
+      "states": [
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 2.05,
+      "dvz_mean": 0.96,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       76.99,
+       79.29
+      ],
+      "x": -36.9,
+      "y": 144.8,
+      "z": 17.65,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.1,
+      "max_dz": 2.24,
+      "dvz_mean": 1.12,
+      "dspeed_mean": 0.01
+     },
+     {
+      "t": [
+       80.73,
+       81.7
+      ],
+      "x": -36.3,
+      "y": 132.1,
+      "z": 14.33,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 2.02,
+      "dvz_mean": 1.27,
+      "dspeed_mean": 0.01
+     },
+     {
+      "t": [
+       176.85,
+       178.7
+      ],
+      "x": -36.8,
+      "y": 165.7,
+      "z": 22.29,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.62,
+      "max_dz": 2.31,
+      "dvz_mean": 0.19,
+      "dspeed_mean": 0.13
+     },
+     {
+      "t": [
+       181.92,
+       184.31
+      ],
+      "x": -36.2,
+      "y": 146.8,
+      "z": 18.14,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.08,
+      "max_dz": 2.23,
+      "dvz_mean": 1.09,
+      "dspeed_mean": 0.01
+     },
+     {
+      "t": [
+       186.14,
+       187.08
+      ],
+      "x": -35.9,
+      "y": 132.6,
+      "z": 14.48,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 2.05,
+      "dvz_mean": 1.29,
+      "dspeed_mean": 0.0
+     }
+    ]
+   },
+   "assist_change": {
+    "seconds": 79.69,
+    "max_dh": 5.69,
+    "max_dz": 1.0,
+    "windows": [
+     {
+      "t": [
+       3.71,
+       3.93
+      ],
+      "x": 3.4,
+      "y": 0.0,
+      "z": 0.61,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.97,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.51
+     },
+     {
+      "t": [
+       8.15,
+       8.56
+      ],
+      "x": 26.2,
+      "y": 0.5,
+      "z": 1.2,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.46,
+      "dvz_mean": 0.23,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       13.23,
+       13.38
+      ],
+      "x": 56.4,
+      "y": 1.8,
+      "z": 1.06,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 1.95,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -1.46
+     },
+     {
+      "t": [
+       13.74,
+       14.33
+      ],
+      "x": 59.5,
+      "y": 1.9,
+      "z": 1.14,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.8,
+      "max_dz": 0.62,
+      "dvz_mean": 0.27,
+      "dspeed_mean": -0.3
+     },
+     {
+      "t": [
+       14.73,
+       16.56
+      ],
+      "x": 65.1,
+      "y": 2.3,
+      "z": 1.58,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 4.81,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -2.28
+     },
+     {
+      "t": [
+       17.95,
+       19.93
+      ],
+      "x": 77.5,
+      "y": 14.1,
+      "z": 1.25,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 4.48,
+      "max_dz": 1.0,
+      "dvz_mean": 0.35,
+      "dspeed_mean": -0.93
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 9.55,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     71.84,
+     76.97,
+     78.28,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97,
+     289.5
+    ],
+    "logged_support_onsets": [
+     72.31,
+     176.96,
+     283.4,
+     288.48
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.26,
+    "min_cvz": -1.49,
+    "max_cvz": 2.36,
+    "contact_onsets": [
+     71.84,
+     76.97,
+     78.28,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97
+    ],
+    "brake_added_s": 1.37,
+    "brake_added_max": 0.07,
+    "brake_withheld_s": 1.37,
+    "brake_withheld_max": 0.07,
+    "brake_left_s": 0.0,
+    "assist_h_s": 21.1,
+    "assist_h_max": 5.69,
+    "assist_v_s": 69.59,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.05,
+     "request": 11.26,
+     "stopping": 9.89
+    }
+   }
+  },
+  "straw-brain08-06": {
+   "motor": "brain",
+   "streamed": true,
+   "end_t": 326.74,
+   "m4": {
+    "guard_climb_s": 11.21,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     77.53,
+     178.27,
+     183.76,
+     283.38,
+     288.62
+    ],
+    "logged_support_onsets": [
+     71.54,
+     76.75,
+     177.51,
+     182.98,
+     282.63,
+     287.84
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.17,
+    "min_cvz": -1.48,
+    "max_cvz": 1.62
+   },
+   "m4b": {
+    "guard_climb_s": 11.21,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     71.27,
+     76.25,
+     77.8,
+     177.3,
+     182.46,
+     184.01,
+     282.47,
+     287.33,
+     288.87
+    ],
+    "logged_support_onsets": [
+     71.54,
+     76.75,
+     177.51,
+     182.98,
+     282.63,
+     287.84
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.17,
+    "min_cvz": -1.53,
+    "max_cvz": 1.62,
+    "contact_onsets": [
+     71.27,
+     76.25,
+     177.3,
+     182.46,
+     282.47,
+     287.33
+    ],
+    "brake_added_s": 2.89,
+    "brake_added_max": 0.41,
+    "brake_withheld_s": 2.89,
+    "brake_withheld_max": 0.41,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 13.57,
+    "max_dh": 0.81,
+    "max_dz": 2.42,
+    "windows": [
+     {
+      "t": [
+       59.93,
+       61.0
+      ],
+      "x": -4.1,
+      "y": 199.5,
+      "z": 27.79,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.02,
+      "max_dz": 0.41,
+      "dvz_mean": 0.25,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       71.28,
+       72.26
+      ],
+      "x": -38.7,
+      "y": 164.3,
+      "z": 22.07,
+      "states": [
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 2.14,
+      "dvz_mean": 1.31,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       76.25,
+       78.78
+      ],
+      "x": -37.2,
+      "y": 146.6,
+      "z": 18.09,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.8,
+      "max_dz": 2.24,
+      "dvz_mean": 0.49,
+      "dspeed_mean": 0.1
+     },
+     {
+      "t": [
+       177.3,
+       179.27
+      ],
+      "x": -35.7,
+      "y": 164.4,
+      "z": 22.05,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.09,
+      "max_dz": 2.39,
+      "dvz_mean": 0.17,
+      "dspeed_mean": 0.02
+     },
+     {
+      "t": [
+       182.46,
+       184.99
+      ],
+      "x": -35.5,
+      "y": 145.5,
+      "z": 17.81,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.81,
+      "max_dz": 2.23,
+      "dvz_mean": 0.49,
+      "dspeed_mean": 0.09
+     },
+     {
+      "t": [
+       282.47,
+       284.39
+      ],
+      "x": -36.8,
+      "y": 166.4,
+      "z": 22.42,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.36,
+      "max_dz": 2.42,
+      "dvz_mean": 0.15,
+      "dspeed_mean": 0.07
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 1.07,
+    "max_dh": 0.02,
+    "max_dz": 0.41,
+    "windows": [
+     {
+      "t": [
+       59.93,
+       61.0
+      ],
+      "x": -4.1,
+      "y": 199.5,
+      "z": 27.79,
+      "states": [
+       "below_weak",
+       "cue"
+      ],
+      "max_dh": 0.02,
+      "max_dz": 0.41,
+      "dvz_mean": 0.25,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 12.5,
+    "max_dh": 0.81,
+    "max_dz": 2.42,
+    "windows": [
+     {
+      "t": [
+       71.28,
+       72.26
+      ],
+      "x": -38.7,
+      "y": 164.3,
+      "z": 22.07,
+      "states": [
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 2.14,
+      "dvz_mean": 1.31,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       76.25,
+       78.78
+      ],
+      "x": -37.2,
+      "y": 146.6,
+      "z": 18.09,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.8,
+      "max_dz": 2.24,
+      "dvz_mean": 0.49,
+      "dspeed_mean": 0.1
+     },
+     {
+      "t": [
+       177.3,
+       179.27
+      ],
+      "x": -35.7,
+      "y": 164.4,
+      "z": 22.05,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.09,
+      "max_dz": 2.39,
+      "dvz_mean": 0.17,
+      "dspeed_mean": 0.02
+     },
+     {
+      "t": [
+       182.46,
+       184.99
+      ],
+      "x": -35.5,
+      "y": 145.5,
+      "z": 17.81,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.81,
+      "max_dz": 2.23,
+      "dvz_mean": 0.49,
+      "dspeed_mean": 0.09
+     },
+     {
+      "t": [
+       282.47,
+       284.39
+      ],
+      "x": -36.8,
+      "y": 166.4,
+      "z": 22.42,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.36,
+      "max_dz": 2.42,
+      "dvz_mean": 0.15,
+      "dspeed_mean": 0.07
+     },
+     {
+      "t": [
+       287.35,
+       289.87
+      ],
+      "x": -36.1,
+      "y": 148.6,
+      "z": 18.57,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.8,
+      "max_dz": 2.25,
+      "dvz_mean": 0.49,
+      "dspeed_mean": 0.12
+     }
+    ]
+   },
+   "assist_change": {
+    "seconds": 86.5,
+    "max_dh": 6.49,
+    "max_dz": 1.0,
+    "windows": [
+     {
+      "t": [
+       3.71,
+       3.94
+      ],
+      "x": 3.4,
+      "y": 0.0,
+      "z": 0.61,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 1.01,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.53
+     },
+     {
+      "t": [
+       6.65,
+       7.07
+      ],
+      "x": 17.5,
+      "y": 0.3,
+      "z": 1.31,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 4.16,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -2.42
+     },
+     {
+      "t": [
+       8.1,
+       8.61
+      ],
+      "x": 25.9,
+      "y": 0.5,
+      "z": 1.19,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.53,
+      "dvz_mean": 0.25,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       13.32,
+       13.43
+      ],
+      "x": 57.0,
+      "y": 1.8,
+      "z": 1.06,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 1.98,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -1.53
+     },
+     {
+      "t": [
+       13.75,
+       14.31
+      ],
+      "x": 59.5,
+      "y": 1.9,
+      "z": 1.13,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.26,
+      "max_dz": 0.5,
+      "dvz_mean": 0.21,
+      "dspeed_mean": -0.06
+     },
+     {
+      "t": [
+       17.93,
+       19.99
+      ],
+      "x": 77.5,
+      "y": 14.1,
+      "z": 1.24,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 4.39,
+      "max_dz": 1.0,
+      "dvz_mean": 0.34,
+      "dspeed_mean": -1.0
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 11.21,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     71.27,
+     76.25,
+     77.8,
+     177.3,
+     182.46,
+     184.01,
+     282.47,
+     287.33,
+     288.87
+    ],
+    "logged_support_onsets": [
+     71.54,
+     76.75,
+     177.51,
+     182.98,
+     282.63,
+     287.84
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.17,
+    "min_cvz": -1.53,
+    "max_cvz": 2.3,
+    "contact_onsets": [
+     71.27,
+     76.25,
+     177.3,
+     182.46,
+     282.47,
+     287.33
+    ],
+    "brake_added_s": 2.89,
+    "brake_added_max": 0.41,
+    "brake_withheld_s": 2.89,
+    "brake_withheld_max": 0.41,
+    "brake_left_s": 0.0,
+    "assist_h_s": 25.29,
+    "assist_h_max": 6.49,
+    "assist_v_s": 69.59,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.79,
+     "request": 13.53,
+     "stopping": 11.05
+    }
+   }
+  },
+  "straw-brain08-01": {
+   "motor": "brain",
+   "streamed": true,
+   "end_t": 75.96,
+   "m4": {
+    "guard_climb_s": 4.61,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 7.69,
+    "min_cvz": -0.97,
+    "max_cvz": 1.62
+   },
+   "m4b": {
+    "guard_climb_s": 4.61,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     71.31,
+     72.6,
+     73.86,
+     75.08
+    ],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 7.65,
+    "min_cvz": -0.87,
+    "max_cvz": 1.62,
+    "contact_onsets": [
+     71.31,
+     72.6,
+     73.86,
+     75.08
+    ],
+    "brake_added_s": 1.1,
+    "brake_added_max": 0.08,
+    "brake_withheld_s": 1.1,
+    "brake_withheld_max": 0.08,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 4.38,
+    "max_dh": 0.0,
+    "max_dz": 1.97,
+    "windows": [
+     {
+      "t": [
+       14.82,
+       14.94
+      ],
+      "x": 65.4,
+      "y": 2.6,
+      "z": 1.53,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.08,
+      "dvz_mean": 0.07,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       71.31,
+       75.96
+      ],
+      "x": -35.9,
+      "y": 162.9,
+      "z": 21.76,
+      "states": [
+       "coast",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 1.97,
+      "dvz_mean": 1.01,
+      "dspeed_mean": 0.0
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.13,
+    "max_dh": 0.0,
+    "max_dz": 0.08,
+    "windows": [
+     {
+      "t": [
+       14.82,
+       14.94
+      ],
+      "x": 65.4,
+      "y": 2.6,
+      "z": 1.53,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.08,
+      "dvz_mean": 0.07,
+      "dspeed_mean": -0.0
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 4.25,
+    "max_dh": 0.0,
+    "max_dz": 1.97,
+    "windows": [
+     {
+      "t": [
+       71.31,
+       75.96
+      ],
+      "x": -35.9,
+      "y": 162.9,
+      "z": 21.76,
+      "states": [
+       "coast",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 1.97,
+      "dvz_mean": 1.01,
+      "dspeed_mean": 0.0
+     }
+    ]
+   },
+   "assist_change": {
+    "seconds": 18.64,
+    "max_dh": 6.85,
+    "max_dz": 1.82,
+    "windows": [
+     {
+      "t": [
+       3.71,
+       3.92
+      ],
+      "x": 3.4,
+      "y": 0.0,
+      "z": 0.6,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.97,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.51
+     },
+     {
+      "t": [
+       8.1,
+       8.66
+      ],
+      "x": 25.9,
+      "y": 0.5,
+      "z": 1.19,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.6,
+      "dvz_mean": 0.27,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       13.28,
+       14.3
+      ],
+      "x": 56.7,
+      "y": 1.8,
+      "z": 1.06,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 1.84,
+      "max_dz": 0.53,
+      "dvz_mean": 0.13,
+      "dspeed_mean": -0.35
+     },
+     {
+      "t": [
+       14.61,
+       16.45
+      ],
+      "x": 64.5,
+      "y": 2.2,
+      "z": 1.5,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 5.23,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -2.16
+     },
+     {
+      "t": [
+       17.61,
+       19.95
+      ],
+      "x": 76.1,
+      "y": 12.9,
+      "z": 1.29,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 5.52,
+      "max_dz": 1.0,
+      "dvz_mean": 0.29,
+      "dspeed_mean": -1.05
+     },
+     {
+      "t": [
+       25.06,
+       25.54
+      ],
+      "x": 60.5,
+      "y": 42.4,
+      "z": 1.15,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 3.21,
+      "max_dz": 0.53,
+      "dvz_mean": 0.25,
+      "dspeed_mean": -0.35
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 4.61,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     71.31,
+     72.6,
+     73.86,
+     75.48
+    ],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 7.66,
+    "min_cvz": -0.86,
+    "max_cvz": 2.02,
+    "contact_onsets": [
+     71.31,
+     72.6,
+     73.86,
+     75.48
+    ],
+    "brake_added_s": 1.1,
+    "brake_added_max": 0.08,
+    "brake_withheld_s": 1.1,
+    "brake_withheld_max": 0.08,
+    "brake_left_s": 0.0,
+    "assist_h_s": 7.26,
+    "assist_h_max": 6.85,
+    "assist_v_s": 12.81,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.67,
+     "request": 3.13,
+     "stopping": 3.47
+    }
+   }
+  },
+  "straw-brain08-02": {
+   "motor": "brain",
+   "streamed": true,
+   "end_t": 164.45,
+   "m4": {
+    "guard_climb_s": 7.44,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     71.03,
+     76.38
+    ],
+    "logged_support_onsets": [
+     70.28,
+     75.59
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 15.0,
+    "min_cvz": -1.39,
+    "max_cvz": 1.63
+   },
+   "m4b": {
+    "guard_climb_s": 7.44,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     70.16,
+     75.1,
+     76.73
+    ],
+    "logged_support_onsets": [
+     70.28,
+     75.59
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 15.0,
+    "min_cvz": -1.58,
+    "max_cvz": 1.63,
+    "contact_onsets": [
+     70.16,
+     75.1
+    ],
+    "brake_added_s": 0.11,
+    "brake_added_max": 0.04,
+    "brake_withheld_s": 0.11,
+    "brake_withheld_max": 0.04,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 4.51,
+    "max_dh": 0.92,
+    "max_dz": 2.37,
+    "windows": [
+     {
+      "t": [
+       70.16,
+       72.04
+      ],
+      "x": -36.8,
+      "y": 166.2,
+      "z": 22.38,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.55,
+      "max_dz": 2.37,
+      "dvz_mean": 0.18,
+      "dspeed_mean": 0.1
+     },
+     {
+      "t": [
+       75.1,
+       77.71
+      ],
+      "x": -36.1,
+      "y": 148.0,
+      "z": 18.43,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.92,
+      "max_dz": 2.25,
+      "dvz_mean": 0.45,
+      "dspeed_mean": -0.02
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.04,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 4.51,
+    "max_dh": 0.92,
+    "max_dz": 2.37,
+    "windows": [
+     {
+      "t": [
+       70.16,
+       72.04
+      ],
+      "x": -36.8,
+      "y": 166.2,
+      "z": 22.38,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.55,
+      "max_dz": 2.37,
+      "dvz_mean": 0.18,
+      "dspeed_mean": 0.1
+     },
+     {
+      "t": [
+       75.1,
+       77.71
+      ],
+      "x": -36.1,
+      "y": 148.0,
+      "z": 18.43,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "support_climb"
+      ],
+      "max_dh": 0.92,
+      "max_dz": 2.25,
+      "dvz_mean": 0.45,
+      "dspeed_mean": -0.02
+     }
+    ]
+   },
+   "assist_change": {
+    "seconds": 41.92,
+    "max_dh": 5.08,
+    "max_dz": 1.0,
+    "windows": [
+     {
+      "t": [
+       3.71,
+       3.93
+      ],
+      "x": 3.4,
+      "y": 0.0,
+      "z": 0.61,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.96,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.51
+     },
+     {
+      "t": [
+       6.87,
+       7.06
+      ],
+      "x": 18.7,
+      "y": 0.3,
+      "z": 1.3,
+      "states": [
+       "coast",
+       "cue"
+      ],
+      "max_dh": 2.6,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -1.62
+     },
+     {
+      "t": [
+       8.05,
+       8.71
+      ],
+      "x": 25.6,
+      "y": 0.4,
+      "z": 1.19,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.08,
+      "max_dz": 0.65,
+      "dvz_mean": 0.28,
+      "dspeed_mean": -0.0
+     },
+     {
+      "t": [
+       13.26,
+       13.47
+      ],
+      "x": 56.3,
+      "y": 1.8,
+      "z": 1.08,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 2.49,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -1.57
+     },
+     {
+      "t": [
+       13.77,
+       14.35
+      ],
+      "x": 59.4,
+      "y": 1.9,
+      "z": 1.14,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.3,
+      "max_dz": 0.5,
+      "dvz_mean": 0.2,
+      "dspeed_mean": -0.07
+     },
+     {
+      "t": [
+       18.04,
+       19.99
+      ],
+      "x": 77.8,
+      "y": 14.3,
+      "z": 1.24,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 3.83,
+      "max_dz": 1.0,
+      "dvz_mean": 0.34,
+      "dspeed_mean": -0.77
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 7.44,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [
+     70.16,
+     75.1,
+     76.73
+    ],
+    "logged_support_onsets": [
+     70.28,
+     75.59
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 15.0,
+    "min_cvz": -1.58,
+    "max_cvz": 2.02,
+    "contact_onsets": [
+     70.16,
+     75.1
+    ],
+    "brake_added_s": 0.11,
+    "brake_added_max": 0.04,
+    "brake_withheld_s": 0.11,
+    "brake_withheld_max": 0.04,
+    "brake_left_s": 0.0,
+    "assist_h_s": 18.69,
+    "assist_h_max": 5.08,
+    "assist_v_s": 29.79,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.78,
+     "request": 13.05,
+     "stopping": 4.88
+    }
+   }
+  },
+  "straw-brain08-03": {
+   "motor": "brain",
+   "streamed": true,
+   "end_t": 59.44,
+   "m4": {
+    "guard_climb_s": 4.07,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.11,
+    "max_cvz": 3.5
+   },
+   "m4b": {
+    "guard_climb_s": 4.07,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.09,
+    "max_cvz": 3.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.87,
+    "brake_added_max": 0.04,
+    "brake_withheld_s": 0.87,
+    "brake_withheld_max": 0.04,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.04,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.04,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_change": {
+    "seconds": 12.41,
+    "max_dh": 6.11,
+    "max_dz": 1.0,
+    "windows": [
+     {
+      "t": [
+       3.71,
+       3.93
+      ],
+      "x": 3.4,
+      "y": 0.0,
+      "z": 0.61,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.95,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.53
+     },
+     {
+      "t": [
+       8.08,
+       8.64
+      ],
+      "x": 25.8,
+      "y": 0.4,
+      "z": 1.19,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.0,
+      "max_dz": 0.56,
+      "dvz_mean": 0.24,
+      "dspeed_mean": 0.0
+     },
+     {
+      "t": [
+       13.24,
+       13.4
+      ],
+      "x": 56.4,
+      "y": 1.8,
+      "z": 1.05,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 2.26,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -1.64
+     },
+     {
+      "t": [
+       13.75,
+       16.59
+      ],
+      "x": 59.4,
+      "y": 1.9,
+      "z": 1.13,
+      "states": [
+       "above",
+       "cue"
+      ],
+      "max_dh": 4.47,
+      "max_dz": 0.59,
+      "dvz_mean": 0.06,
+      "dspeed_mean": -1.47
+     },
+     {
+      "t": [
+       17.9,
+       20.07
+      ],
+      "x": 76.7,
+      "y": 13.5,
+      "z": 1.31,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "max_dh": 6.11,
+      "max_dz": 1.0,
+      "dvz_mean": 0.32,
+      "dspeed_mean": -1.09
+     },
+     {
+      "t": [
+       24.75,
+       24.85
+      ],
+      "x": 62.3,
+      "y": 40.2,
+      "z": 1.06,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 1.34,
+      "max_dz": 0.0,
+      "dvz_mean": 0.0,
+      "dspeed_mean": -0.82
+     }
+    ]
+   },
+   "m4b_ma": {
+    "guard_climb_s": 4.07,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.0,
+    "min_cvz": -0.09,
+    "max_cvz": 3.5,
+    "contact_onsets": [],
+    "brake_added_s": 0.87,
+    "brake_added_max": 0.04,
+    "brake_withheld_s": 0.87,
+    "brake_withheld_max": 0.04,
+    "brake_left_s": 0.0,
+    "assist_h_s": 6.39,
+    "assist_h_max": 6.11,
+    "assist_v_s": 9.19,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "request": 3.11,
+     "stopping": 3.29
+    }
+   }
+  },
+  "straw-fast6-01": {
+   "motor": "pd",
+   "streamed": true,
+   "end_t": 62.55,
+   "m4": {
+    "guard_climb_s": 4.44,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.98,
+    "min_cvz": -0.67,
+    "max_cvz": 2.38
+   },
+   "m4b": {
+    "guard_climb_s": 4.44,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.98,
+    "min_cvz": -0.67,
+    "max_cvz": 2.38,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true
+  },
+  "straw-fast6-02": {
+   "motor": "pd",
+   "streamed": true,
+   "end_t": 311.83,
+   "m4": {
+    "guard_climb_s": 13.39,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 55.76,
+    "min_cvz": -1.91,
+    "max_cvz": 2.68
+   },
+   "m4b": {
+    "guard_climb_s": 13.39,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 55.76,
+    "min_cvz": -1.91,
+    "max_cvz": 2.68,
+    "contact_onsets": [],
+    "brake_added_s": 1.0,
+    "brake_added_max": 0.29,
+    "brake_withheld_s": 1.0,
+    "brake_withheld_max": 0.29,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 1.25,
+    "max_dh": 0.03,
+    "max_dz": 0.29,
+    "windows": [
+     {
+      "t": [
+       237.92,
+       239.16
+      ],
+      "x": 37.2,
+      "y": 98.7,
+      "z": 6.95,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 0.29,
+      "dvz_mean": 0.21,
+      "dspeed_mean": -0.01
+     }
+    ]
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 1.25,
+    "max_dh": 0.03,
+    "max_dz": 0.29,
+    "windows": [
+     {
+      "t": [
+       237.92,
+       239.16
+      ],
+      "x": 37.2,
+      "y": 98.7,
+      "z": 6.95,
+      "states": [
+       "cue"
+      ],
+      "max_dh": 0.03,
+      "max_dz": 0.29,
+      "dvz_mean": 0.21,
+      "dspeed_mean": -0.01
+     }
+    ]
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true
+  },
+  "straw-fast6-03": {
+   "motor": "pd",
+   "streamed": true,
+   "end_t": 311.69,
+   "m4": {
+    "guard_climb_s": 14.35,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 56.12,
+    "min_cvz": -1.89,
+    "max_cvz": 2.64
+   },
+   "m4b": {
+    "guard_climb_s": 14.35,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 56.12,
+    "min_cvz": -1.89,
+    "max_cvz": 2.64,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.01,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.01,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true
+  },
+  "straw-fast6-arc-01": {
+   "motor": "pd",
+   "streamed": true,
+   "end_t": 275.8,
+   "m4": {
+    "guard_climb_s": 19.27,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 44.62,
+    "min_cvz": -1.88,
+    "max_cvz": 2.69
+   },
+   "m4b": {
+    "guard_climb_s": 19.27,
+    "guard_escalated_s": 0.0,
+    "guard_max_climb": 1.0,
+    "escalations": [],
+    "support_onsets": [],
+    "logged_support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 44.62,
+    "min_cvz": -1.88,
+    "max_cvz": 2.69,
+    "contact_onsets": [],
+    "brake_added_s": 0.0,
+    "brake_added_max": 0.0,
+    "brake_withheld_s": 0.0,
+    "brake_withheld_max": 0.0,
+    "brake_left_s": 0.0
+   },
+   "change_vs_m4": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "guard_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "wall_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "contact_share": {
+    "seconds": 0.0,
+    "max_dh": 0.0,
+    "max_dz": 0.0,
+    "windows": []
+   },
+   "assist_identical_for_pd": true
+  }
+ },
+ "contact_support_vs_audit": {
+  "straw-brain08-04": {
+   "rows": [
+    {
+     "contact": [
+      71.42,
+      72.84
+     ],
+     "kind": "slide",
+     "contact_onset": 71.83,
+     "delay_contact": 0.41,
+     "logged_support": 72.31,
+     "delay_logged": 0.89,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      76.591,
+      78.341
+     ],
+     "kind": "slide",
+     "contact_onset": 76.97,
+     "delay_contact": 0.38,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      79.551,
+      80.882
+     ],
+     "kind": "slide",
+     "contact_onset": 80.73,
+     "delay_contact": 1.18,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      175.855,
+      177.444
+     ],
+     "kind": "slide",
+     "contact_onset": 176.83,
+     "delay_contact": 0.98,
+     "logged_support": 176.96,
+     "delay_logged": 1.11,
+     "m4_replay_support": 177.69
+    },
+    {
+     "contact": [
+      181.542,
+      186.299
+     ],
+     "kind": "slide",
+     "contact_onset": 181.91,
+     "delay_contact": 0.37,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      282.458,
+      283.919
+     ],
+     "kind": "slide",
+     "contact_onset": 283.13,
+     "delay_contact": 0.67,
+     "logged_support": 283.4,
+     "delay_logged": 0.94,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      287.583,
+      288.954
+     ],
+     "kind": "slide",
+     "contact_onset": 287.97,
+     "delay_contact": 0.39,
+     "logged_support": 288.48,
+     "delay_logged": 0.9,
+     "m4_replay_support": 289.23
+    }
+   ],
+   "onsets_outside_audit": []
+  },
+  "straw-brain08-06": {
+   "rows": [
+    {
+     "contact": [
+      70.609,
+      72.05
+     ],
+     "kind": "slide",
+     "contact_onset": 71.27,
+     "delay_contact": 0.66,
+     "logged_support": 71.54,
+     "delay_logged": 0.93,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      75.881,
+      77.241
+     ],
+     "kind": "slide",
+     "contact_onset": 76.25,
+     "delay_contact": 0.37,
+     "logged_support": 76.75,
+     "delay_logged": 0.87,
+     "m4_replay_support": 77.53
+    },
+    {
+     "contact": [
+      176.445,
+      178.014
+     ],
+     "kind": "slide",
+     "contact_onset": 177.3,
+     "delay_contact": 0.86,
+     "logged_support": 177.51,
+     "delay_logged": 1.06,
+     "m4_replay_support": 178.27
+    },
+    {
+     "contact": [
+      182.101,
+      183.471
+     ],
+     "kind": "slide",
+     "contact_onset": 182.46,
+     "delay_contact": 0.36,
+     "logged_support": 182.98,
+     "delay_logged": 0.88,
+     "m4_replay_support": 183.76
+    },
+    {
+     "contact": [
+      281.567,
+      283.128
+     ],
+     "kind": "slide",
+     "contact_onset": 282.47,
+     "delay_contact": 0.9,
+     "logged_support": 282.63,
+     "delay_logged": 1.06,
+     "m4_replay_support": 283.38
+    },
+    {
+     "contact": [
+      286.962,
+      288.323
+     ],
+     "kind": "slide",
+     "contact_onset": 287.33,
+     "delay_contact": 0.37,
+     "logged_support": 287.84,
+     "delay_logged": 0.88,
+     "m4_replay_support": 288.62
+    }
+   ],
+   "onsets_outside_audit": []
+  },
+  "straw-brain08-01": {
+   "rows": [
+    {
+     "contact": [
+      68.129,
+      75.791
+     ],
+     "kind": "slide",
+     "contact_onset": 71.31,
+     "delay_contact": 3.18,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    }
+   ],
+   "onsets_outside_audit": []
+  },
+  "straw-brain08-02": {
+   "rows": [
+    {
+     "contact": [
+      69.21,
+      70.81
+     ],
+     "kind": "slide",
+     "contact_onset": 70.16,
+     "delay_contact": 0.95,
+     "logged_support": 70.28,
+     "delay_logged": 1.07,
+     "m4_replay_support": 71.03
+    },
+    {
+     "contact": [
+      74.741,
+      76.101
+     ],
+     "kind": "slide",
+     "contact_onset": 75.1,
+     "delay_contact": 0.36,
+     "logged_support": 75.59,
+     "delay_logged": 0.85,
+     "m4_replay_support": 76.38
+    }
+   ],
+   "onsets_outside_audit": []
+  },
+  "minus-fast6-r4-02": {
+   "rows": [
+    {
+     "contact": [
+      27.328,
+      27.988
+     ],
+     "kind": "support",
+     "contact_onset": null,
+     "delay_contact": null,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      29.018,
+      29.548
+     ],
+     "kind": "support",
+     "contact_onset": null,
+     "delay_contact": null,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    },
+    {
+     "contact": [
+      30.679,
+      31.059
+     ],
+     "kind": "support",
+     "contact_onset": null,
+     "delay_contact": null,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    }
+   ],
+   "onsets_outside_audit": []
+  },
+  "pine-brain08-01": {
+   "rows": [
+    {
+     "contact": [
+      16.717,
+      17.947
+     ],
+     "kind": "support",
+     "contact_onset": null,
+     "delay_contact": null,
+     "logged_support": null,
+     "delay_logged": null,
+     "m4_replay_support": null
+    }
+   ],
+   "onsets_outside_audit": []
+  },
+  "pine-fast6-ttc-01": {
+   "rows": [],
+   "onsets_outside_audit": []
+  }
+ },
+ "surrogate": {
+  "pd": {
+   "m4_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 11,
+    "contact_s": 15.64,
+    "high_passes": 14,
+    "support_climbs": 13,
+    "stick_chatter_16": 0.00634,
+    "mean_finish_terrain_s": 56.32,
+    "below_view_fraction": 0.3354
+   },
+   "m4b_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 11,
+    "contact_s": 15.64,
+    "high_passes": 14,
+    "support_climbs": 13,
+    "stick_chatter_16": 0.00634,
+    "mean_finish_terrain_s": 56.32,
+    "below_view_fraction": 0.3354,
+    "contact_support_onsets": 0
+   },
+   "m4b_full_vs_m4_differences": {
+    "count": 0,
+    "first": []
+   }
+  },
+  "brain09b": {
+   "m4_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 14,
+    "contact_s": 19.17,
+    "high_passes": 18,
+    "support_climbs": 4,
+    "stick_chatter_16": 0.00561,
+    "mean_finish_terrain_s": 62.92,
+    "below_view_fraction": 0.4567
+   },
+   "m4b_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 14,
+    "contact_s": 19.17,
+    "high_passes": 18,
+    "support_climbs": 4,
+    "stick_chatter_16": 0.00561,
+    "mean_finish_terrain_s": 62.92,
+    "below_view_fraction": 0.4567,
+    "contact_support_onsets": 0
+   },
+   "m4b_full_vs_m4_differences": {
+    "count": 0,
+    "first": []
+   },
+   "m4b_full_ma": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 14,
+    "contact_s": 19.04,
+    "high_passes": 15,
+    "support_climbs": 6,
+    "stick_chatter_16": 0.00591,
+    "mean_finish_terrain_s": 63.67,
+    "below_view_fraction": 0.4494,
+    "contact_support_onsets": 0
+   },
+   "m4b_full_ma_vs_m4_differences": {
+    "count": 68,
+    "first": [
+     [
+      "flat:3000-3007",
+      3000,
+      "finish_s",
+      47.21,
+      46.53
+     ],
+     [
+      "flat:3000-3007",
+      3000,
+      "stick_chatter",
+      0.00609,
+      0.00533
+     ],
+     [
+      "flat:3000-3007",
+      3001,
+      "finish_s",
+      63.22,
+      62.94
+     ],
+     [
+      "flat:3000-3007",
+      3001,
+      "stick_chatter",
+      0.00536,
+      0.00513
+     ],
+     [
+      "flat:3000-3007",
+      3002,
+      "finish_s",
+      58.29,
+      58.11
+     ],
+     [
+      "flat:3000-3007",
+      3002,
+      "stick_chatter",
+      0.00693,
+      0.0069
+     ],
+     [
+      "flat:3000-3007",
+      3003,
+      "finish_s",
+      52.05,
+      51.73
+     ],
+     [
+      "flat:3000-3007",
+      3003,
+      "stick_chatter",
+      0.00667,
+      0.00645
+     ]
+    ]
+   }
+  },
+  "brain10b": {
+   "m4_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 12,
+    "contact_s": 19.74,
+    "high_passes": 29,
+    "support_climbs": 1,
+    "stick_chatter_16": 0.00289,
+    "mean_finish_terrain_s": 65.27,
+    "below_view_fraction": 0.4957
+   },
+   "m4b_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 12,
+    "contact_s": 19.74,
+    "high_passes": 29,
+    "support_climbs": 1,
+    "stick_chatter_16": 0.00289,
+    "mean_finish_terrain_s": 65.27,
+    "below_view_fraction": 0.4957,
+    "contact_support_onsets": 0
+   },
+   "m4b_full_vs_m4_differences": {
+    "count": 0,
+    "first": []
+   },
+   "m4b_full_ma": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 10,
+    "contact_s": 19.54,
+    "high_passes": 27,
+    "support_climbs": 1,
+    "stick_chatter_16": 0.00291,
+    "mean_finish_terrain_s": 65.53,
+    "below_view_fraction": 0.4982,
+    "contact_support_onsets": 0
+   },
+   "m4b_full_ma_vs_m4_differences": {
+    "count": 65,
+    "first": [
+     [
+      "flat:3000-3007",
+      3000,
+      "finish_s",
+      47.95,
+      48.13
+     ],
+     [
+      "flat:3000-3007",
+      3000,
+      "stick_chatter",
+      0.00324,
+      0.0032
+     ],
+     [
+      "flat:3000-3007",
+      3001,
+      "finish_s",
+      65.08,
+      65.1
+     ],
+     [
+      "flat:3000-3007",
+      3001,
+      "stick_chatter",
+      0.00244,
+      0.00238
+     ],
+     [
+      "flat:3000-3007",
+      3002,
+      "finish_s",
+      61.51,
+      61.25
+     ],
+     [
+      "flat:3000-3007",
+      3002,
+      "stick_chatter",
+      0.00295,
+      0.00313
+     ],
+     [
+      "flat:3000-3007",
+      3003,
+      "finish_s",
+      52.31,
+      51.26
+     ],
+     [
+      "flat:3000-3007",
+      3003,
+      "stick_chatter",
+      0.00308,
+      0.00326
+     ]
+    ]
+   }
+  },
+  "brain11cw13": {
+   "m4_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 11,
+    "contact_s": 26.11,
+    "high_passes": 12,
+    "support_climbs": 6,
+    "stick_chatter_16": 0.00239,
+    "mean_finish_terrain_s": 61.86
+   },
+   "m4b_full": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 11,
+    "contact_s": 26.11,
+    "high_passes": 12,
+    "support_climbs": 6,
+    "stick_chatter_16": 0.00239,
+    "mean_finish_terrain_s": 61.86,
+    "below_view_fraction": 0.4114,
+    "contact_support_onsets": 0
+   },
+   "m4b_full_vs_m4_differences": {
+    "count": 0,
+    "first": []
+   },
+   "m4b_full_ma": {
+    "courses": 28,
+    "finished": 28,
+    "crashed": 0,
+    "contacts": 11,
+    "contact_s": 25.15,
+    "high_passes": 14,
+    "support_climbs": 7,
+    "stick_chatter_16": 0.00247,
+    "mean_finish_terrain_s": 62.07,
+    "below_view_fraction": 0.4131,
+    "contact_support_onsets": 0
+   },
+   "m4b_full_ma_vs_m4_differences": {
+    "count": 66,
+    "first": [
+     [
+      "flat:3000-3007",
+      3000,
+      "finish_s",
+      49.65,
+      49.47
+     ],
+     [
+      "flat:3000-3007",
+      3000,
+      "stick_chatter",
+      0.00282,
+      0.00278
+     ],
+     [
+      "flat:3000-3007",
+      3001,
+      "finish_s",
+      62.29,
+      61.76
+     ],
+     [
+      "flat:3000-3007",
+      3001,
+      "stick_chatter",
+      0.00219,
+      0.00216
+     ],
+     [
+      "flat:3000-3007",
+      3002,
+      "finish_s",
+      55.72,
+      55.8
+     ],
+     [
+      "flat:3000-3007",
+      3002,
+      "stick_chatter",
+      0.00341,
+      0.00327
+     ],
+     [
+      "flat:3000-3007",
+      3003,
+      "finish_s",
+      53.44,
+      53.49
+     ],
+     [
+      "flat:3000-3007",
+      3003,
+      "stick_chatter",
+      0.00263,
+      0.00251
+     ]
+    ]
+   }
+  }
+ },
+ "scenarios": {
+  "brain08_accelerate_m4b": {
+   "controller": "brain08",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 6,
+    "finished": 4,
+    "clean": 3,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 3,
+    "height_loss_mean": 0.3985,
+    "height_loss_max": 0.736,
+    "max_height": 4.525,
+    "chatter": 0.004023,
+    "finish_mean": 10.768
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain08_accelerate_m4b_ma": {
+   "controller": "brain08",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 6,
+    "finished": 4,
+    "clean": 3,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 3,
+    "height_loss_mean": 0.398,
+    "height_loss_max": 0.734,
+    "max_height": 4.699,
+    "chatter": 0.004007,
+    "finish_mean": 10.683
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain08_hairpin_m4b": {
+   "controller": "brain08",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 2,
+    "wall": 10,
+    "floor": 3,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.4582,
+    "height_loss_max": 0.809,
+    "max_height": 2.054,
+    "chatter": 0.005362,
+    "finish_mean": null
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain08_hairpin_m4b_ma": {
+   "controller": "brain08",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 12,
+    "finished": 1,
+    "clean": 0,
+    "crashed": 11,
+    "wall": 3,
+    "floor": 9,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.6666,
+    "height_loss_max": 0.839,
+    "max_height": 2.054,
+    "chatter": 0.006763,
+    "finish_mean": 15.44
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain09b_accelerate_m4b": {
+   "controller": "brain09b",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 6,
+    "finished": 4,
+    "clean": 4,
+    "crashed": 1,
+    "wall": 0,
+    "floor": 1,
+    "ceiling": 1,
+    "contacts": 2,
+    "height_loss_mean": 0.3417,
+    "height_loss_max": 1.002,
+    "max_height": 2.394,
+    "chatter": 0.00771,
+    "finish_mean": 11.15
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain09b_accelerate_m4b_ma": {
+   "controller": "brain09b",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 6,
+    "finished": 4,
+    "clean": 3,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 2,
+    "height_loss_mean": 0.2073,
+    "height_loss_max": 0.543,
+    "max_height": 2.866,
+    "chatter": 0.006895,
+    "finish_mean": 10.992
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain09b_hairpin_live_m4b": {
+   "controller": "brain09b",
+   "part": "hairpin",
+   "live_wall_samples": true,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 8,
+    "wall": 11,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.1361,
+    "height_loss_max": 0.412,
+    "max_height": 5.125,
+    "chatter": 0.008303,
+    "finish_mean": null
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain09b_hairpin_live_m4b_ma": {
+   "controller": "brain09b",
+   "part": "hairpin",
+   "live_wall_samples": true,
+   "motor_assist": true,
+   "counts": {
+    "n": 12,
+    "finished": 11,
+    "clean": 10,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 2,
+    "height_loss_mean": 0.361,
+    "height_loss_max": 0.742,
+    "max_height": 2.294,
+    "chatter": 0.010117,
+    "finish_mean": 13.613
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain09b_hairpin_m4b": {
+   "controller": "brain09b",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.0808,
+    "height_loss_max": 0.412,
+    "max_height": 2.294,
+    "chatter": 0.008168,
+    "finish_mean": null
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain09b_hairpin_m4b_ma": {
+   "controller": "brain09b",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 12,
+    "finished": 10,
+    "clean": 9,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 2,
+    "height_loss_mean": 0.3291,
+    "height_loss_max": 0.741,
+    "max_height": 2.294,
+    "chatter": 0.010278,
+    "finish_mean": 13.552
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain10b_accelerate_m4b": {
+   "controller": "brain10b",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 6,
+    "finished": 4,
+    "clean": 3,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 3,
+    "height_loss_mean": 0.1452,
+    "height_loss_max": 0.433,
+    "max_height": 2.821,
+    "chatter": 0.003082,
+    "finish_mean": 10.94
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain10b_accelerate_m4b_ma": {
+   "controller": "brain10b",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 6,
+    "finished": 4,
+    "clean": 3,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 3,
+    "height_loss_mean": 0.1093,
+    "height_loss_max": 0.4,
+    "max_height": 3.601,
+    "chatter": 0.003265,
+    "finish_mean": 11.182
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain10b_hairpin_live_m4b": {
+   "controller": "brain10b",
+   "part": "hairpin",
+   "live_wall_samples": true,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.05,
+    "height_loss_max": 0.176,
+    "max_height": 1.92,
+    "chatter": 0.003787,
+    "finish_mean": null
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain10b_hairpin_live_m4b_ma": {
+   "controller": "brain10b",
+   "part": "hairpin",
+   "live_wall_samples": true,
+   "motor_assist": true,
+   "counts": {
+    "n": 12,
+    "finished": 7,
+    "clean": 7,
+    "crashed": 0,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 3,
+    "height_loss_mean": 0.0322,
+    "height_loss_max": 0.226,
+    "max_height": 1.919,
+    "chatter": 0.005406,
+    "finish_mean": 14.54
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain10b_hairpin_m4b": {
+   "controller": "brain10b",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": -0.011,
+    "height_loss_max": 0.169,
+    "max_height": 1.92,
+    "chatter": 0.003754,
+    "finish_mean": null
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain10b_hairpin_m4b_ma": {
+   "controller": "brain10b",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 12,
+    "finished": 7,
+    "clean": 7,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 2,
+    "height_loss_mean": 0.006,
+    "height_loss_max": 0.22,
+    "max_height": 1.919,
+    "chatter": 0.005378,
+    "finish_mean": 14.566
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain11cw13_accelerate_m4b": {
+   "controller": "brain11cw13",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 6,
+    "finished": 3,
+    "clean": 3,
+    "crashed": 1,
+    "wall": 0,
+    "floor": 1,
+    "ceiling": 0,
+    "contacts": 1,
+    "height_loss_mean": 0.5613,
+    "height_loss_max": 1.013,
+    "max_height": 1.98,
+    "chatter": 0.003242,
+    "finish_mean": 11.2
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain11cw13_accelerate_m4b_ma": {
+   "controller": "brain11cw13",
+   "part": "accelerate",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 6,
+    "finished": 4,
+    "clean": 3,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 1,
+    "ceiling": 0,
+    "contacts": 1,
+    "height_loss_mean": 0.3942,
+    "height_loss_max": 0.995,
+    "max_height": 2.035,
+    "chatter": 0.002928,
+    "finish_mean": 11.345
+   },
+   "support_climb_scenarios": 0
+  },
+  "brain11cw13_hairpin_live_m4b": {
+   "controller": "brain11cw13",
+   "part": "hairpin",
+   "live_wall_samples": true,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.1018,
+    "height_loss_max": 0.295,
+    "max_height": 1.395,
+    "chatter": 0.003802,
+    "finish_mean": null
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain11cw13_hairpin_live_m4b_ma": {
+   "controller": "brain11cw13",
+   "part": "hairpin",
+   "live_wall_samples": true,
+   "motor_assist": true,
+   "counts": {
+    "n": 12,
+    "finished": 6,
+    "clean": 6,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 3,
+    "height_loss_mean": 0.0963,
+    "height_loss_max": 0.243,
+    "max_height": 2.738,
+    "chatter": 0.005873,
+    "finish_mean": 14.69
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain11cw13_hairpin_m4b": {
+   "controller": "brain11cw13",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.0959,
+    "height_loss_max": 0.295,
+    "max_height": 1.395,
+    "chatter": 0.0038,
+    "finish_mean": null
+   },
+   "support_climb_scenarios": 2
+  },
+  "brain11cw13_hairpin_m4b_ma": {
+   "controller": "brain11cw13",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": true,
+   "counts": {
+    "n": 12,
+    "finished": 8,
+    "clean": 7,
+    "crashed": 0,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 4,
+    "height_loss_mean": 0.0728,
+    "height_loss_max": 0.243,
+    "max_height": 2.407,
+    "chatter": 0.005498,
+    "finish_mean": 14.774
+   },
+   "support_climb_scenarios": 2
+  },
+  "pd_hairpin_live_m4b": {
+   "controller": "pd",
+   "part": "hairpin",
+   "live_wall_samples": true,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 11,
+    "clean": 9,
+    "crashed": 0,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 3,
+    "height_loss_mean": 0.1377,
+    "height_loss_max": 0.387,
+    "max_height": 2.886,
+    "chatter": 0.010123,
+    "finish_mean": 12.968
+   },
+   "support_climb_scenarios": 2
+  },
+  "pd_hairpin_m4b": {
+   "controller": "pd",
+   "part": "hairpin",
+   "live_wall_samples": false,
+   "motor_assist": false,
+   "counts": {
+    "n": 12,
+    "finished": 10,
+    "clean": 10,
+    "crashed": 0,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 2,
+    "height_loss_mean": 0.0573,
+    "height_loss_max": 0.39,
+    "max_height": 3.5,
+    "chatter": 0.010233,
+    "finish_mean": 12.865
+   },
+   "support_climb_scenarios": 2
+  },
+  "attribution_brain09b_hairpin_m4b_no_clearance_brake": {
+   "controller": "brain09b",
+   "part": "hairpin",
+   "dropped": "clearance_brake",
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.0808,
+    "height_loss_max": 0.412,
+    "max_height": 2.294,
+    "chatter": 0.008168,
+    "finish_mean": null
+   }
+  },
+  "attribution_brain09b_hairpin_m4b_no_contact_support": {
+   "controller": "brain09b",
+   "part": "hairpin",
+   "dropped": "contact_support",
+   "counts": {
+    "n": 12,
+    "finished": 1,
+    "clean": 1,
+    "crashed": 4,
+    "wall": 11,
+    "floor": 0,
+    "ceiling": 0,
+    "contacts": 11,
+    "height_loss_mean": 0.1599,
+    "height_loss_max": 0.463,
+    "max_height": 1.386,
+    "chatter": 0.008155,
+    "finish_mean": 13.24
+   }
+  },
+  "attribution_brain09b_hairpin_m4b_no_vertical_guard": {
+   "controller": "brain09b",
+   "part": "hairpin",
+   "dropped": "vertical_guard",
+   "counts": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "crashed": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "contacts": 12,
+    "height_loss_mean": 0.1343,
+    "height_loss_max": 0.412,
+    "max_height": 2.294,
+    "chatter": 0.008185,
+    "finish_mean": null
+   }
+  },
+  "attribution_pd_hairpin_m4b_no_clearance_brake": {
+   "controller": "pd",
+   "part": "hairpin",
+   "dropped": "clearance_brake",
+   "counts": {
+    "n": 12,
+    "finished": 10,
+    "clean": 9,
+    "crashed": 1,
+    "wall": 0,
+    "floor": 2,
+    "ceiling": 2,
+    "contacts": 3,
+    "height_loss_mean": 0.2582,
+    "height_loss_max": 0.802,
+    "max_height": 3.402,
+    "chatter": 0.010031,
+    "finish_mean": 12.75
+   }
+  },
+  "attribution_pd_hairpin_m4b_no_contact_support": {
+   "controller": "pd",
+   "part": "hairpin",
+   "dropped": "contact_support",
+   "counts": {
+    "n": 12,
+    "finished": 12,
+    "clean": 11,
+    "crashed": 0,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 1,
+    "contacts": 1,
+    "height_loss_mean": 0.1328,
+    "height_loss_max": 0.398,
+    "max_height": 2.405,
+    "chatter": 0.009699,
+    "finish_mean": 12.708
+   }
+  },
+  "attribution_pd_hairpin_m4b_no_vertical_guard": {
+   "controller": "pd",
+   "part": "hairpin",
+   "dropped": "vertical_guard",
+   "counts": {
+    "n": 12,
+    "finished": 11,
+    "clean": 9,
+    "crashed": 0,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 3,
+    "contacts": 3,
+    "height_loss_mean": 0.1485,
+    "height_loss_max": 0.387,
+    "max_height": 2.886,
+    "chatter": 0.010023,
+    "finish_mean": 12.97
+   }
+  },
+  "note": "The motor-assist harness (haltere.liftoff.motor_assist_eval) on the sets its frozen gates v1 scored; here a development report under the m4b pilot, not a re-score. Every hairpin run with contact support has a support climb in the same 2 of 12 drones and each of those ends in a ceiling contact; without contact support none (attribution runs). Diagnosis (fast PD, full batch): the two drones whose randomised thrust is about 15% above the declared curve (learned gain 1.13-1.17) read 1.2-1.5 m/s^2 of unexplained upward force at arming (3.2-3.5 s), when the gain is still 1.0, while the pilot asks for a 0.1 m/s sink and the drone still rises after launch; the rule fires at 3.4-3.5 s and again at 4.8 and 6.6-7.2 s."
+ },
+ "contact_audit": {
+  "config_version": 1,
+  "config_sha256": "1c82c7f45668eadb92036a9b492463aa6ae3292a5998e54b46c320e2089ee55f",
+  "logs": {
+   "minus-fast6-r4-02": {
+    "scored_s": 30.58,
+    "terminal_impact": {
+     "t": 34.099,
+     "kind": "terminal",
+     "pos": [
+      73.51,
+      69.38,
+      2.14
+     ],
+     "speed": 4.06,
+     "vz": 0.68,
+     "acceleration": 51.72807312011719,
+     "unexplained": 55.711332876595336
+    },
+    "contacts": [
+     {
+      "t": [
+       27.328,
+       27.988
+      ],
+      "kind": "support",
+      "pos": [
+       77.47,
+       48.48,
+       0.13
+      ],
+      "min_z": 0.02
+     },
+     {
+      "t": [
+       29.018,
+       29.548
+      ],
+      "kind": "support",
+      "pos": [
+       79.34,
+       52.97,
+       0.1
+      ],
+      "min_z": 0.01
+     },
+     {
+      "t": [
+       30.679,
+       31.059
+      ],
+      "kind": "support",
+      "pos": [
+       79.98,
+       56.71,
+       0.11
+      ],
+      "min_z": 0.08
+     },
+     {
+      "t": [
+       34.079,
+       34.089
+      ],
+      "kind": "impact",
+      "pos": [
+       73.59,
+       69.38,
+       2.12
+      ],
+      "min_z": 2.12
+     }
+    ]
+   },
+   "minus-brain10b-r4-02": {
+    "scored_s": 18.06,
+    "terminal_impact": {
+     "t": 21.586,
+     "kind": "terminal",
+     "pos": [
+      81.95,
+      19.0,
+      1.94
+     ],
+     "speed": 4.96,
+     "vz": 0.53,
+     "acceleration": 135.0342254638672,
+     "unexplained": 134.36741081335362
+    },
+    "contacts": []
+   },
+   "minus-brain09b-r4-01": {
+    "scored_s": 20.17,
+    "terminal_impact": {
+     "t": 23.686,
+     "kind": "terminal",
+     "pos": [
+      80.43,
+      20.96,
+      0.04
+     ],
+     "speed": 4.06,
+     "vz": -1.88,
+     "acceleration": 36.83624267578125,
+     "unexplained": 31.152798963786942
+    },
+    "contacts": []
+   },
+   "minus-fast6-wall-01": {
+    "scored_s": 9.91,
+    "terminal_impact": {
+     "t": 13.42,
+     "kind": "terminal",
+     "pos": [
+      54.03,
+      4.8,
+      2.27
+     ],
+     "speed": 4.06,
+     "vz": 2.06,
+     "acceleration": 40.446327209472656,
+     "unexplained": 39.08331973518699
+    },
+    "contacts": []
+   },
+   "minus-brain08-gapon-01": {
+    "scored_s": 15.47,
+    "terminal_impact": {
+     "t": 19.079,
+     "kind": "terminal",
+     "pos": [
+      80.81,
+      19.23,
+      2.09
+     ],
+     "speed": 6.13,
+     "vz": 1.34,
+     "acceleration": 33.03559875488281,
+     "unexplained": 31.92533649035085
+    },
+    "contacts": []
+   },
+   "minus-brain08-gapon-02": {
+    "scored_s": 14.98,
+    "terminal_impact": {
+     "t": 18.589,
+     "kind": "terminal",
+     "pos": [
+      78.09,
+      19.04,
+      2.19
+     ],
+     "speed": 4.85,
+     "vz": 3.27,
+     "acceleration": 197.33241271972656,
+     "unexplained": 192.07593603445181
+    },
+    "contacts": [
+     {
+      "t": [
+       18.569,
+       18.579
+      ],
+      "kind": "impact",
+      "pos": [
+       78.07,
+       18.97,
+       2.13
+      ],
+      "min_z": 2.13
+     }
+    ]
+   },
+   "minus-fast6-gapon-01": {
+    "scored_s": 18.14,
+    "terminal_impact": {
+     "t": 21.649,
+     "kind": "terminal",
+     "pos": [
+      79.99,
+      18.09,
+      0.66
+     ],
+     "speed": 2.47,
+     "vz": 0.04,
+     "acceleration": 56.5650749206543,
+     "unexplained": 59.38814951099072
+    },
+    "contacts": []
+   },
+   "minus-brain08-loom-01": {
+    "scored_s": 9.29,
+    "terminal_impact": {
+     "t": 12.9,
+     "kind": "terminal",
+     "pos": [
+      54.52,
+      3.85,
+      0.8
+     ],
+     "speed": 5.86,
+     "vz": -0.02,
+     "acceleration": 165.56951904296875,
+     "unexplained": 166.3422601577467
+    },
+    "contacts": []
+   },
+   "minus-fast6-vg-02": {
+    "scored_s": 19.94,
+    "terminal_impact": {
+     "t": 23.448,
+     "kind": "terminal",
+     "pos": [
+      78.31,
+      31.1,
+      1.0
+     ],
+     "speed": 5.87,
+     "vz": 0.03,
+     "acceleration": 165.91067504882812,
+     "unexplained": 164.99945490064516
+    },
+    "contacts": []
+   },
+   "minus-brain08-vg-01": {
+    "scored_s": 14.87,
+    "terminal_impact": {
+     "t": 18.489,
+     "kind": "terminal",
+     "pos": [
+      78.19,
+      19.27,
+      1.27
+     ],
+     "speed": 4.28,
+     "vz": 1.44,
+     "acceleration": 90.7044677734375,
+     "unexplained": 80.49790610749322
+    },
+    "contacts": []
+   },
+   "minus-brain09b-vg-01": {
+    "scored_s": 18.4,
+    "terminal_impact": {
+     "t": 21.919,
+     "kind": "terminal",
+     "pos": [
+      81.89,
+      19.91,
+      0.63
+     ],
+     "speed": 2.96,
+     "vz": -0.26,
+     "acceleration": 107.35087585449219,
+     "unexplained": 105.73003080782793
+    },
+    "contacts": []
+   },
+   "minus-brain08-gapshadow-01": {
+    "scored_s": 9.49,
+    "terminal_impact": {
+     "t": 13.1,
+     "kind": "terminal",
+     "pos": [
+      54.54,
+      4.1,
+      0.84
+     ],
+     "speed": 5.71,
+     "vz": 0.03,
+     "acceleration": 151.1909637451172,
+     "unexplained": 151.71108634756362
+    },
+    "contacts": []
+   },
+   "pine-fast6-ttc-01": {
+    "scored_s": 17.73,
+    "terminal_impact": {
+     "t": 21.24,
+     "kind": "terminal",
+     "pos": [
+      78.97,
+      -1.72,
+      7.97
+     ],
+     "speed": 5.97,
+     "vz": -0.8,
+     "acceleration": 111.70782470703125,
+     "unexplained": 109.47594706727912
+    },
+    "contacts": [
+     {
+      "t": [
+       16.7,
+       16.72
+      ],
+      "kind": "impact",
+      "pos": [
+       59.82,
+       -15.58,
+       5.46
+      ],
+      "min_z": 5.46
+     }
+    ]
+   },
+   "pine-brain08-loom-01": {
+    "scored_s": 5.92,
+    "terminal_impact": {
+     "t": 9.57,
+     "kind": "terminal",
+     "pos": [
+      31.28,
+      -11.66,
+      2.02
+     ],
+     "speed": 5.59,
+     "vz": 0.23,
+     "acceleration": 183.0167694091797,
+     "unexplained": 183.77604040131067
+    },
+    "contacts": []
+   },
+   "pine-brain08-01": {
+    "scored_s": 14.32,
+    "terminal_impact": {
+     "t": 17.967,
+     "kind": "terminal",
+     "pos": [
+      67.8,
+      -10.54,
+      4.34
+     ],
+     "speed": 3.69,
+     "vz": 0.95,
+     "acceleration": 40.099876403808594,
+     "unexplained": 40.779857573943175
+    },
+    "contacts": [
+     {
+      "t": [
+       16.717,
+       17.947
+      ],
+      "kind": "support",
+      "pos": [
+       62.56,
+       -13.56,
+       3.5
+      ],
+      "min_z": 3.5
+     }
+    ]
+   },
+   "straw-brain08-04": {
+    "scored_s": 323.21,
+    "terminal_impact": null,
+    "contacts": [
+     {
+      "t": [
+       71.42,
+       72.84
+      ],
+      "kind": "slide",
+      "pos": [
+       -38.56,
+       163.84,
+       22.14
+      ],
+      "min_z": 21.26
+     },
+     {
+      "t": [
+       76.591,
+       78.341
+      ],
+      "kind": "slide",
+      "pos": [
+       -37.0,
+       145.88,
+       18.07
+      ],
+      "min_z": 16.53
+     },
+     {
+      "t": [
+       79.551,
+       80.882
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.44,
+       135.77,
+       15.39
+      ],
+      "min_z": 14.26
+     },
+     {
+      "t": [
+       175.855,
+       177.444
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.97,
+       168.99,
+       23.04
+      ],
+      "min_z": 22.0
+     },
+     {
+      "t": [
+       181.542,
+       186.299
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.21,
+       147.85,
+       18.54
+      ],
+      "min_z": 14.39
+     },
+     {
+      "t": [
+       282.458,
+       283.919
+      ],
+      "kind": "slide",
+      "pos": [
+       -38.32,
+       166.48,
+       22.61
+      ],
+      "min_z": 21.74
+     },
+     {
+      "t": [
+       287.583,
+       288.954
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.93,
+       148.58,
+       18.72
+      ],
+      "min_z": 17.7
+     }
+    ]
+   },
+   "straw-brain08-06": {
+    "scored_s": 323.12,
+    "terminal_impact": null,
+    "contacts": [
+     {
+      "t": [
+       70.609,
+       72.05
+      ],
+      "kind": "slide",
+      "pos": [
+       -38.96,
+       166.15,
+       22.55
+      ],
+      "min_z": 21.69
+     },
+     {
+      "t": [
+       75.881,
+       77.241
+      ],
+      "kind": "slide",
+      "pos": [
+       -37.31,
+       147.58,
+       18.47
+      ],
+      "min_z": 17.49
+     },
+     {
+      "t": [
+       176.445,
+       178.014
+      ],
+      "kind": "slide",
+      "pos": [
+       -35.85,
+       167.19,
+       22.69
+      ],
+      "min_z": 21.68
+     },
+     {
+      "t": [
+       182.101,
+       183.471
+      ],
+      "kind": "slide",
+      "pos": [
+       -35.53,
+       146.49,
+       18.19
+      ],
+      "min_z": 17.19
+     },
+     {
+      "t": [
+       281.567,
+       283.128
+      ],
+      "kind": "slide",
+      "pos": [
+       -37.02,
+       169.19,
+       23.07
+      ],
+      "min_z": 22.11
+     },
+     {
+      "t": [
+       286.962,
+       288.323
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.14,
+       149.65,
+       18.98
+      ],
+      "min_z": 17.97
+     }
+    ]
+   },
+   "straw-brain08-01": {
+    "scored_s": 72.33,
+    "terminal_impact": {
+     "t": 75.981,
+     "kind": "terminal",
+     "pos": [
+      -35.04,
+      150.12,
+      18.94
+     ],
+     "speed": 1.96,
+     "vz": -0.44,
+     "acceleration": 39.5956916809082,
+     "unexplained": 41.5576972390577
+    },
+    "contacts": [
+     {
+      "t": [
+       68.129,
+       75.791
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.47,
+       175.29,
+       24.03
+      ],
+      "min_z": 19.02
+     }
+    ]
+   },
+   "straw-brain08-02": {
+    "scored_s": 160.83,
+    "terminal_impact": {
+     "t": 164.47,
+     "kind": "terminal",
+     "pos": [
+      4.57,
+      192.79,
+      25.65
+     ],
+     "speed": 2.72,
+     "vz": -0.5,
+     "acceleration": 34.024269104003906,
+     "unexplained": 15.784596097878678
+    },
+    "contacts": [
+     {
+      "t": [
+       69.21,
+       70.81
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.96,
+       169.22,
+       23.07
+      ],
+      "min_z": 22.08
+     },
+     {
+      "t": [
+       74.741,
+       76.101
+      ],
+      "kind": "slide",
+      "pos": [
+       -36.15,
+       149.01,
+       18.81
+      ],
+      "min_z": 17.83
+     },
+     {
+      "t": [
+       164.44,
+       164.44
+      ],
+      "kind": "impact",
+      "pos": [
+       4.58,
+       192.71,
+       25.67
+      ],
+      "min_z": 25.67
+     }
+    ]
+   },
+   "straw-brain08-03": {
+    "scored_s": 55.82,
+    "terminal_impact": {
+     "t": 59.447,
+     "kind": "terminal",
+     "pos": [
+      -0.47,
+      197.88,
+      26.68
+     ],
+     "speed": 3.84,
+     "vz": 1.24,
+     "acceleration": 55.01382064819336,
+     "unexplained": 53.36404429353165
+    },
+    "contacts": []
+   },
+   "straw-fast6-01": {
+    "scored_s": 59.05,
+    "terminal_impact": {
+     "t": 62.56,
+     "kind": "terminal",
+     "pos": [
+      -36.69,
+      174.77,
+      23.82
+     ],
+     "speed": 3.05,
+     "vz": -2.85,
+     "acceleration": 30.81607437133789,
+     "unexplained": 11.709178263604871
+    },
+    "contacts": []
+   },
+   "straw-fast6-02": {
+    "scored_s": 308.33,
+    "terminal_impact": null,
+    "contacts": []
+   },
+   "straw-fast6-03": {
+    "scored_s": 308.18,
+    "terminal_impact": null,
+    "contacts": []
+   },
+   "straw-fast6-arc-01": {
+    "scored_s": 272.3,
+    "terminal_impact": {
+     "t": 275.813,
+     "kind": "terminal",
+     "pos": [
+      -36.35,
+      120.74,
+      13.29
+     ],
+     "speed": 2.97,
+     "vz": -0.45,
+     "acceleration": 82.34928894042969,
+     "unexplained": 78.303830181823
+    },
+    "contacts": []
+   }
+  }
+ },
+ "plan_commands": {
+  "a_minus_pd": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --descent-view on --motor-assist on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-fast6-r4b-01.csv --record runs/fast-stack-20260923/minus-fast6-r4b-01.mp4 --video-encoder h264_nvenc",
+  "b_minus_brain11": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --descent-view on --motor-assist on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-brain11cw13-r4b-01.csv --record runs/fast-stack-20260923/minus-brain11cw13-r4b-01.mp4 --video-encoder h264_nvenc",
+  "c_straw_brain11": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --descent-view on --motor-assist on --seconds 480 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/straw-brain11cw13-r4b-01.csv --record runs/fast-stack-20260923/straw-brain11cw13-r4b-01.mp4 --video-encoder h264_nvenc",
+  "d_pine_pd": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --descent-view on --motor-assist on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/pine-fast6-r4b-01.csv --record runs/fast-stack-20260923/pine-fast6-r4b-01.mp4 --video-encoder h264_nvenc",
+  "control_minus_pd_shadow": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack shadow --descent-view on --motor-assist on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-fast6-r4b-shadow-01.csv --record runs/fast-stack-20260923/minus-fast6-r4b-shadow-01.mp4 --video-encoder h264_nvenc",
+  "diag_minus_brain11_no_assist": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --descent-view on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-brain11cw13-r4b-noassist-01.csv --record runs/fast-stack-20260923/minus-brain11cw13-r4b-noassist-01.mp4 --video-encoder h264_nvenc"
+ },
+ "plan_wiring": {
+  "a_minus_pd": {
+   "checkpoint": "runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "checkpoint_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "motor": "pd",
+   "contract": "fast_velocity_pd_v1",
+   "stack": "on",
+   "applied": true,
+   "looming": true,
+   "lag_turn": {
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+    "applied": true,
+    "motor_contract": "fast_velocity_pd_v1"
+   },
+   "wall_pilot": {
+    "version": 5,
+    "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+    "applied": true,
+    "motor_contract": "fast_velocity_pd_v1",
+    "stopping_model": "fast_velocity_pd_v1"
+   },
+   "vertical_guard": {
+    "version": 4,
+    "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+    "applied": true
+   },
+   "descent_view": {
+    "version": 2,
+    "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26",
+    "applied": true
+   },
+   "motor_assist": {
+    "version": 1,
+    "sha256": "eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02",
+    "applied": false,
+    "motor_contract": "fast_velocity_pd_v1"
+   },
+   "gap_pilot": {
+    "version": 5,
+    "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+   },
+   "gap_spec_motor": "fast_pd",
+   "gap_aim_commit": true,
+   "pilot_has": {
+    "turn_first": true,
+    "vertical_guard": true,
+    "descent_view": true,
+    "gap_aim": true,
+    "lag_turn": true,
+    "clearance_brake": true,
+    "contact_support": true,
+    "motor_assist": false
+   },
+   "metadata_versions": {
+    "wall_pilot": 5,
+    "vertical_guard": 4,
+    "descent_view": 2,
+    "clearance_brake_applied": true,
+    "motor_assist": null
+   },
+   "csv_tail": {
+    "wall": 4,
+    "vertical": 6,
+    "commit": 1,
+    "view": 6,
+    "view_columns": [
+     "view_sink_bound",
+     "view_withheld",
+     "view_boost",
+     "contact_unexplained",
+     "contact_gain",
+     "contact_fire"
+    ],
+    "assist": 6
+   },
+   "seconds": 150.0,
+   "limits": [
+    250.0,
+    14.0,
+    2000.0
+   ],
+   "log": "runs/fast-stack-20260923/minus-fast6-r4b-01.csv",
+   "record": "runs/fast-stack-20260923/minus-fast6-r4b-01.mp4",
+   "pause_on_stop": true
+  },
+  "b_minus_brain11": {
+   "checkpoint": "runs/fast-brain-11-b-cw13/candidate.pt",
+   "checkpoint_sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+   "motor": "brain",
+   "contract": "fast_velocity_brain_v1",
+   "stack": "on",
+   "applied": true,
+   "looming": true,
+   "lag_turn": {
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1"
+   },
+   "wall_pilot": {
+    "version": 5,
+    "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1",
+    "stopping_model": "fast_velocity_brain_v1"
+   },
+   "vertical_guard": {
+    "version": 4,
+    "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+    "applied": true
+   },
+   "descent_view": {
+    "version": 2,
+    "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26",
+    "applied": true
+   },
+   "motor_assist": {
+    "version": 1,
+    "sha256": "eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1"
+   },
+   "gap_pilot": {
+    "version": 5,
+    "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+   },
+   "gap_spec_motor": "brain08",
+   "gap_aim_commit": true,
+   "pilot_has": {
+    "turn_first": true,
+    "vertical_guard": true,
+    "descent_view": true,
+    "gap_aim": true,
+    "lag_turn": true,
+    "clearance_brake": true,
+    "contact_support": true,
+    "motor_assist": true
+   },
+   "metadata_versions": {
+    "wall_pilot": 5,
+    "vertical_guard": 4,
+    "descent_view": 2,
+    "clearance_brake_applied": true,
+    "motor_assist": 1
+   },
+   "csv_tail": {
+    "wall": 4,
+    "vertical": 6,
+    "commit": 1,
+    "view": 6,
+    "view_columns": [
+     "view_sink_bound",
+     "view_withheld",
+     "view_boost",
+     "contact_unexplained",
+     "contact_gain",
+     "contact_fire"
+    ],
+    "assist": 6
+   },
+   "seconds": 150.0,
+   "limits": [
+    250.0,
+    14.0,
+    2000.0
+   ],
+   "log": "runs/fast-stack-20260923/minus-brain11cw13-r4b-01.csv",
+   "record": "runs/fast-stack-20260923/minus-brain11cw13-r4b-01.mp4",
+   "pause_on_stop": true
+  },
+  "c_straw_brain11": {
+   "checkpoint": "runs/fast-brain-11-b-cw13/candidate.pt",
+   "checkpoint_sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+   "motor": "brain",
+   "contract": "fast_velocity_brain_v1",
+   "stack": "on",
+   "applied": true,
+   "looming": true,
+   "lag_turn": {
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1"
+   },
+   "wall_pilot": {
+    "version": 5,
+    "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1",
+    "stopping_model": "fast_velocity_brain_v1"
+   },
+   "vertical_guard": {
+    "version": 4,
+    "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+    "applied": true
+   },
+   "descent_view": {
+    "version": 2,
+    "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26",
+    "applied": true
+   },
+   "motor_assist": {
+    "version": 1,
+    "sha256": "eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1"
+   },
+   "gap_pilot": {
+    "version": 5,
+    "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+   },
+   "gap_spec_motor": "brain08",
+   "gap_aim_commit": true,
+   "pilot_has": {
+    "turn_first": true,
+    "vertical_guard": true,
+    "descent_view": true,
+    "gap_aim": true,
+    "lag_turn": true,
+    "clearance_brake": true,
+    "contact_support": true,
+    "motor_assist": true
+   },
+   "metadata_versions": {
+    "wall_pilot": 5,
+    "vertical_guard": 4,
+    "descent_view": 2,
+    "clearance_brake_applied": true,
+    "motor_assist": 1
+   },
+   "csv_tail": {
+    "wall": 4,
+    "vertical": 6,
+    "commit": 1,
+    "view": 6,
+    "view_columns": [
+     "view_sink_bound",
+     "view_withheld",
+     "view_boost",
+     "contact_unexplained",
+     "contact_gain",
+     "contact_fire"
+    ],
+    "assist": 6
+   },
+   "seconds": 480.0,
+   "limits": [
+    250.0,
+    14.0,
+    2000.0
+   ],
+   "log": "runs/fast-stack-20260923/straw-brain11cw13-r4b-01.csv",
+   "record": "runs/fast-stack-20260923/straw-brain11cw13-r4b-01.mp4",
+   "pause_on_stop": true
+  },
+  "d_pine_pd": {
+   "checkpoint": "runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "checkpoint_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "motor": "pd",
+   "contract": "fast_velocity_pd_v1",
+   "stack": "on",
+   "applied": true,
+   "looming": true,
+   "lag_turn": {
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+    "applied": true,
+    "motor_contract": "fast_velocity_pd_v1"
+   },
+   "wall_pilot": {
+    "version": 5,
+    "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+    "applied": true,
+    "motor_contract": "fast_velocity_pd_v1",
+    "stopping_model": "fast_velocity_pd_v1"
+   },
+   "vertical_guard": {
+    "version": 4,
+    "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+    "applied": true
+   },
+   "descent_view": {
+    "version": 2,
+    "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26",
+    "applied": true
+   },
+   "motor_assist": {
+    "version": 1,
+    "sha256": "eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02",
+    "applied": false,
+    "motor_contract": "fast_velocity_pd_v1"
+   },
+   "gap_pilot": {
+    "version": 5,
+    "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+   },
+   "gap_spec_motor": "fast_pd",
+   "gap_aim_commit": true,
+   "pilot_has": {
+    "turn_first": true,
+    "vertical_guard": true,
+    "descent_view": true,
+    "gap_aim": true,
+    "lag_turn": true,
+    "clearance_brake": true,
+    "contact_support": true,
+    "motor_assist": false
+   },
+   "metadata_versions": {
+    "wall_pilot": 5,
+    "vertical_guard": 4,
+    "descent_view": 2,
+    "clearance_brake_applied": true,
+    "motor_assist": null
+   },
+   "csv_tail": {
+    "wall": 4,
+    "vertical": 6,
+    "commit": 1,
+    "view": 6,
+    "view_columns": [
+     "view_sink_bound",
+     "view_withheld",
+     "view_boost",
+     "contact_unexplained",
+     "contact_gain",
+     "contact_fire"
+    ],
+    "assist": 6
+   },
+   "seconds": 150.0,
+   "limits": [
+    250.0,
+    14.0,
+    2000.0
+   ],
+   "log": "runs/fast-stack-20260923/pine-fast6-r4b-01.csv",
+   "record": "runs/fast-stack-20260923/pine-fast6-r4b-01.mp4",
+   "pause_on_stop": true
+  },
+  "control_minus_pd_shadow": {
+   "checkpoint": "runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "checkpoint_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "motor": "pd",
+   "contract": "fast_velocity_pd_v1",
+   "stack": "shadow",
+   "applied": false,
+   "looming": true,
+   "lag_turn": {
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+    "applied": false,
+    "motor_contract": "fast_velocity_pd_v1"
+   },
+   "wall_pilot": {
+    "version": 5,
+    "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+    "applied": false,
+    "motor_contract": "fast_velocity_pd_v1",
+    "stopping_model": "fast_velocity_pd_v1"
+   },
+   "vertical_guard": {
+    "version": 4,
+    "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+    "applied": false
+   },
+   "descent_view": {
+    "version": 2,
+    "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26",
+    "applied": true
+   },
+   "motor_assist": {
+    "version": 1,
+    "sha256": "eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02",
+    "applied": false,
+    "motor_contract": "fast_velocity_pd_v1"
+   },
+   "gap_pilot": {
+    "version": 5,
+    "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+   },
+   "gap_spec_motor": "fast_pd",
+   "gap_aim_commit": true,
+   "pilot_has": {
+    "turn_first": true,
+    "vertical_guard": true,
+    "descent_view": true,
+    "gap_aim": true,
+    "lag_turn": true,
+    "clearance_brake": true,
+    "contact_support": true,
+    "motor_assist": false
+   },
+   "metadata_versions": {
+    "wall_pilot": 5,
+    "vertical_guard": 4,
+    "descent_view": 2,
+    "clearance_brake_applied": false,
+    "motor_assist": null
+   },
+   "csv_tail": {
+    "wall": 4,
+    "vertical": 6,
+    "commit": 1,
+    "view": 6,
+    "view_columns": [
+     "view_sink_bound",
+     "view_withheld",
+     "view_boost",
+     "contact_unexplained",
+     "contact_gain",
+     "contact_fire"
+    ],
+    "assist": 6
+   },
+   "seconds": 150.0,
+   "limits": [
+    250.0,
+    14.0,
+    2000.0
+   ],
+   "log": "runs/fast-stack-20260923/minus-fast6-r4b-shadow-01.csv",
+   "record": "runs/fast-stack-20260923/minus-fast6-r4b-shadow-01.mp4",
+   "pause_on_stop": true
+  },
+  "diag_minus_brain11_no_assist": {
+   "checkpoint": "runs/fast-brain-11-b-cw13/candidate.pt",
+   "checkpoint_sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+   "motor": "brain",
+   "contract": "fast_velocity_brain_v1",
+   "stack": "on",
+   "applied": true,
+   "looming": true,
+   "lag_turn": {
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1"
+   },
+   "wall_pilot": {
+    "version": 5,
+    "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+    "applied": true,
+    "motor_contract": "fast_velocity_brain_v1",
+    "stopping_model": "fast_velocity_brain_v1"
+   },
+   "vertical_guard": {
+    "version": 4,
+    "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+    "applied": true
+   },
+   "descent_view": {
+    "version": 2,
+    "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26",
+    "applied": true
+   },
+   "motor_assist": null,
+   "gap_pilot": {
+    "version": 5,
+    "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+   },
+   "gap_spec_motor": "brain08",
+   "gap_aim_commit": true,
+   "pilot_has": {
+    "turn_first": true,
+    "vertical_guard": true,
+    "descent_view": true,
+    "gap_aim": true,
+    "lag_turn": true,
+    "clearance_brake": true,
+    "contact_support": true,
+    "motor_assist": false
+   },
+   "metadata_versions": {
+    "wall_pilot": 5,
+    "vertical_guard": 4,
+    "descent_view": 2,
+    "clearance_brake_applied": true,
+    "motor_assist": null
+   },
+   "csv_tail": {
+    "wall": 4,
+    "vertical": 6,
+    "commit": 1,
+    "view": 6,
+    "view_columns": [
+     "view_sink_bound",
+     "view_withheld",
+     "view_boost",
+     "contact_unexplained",
+     "contact_gain",
+     "contact_fire"
+    ],
+    "assist": 0
+   },
+   "seconds": 150.0,
+   "limits": [
+    250.0,
+    14.0,
+    2000.0
+   ],
+   "log": "runs/fast-stack-20260923/minus-brain11cw13-r4b-noassist-01.csv",
+   "record": "runs/fast-stack-20260923/minus-brain11cw13-r4b-noassist-01.mp4",
+   "pause_on_stop": true
+  }
+ }
+}

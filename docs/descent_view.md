@@ -152,6 +152,15 @@ Notes:
   brain-08 Straw laps with contacts, support climbs rise from 0-5 per file (m4 stack with descent view 1)
   to 3-11. All 22 contact-rule onsets lie inside an audit contact. Whether that brings more ring misses
   or turn-backs is a flight question.
+- **False support with a thrust above the curve at arming (round-4b integration finding).** In the
+  motor-assist harness's hairpin set (IdentifiedSim, 10% per-drone randomisation) the rule fires on the
+  same 2 of 12 drones for every motor, the fast PD included, and each then touches the 2.2 m ceiling;
+  without contact support none does. Those drones' thrust is about 15% above the declared curve (their
+  gain ends at 1.13-1.17). At arming (3.2 s) the gain is still 1.0, the unexplained force reads
+  1.2-1.5 m/s^2 while the pilot asks for a 0.1 m/s sink and the drone still rises, so the rule fires at
+  3.4-3.5 s and again later. The descent surrogate's courses never trigger it, and the logged flights'
+  gain stays within 0.95-1.10, but a gain near 1.1 at arming would give about 1 m/s^2. Flight card,
+  Round 4b; `docs/experiments/round4b_integration.json` (`scenarios`).
 
 ## Version 1 (round 4)
 

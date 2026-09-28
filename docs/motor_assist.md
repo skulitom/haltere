@@ -189,6 +189,20 @@ climb. On minus-brain10b-r4-02 the stopping source cuts the request from 6 to ab
 compensation asks for about +1 m/s of climb from 23.2 s, while the brain sank. The recorded motion does not
 respond, so these are the requests the assist would have made, not flights.
 
+## On the integration branch `m4b` (round 4b)
+
+`m4b` merges this branch with vertical guard v4, wall pilot v5 (the clearance brake never adds sink:
+the "contact fix" this document waits for, as a sink floor rather than a horizontal-only ray) and
+descent view v2 (contact support). With the assist on, contact support also compares the measured
+vertical speed with the request the motor received. The harness's sets flown under the merged pilot
+(development report, not a re-score; flight card, Round 4b):
+
+- hairpin, clean of 12 with the assist: brain-09b 9, fast-brain-10b 7, fast-brain-11-b-cw13 7; without
+  it 0 for every brain (the fast PD 10). The floor contacts after a stop are gone (brain-09b 3 -> 0,
+  fast-brain-10b 2 -> 0).
+- every hairpin run has 2 ceiling contacts that come from contact support firing falsely on the two
+  drones whose randomised thrust is about 15% above the declared curve, with or without the assist.
+
 ## Risks for live flight
 
 - **Not flight evidence.** The surrogate's walls, looming and contact scoring are synthetic; its brains
