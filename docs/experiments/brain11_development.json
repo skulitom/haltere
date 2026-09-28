@@ -1,0 +1,1107 @@
+{
+ "note": "Development screening of brain-11 (not the frozen gates): dev.py (the round-4 windows, which are development cases and also in G9; scripted capped turns at +60/-75 deg, 3.5 m/s, 1.2 rad/s from 5.5 m/s at 2 m; accelerations at 15/45 deg to 5.5 m/s at 1.5 m; the deployed pilot on steep 5000-5007, sim seed 23; with --default-courses the default pilot on flat and steep 5000-5007), dev_cruise.py and the dev refits below, written to the session scratchpad (never scored on the gates unless promoted). Parameters and seeds are disjoint from G10/G11 and the gate courses.",
+ "dev_refits": {
+  "b-lvl05-turn0": "refit of fast-brain-11-b data, brake level 0.5, no turn brakes (fast-brain-10b selection)",
+  "b-lvl05-turn90": "refit of fast-brain-11-b data, brake level 0.5, turn brakes 90 deg",
+  "b-w3": "refit of fast-brain-11-b data, brake weight 3 (level 1.6, turn 90)",
+  "b-lvl11": "refit of fast-brain-11-b data, brake level 1.1 (turn 90)",
+  "b-cw3": "refit of fast-brain-11-b data, cruise weight 3 (evaluate-resolved: 7/8, one crash)",
+  "b-cw16": "refit of fast-brain-11-b data, cruise weight 1.6: promoted as candidate fast-brain-11-b-cw16 (bit-identical)",
+  "b-cw13": "refit of fast-brain-11-b data, cruise weight 1.3: promoted as candidate fast-brain-11-b-cw13 (bit-identical)",
+  "b-w1": "refit of fast-brain-11-b data without brake weights: the left-turn over-braking remains (not the brake weights)"
+ },
+ "dev": {
+  "b-cw13": {
+   "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.379,
+     "height_loss": -0.002,
+     "vh_final": 4.217
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.301,
+     "height_loss": 0.052,
+     "vh_final": 5.642
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 0.9,
+    "excess_max": 0.351,
+    "settled": [
+     -1.821,
+     -0.25
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.63,
+      -1.061,
+      -1.782
+     ],
+     [
+      60.0,
+      0.8,
+      0.67,
+      -0.796,
+      -1.821
+     ],
+     [
+      -75.0,
+      0.0,
+      0.9,
+      0.351,
+      -0.576
+     ],
+     [
+      -75.0,
+      0.8,
+      0.78,
+      0.335,
+      -0.25
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.031,
+    "t_reach_max": 1.36,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.031,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      -0.015,
+      1.36
+     ],
+     [
+      "stop",
+      15.0,
+      -0.016,
+      0.93
+     ],
+     [
+      "stop",
+      45.0,
+      -0.016,
+      1.24
+     ]
+    ]
+   }
+  },
+  "b-cw16": {
+   "sha256": "74658a4d953237992faa448a9584a56212d954783971cf6e186f26fe4faeee05",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.398,
+     "height_loss": -0.002,
+     "vh_final": 4.231
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.3,
+     "height_loss": 0.052,
+     "vh_final": 5.655
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 0.93,
+    "excess_max": 0.415,
+    "settled": [
+     -1.802,
+     -0.233
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.64,
+      -1.034,
+      -1.743
+     ],
+     [
+      60.0,
+      0.8,
+      0.69,
+      -0.792,
+      -1.802
+     ],
+     [
+      -75.0,
+      0.0,
+      0.93,
+      0.415,
+      -0.551
+     ],
+     [
+      -75.0,
+      0.8,
+      0.81,
+      0.393,
+      -0.233
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.034,
+    "t_reach_max": 1.36,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.034,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      -0.018,
+      1.36
+     ],
+     [
+      "stop",
+      15.0,
+      -0.008,
+      0.93
+     ],
+     [
+      "stop",
+      45.0,
+      -0.008,
+      1.24
+     ]
+    ]
+   }
+  },
+  "b-cw3": {
+   "sha256": "ad4a82d890fc88e6dae7d792f9ce0395dab9fd98c793a20bace72895487c3c18",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.468,
+     "height_loss": -0.002,
+     "vh_final": 4.28
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.301,
+     "height_loss": 0.053,
+     "vh_final": 5.702
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 1.02,
+    "excess_max": 0.62,
+    "settled": [
+     -1.666,
+     -0.18
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.67,
+      -0.956,
+      -1.578
+     ],
+     [
+      60.0,
+      0.8,
+      0.71,
+      -0.76,
+      -1.666
+     ],
+     [
+      -75.0,
+      0.0,
+      1.02,
+      0.62,
+      -0.482
+     ],
+     [
+      -75.0,
+      0.8,
+      0.9,
+      0.571,
+      -0.18
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.061,
+    "t_reach_max": 1.36,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.061,
+      1.01
+     ],
+     [
+      "creep",
+      45.0,
+      -0.025,
+      1.36
+     ],
+     [
+      "stop",
+      15.0,
+      0.02,
+      0.92
+     ],
+     [
+      "stop",
+      45.0,
+      0.02,
+      1.27
+     ]
+    ]
+   }
+  },
+  "b-lvl05-turn0": {
+   "sha256": "b5086f46e84a675d7661a1598f10a232619f7c26a7ee6efcc26d85369b4d42ff",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.706,
+     "height_loss": -0.002,
+     "vh_final": 4.534
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.32,
+     "height_loss": 0.109,
+     "vh_final": 5.607
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 1.84,
+    "excess_max": 0.764,
+    "settled": [
+     -1.695,
+     0.055
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.61,
+      -1.145,
+      -1.688
+     ],
+     [
+      60.0,
+      0.8,
+      0.74,
+      -0.49,
+      -1.695
+     ],
+     [
+      -75.0,
+      0.0,
+      1.06,
+      0.496,
+      -0.637
+     ],
+     [
+      -75.0,
+      0.8,
+      1.84,
+      0.764,
+      0.055
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.139,
+    "t_reach_max": 1.35,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.139,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      0.005,
+      1.35
+     ],
+     [
+      "stop",
+      15.0,
+      0.109,
+      0.94
+     ],
+     [
+      "stop",
+      45.0,
+      -0.011,
+      1.28
+     ]
+    ]
+   }
+  },
+  "b-lvl05-turn90": {
+   "sha256": "0f3d65b565c5b806be5c64dd26329cef5d2c95fc537f58d23ddd5fbca8ea4ad3",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.644,
+     "height_loss": -0.002,
+     "vh_final": 4.481
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.317,
+     "height_loss": 0.054,
+     "vh_final": 5.666
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 0.98,
+    "excess_max": 0.596,
+    "settled": [
+     -1.827,
+     -0.145
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.63,
+      -1.04,
+      -1.827
+     ],
+     [
+      60.0,
+      0.8,
+      0.74,
+      -0.439,
+      -1.713
+     ],
+     [
+      -75.0,
+      0.0,
+      0.98,
+      0.405,
+      -0.647
+     ],
+     [
+      -75.0,
+      0.8,
+      0.96,
+      0.596,
+      -0.145
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.094,
+    "t_reach_max": 1.35,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.094,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      0.004,
+      1.35
+     ],
+     [
+      "stop",
+      15.0,
+      -0.019,
+      0.95
+     ],
+     [
+      "stop",
+      45.0,
+      -0.036,
+      1.27
+     ]
+    ]
+   }
+  },
+  "b-lvl11": {
+   "sha256": "805b02a88f5bb9584208d8bf7769e42dd6b47719d2066c83f834f60a66e70e5f",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.397,
+     "height_loss": -0.002,
+     "vh_final": 4.231
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.316,
+     "height_loss": 0.048,
+     "vh_final": 5.673
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 0.9,
+    "excess_max": 0.399,
+    "settled": [
+     -1.834,
+     -0.2
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.62,
+      -1.084,
+      -1.834
+     ],
+     [
+      60.0,
+      0.8,
+      0.69,
+      -0.639,
+      -1.791
+     ],
+     [
+      -75.0,
+      0.0,
+      0.9,
+      0.333,
+      -0.622
+     ],
+     [
+      -75.0,
+      0.8,
+      0.8,
+      0.399,
+      -0.2
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.071,
+    "t_reach_max": 1.36,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.071,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      0.005,
+      1.36
+     ],
+     [
+      "stop",
+      15.0,
+      -0.005,
+      0.95
+     ],
+     [
+      "stop",
+      45.0,
+      -0.016,
+      1.25
+     ]
+    ]
+   }
+  },
+  "b-w1": {
+   "sha256": "de7d32372dce82e30dff96bbb86ae4177138569cac12854dc8705dd056429301",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.908,
+     "height_loss": -0.002,
+     "vh_final": 4.833
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.312,
+     "height_loss": 0.038,
+     "vh_final": 5.593
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 2.12,
+    "excess_max": 1.147,
+    "settled": [
+     -1.639,
+     0.438
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.67,
+      -1.011,
+      -1.639
+     ],
+     [
+      60.0,
+      0.8,
+      0.78,
+      -0.501,
+      -1.562
+     ],
+     [
+      -75.0,
+      0.0,
+      1.32,
+      1.066,
+      -0.256
+     ],
+     [
+      -75.0,
+      0.8,
+      2.12,
+      1.147,
+      0.438
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.061,
+    "t_reach_max": 1.34,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.061,
+      1.03
+     ],
+     [
+      "creep",
+      45.0,
+      -0.045,
+      1.34
+     ],
+     [
+      "stop",
+      15.0,
+      -0.024,
+      0.96
+     ],
+     [
+      "stop",
+      45.0,
+      -0.024,
+      1.3
+     ]
+    ]
+   }
+  },
+  "b-w3": {
+   "sha256": "2bb825110d8eacac0832a9dcfb55157b3691d55e76cb8ef20e5b62e02663c68b",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.524,
+     "height_loss": -0.002,
+     "vh_final": 4.396
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.305,
+     "height_loss": 0.045,
+     "vh_final": 5.634
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 1.03,
+    "excess_max": 0.536,
+    "settled": [
+     -1.815,
+     -0.082
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.63,
+      -1.083,
+      -1.787
+     ],
+     [
+      60.0,
+      0.8,
+      0.69,
+      -0.75,
+      -1.815
+     ],
+     [
+      -75.0,
+      0.0,
+      1.03,
+      0.498,
+      -0.56
+     ],
+     [
+      -75.0,
+      0.8,
+      0.88,
+      0.536,
+      -0.082
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.049,
+    "t_reach_max": 1.34,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.049,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      -0.034,
+      1.34
+     ],
+     [
+      "stop",
+      15.0,
+      -0.022,
+      0.94
+     ],
+     [
+      "stop",
+      45.0,
+      -0.022,
+      1.25
+     ]
+    ]
+   }
+  },
+  "brain10b": {
+   "sha256": "0ccf116190f5135220dbd2cc20a6dd9948654d07509eaa388a2286d8d4640bcd",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 1.226,
+     "height_loss": -0.002,
+     "vh_final": 4.853
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.524,
+     "height_loss": 0.475,
+     "vh_final": 5.555
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 2.7,
+    "excess_max": 1.599,
+    "settled": [
+     -2.132,
+     1.621
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.66,
+      -1.078,
+      -2.132
+     ],
+     [
+      60.0,
+      0.8,
+      0.97,
+      0.353,
+      -1.405
+     ],
+     [
+      -75.0,
+      0.0,
+      2.57,
+      0.93,
+      0.893
+     ],
+     [
+      -75.0,
+      0.8,
+      2.7,
+      1.599,
+      1.621
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.341,
+    "t_reach_max": 1.23,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.093,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      0.089,
+      1.23
+     ],
+     [
+      "stop",
+      15.0,
+      0.341,
+      0.95
+     ],
+     [
+      "stop",
+      45.0,
+      0.091,
+      1.14
+     ]
+    ]
+   },
+   "courses": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 3,
+    "contact_s": 10.67,
+    "high_passes": 6,
+    "stick_chatter_16": 0.00276,
+    "mean_finish_terrain_s": 62.97
+   }
+  },
+  "fast-brain-11-a": {
+   "sha256": "e3721542b77aeddce6ff2553a9c65ab3f24ddca4f77c24d9a790f6d78e3cb899",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.144,
+     "height_loss": -0.002,
+     "vh_final": 3.901
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.392,
+     "height_loss": 0.096,
+     "vh_final": 5.795
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 0.95,
+    "excess_max": 0.394,
+    "settled": [
+     -1.955,
+     -0.213
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.59,
+      -1.245,
+      -1.955
+     ],
+     [
+      60.0,
+      0.8,
+      0.61,
+      -0.964,
+      -1.931
+     ],
+     [
+      -75.0,
+      0.0,
+      0.95,
+      0.394,
+      -0.521
+     ],
+     [
+      -75.0,
+      0.8,
+      0.71,
+      0.278,
+      -0.213
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.246,
+    "t_reach_max": 9.0,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.016,
+      0.94
+     ],
+     [
+      "creep",
+      45.0,
+      -0.161,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      0.246,
+      0.88
+     ],
+     [
+      "stop",
+      45.0,
+      0.023,
+      null
+     ]
+    ]
+   },
+   "courses": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 6,
+    "contact_s": 16.27,
+    "high_passes": 2,
+    "stick_chatter_16": 0.00212,
+    "mean_finish_terrain_s": 62.63
+   }
+  },
+  "fast-brain-11-b": {
+   "sha256": "723d46b3019a435173f16a53ba116d5a87de9978fd1f3608930eccca5dab1938",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.356,
+     "height_loss": -0.002,
+     "vh_final": 4.198
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.301,
+     "height_loss": 0.052,
+     "vh_final": 5.621
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 0.86,
+    "excess_max": 0.278,
+    "settled": [
+     -1.83,
+     -0.27
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.61,
+      -1.093,
+      -1.817
+     ],
+     [
+      60.0,
+      0.8,
+      0.66,
+      -0.79,
+      -1.83
+     ],
+     [
+      -75.0,
+      0.0,
+      0.86,
+      0.278,
+      -0.604
+     ],
+     [
+      -75.0,
+      0.8,
+      0.75,
+      0.268,
+      -0.27
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.031,
+    "t_reach_max": 1.36,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.031,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      -0.012,
+      1.36
+     ],
+     [
+      "stop",
+      15.0,
+      -0.025,
+      0.93
+     ],
+     [
+      "stop",
+      45.0,
+      -0.025,
+      1.24
+     ]
+    ]
+   },
+   "courses": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 3,
+    "contact_s": 12.35,
+    "high_passes": 2,
+    "stick_chatter_16": 0.00223,
+    "mean_finish_terrain_s": 62.99
+   },
+   "courses_default": {
+    "finished": 16,
+    "crashed": 0,
+    "stick_chatter": 0.002,
+    "mean_speed": 4.847
+   }
+  },
+  "fast-brain-11-c": {
+   "sha256": "f5889ddbf8e725119f08962da3e0c3b09ee1d89eca4c5f61275cde057c9cdd44",
+   "r4_windows": {
+    "hairpin_cap_climb": {
+     "speed_excess_mean": 0.458,
+     "height_loss": -0.002,
+     "vh_final": 4.005
+    },
+    "stop_accelerate": {
+     "speed_excess_mean": -1.29,
+     "height_loss": 0.126,
+     "vh_final": 5.738
+    }
+   },
+   "capped_turns": {
+    "t_within_max": 0.88,
+    "excess_max": 0.498,
+    "settled": [
+     -1.904,
+     -0.063
+    ],
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.58,
+      -1.029,
+      -1.904
+     ],
+     [
+      60.0,
+      0.8,
+      0.63,
+      -0.709,
+      -1.749
+     ],
+     [
+      -75.0,
+      0.0,
+      0.88,
+      0.258,
+      -0.547
+     ],
+     [
+      -75.0,
+      0.8,
+      0.84,
+      0.498,
+      -0.063
+     ]
+    ]
+   },
+   "accelerate": {
+    "height_loss_max": 0.313,
+    "t_reach_max": 1.19,
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.265,
+      1.02
+     ],
+     [
+      "creep",
+      45.0,
+      0.063,
+      1.19
+     ],
+     [
+      "stop",
+      15.0,
+      0.313,
+      0.99
+     ],
+     [
+      "stop",
+      45.0,
+      0.029,
+      1.17
+     ]
+    ]
+   },
+   "courses": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 4,
+    "contact_s": 11.88,
+    "high_passes": 2,
+    "stick_chatter_16": 0.00208,
+    "mean_finish_terrain_s": 62.3
+   },
+   "courses_default": {
+    "finished": 16,
+    "crashed": 0,
+    "stick_chatter": 0.00184,
+    "mean_speed": 4.873
+   }
+  }
+ },
+ "dev_cruise": {
+  "brain10b": {
+   "4.5": 0.085,
+   "6.0": -0.43
+  },
+  "fast-brain-11-b": {
+   "4.5": 0.041,
+   "6.0": -0.715
+  },
+  "fast-brain-11-c": {
+   "4.5": 0.033,
+   "6.0": -0.714
+  },
+  "b-lvl05-turn0": {
+   "4.5": 0.153,
+   "6.0": -0.507
+  },
+  "b-lvl05-turn90": {
+   "4.5": 0.139,
+   "6.0": -0.551
+  },
+  "b-w3": {
+   "4.5": 0.199,
+   "6.0": -0.507
+  },
+  "b-lvl11": {
+   "4.5": 0.063,
+   "6.0": -0.665
+  },
+  "b-cw3": {
+   "4.5": 0.484,
+   "6.0": -0.155
+  },
+  "b-cw16": {
+   "4.5": 0.219,
+   "6.0": -0.473
+  },
+  "b-cw13": {
+   "3.5": 0.245,
+   "4.5": 0.134,
+   "6.0": -0.581
+  }
+ },
+ "left_lateral": "Scripted request changes of 45 deg at 5.5 m/s with the yaw stick at 0 (lr_trace.py): FastMotorPD rolls +-0.50 symmetrically and reaches 45 deg at 5.4 m/s either way. fast-brain-11-b rolls only -0.15 for a left request, then reverses (+0.14) and pitches back (+0.29): 2.4 m/s at 34 deg; right: 5.2 m/s at -40 deg. fast-brain-10b behaves the same (left 2.6-4.0 m/s); brain-08 (no braking data) reaches 45 deg at 5.2-6.6 m/s to the left and is the slower one to the right. Without brake weights (b-w1) the left over-braking remains; 12 yaw holds per minute (fast-brain-11-c) do not remove it. In G3's logged windows the brains over-brake exactly where the request points 13-30 deg LEFT of the heading (gapon-01 11.6/16.1, gapon-02 11.9/16.2)."
+}
