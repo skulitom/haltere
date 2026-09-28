@@ -83,9 +83,12 @@ def test_contact_support_config_validation():
 
 
 def test_declaration_version_2_declares_the_rule_and_the_measured_thrust_curve():
-    from haltere.liftoff.visual_brain import DESCENT_VIEW_DECLARATION, load_descent_view
-    declaration, digest = load_descent_view(DESCENT_VIEW_DECLARATION)
-    assert declaration['version'] == DESCENT_VIEW_VERSION == 2
+    from haltere.liftoff.visual_brain import DESCENT_VIEW_DECLARATION
+    from haltere.liftoff.visual_brain import lag_turn_declaration_sha256
+    # version 2 is kept beside version 3 (round 5), which the runner flies (tests/test_round5_safety.py)
+    declaration = json.loads(DESCENT_VIEW_DECLARATION.with_name('descent_view_v2.json').read_text(encoding='utf-8'))
+    assert declaration['version'] == 2 and DESCENT_VIEW_VERSION == 3
+    assert declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     assert contact_support_config(declaration) == CS                 # the declared values are the defaults
     kept = json.loads(DESCENT_VIEW_DECLARATION.with_name('descent_view_v1.json').read_text(encoding='utf-8'))
     assert contact_support_config(kept) is None and descent_view_config(kept) == descent_view_config(declaration)
@@ -204,8 +207,11 @@ def test_clearance_brake_config_and_declaration():
         FastRaceCue(SENSOR, CameraPoseHistory(), 6., clearance_brake=dict())
     from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, load_wall_pilot
     declaration, _ = load_wall_pilot(WALL_PILOT_DECLARATION)
-    assert WALL_PILOT_VERSION == 5 and wall_pilot_configs(declaration)['clearance_brake'] == ClearanceBrakeConfig()
+    # version 6 (round 5) keeps version 5's sink floor
+    assert WALL_PILOT_VERSION == 6 and wall_pilot_configs(declaration)['clearance_brake'] == ClearanceBrakeConfig()
     assert declaration['clearance_brake'] == dict(max_added_sink=0.)
+    v5 = json.loads(WALL_PILOT_DECLARATION.with_name('wall_pilot_v5.json').read_text(encoding='utf-8'))
+    assert wall_pilot_configs(v5)['clearance_brake'] == ClearanceBrakeConfig()
 
 
 def rising_wall(**kw):

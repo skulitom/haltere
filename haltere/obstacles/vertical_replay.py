@@ -35,7 +35,9 @@ round-4 live flights replayed as flown (their stack variants tagged -nop-dv1). `
 motor assist of a frozen motor-assist declaration for the flight's motor contract (tag -ma<version>; nothing for a
 contract without an entry, the fast PD): the arrays gain the pilot's own request (assist_pilot_vx/vy/vz),
 assist_horizontal, assist_vertical and assist_source, while cvx/cvy/cvz are the assisted request. The recorded motion
-does not respond to it either.
+does not respond to it either. ``--contact-support off|shadow`` (a descent-view declaration of version 3) leaves the
+contact rule out or computes it without a climb (tag -csoff / -csshadow; the arrays of shadow carry contact_fire where it
+would have fired); version 3's arrays add contact_armed and contact_excluded.
 
 usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [--stack ...] flight ...
 """
@@ -93,7 +95,7 @@ def variant_tag(stack, wall, vertical, stream):
 
 
 def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None, contact_support=None,
-          wall_pilot=None, motor_assist=None):
+          wall_pilot=None, motor_assist=None, contact_apply=True):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
     whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
     optional DescentViewConfig added to any variant; ``contact_support``: an optional ContactSupportConfig (descent
@@ -135,6 +137,8 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         kw['descent_view'] = descent_view
     if contact_support is not None:
         kw['contact_support'] = contact_support
+        if not contact_apply:
+            kw['contact_apply'] = False
     assist = None
     if motor_assist is not None:
         assist = frc.motor_assist_for_contract(motor_assist, contract)
@@ -162,7 +166,7 @@ def _near_on_path(value):
 
 def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
-           wall_pilot=None, motor_assist=None, sources=None):
+           wall_pilot=None, motor_assist=None, sources=None, contact_apply=True):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -183,7 +187,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     side = json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
     pilot, info = build(side, tree, stack, wall, vertical, gap_pilot, descent_view, contact_support,
                         **({} if wall_pilot is None else dict(wall_pilot=wall_pilot)),
-                        **({} if motor_assist is None else dict(motor_assist=motor_assist)))
+                        **({} if motor_assist is None else dict(motor_assist=motor_assist)),
+                        **({} if contact_apply else dict(contact_apply=False)))
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['throttle_column'] = throttle_column
     info['near_on_path'] = bool(near_on_path)
@@ -208,6 +213,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
         keys += ('view_sink_bound', 'view_withheld', 'view_boost')
     if contact_support is not None:
         keys += ('contact_unexplained', 'contact_gain', 'contact_fire')
+        if getattr(contact_support, 'version', 2) >= 3:
+            keys += ('contact_armed', 'contact_excluded')
     has_brake_log = hasattr(pilot, 'brake_log')
     if has_brake_log:
         keys += ('brake_added_sink', 'brake_sink_left', 'brake_sink_withheld', 'brake_reference', 'brake_ray_x',
@@ -644,6 +651,9 @@ def main(argv=None):
     parser.add_argument('--wall-pilot', default=None, metavar='DECLARATION',
                         help='wall-pilot declaration of the wall rules (default: the tree\'s '
                              'configs/obstacles/wall_pilot.json); the file tag gains -wp<version>')
+    parser.add_argument('--contact-support', default='on', choices=['on', 'off', 'shadow'],
+                        help='with a version-3 --descent-view: off leaves the contact rule out, shadow computes it '
+                             'without a climb; the file tag gains -csoff / -csshadow')
     parser.add_argument('--motor-assist', default=None, metavar='DECLARATION',
                         help='add the motor assist of a frozen motor-assist declaration (configs/pilot/motor_assist.json) '
                              'for the motor contract of each flight; the file tag gains -ma<version>')
@@ -675,9 +685,19 @@ def main(argv=None):
         if hasattr(frc, 'contact_support_config'):
             contact_support = frc.contact_support_config(declaration)
         tag += f'-dv{declaration["version"]}'
+        if args.contact_support != 'on':
+            if declaration['version'] < 3:
+                raise SystemExit('--contact-support off|shadow needs a descent-view declaration of version 3')
+            tag += f'-cs{args.contact_support}'
+            if args.contact_support == 'off':
+                contact_support = None
+    elif args.contact_support != 'on':
+        raise SystemExit('--contact-support off|shadow needs --descent-view')
     extra = {}
     if contact_support is not None or args.throttle_column != 'thr':
         extra.update(contact_support=contact_support, throttle_column=args.throttle_column)
+    if contact_support is not None and args.contact_support == 'shadow':
+        extra['contact_apply'] = False
     if args.wall_pilot:
         from haltere.liftoff.gap_stack import config_sha256
         declaration = json.loads(Path(args.wall_pilot).read_text(encoding='utf-8'))

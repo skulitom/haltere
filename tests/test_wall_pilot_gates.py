@@ -27,8 +27,10 @@ def arrays(n=300, dt=.01, **columns):
 def test_version_2_gates_are_frozen_and_name_wall_pilot_version_5():
     gates, digest = wg.load_gates()
     assert gates['version'] == 2 and gates['frozen'] is True and digest == gates['sha256']
-    from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, load_wall_pilot
-    _, wall_digest = load_wall_pilot(WALL_PILOT_DECLARATION)
+    from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, lag_turn_declaration_sha256
+    # version 5 is kept beside the version-6 declaration (round 5); the loader finds it there
+    kept = json.loads(WALL_PILOT_DECLARATION.with_name('wall_pilot_v5.json').read_text(encoding='utf-8'))
+    wall_digest = lag_turn_declaration_sha256(kept)
     assert gates['wall_pilot'] == dict(file='configs/obstacles/wall_pilot.json', version=5, sha256=wall_digest)
     g = gates['gates']
     assert g['B_Horizontal']['max_increase_mps'] == .1 and g['B_Quiet']['max_withheld_s'] == 1.

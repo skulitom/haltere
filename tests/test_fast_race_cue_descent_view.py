@@ -77,24 +77,31 @@ def test_config_validation():
 def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import DESCENT_VIEW_DECLARATION, lag_turn_declaration_sha256, load_descent_view
     declaration, digest = load_descent_view(DESCENT_VIEW_DECLARATION)
-    # version 2 (round 4b) = version 1's view rule, unchanged, + contact support; version 1 is kept and refused
-    assert declaration['version'] == DESCENT_VIEW_VERSION == 2 and declaration['frozen'] is True
+    # version 2 (round 4b) = version 1's view rule, unchanged, + contact support; version 3 (round 5) = the same view
+    # rule + contact support version 3; versions 1 and 2 are kept and refused
+    assert declaration['version'] == DESCENT_VIEW_VERSION == 3 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     assert descent_view_config(declaration) == DV                   # the declared values are the defaults
     kept_path = DESCENT_VIEW_DECLARATION.with_name('descent_view_v1.json')
     kept = json.loads(kept_path.read_text(encoding='utf-8'))
     assert kept['version'] == 1 and kept['sha256'] == '8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d'
     assert kept['descent_view'] == declaration['descent_view'] and descent_view_config(kept) == DV
-    assert declaration['previous_versions'][0]['sha256'] == kept['sha256']
-    with pytest.raises(ValueError, match='version'):
-        load_descent_view(kept_path)
+    v2_path = DESCENT_VIEW_DECLARATION.with_name('descent_view_v2.json')
+    v2 = json.loads(v2_path.read_text(encoding='utf-8'))
+    assert v2['version'] == 2 and v2['sha256'] == '7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26'
+    assert v2['descent_view'] == declaration['descent_view'] and descent_view_config(v2) == DV
+    assert declaration['previous_versions'][0]['sha256'] == v2['sha256']
+    assert declaration['previous_versions'][1]['sha256'] == kept['sha256']
+    for path in (kept_path, v2_path):
+        with pytest.raises(ValueError, match='version'):
+            load_descent_view(path)
     edited = dict(declaration, descent_view=dict(declaration['descent_view'], margin_deg=0.))
     path = tmp_path/'edited.json'
     path.write_text(json.dumps(edited))
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_descent_view(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 3
+    other['version'] = 4
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):

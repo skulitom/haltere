@@ -92,9 +92,10 @@ class _Motor:
         return action[0].numpy()
 
 
-def _pilot(contact_support, descent_view, speed, calibration=CALIBRATION):
+def _pilot(contact_support, descent_view, speed, calibration=CALIBRATION, contact_apply=True):
+    extra = {} if contact_apply else dict(contact_apply=False)
     return FastRaceCue(SENSOR, CameraPoseHistory(), speed, reference_speed=speed, calibration=calibration,
-                       descent_view=descent_view, contact_support=contact_support)
+                       descent_view=descent_view, contact_support=contact_support, **extra)
 
 
 def _level_ahead_cue(camera):
@@ -135,7 +136,12 @@ def resting_scenario(contact_support, speed, *, motor=None, descent_view=None, p
     onsets = np.flatnonzero((state == 'support_climb') & np.r_[True, state[:-1] != 'support_climb'])
     fires = np.flatnonzero(np.array([r[4] for r in rows]) > 0)
     first = next((i for i in onsets if t[i] >= 0), None)
-    return dict(speed=speed, motor=motor.kind, onsets_after_rest=[round(float(t[i]), 3) for i in onsets if t[i] >= 0],
+    extra = {}
+    if pilot.contact_support is not None and pilot.contact_support.version >= 3:
+        # version 3 arms after its gain learning: when (seconds after the prologue began), and the learnt gain
+        extra = dict(armed_at_s=pilot.contact_armed_at, prearm_gain=pilot.contact_summary()['prearm_gain'])
+    return dict(**extra, speed=speed, motor=motor.kind,
+                onsets_after_rest=[round(float(t[i]), 3) for i in onsets if t[i] >= 0],
                 onsets_before_rest=int(sum(t[i] < 0 for i in onsets)),
                 contact_onsets=[round(float(t[i]), 3) for i in fires],
                 first_delay_s=None if first is None else round(float(t[first]), 3),
@@ -217,15 +223,16 @@ def floor_scenario(contact_support, speed, *, motor=None, descent_view=None, lev
 
 
 def detector_on_log(flight, contact_support, runs=RUNS):
-    """The contact rule's code on a logged flight: per tick, FastRaceCue._contact_step with the recorded velocity and
-    attitude, the logged velocity command of the previous tick (cmd_vx..z), the issued throttle of the previous tick
-    (command_thr), launching until the recorded height first reaches the pilot's launch_height, on the controller
-    clock (capture_time + image_age) as in the runner. Returns per-tick arrays (t = phase)."""
+    """The contact rule's code on a logged flight: per tick, FastRaceCue._contact_step with the recorded velocity,
+    attitude and body rates (omega_x..z, what the runner passed the pilot), the logged velocity command of the previous
+    tick (cmd_vx..z), the issued throttle of the previous tick (command_thr), launching until the recorded height first
+    reaches the pilot's launch_height, on the controller clock (capture_time + image_age) as in the runner. Returns
+    per-tick arrays (t = phase); armed and excluded are version 3's (armed also for version 2)."""
     import pandas as pd
     d = pd.read_csv(Path(runs)/f'{flight}.csv', low_memory=False)
     pilot = _pilot(contact_support, None, 6.)
     keys = ('t', 'now', 'x', 'y', 'z', 'vx', 'vy', 'vz', 'command', 'unexplained', 'gain', 'fire', 'suspect',
-            'launching')
+            'launching', 'armed', 'excluded')
     out = {k: [] for k in keys}
     previous_command, previous_throttle, last = None, None, None
     for r in d.itertuples(index=False):
@@ -243,13 +250,15 @@ def detector_on_log(flight, contact_support, runs=RUNS):
             pilot.launching = False
         pilot.velocity_command = previous_command
         pilot.issued_throttle = previous_throttle
-        pilot._contact_step(now, issued_at, velocity, rotation, dt)
+        omega = np.array([r.omega_x, r.omega_y, r.omega_z], float)
+        pilot._contact_step(now, issued_at, velocity, rotation, dt, omega=omega if np.isfinite(omega).all() else None)
         if pilot.climb_until is not None and now >= pilot.climb_until:
             pilot.climb_until = None
         values = dict(t=float(r.phase), now=now, x=r.x, y=r.y, z=r.z, vx=r.vx, vy=r.vy, vz=r.vz,
                       command=np.nan if previous_command is None else previous_command[2],
                       unexplained=pilot.contact_unexplained, gain=pilot.contact_gain, fire=float(pilot.contact_fired),
-                      suspect=float(pilot.contact_since is not None), launching=float(pilot.launching))
+                      suspect=float(pilot.contact_since is not None), launching=float(pilot.launching),
+                      armed=float(pilot.contact_armed), excluded=float(pilot.contact_excluded))
         for k in keys:
             out[k].append(values[k])
         cmd = np.array([r.cmd_vx, r.cmd_vy, r.cmd_vz], float)
@@ -278,6 +287,11 @@ def load_gates(path=GATES_PATH):
     if gates.get('frozen') is not True or gates.get('sha256') != digest:
         raise ValueError(f'{path} is not frozen or changed after the freeze: gates are scored only when frozen')
     declared = json.loads((REPO/gates['descent_view']['file']).read_text(encoding='utf-8'))
+    if declared.get('version') != gates['descent_view']['version']:
+        # a later version replaced the declaration; the scored one is kept beside it (descent_view_v<version>.json)
+        kept = (REPO/gates['descent_view']['file']).with_name(f"descent_view_v{gates['descent_view']['version']}.json")
+        if kept.exists():
+            declared = json.loads(kept.read_text(encoding='utf-8'))
     if (declared.get('version') != gates['descent_view']['version']
             or declared.get('sha256') != gates['descent_view']['sha256']):
         raise ValueError(f'{path} scores descent-view version {gates["descent_view"]["version"]}, not the declaration '

@@ -121,6 +121,15 @@ def resolve_descent_view(args):
     return str(DESCENT_VIEW_DECLARATION) if flag == 'on' else str(flag)
 
 
+def resolve_contact_support(args):
+    """The contact-support mode of --contact-support (on: as declared, the default; off: not built; shadow: computed and
+    logged, no climb); refuses off/shadow without --descent-view."""
+    mode = getattr(args,'contact_support',None) or 'on'
+    if mode != 'on' and resolve_descent_view(args) is None:
+        raise ValueError('--contact-support off|shadow needs --descent-view (the contact rule is part of it)')
+    return mode
+
+
 # Declared pilot-level help for lagging brain motor contracts (--motor-assist on; off by default).
 MOTOR_ASSIST_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'motor_assist.json'
 
@@ -327,7 +336,7 @@ class VisualController:
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
-                 vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None):
+                 vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None, contact_support='on'):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -340,6 +349,9 @@ class VisualController:
             raise ValueError('The vertical guard is part of the fast pilot profile')
         if descent_view and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The view-keeping descent is part of the fast pilot profile')
+        from .fast_race_cue import CONTACT_SUPPORT_MODES
+        if contact_support not in CONTACT_SUPPORT_MODES or (contact_support != 'on' and not descent_view):
+            raise ValueError('--contact-support is on, off or shadow, and off/shadow need the view-keeping descent')
         if motor_assist and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The motor assist is part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
@@ -484,13 +496,17 @@ class VisualController:
                 declaration, digest = load_descent_view(descent_view)
                 descent_kw['descent_view'] = descent_view_config(declaration)
                 contact = contact_support_config(declaration)
-                if contact is not None:
-                    # Version 2: contact support (it reads the pad calibration passed below as calibration).
+                if contact is not None and contact_support != 'off':
+                    # Version 2: contact support (it reads the pad calibration passed below as calibration); version 3:
+                    # --contact-support shadow computes and logs it without a climb, off leaves it out.
                     descent_kw['contact_support'] = contact
+                    if contact_support == 'shadow':
+                        descent_kw['contact_apply'] = False
                 self.descent_view_declaration = dict(path=str(descent_view), sha256=digest,
                                                      file_sha256=sha256(descent_view),
                                                      schema=declaration.get('schema'),
-                                                     version=declaration.get('version'), applied=True)
+                                                     version=declaration.get('version'), applied=True,
+                                                     contact_support=None if contact is None else contact_support)
             if motor_assist:
                 # Declared per motor contract (the brain's lag), never per course; a contract without an entry (the
                 # fast PD) flies unchanged and the sidecar records that nothing was applied.
@@ -913,12 +929,17 @@ def commit_row(assistance):
 DESCENT_VIEW_COLUMNS = ('view_sink_bound','view_withheld','view_boost')
 # Contact support (descent-view declaration version 2): appended after the view columns when the pilot has it.
 CONTACT_COLUMNS = ('contact_unexplained','contact_gain','contact_fire')
+# Contact support version 3 (descent view 3, --contact-support on or shadow): appended after CONTACT_COLUMNS.
+CONTACT_V3_COLUMNS = ('contact_armed','contact_excluded')
 
 
 def descent_view_columns(assistance):
     """The CSV columns --descent-view on adds: the view columns, then the contact-support columns when the pilot's
-    declaration has contact support (version 2)."""
-    return DESCENT_VIEW_COLUMNS+(CONTACT_COLUMNS if getattr(assistance,'contact_support',None) is not None else ())
+    declaration has contact support (version 2; version 3 adds CONTACT_V3_COLUMNS; none with --contact-support off)."""
+    contact = getattr(assistance,'contact_support',None)
+    if contact is None:
+        return DESCENT_VIEW_COLUMNS
+    return DESCENT_VIEW_COLUMNS+CONTACT_COLUMNS+(CONTACT_V3_COLUMNS if getattr(contact,'version',2) >= 3 else ())
 
 
 def descent_view_row(assistance):
@@ -1102,6 +1123,7 @@ def run(args):
         raise FileExistsError('Use new log and video paths')
     stack = resolve_obstacle_stack(args)
     descent_view = resolve_descent_view(args)
+    contact_mode = resolve_contact_support(args)
     motor_assist = resolve_motor_assist(args)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
@@ -1127,7 +1149,7 @@ def run(args):
                                   gap_pilot=gap_aim_config,gap_apply=stack['apply'],
                                   wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'],
                                   vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
-                                  descent_view=descent_view,motor_assist=motor_assist)
+                                  descent_view=descent_view,motor_assist=motor_assist,contact_support=contact_mode)
     view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
     assist_columns = MOTOR_ASSIST_COLUMNS if controller.motor_assist_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
@@ -1622,6 +1644,10 @@ def main():
                         'keep speed for bottom-clipped rings, more speed rather than less for a steeper path, gentle '
                         'sink onset, steep only late for rings that stay clipped below (on: '
                         'configs/pilot/descent_view.json; recorded in the flight-log metadata)')
+    p.add_argument('--contact-support',choices=['on','off','shadow'],default='on',
+                   help='Contact support of --descent-view (descent view version 3; default on, as declared): off leaves '
+                        'it out (the view rule alone), shadow computes and logs it (contact_fire marks where it would '
+                        'start a support climb) and changes nothing; recorded in the flight-log metadata')
     p.add_argument('--motor-assist',default=None,metavar='on|off|DECLARATION',
                    help='EXPERIMENTAL pilot-level help for lagging brain motor contracts (off by default): a brain that '
                         'flies faster than a binding cap along its direction gets a lower request until it converges, a '
