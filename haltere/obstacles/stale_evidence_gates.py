@@ -31,6 +31,7 @@ import numpy as np
 
 REPO = Path(__file__).resolve().parents[2]
 GATES_PATH = REPO/'configs'/'obstacles'/'stale_evidence_gates.json'
+GATES_V1_PATH = REPO/'configs'/'obstacles'/'stale_evidence_gates_v1.json'
 META = ('frozen', 'frozen_at', 'sha256')
 PY = sys.executable
 COMMAND_KEYS = ('cvx', 'cvy', 'cvz', 'yaw_cmd', 'state', 'cap', 'climb', 'descent_scale')
@@ -54,11 +55,23 @@ def load_gates(path=GATES_PATH):
     if gates.get('frozen') is not True or gates.get('sha256') != digest:
         raise ValueError(f'{path} is not frozen or changed after the freeze: gates are scored only when frozen')
     for spec in gates['declarations'].values():
-        declaration = json.loads((REPO/spec['file']).read_text(encoding='utf-8'))
+        declaration = json.loads(declaration_path(spec).read_text(encoding='utf-8'))
         if (declaration.get('frozen') is not True or declaration.get('version') != spec['version']
                 or declaration.get('sha256') != spec['sha256'] or content_sha256(declaration) != spec['sha256']):
             raise ValueError(f'{spec["file"]} is not the frozen declaration these gates score')
     return gates, digest
+
+
+def declaration_path(spec):
+    """The declaration file a gates entry names, or, once a later version replaced it, the kept copy beside it
+    (<stem>_v<version>.json)."""
+    path = REPO/spec['file']
+    declared = json.loads(path.read_text(encoding='utf-8'))
+    if declared.get('version') != spec['version']:
+        kept = path.with_name(f"{path.stem}_v{spec['version']}.json")
+        if kept.exists():
+            return kept
+    return path
 
 
 def _limit_threads():
@@ -72,7 +85,7 @@ def _limit_threads():
 
 def _rule(gates):
     from ..vision.race_cues import ring_marker_rule
-    return ring_marker_rule(json.loads((REPO/gates['declarations']['ring_marker']['file']).read_text(encoding='utf-8')))
+    return ring_marker_rule(json.loads(declaration_path(gates['declarations']['ring_marker']).read_text(encoding='utf-8')))
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -267,7 +280,10 @@ def main_replays(args, gates):
     variants = args.variants.split(',') if args.variants else list(gates['replays']['variants'])
     for variant in variants:
         tree, extra = variant_args(gates, variant, out)
+        only = gates['replays']['variants'][variant].get('flights')
         for flight in flights:
+            if only is not None and flight not in only:
+                continue
             target = replay_path(out, variant, flight)
             if target.exists():
                 continue
@@ -520,7 +536,7 @@ def main_hairpin(args, gates):
     if file_sha256(sur['profile']) != sur['profile_sha256']:
         raise ValueError('The dynamics profile is not the one the gates name')
     profile = json.loads(Path(sur['profile']).read_text())
-    stale = stale_evidence_configs(json.loads((REPO/gates['declarations']['stale_evidence']['file'])
+    stale = stale_evidence_configs(json.loads(declaration_path(gates['declarations']['stale_evidence'])
                                               .read_text(encoding='utf-8')))
     for motor in spec['motors']:
         m = sur['motors'][motor]
@@ -577,6 +593,8 @@ def travel_speedup(a, b, min_speed=1.):
 
 
 def score(out, gates, digest):
+    if gates['version'] >= 2:
+        return score_v2(out, gates, digest)
     out = Path(out)
     g = gates['gates']
     result = dict(gates_sha256=digest, gates_version=gates['version'], declarations=gates['declarations'],
@@ -762,6 +780,94 @@ def score(out, gates, digest):
                            and lost <= q['max_progress_lost_s'] and lat <= q['max_lateral_m'])
         qrows[f] = entry
     result['Q_clean'] = dict(per_flight=qrows, passed=all(r['passed'] for r in qrows.values()))
+    return result
+
+
+def _hairpin_counts(rows):
+    return dict(wall=sum(r['wall_contact'] for r in rows), floor=sum(r['floor_contact'] for r in rows),
+                ceiling=sum(r['ceiling_contact'] for r in rows), crashed=sum(r['crashed'] for r in rows),
+                clean=sum(r['finished'] and not (r['wall_contact'] or r['floor_contact'] or r['ceiling_contact']
+                                                 or r['crashed']) for r in rows),
+                finish_s_mean=round(float(np.mean([r['finish_s'] for r in rows if r['finished']])), 3)
+                if any(r['finished'] for r in rows) else None)
+
+
+def score_v2(out, gates, digest):
+    """Gates version 2 (the stale-evidence rule version 2): identity, the kept version 1 reproduced, the Minus
+    development case, the development logs and hairpin sets, and the fresh held-out hairpin set."""
+    out = Path(out)
+    g = gates['gates']
+    result = dict(gates_sha256=digest, gates_version=gates['version'], declarations=gates['declarations'],
+                  baseline_tree=gates['baseline_tree'])
+    flights = gates['replay_flights']
+    ident = {}
+    for name, (left, right) in dict(I1_default=('m4b_none', 'new_none'), I2_stack_without_rule=('m4b_on', 'new_on'),
+                                    I3_shadow=('m4b_shadow', 'new_shadow2')).items():
+        rows = {f: _identical(_load(out, left, f), _load(out, right, f)) for f in flights}
+        ident[name] = dict(identical=sum(rows.values()), of=len(rows),
+                           differ=[f for f, ok in rows.items() if not ok], passed=all(rows.values()))
+    result['identity'] = ident
+    v1 = g['V1_reproduced']
+    rows = {}
+    for f in v1['flights']:
+        a = dict(np.load(Path(v1['v1_replays'])/f'new_on_se_{f}.npz'))
+        b = _load(out, 'new_on_se1', f)
+        rows[f] = _identical(a, b, tuple(COMMAND_KEYS)+('cap_reseat',))
+    result['V1_reproduced'] = dict(rows=rows, passed=all(rows.values()))
+    dm = g['DM_minus']
+    a, b = _load(out, 'm4b_on', dm['flight']), _load(out, 'new_on_se2', dm['flight'])
+    t = np.asarray(b['t'], float)
+    sel = (t >= dm['window'][0]) & (t <= dm['impact_t'])
+    su = travel_speedup(a, b)
+    onset = np.flatnonzero(sel & ((np.asarray(b['braking']) > 0) | (su <= -dm['slower_mps'])))
+    base_brake = sel & (np.asarray(a['braking']) > 0)
+    first = None if not len(onset) else float(t[onset[0]])
+    pos = np.stack([b['x'], b['y']], 1).astype(float)
+    dist = None if first is None else float(np.hypot(*(pos[onset[0]]-np.asarray(dm['impact_point'], float))))
+    ta = np.asarray(a['t'], float)
+    fh = dm['first_hairpin']
+    w = (ta >= fh['brake_window'][0]) & (ta <= fh['brake_window'][1]) & (np.asarray(a['braking']) > 0)
+    rest_w = (ta >= fh['rest_window'][0]) & (ta <= fh['rest_window'][1])
+    hs = np.hypot(np.asarray(a['vx'], float), np.asarray(a['vy'], float))
+    k_rest = int(np.flatnonzero(rest_w)[np.argmin(hs[rest_w])])
+    pa = np.stack([a['x'], a['y']], 1).astype(float)
+    k_brake = int(np.flatnonzero(w)[0]) if w.any() else None
+    ref = None if k_brake is None else float(np.hypot(*(pa[k_brake]-pa[k_rest])))
+    lead = None if first is None else dm['impact_t']-first
+    along = (np.asarray(b['cvx'])*np.asarray(b['vx'])+np.asarray(b['cvy'])*np.asarray(b['vy']))/np.maximum(hs, 1e-9)
+    result['DM_minus'] = dict(
+        brake_onset_t=first, lead_s=None if lead is None else round(lead, 3),
+        baseline_brake_ticks_in_window=int(base_brake.sum()),
+        onset_distance_to_impact_m=None if dist is None else round(dist, 3), first_hairpin_brake_to_rest_m=None
+        if ref is None else round(ref, 3),
+        request_along_travel_at_impact=round(float(along[sel][-1]), 3),
+        min_request_along_travel_before_impact=round(float(np.nanmin(along[sel])), 3),
+        reseats=int(np.nanmax(np.asarray(b['cap_reseat'], float)[sel])),
+        DM1_passed=bool(first is not None and lead >= dm['brake_lead_s'] and base_brake.sum() == 0),
+        DM2_passed=bool(dist is not None and ref is not None and dist >= ref))
+    ha = g['HA_logs']
+    rows = {}
+    for f in ha['flights']:
+        a, b = _load(out, 'm4b_on', f), _load(out, 'new_on_se2', f)
+        su = travel_speedup(a, b)
+        changed = (np.hypot(a['cvx']-b['cvx'], a['cvy']-b['cvy']) > .05) | (np.abs(a['cvz']-b['cvz']) > .05)
+        finite = np.isfinite(su).any()
+        rows[f] = dict(changed_ticks=int(changed.sum()), max_speedup=round(float(np.nanmax(su)), 3) if finite else 0.,
+                       max_slowdown=round(float(-np.nanmin(su)), 3) if finite else 0.,
+                       reseats=int(np.nanmax(np.asarray(b['cap_reseat'], float))),
+                       passed=not finite or float(np.nanmax(su)) <= ha['max_speedup'])
+    result['HA_logs'] = dict(per_flight=rows, passed=all(r['passed'] for r in rows.values()))
+    hp = g['HA_hairpin']
+    table = {}
+    for motor in hp['motors']:
+        for set_name in hp['sets']:
+            counts = {v: _hairpin_counts(json.loads((out/'hairpin'/f'{motor}_{set_name}_{v}.json').read_text())['rows'])
+                      for v in ('baseline', 'rule')}
+            table[f'{motor}/{set_name}'] = dict(counts, passed=(counts['rule']['wall'] <= counts['baseline']['wall']
+                                                                and counts['rule']['clean'] >= counts['baseline']['clean']))
+    gated = [k for k in table if k.split('/')[1] in hp['gated_sets']]
+    result['HA_hairpin'] = dict(table=table, gated=gated, passed=all(table[k]['passed'] for k in gated),
+                                development_passed=all(v['passed'] for k, v in table.items() if k not in gated))
     return result
 
 

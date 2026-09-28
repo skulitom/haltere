@@ -677,8 +677,10 @@ def wall_pilot_configs(declaration, contract=None):
 
 
 # The stale-evidence declaration version whose rules this code implements (ClearanceRayConfig;
-# configs/obstacles/stale_evidence.json); runners refuse others.
-STALE_EVIDENCE_VERSION = 1
+# configs/obstacles/stale_evidence.json); runners refuse others. STALE_EVIDENCE_VERSIONS are the versions this code can
+# rebuild for replays (version 1 failed its held-out gates and is kept for provenance, refused by the runner).
+STALE_EVIDENCE_VERSION = 2
+STALE_EVIDENCE_VERSIONS = (1, 2)
 
 
 @dataclass(frozen=True)
@@ -695,27 +697,37 @@ class ClearanceRayConfig:
     the wall behind the next arch (TTC 0.86 -> 0.35 s along the travel direction, 0.9 s before the impact) never
     lowered the cap, which bounded only the speed along the old ray, 180 deg from the flight.
 
-    With this rule a sample whose ray lies more than stale_deg from the cap's ray describes another path:
-    - it neither holds the cap (hold_ttc_s) nor counts as the engaged cap's hysteresis (it is confirmed against
-      ttc_on, as a first engagement);
-    - once confirmed with a slow-down it re-seats the cap on its own ray: the target is its own target, the cap
-      starts at the drone's speed along that ray and falls at brake_rate, and the stand-off along the old ray ends
-      (samples on the new ray renew a stand-off as before, once the new target is at or below standoff_speed).
-    Samples within stale_deg of the cap's ray are handled as before. The cap is still one cap along one ray.
+    With this rule a sample whose ray lies more than stale_deg from the cap's ray describes another path. Once
+    confirmed with a slow-down whose own target does not lower the held one (a lower target moves the cap to its ray
+    already), it re-seats the cap on its own ray: the target is its own target, the cap starts at the drone's speed
+    along that ray and falls at brake_rate, and the stand-off along the old ray ends (samples on the new ray renew a
+    stand-off as before, once the new target is at or below standoff_speed). The cap is still one cap along one ray.
+
+    Version 2 (keep_standoff True, judge_fresh False): a sample never re-seats the cap while the old cap's stand-off
+    is active (a drone holding off a wall keeps that wall's cap), and samples off the cap's ray are confirmed and hold
+    the cap as without the rule. Version 1 (judge_fresh True, keep_standoff False; failed its held-out gates) judged
+    such samples against ttc_on, as a first engagement, let them neither hold the cap nor re-aim it with a lower
+    target through the engaged cap's hysteresis, and re-seated during a stand-off.
     """
     stale_deg: float = 60.
+    judge_fresh: bool = True
+    keep_standoff: bool = False
 
     def __post_init__(self):
         if not np.isfinite(self.stale_deg) or not 0 < self.stale_deg < 180:
             raise ValueError('Use 0 < stale_deg < 180 degrees')
+        if not isinstance(self.judge_fresh, bool) or not isinstance(self.keep_standoff, bool):
+            raise ValueError('judge_fresh and keep_standoff are booleans')
 
 
 def stale_evidence_configs(declaration):
     """dict(clearance_ray=ClearanceRayConfig) from a stale-evidence declaration already parsed (and hash-checked) by the
-    runner; refuses another rule version (STALE_EVIDENCE_VERSION). This module reads no files."""
-    if (declaration or {}).get('version') != STALE_EVIDENCE_VERSION:
+    runner; refuses a rule version this code does not implement (STALE_EVIDENCE_VERSIONS; the runner itself flies only
+    STALE_EVIDENCE_VERSION). Version 1 declares stale_deg only (its semantics are the dataclass defaults). This module
+    reads no files."""
+    if (declaration or {}).get('version') not in STALE_EVIDENCE_VERSIONS:
         raise ValueError(f'The stale-evidence declaration is version {(declaration or {}).get("version")}; the fast '
-                         f'pilot implements version {STALE_EVIDENCE_VERSION}')
+                         f'pilot implements versions {STALE_EVIDENCE_VERSIONS}')
     if not isinstance(declaration.get('clearance_ray'), dict):
         raise ValueError('A stale-evidence declaration declares its clearance_ray rule')
     return dict(clearance_ray=ClearanceRayConfig(**declaration['clearance_ray']))
@@ -1362,8 +1374,9 @@ class TtcClearanceGovernor:
                      and float(np.asarray(s['ray'], float) @ np.asarray(self.cap_ray, float)) < self.stale_cos)
             if stale:
                 self.counts['stale_ray_samples'] += 1
-            active = self.cap is not None and self.cap < max(closing, 0.)+1. and not stale
-            if self.target is not None and not brake_terrain and ttc < c.hold_ttc_s and not stale:
+            fresh = stale and self.ray_rule.judge_fresh     # version 1: judged as a first engagement, holds nothing
+            active = self.cap is not None and self.cap < max(closing, 0.)+1. and not fresh
+            if self.target is not None and not brake_terrain and ttc < c.hold_ttc_s and not fresh:
                 self.lowered_at = now               # a wall still in view: hold the cap
             threshold = c.ttc_target if active else c.ttc_on
             votes = sum(r['ttc'] < threshold for r in recent)
@@ -1377,6 +1390,9 @@ class TtcClearanceGovernor:
             target = (closing*fraction if (ttc < c.stop_ttc_s and not brake_terrain)
                       else max(c.min_speed, closing*fraction))
             self.lowered_at = now                   # TTC has not recovered to ttc_target: keep holding
+            if stale and not self.ray_rule.judge_fresh and (
+                    target < self.target or (self.ray_rule.keep_standoff and now <= self.standoff_until)):
+                stale = False                       # version 2: a lower target re-aims as before; a stand-off holds
             if stale:
                 # re-seat: the cap along the old ray (and its stand-off) no longer bounds the path the drone is on
                 self.counts['brake_engagements'] += 1

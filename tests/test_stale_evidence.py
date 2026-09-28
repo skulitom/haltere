@@ -1,10 +1,11 @@
-"""Round 5 (arches): the looming governor's cap follows the ray of its evidence (configs/obstacles/stale_evidence.json,
-`ClearanceRayConfig`) and the ring-marker reader rule (configs/pilot/ring_marker.json, `checkpoint_ring(annulus=...)`).
+"""Round 5 (arches): the looming governor's cap follows the ray of its evidence (configs/obstacles/stale_evidence.json
+version 2, `ClearanceRayConfig`; version 1 kept as stale_evidence_v1.json) and the ring-marker reader rule
+(configs/pilot/ring_marker.json version 1, `checkpoint_ring(annulus=...)`).
 
 The governor tests replay the shape of minus-fast6-r4b-01 (a stand-off at a first wall, then short-TTC samples along a
-ray 180 deg away, the wall behind the next arch); the reader tests paste a recorded patch of a white banner whose dark logo passes
-the earlier reader's hole tests (the right leg of the second Straw Bale start arch on straw-brain11cw13-r4b-noassist-02).
-Development cases only; none of this is flight evidence.
+ray 180 deg away, the wall behind the next arch); the reader tests paste a recorded patch of a white banner whose dark
+logo passes the earlier reader's hole tests (beside the second Straw Bale start arch on
+straw-brain11cw13-r4b-noassist-02). Development cases only; none of this is flight evidence.
 """
 import json
 import subprocess
@@ -23,7 +24,8 @@ from haltere.vision.race_cues import checkpoint_ring, ring_marker_rule
 from tests.test_visual_assistance import SENSOR, senses
 
 ROOT = Path(__file__).resolve().parents[1]
-RAY = ClearanceRayConfig()
+RAY = ClearanceRayConfig(stale_deg=60., judge_fresh=False, keep_standoff=True)     # version 2 (declared)
+RAY1 = ClearanceRayConfig()                                                           # version 1 (kept, failed)
 A = np.array([np.cos(np.radians(28.)), np.sin(np.radians(28.)), 0.])      # the first wall's ray (minus r4b-01)
 B = np.array([np.cos(np.radians(-155.)), np.sin(np.radians(-155.)), 0.])  # the travel ray toward the second wall
 
@@ -41,12 +43,17 @@ def canonical(obj):
 def test_declarations_are_frozen_hashed_and_loaded_by_the_runner():
     from haltere.liftoff.visual_brain import load_ring_marker, load_stale_evidence
     stale = json.loads((ROOT/'configs'/'obstacles'/'stale_evidence.json').read_text(encoding='utf-8'))
+    stale1 = json.loads((ROOT/'configs'/'obstacles'/'stale_evidence_v1.json').read_text(encoding='utf-8'))
     ring = json.loads((ROOT/'configs'/'pilot'/'ring_marker.json').read_text(encoding='utf-8'))
-    for obj in (stale, ring):
-        assert obj['frozen'] is True and obj['sha256'] == canonical(obj) and obj['version'] == 1
+    for obj, version in ((stale, 2), (stale1, 1), (ring, 1)):
+        assert obj['frozen'] is True and obj['sha256'] == canonical(obj) and obj['version'] == version
+    assert stale1['sha256'] == 'afcda589deb5c1ea0612e3d369ae5e35c5494a7cdf9c04d8a85b6f6bc0c61cd6'
     declaration, digest = load_stale_evidence()
     assert digest == stale['sha256']
-    assert stale_evidence_configs(declaration) == dict(clearance_ray=ClearanceRayConfig(stale_deg=60.))
+    assert stale_evidence_configs(declaration) == dict(clearance_ray=RAY)
+    assert stale_evidence_configs(stale1) == dict(clearance_ray=RAY1)       # version 1 rebuilt for replays
+    with pytest.raises(ValueError, match='version 1'):
+        load_stale_evidence(ROOT/'configs'/'obstacles'/'stale_evidence_v1.json')
     declaration, digest = load_ring_marker()
     assert digest == ring['sha256']
     assert ring_marker_rule(declaration) == dict(min_white=.9, offsets_px=(1., 2.), samples=32)
@@ -62,15 +69,15 @@ def test_other_versions_and_edited_declarations_are_refused(tmp_path):
         path.write_text(json.dumps(edited), encoding='utf-8')
         with pytest.raises(ValueError, match='changed after the freeze'):
             loader(path)
-        other = dict(obj, version=2)
+        other = dict(obj, version=obj['version']+1)
         other['sha256'] = canonical(other)
         path.write_text(json.dumps(other), encoding='utf-8')
-        with pytest.raises(ValueError, match='version 2'):
+        with pytest.raises(ValueError, match=f'version {obj["version"]+1}'):
             loader(path)
     with pytest.raises(ValueError):
-        stale_evidence_configs(dict(version=2, clearance_ray=dict(stale_deg=60.)))
+        stale_evidence_configs(dict(version=3, clearance_ray=dict(stale_deg=60.)))
     with pytest.raises(ValueError):
-        stale_evidence_configs(dict(version=1))
+        stale_evidence_configs(dict(version=2))
     for bad in (dict(min_white=0., offsets_px=[1.], samples=32), dict(min_white=.9, offsets_px=[], samples=32),
                 dict(min_white=.9, offsets_px=[1.], samples=4), dict(min_white=.9, offsets_px=[9.], samples=32),
                 dict(min_white=.9, offsets_px=[1.])):
@@ -82,6 +89,8 @@ def test_config_validation():
     for bad in (0., 180., float('nan'), -5.):
         with pytest.raises(ValueError):
             ClearanceRayConfig(stale_deg=bad)
+    with pytest.raises(ValueError, match='booleans'):
+        ClearanceRayConfig(judge_fresh=1)
     with pytest.raises(ValueError, match='ClearanceRayConfig'):
         TtcClearanceGovernor(ray=dict(stale_deg=60.))
     with pytest.raises(ValueError, match='ClearanceRayConfig'):
@@ -118,9 +127,9 @@ def stale_standoff_stream(gov, *, speed=6., standoff_at=0., switch_at=3., second
     return rows
 
 
-def test_a_stale_stand_off_ignores_the_wall_ahead_without_the_rule_and_brakes_for_it_with_it():
+def test_version_1_brakes_for_the_wall_ahead_of_a_stale_stand_off():
     old = stale_standoff_stream(TtcClearanceGovernor(TtcClearanceConfig()))
-    new = stale_standoff_stream(TtcClearanceGovernor(TtcClearanceConfig(), ray=RAY))
+    new = stale_standoff_stream(TtcClearanceGovernor(TtcClearanceConfig(), ray=RAY1))
     # both hold the stand-off at the first wall
     assert any(r[3] == 'standoff' for r in old if r[0] < 1.5) and any(r[3] == 'standoff' for r in new if r[0] < 1.5)
     # without the rule the cap stays on the first wall's ray and never bounds the flight toward the second wall
@@ -137,7 +146,7 @@ def test_a_stale_stand_off_ignores_the_wall_ahead_without_the_rule_and_brakes_fo
 
 def test_the_old_stand_off_is_renewed_by_off_ray_samples_only_without_the_rule():
     old = TtcClearanceGovernor(TtcClearanceConfig())
-    new = TtcClearanceGovernor(TtcClearanceConfig(), ray=RAY)
+    new = TtcClearanceGovernor(TtcClearanceConfig(), ray=RAY1)
     stale_standoff_stream(old, seconds=4.6)
     stale_standoff_stream(new, seconds=4.6)
     assert old.standoff_until > 4.6                 # renewed by the samples along B (the live fault)
@@ -169,9 +178,53 @@ def random_stream(gov, seed, *, turn_deg=40.):
 
 
 @pytest.mark.parametrize('seed', range(6))
-def test_the_rule_changes_nothing_while_every_sample_lies_within_stale_deg_of_the_cap_ray(seed):
+@pytest.mark.parametrize('rule', [RAY, RAY1])
+def test_the_rule_changes_nothing_while_every_sample_lies_within_stale_deg_of_the_cap_ray(seed, rule):
     assert random_stream(TtcClearanceGovernor(TtcClearanceConfig()), seed) == \
-        random_stream(TtcClearanceGovernor(TtcClearanceConfig(), ray=RAY), seed)
+        random_stream(TtcClearanceGovernor(TtcClearanceConfig(), ray=rule), seed)
+
+
+def test_version_2_re_seats_once_the_stand_off_has_lapsed_and_brakes_for_the_wall_ahead():
+    # the stand-off at the first wall lapses (2 s after its last renewal, about 3.1 s) before the wall along B is seen
+    old = stale_standoff_stream(TtcClearanceGovernor(TtcClearanceConfig()), switch_at=3.5, seconds=5.7)
+    new = stale_standoff_stream(TtcClearanceGovernor(TtcClearanceConfig(), ray=RAY), switch_at=3.5, seconds=5.7)
+    late = [r for r in old if r[0] >= 3.5]
+    assert all(r[2] is not None and float(r[2] @ A) > .99 for r in late) and not any(r[4] for r in late)
+    # confirmed through the engaged cap's hysteresis (TTC below ttc_target 1.3 s): three samples from 3.5 s on
+    reseat = next(r[0] for r in new if r[0] >= 3.5 and r[2] is not None and float(r[2] @ B) > .99)
+    assert 3.5 < reseat <= 3.5+.4
+    assert any(r[4] for r in new if r[0] >= reseat)
+    assert min(r[1] for r in new if r[0] >= reseat) <= .75*6.
+
+
+def test_version_2_keeps_a_wall_cap_while_its_stand_off_is_active():
+    # the wall along B is seen while the first wall's stand-off still holds: version 2 keeps the first wall's cap (as
+    # without the rule), version 1 re-seats
+    rows = {}
+    for name, rule in (('m4b', None), ('v2', RAY), ('v1', RAY1)):
+        gov = TtcClearanceGovernor(TtcClearanceConfig(), **({} if rule is None else dict(ray=rule)))
+        rows[name] = stale_standoff_stream(gov, switch_at=1.5, seconds=2.6)
+    key = lambda rs: [(r[1], None if r[2] is None else tuple(r[2]), r[3]) for r in rs]
+    assert key(rows['v2']) == key(rows['m4b'])
+    assert any(r[2] is not None and float(r[2] @ B) > .99 for r in rows['v1'])
+
+
+def test_version_2_re_aims_a_lower_target_exactly_as_without_the_rule():
+    # a slow first-wall target, then a closer wall along B whose target is lower: both re-aim the same way
+    def stream(gov):
+        out = []
+        for k in range(300):
+            now = k*.01
+            ray, speed = (A, 3.) if now < 1. else (B, 6.)
+            pos = ray*speed*now
+            if k % 10 == 0:
+                ttc = .9 if now < 1. else .45
+                gov.ingest(now-.05, ttc, ttc*speed, None, pos, ray, speed, received=now)
+            cap, cray, _ = gov.limits(pos, ray*speed, now, .01, 3.5)
+            out.append((cap, None if cray is None else tuple(cray), gov.status))
+        return out
+    assert stream(TtcClearanceGovernor(TtcClearanceConfig())) == \
+        stream(TtcClearanceGovernor(TtcClearanceConfig(), ray=RAY))
 
 
 def pilot(**kw):

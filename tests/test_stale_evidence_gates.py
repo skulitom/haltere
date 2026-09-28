@@ -12,13 +12,17 @@ from haltere.obstacles import stale_evidence_gates as seg
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_the_gates_file_is_frozen_and_names_the_frozen_declarations(tmp_path):
+def test_the_gates_files_are_frozen_and_name_the_frozen_declarations(tmp_path):
     gates, digest = seg.load_gates()
-    assert digest == gates['sha256'] and gates['version'] == 1
-    assert set(gates['declarations']) == {'stale_evidence', 'ring_marker'}
-    assert set(gates['development']) == {'minus-fast6-r4b-01', 'straw-brain11cw13-r4b-noassist-02'}
-    assert not set(gates['development']) & set(gates['reader']['flights'])
-    assert set(gates['development']) <= set(gates['replay_flights'])
+    assert digest == gates['sha256'] and gates['version'] == 2
+    assert set(gates['declarations']) == {'stale_evidence'} and gates['declarations']['stale_evidence']['version'] == 2
+    assert gates['gates']['HA_hairpin']['gated_sets'] == ['fresh']
+    # version 1 of the gates is kept verbatim and still loads, with the kept version-1 declaration
+    gates1, digest1 = seg.load_gates(seg.GATES_V1_PATH)
+    assert digest1 == '81c36bf64403f64e71705e456006d479d1b6f92f49b24a3a75551cab562a1506' and gates1['version'] == 1
+    assert seg.declaration_path(gates1['declarations']['stale_evidence']).name == 'stale_evidence_v1.json'
+    assert set(gates1['development']) == {'minus-fast6-r4b-01', 'straw-brain11cw13-r4b-noassist-02'}
+    assert not set(gates1['development']) & set(gates1['reader']['flights'])
     edited = dict(gates, note=gates['note']+' edited')
     path = tmp_path/'g.json'
     path.write_text(json.dumps(edited), encoding='utf-8')

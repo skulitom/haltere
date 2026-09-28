@@ -651,10 +651,13 @@ def test_obstacle_stack_flags_resolve_to_off_by_default_components():
     assert resolve_obstacle_stack(args(lag_turn='x.json'))['lag_turn'] == 'x.json'
     assert resolve_obstacle_stack(args(obstacle_stack='on')) == dict(mode='on', gap=True, lag_turn=default, apply=True,
                                                                      wall_pilot=wall, vertical_guard=vertical,
-                                                                     stale_evidence=stale)
+                                                                     stale_evidence=None)
     assert resolve_obstacle_stack(args(obstacle_stack='shadow')) == dict(mode='shadow', gap=True, lag_turn=default,
                                                                          apply=False, wall_pilot=wall,
-                                                                         vertical_guard=vertical, stale_evidence=stale)
+                                                                         vertical_guard=vertical, stale_evidence=None)
+    # the stale-evidence rule is opt-in inside the stack (version 1 failed its held-out gates)
+    assert resolve_obstacle_stack(args(obstacle_stack='on', stale_evidence='on'))['stale_evidence'] == stale
+    assert resolve_obstacle_stack(args(obstacle_stack='shadow', stale_evidence='on'))['stale_evidence'] == stale
     assert resolve_obstacle_stack(args(obstacle_stack='on', stale_evidence='off'))['stale_evidence'] is None
     with pytest.raises(ValueError, match='obstacle stack'):
         resolve_obstacle_stack(args(stale_evidence='on'))

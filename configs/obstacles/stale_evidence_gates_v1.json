@@ -1,0 +1,467 @@
+{
+ "schema": "haltere.obstacles.stale_evidence_gates.v1",
+ "version": 1,
+ "note": "Offline gates of round 5 (arches), scored by haltere.obstacles.stale_evidence_gates: the stale-evidence rule (configs/obstacles/stale_evidence.json v1: the looming governor's cap follows the ray of its evidence) and the ring-marker reader rule (configs/pilot/ring_marker.json v1: a marker candidate needs a continuous white annulus). Frozen with both declarations before any gate was scored. Seen before the freeze: the two round-4b live logs the rules address (minus-fast6-r4b-01 and straw-brain11cw13-r4b-noassist-02: logs, videos, depth replays of their clips; development cases, not held-out), their recorded frames at 111.0-112.4 s and 43.5-44.8 s, and, as data inspection without any rule, coast and marker-reacquisition statistics of straw-brain08-04/-06, minus-fast6-r4-02 and the round-4b logs and the start-arch pass list of the older Straw logs. No rule was run on any held-out log before the freeze. A coast-on-course rule was prototyped on the Straw clip (development, open loop and one surrogate window) and dropped before the freeze. Every replay is open loop (the recorded motion does not respond); windows are semi-closed loop in the IdentifiedSim surrogate (logged state, replayed requests and yaw); the reader runs on recorded h264 frames, not the live captures; the hairpins are the synthetic motor-assist harness. Hindsight quantities (impact times and points, the start-arch box, the Minus Two arch points, overlay-detector markers) select and score only. Nothing here is flight evidence. The hash covers everything except frozen/frozen_at/sha256; each gate is scored once per rule version and every version is reported. Version 1 of these gates was first frozen with a ring-marker note that described the Straw false marker as a dark check of the arch leg; the note (not the rule values) was corrected and both files re-frozen before any gate was scored.",
+ "declarations": {
+  "stale_evidence": {
+   "file": "configs/obstacles/stale_evidence.json",
+   "version": 1,
+   "sha256": "afcda589deb5c1ea0612e3d369ae5e35c5494a7cdf9c04d8a85b6f6bc0c61cd6"
+  },
+  "ring_marker": {
+   "file": "configs/pilot/ring_marker.json",
+   "version": 1,
+   "sha256": "09824e473659b7117c6e653c60e3e968015f521b3c6e2b7fb85c863247574f68"
+  }
+ },
+ "baseline_tree": {
+  "branch": "m4b",
+  "commit": "2a5bccbdaece4bfdea473d8240d3c0548135e80d",
+  "note": "an archive of m4b; the m4b variants run its own vertical_replay.py"
+ },
+ "baseline_tree_path": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m5/arches/m4b_tree",
+ "runs": "C:/DEV/Haltere/runs/fast-stack-20260923",
+ "development": [
+  "minus-fast6-r4b-01",
+  "straw-brain11cw13-r4b-noassist-02"
+ ],
+ "replay_flights": [
+  "minus-fast6-wall-01",
+  "minus-brain08-gapon-01",
+  "minus-brain08-gapon-02",
+  "minus-fast6-gapon-01",
+  "minus-brain08-loom-01",
+  "minus-fast6-vg-02",
+  "minus-brain08-vg-01",
+  "minus-brain09b-vg-01",
+  "minus-brain08-gapshadow-01",
+  "minus-fast6-r4-02",
+  "minus-brain10b-r4-02",
+  "minus-brain09b-r4-01",
+  "pine-fast6-ttc-01",
+  "pine-brain08-loom-01",
+  "pine-brain08-01",
+  "straw-brain08-04",
+  "straw-brain08-06",
+  "straw-brain08-01",
+  "straw-brain08-02",
+  "straw-brain08-03",
+  "straw-fast6-01",
+  "straw-fast6-02",
+  "straw-fast6-03",
+  "straw-fast6-arc-01",
+  "minus-brain11cw13-r4b-noassist-01",
+  "minus-fast6-r4b-01",
+  "straw-brain11cw13-r4b-noassist-02"
+ ],
+ "replays": {
+  "stream": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m4/vguard/streams/stream_{flight}.npz",
+  "streamed": [
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01",
+   "pine-brain08-01"
+  ],
+  "stack": "the round-4b replay stack: --stack on --near-on-path --throttle-column command_thr --descent-view (v2 with contact support), the tree's wall pilot v5, vertical guard v4, gap pilot v5, lag turn v2; the offline looming stream for flights flown without looming",
+  "variants": {
+   "m4b_none": {
+    "tree": "m4b",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "new_none": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "m4b_on": {
+    "tree": "m4b",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json"
+    ]
+   },
+   "new_on": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json"
+    ]
+   },
+   "m4b_shadow": {
+    "tree": "m4b",
+    "args": [
+     "--stack",
+     "shadow",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json"
+    ]
+   },
+   "new_shadow": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "shadow",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{repo}/configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "new_on_se": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{repo}/configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "new_full": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{repo}/configs/obstacles/stale_evidence.json"
+    ],
+    "cue_drop": true
+   }
+  }
+ },
+ "reader": {
+  "flights": [
+   "loop-fast5-02",
+   "minus-brain03-01",
+   "minus-brain04-02",
+   "minus-brain05-01",
+   "minus-brain06-01",
+   "minus-brain07-01",
+   "minus-brain08-01",
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-brain08-gapshadow-01",
+   "minus-brain08-loom-01",
+   "minus-brain08-slow35-01",
+   "minus-brain08-vg-01",
+   "minus-brain09b-r4-01",
+   "minus-brain09b-vg-01",
+   "minus-brain10b-r4-02",
+   "minus-brain11cw13-r4b-noassist-01",
+   "minus-fast6-01",
+   "minus-fast6-cur-01",
+   "minus-fast6-gapon-01",
+   "minus-fast6-r4-02",
+   "minus-fast6-vg-02",
+   "minus-fast6-wall-01",
+   "pine-brain03-01",
+   "pine-brain04-01",
+   "pine-brain05-02",
+   "pine-brain06-01",
+   "pine-brain06-ttc-01",
+   "pine-brain07-01",
+   "pine-brain08-01",
+   "pine-brain08-loom-01",
+   "pine-fast6-01",
+   "pine-fast6-loom-01",
+   "pine-fast6-ttc-01",
+   "straw-brain03-01",
+   "straw-brain04-01",
+   "straw-brain05-01",
+   "straw-brain05-gov-01",
+   "straw-brain05-trim-01",
+   "straw-brain05-trim-02",
+   "straw-brain06-01",
+   "straw-brain06-02",
+   "straw-brain06-03",
+   "straw-brain07-02",
+   "straw-brain07-03",
+   "straw-brain07-nosweep-01",
+   "straw-brain07-steep-01",
+   "straw-brain07-steep-02",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-brain08-04",
+   "straw-brain08-05",
+   "straw-brain08-06",
+   "straw-brain6-02",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01"
+  ],
+  "tolerance_px": 12,
+  "match_dt_s": 0.06,
+  "overlay": "haltere.obstacles.gap_cue_eval.mask_fractions on the 448 x 252 store frame (the overlay template detector: a donut template and ring-versus-surround contrast), an independent offline reader",
+  "frames": "every new recorded frame (recorder repeats skipped), gameplay crop 1280 x 720; aligned to the log with gap_cue_eval.align_offset (overlay markers vs the logged cue)"
+ },
+ "surrogate": {
+  "loop": "haltere.train.brake_gates.replay_window: IdentifiedSim (measured original drone, no randomisation), 3-tick command delay, quadratic drag 0.0075, from the logged state; the request and the yaw stick per logged row from a replay (rows the replay skipped keep the log); a brain warmed on its recorded inputs for warm_s",
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
+  "warm_s": 8.0,
+  "reference": "brain08",
+  "motors": {
+   "pd": {
+    "checkpoint": "pd",
+    "contract": "fast_velocity_pd_v1"
+   },
+   "brain08": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain09b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-09b-caps-r0001m100/candidate.pt",
+    "sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain10b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-10b/candidate.pt",
+    "sha256": "0ccf116190f5135220dbd2cc20a6dd9948654d07509eaa388a2286d8d4640bcd",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain11cw13": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-11-b-cw13/candidate.pt",
+    "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+    "contract": "fast_velocity_brain_v1"
+   }
+  },
+  "flight_motor": {
+   "minus-fast6-wall-01": "pd",
+   "minus-brain08-gapon-01": "brain08",
+   "minus-brain08-gapon-02": "brain08",
+   "minus-fast6-gapon-01": "pd",
+   "minus-brain08-loom-01": "brain08",
+   "minus-fast6-vg-02": "pd",
+   "minus-brain08-vg-01": "brain08",
+   "minus-brain09b-vg-01": "brain09b",
+   "minus-brain08-gapshadow-01": "brain08",
+   "minus-fast6-r4-02": "pd",
+   "minus-brain10b-r4-02": "brain10b",
+   "minus-brain09b-r4-01": "brain09b",
+   "pine-fast6-ttc-01": "pd",
+   "pine-brain08-loom-01": "brain08",
+   "pine-brain08-01": "brain08",
+   "straw-brain08-04": "brain08",
+   "straw-brain08-06": "brain08",
+   "straw-brain08-01": "brain08",
+   "straw-brain08-02": "brain08",
+   "straw-brain08-03": "brain08",
+   "straw-fast6-01": "pd",
+   "straw-fast6-02": "pd",
+   "straw-fast6-03": "pd",
+   "straw-fast6-arc-01": "pd",
+   "minus-brain11cw13-r4b-noassist-01": "brain11cw13",
+   "minus-fast6-r4b-01": "pd",
+   "straw-brain11cw13-r4b-noassist-02": "brain11cw13"
+  }
+ },
+ "gates": {
+  "I1_default": {
+   "rule": "--stack none replays of every replay flight: this tree == the m4b tree, command arrays (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit for bit"
+  },
+  "I2_stack_without_rule": {
+   "rule": "the replay stack without --stale-evidence: this tree == the m4b tree, bit for bit, every replay flight"
+  },
+  "I3_shadow": {
+   "rule": "the replay stack in shadow with --stale-evidence (this tree) == the stack in shadow on the m4b tree, bit for bit, every replay flight"
+  },
+  "I4_reader_off": {
+   "rule": "on every 10th new recorded frame of every reader flight, checkpoint_ring without a rule returns exactly what the m4b tree's checkpoint_ring returns (u, v, edge, aim_u)"
+  },
+  "DM_minus": {
+   "flight": "minus-fast6-r4b-01",
+   "window": [
+    42.0,
+    44.797
+   ],
+   "impact_t": 44.797,
+   "impact_point": [
+    51.09,
+    93.51
+   ],
+   "slower_mps": 0.3,
+   "brake_lead_s": 0.5,
+   "first_hairpin": {
+    "brake_window": [
+     38.5,
+     39.6
+    ],
+    "rest_window": [
+     39.0,
+     40.0
+    ]
+   },
+   "rule": "DEVELOPMENT, open loop. new_on_se vs m4b_on on the window: DM1: the first tick at which the new stack's cap binds the request (braking) or its request along the travel direction is at least slower_mps below the baseline's comes at least brake_lead_s before the logged impact, and the baseline does not brake in the window; DM2: the drone's distance to the hindsight impact point at that tick is at least the distance, on the same log, from the position of the flown governor's first brake at the first wall (first braking tick in brake_window of the baseline replay) to the position where the flown drone came to rest (lowest horizontal speed in rest_window): the flown PD stopped short of that wall from that distance"
+  },
+  "DS1_straw_reader": {
+   "flight": "straw-brain11cw13-r4b-noassist-02",
+   "phase": [
+    111.3,
+    111.5
+   ],
+   "u": [
+    0.55,
+    0.65
+   ],
+   "v": [
+    0.74,
+    0.82
+   ],
+   "rule": "DEVELOPMENT. Every logged detection in the phase window with u, v in the given ranges (the two false detections at u 0.605, v 0.78) has a reader candidate within tolerance_px on the aligned recorded frame, and the rule rejects it"
+  },
+  "DS2_straw_path": {
+   "flight": "straw-brain11cw13-r4b-noassist-02",
+   "motor": "brain11cw13",
+   "t0": 111.2,
+   "horizon_s": 1.25,
+   "contact_point": [
+    27.13,
+    -0.54
+   ],
+   "validation_max_m": 0.15,
+   "clear_min_m": 0.4,
+   "rule": "DEVELOPMENT, semi-closed loop. From the logged state at t0: (a) validation: the m4b_on requests (the logged cue) pass within validation_max_m of the hindsight contact point (the drone centre at the audited impact); (b) the new_full requests (the stale-evidence rule and the logged cue without the detections the reader rule rejects) pass at least clear_min_m from it, with the path left of it (away from the leg)"
+  },
+  "HR_reader": {
+   "flights": "reader.flights (every usable recorded flight except the two development flights)",
+   "retention_min": 0.995,
+   "rule": "HELD-OUT, recorded frames. HR1: per flight, of the frames where the earlier reader reads a marker the overlay detector confirms (within tolerance_px), the rule reads the same marker in at least retention_min; HR2: pooled over the flights, among the frames where the two readers differ, the rule's reading agrees with the overlay detector (both none, or markers within tolerance_px) at least as often as the earlier reader's"
+  },
+  "HA_logs": {
+   "max_speedup": 0.3,
+   "rule": "HELD-OUT, open loop. Every replay flight except the development ones: new_on_se vs m4b_on, at every tick with a horizontal speed of at least 1 m/s the request's component along the measured horizontal velocity is not higher by more than max_speedup m/s (the rule brakes along the travel ray; releasing a stale cap never adds more than that)"
+  },
+  "HA_hairpin": {
+   "motors": [
+    "pd",
+    "brain08",
+    "brain09b",
+    "brain10b",
+    "brain11cw13"
+   ],
+   "sets": {
+    "heldout": {
+     "set": {
+      "turn_deg": [
+       45.0,
+       75.0,
+       105.0
+      ],
+      "arch_m": [
+       8.0,
+       13.0
+      ],
+      "wall_m": [
+       2.3,
+       3.0
+      ]
+     },
+     "seconds": 16.0,
+     "sim_seed": 23
+    },
+    "development": {
+     "set": {
+      "turn_deg": [
+       20.0,
+       60.0,
+       90.0
+      ],
+      "arch_m": [
+       7.0,
+       11.0
+      ],
+      "wall_m": [
+       2.1,
+       2.6
+      ]
+     },
+     "seconds": 16.0,
+     "sim_seed": 17
+    }
+   },
+   "rule": "HELD-OUT for this rule (the motor-assist gates' hairpin sets, never used to design it), closed loop in motor_assist_eval.run_scenarios with the m4b pilot for the motor contract (motor_assist_gates.pilot_kwargs: --obstacle-stack on --descent-view on) with and without the stale-evidence rule: per motor and set, wall contacts with the rule <= without and clean passes with the rule >= without"
+  },
+  "HP_passes": {
+   "straw_box": {
+    "x": [
+     18.0,
+     30.0
+    ],
+    "abs_y": 4.0
+   },
+   "minus_arches": [
+    [
+     79.8,
+     18.8
+    ],
+    [
+     75.9,
+     64.3
+    ]
+   ],
+   "minus_radius_m": 4.0,
+   "pre_s": 1.5,
+   "rule": "HELD-OUT. Every pass of the Straw Bale start arches (the hindsight box) and of the Minus Two hairpin and garage arches (within minus_radius_m of the hindsight points) in the replay flights except the development ones, from pre_s before entry to exit: (a) the reader rule drops no logged detection the overlay detector confirms on the aligned frame; (b) the stale-evidence rule adds no more than HA_logs.max_speedup along the travel direction. Report: requests unchanged or not, the detections dropped, and for changed windows the semi-closed-loop lateral deviation from the m4b-request path"
+  },
+  "Q_clean": {
+   "flights": [
+    "straw-brain08-04",
+    "straw-brain08-06"
+   ],
+   "motor": "brain08",
+   "max_dropped_fraction": 0.01,
+   "max_dropped_confirmed_fraction": 0.005,
+   "max_progress_lost_s": 0.5,
+   "max_lateral_m": 0.75,
+   "windows": {
+    "tol": 0.05,
+    "merge_s": 0.5,
+    "pre_s": 0.5,
+    "post_s": 1.0
+   },
+   "rule": "QUIET, clean 3-lap races of fast-brain-08. (a) the reader rule drops at most max_dropped_fraction of the logged detections and at most max_dropped_confirmed_fraction of the overlay-confirmed ones; (b) semi-closed loop over every window where new_full's requests differ from m4b_on's (merged within merge_s, padded pre_s/post_s): the along-track progress lost at the window ends, summed, is at most max_progress_lost_s (course time) and the lateral deviation from the m4b-request path stays within max_lateral_m (half the surrogate's 1.5 m ring radius: checkpoint passes kept) in every window"
+  }
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-28T05:31:31+00:00",
+ "sha256": "81c36bf64403f64e71705e456006d479d1b6f92f49b24a3a75551cab562a1506"
+}

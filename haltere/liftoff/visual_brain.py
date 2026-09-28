@@ -89,7 +89,7 @@ def load_stale_evidence(path=STALE_EVIDENCE_DECLARATION):
         raise ValueError(f'{path} is not a frozen stale-evidence declaration, or it changed after the freeze')
     if declaration.get('version') != STALE_EVIDENCE_VERSION:
         raise ValueError(f'{path} declares stale-evidence rule version {declaration.get("version")}; the fast pilot '
-                         f'implements version {STALE_EVIDENCE_VERSION}')
+                         f'flies version {STALE_EVIDENCE_VERSION}')
     return declaration, digest
 
 
@@ -890,13 +890,13 @@ def resolve_obstacle_stack(args):
     --obstacle-stack on|shadow (requires --pilot-profile fast and --looming-brake) runs the gap cue (depth
     process or camera hook, the pilot's gap aim), the lag-aware turns, the wall-pilot rules (turn first at a
     wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json) and the vertical guard (sink
-    margin, descent first, terrain climb only for rising ground; configs/obstacles/vertical_guard.json) and the
-    stale-evidence rule (the looming governor's cap follows the ray of its evidence;
-    configs/obstacles/stale_evidence.json); shadow runs the same processes and computations and logs them but applies
-    no aim shift, no lag-turn, no wall-pilot rule, no vertical guard and no stale-evidence rule (matched control).
-    --gap-cue off, --lag-turn off, --wall-pilot off, --vertical-guard off and --stale-evidence off remove a component
-    from the stack. Outside the stack --lag-turn [on|DECLARATION] keeps its earlier meaning and --gap-cue on /
-    --wall-pilot on / --vertical-guard on / --stale-evidence on are refused.
+    margin, descent first, terrain climb only for rising ground; configs/obstacles/vertical_guard.json) and, with
+    --stale-evidence on (off by default, also inside the stack), the stale-evidence rule (the looming governor's cap
+    follows the ray of its evidence; configs/obstacles/stale_evidence.json); shadow runs the same processes and
+    computations and logs them but applies no aim shift, no lag-turn, no wall-pilot rule, no vertical guard and no
+    stale-evidence rule (matched control). --gap-cue off, --lag-turn off, --wall-pilot off and --vertical-guard off
+    remove a component from the stack. Outside the stack --lag-turn [on|DECLARATION] keeps its earlier meaning and
+    --gap-cue on / --wall-pilot on / --vertical-guard on / --stale-evidence on are refused.
     Returns dict(mode=None|'on'|'shadow', gap=bool, lag_turn=declaration path or None, apply=bool,
     wall_pilot=declaration path or None, vertical_guard=declaration path or None,
     stale_evidence=declaration path or None)."""
@@ -928,7 +928,7 @@ def resolve_obstacle_stack(args):
     return dict(mode=mode,gap=gap_flag != 'off',lag_turn=str(LAG_TURN_DECLARATION) if lag is None else lag_path,
                 apply=mode == 'on',wall_pilot=None if wall_flag == 'off' else str(WALL_PILOT_DECLARATION),
                 vertical_guard=None if vertical_flag == 'off' else str(VERTICAL_GUARD_DECLARATION),
-                stale_evidence=None if stale_flag == 'off' else str(STALE_EVIDENCE_DECLARATION))
+                stale_evidence=str(STALE_EVIDENCE_DECLARATION) if stale_flag == 'on' else None)
 
 
 def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
@@ -1720,9 +1720,8 @@ def main():
                         'configs/obstacles/gap_pilot.json), lag-aware turns, the wall-pilot rules (turn first at '
                         'a wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json) and the '
                         'vertical guard (sink margin, descent first, terrain climb only for rising ground; '
-                        'configs/obstacles/vertical_guard.json) and the stale-evidence rule (the governor\'s cap '
-                        'follows the ray of its evidence; configs/obstacles/stale_evidence.json); shadow runs and logs '
-                        'the same processes but applies '
+                        'configs/obstacles/vertical_guard.json) and, with --stale-evidence on, the stale-evidence rule '
+                        '(configs/obstacles/stale_evidence.json); shadow runs and logs the same processes but applies '
                         'no aim shift, no lag-turn, no wall-pilot rule, no vertical guard and no stale-evidence rule '
                         '(matched control). No speed cap')
     p.add_argument('--gap-cue',choices=['on','off'],default=None,
@@ -1735,9 +1734,9 @@ def main():
                         'below the path, stop a descent before any terrain climb, and climb hard only for rising '
                         'ground (configs/obstacles/vertical_guard.json)')
     p.add_argument('--stale-evidence',choices=['on','off'],default=None,
-                   help='Component override inside --obstacle-stack (default on): the looming governor\'s cap follows '
-                        'the ray of its evidence (a confirmed wall sample off the cap\'s ray re-seats it and ends a '
-                        'stand-off along the old ray; configs/obstacles/stale_evidence.json)')
+                   help='EXPERIMENTAL component of --obstacle-stack, off by default (on adds it): the looming '
+                        'governor\'s cap follows the ray of its evidence (a confirmed wall sample off the cap\'s ray '
+                        're-seats it once the old stand-off has lapsed; configs/obstacles/stale_evidence.json)')
     p.add_argument('--ring-marker',default=None,metavar='on|off|DECLARATION',
                    help='EXPERIMENTAL reader rule for the visible checkpoint ring marker (off by default; needs '
                         '--pilot-assistance race-cue): a candidate counts only if its white annulus is continuous '
