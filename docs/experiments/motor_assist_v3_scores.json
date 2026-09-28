@@ -1,0 +1,3953 @@
+{
+ "gates_file": "C:\\DEV\\Haltere\\.claude\\worktrees\\wf_c93b7ee9-b45-2\\configs\\pilot\\motor_assist_gates.json",
+ "gates_version": 3,
+ "gates_sha256": "f75a45e4e4f5ccdfda2dcf62cef81ea4ef07e086a79b38aa12e1d959527da5fc",
+ "motor_assist": {
+  "file": "configs/pilot/motor_assist.json",
+  "version": 3,
+  "sha256": "7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772"
+ },
+ "scope": "measured surrogate (IdentifiedSim) on seeded synthetic scenarios and courses, and open-loop replays of live logs; development evidence, not flight evidence",
+ "gates": {
+  "hairpin_brain11cw13": {
+   "threshold": "clean passes >= 6; wall contacts <= 3; floor contacts <= baseline + 1; ceiling contacts <= baseline + 1",
+   "baseline": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 0
+   },
+   "result": {
+    "clean": 7,
+    "finished": 7,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 0
+   },
+   "n": 12,
+   "pass": true
+  },
+  "hairpin_brain09b": {
+   "threshold": "clean passes >= 6; wall contacts <= 3; floor contacts <= baseline + 1; ceiling contacts <= baseline + 1",
+   "baseline": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 4
+   },
+   "result": {
+    "clean": 9,
+    "finished": 9,
+    "wall": 0,
+    "floor": 1,
+    "ceiling": 2,
+    "crashed": 1
+   },
+   "n": 12,
+   "pass": true
+  },
+  "hairpin_brain10b": {
+   "threshold": "clean passes >= 6; wall contacts <= 3; floor contacts <= baseline + 1; ceiling contacts <= baseline + 1",
+   "baseline": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 0
+   },
+   "result": {
+    "clean": 10,
+    "finished": 10,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 0
+   },
+   "n": 12,
+   "pass": true
+  },
+  "hill_brain11cw13": {
+   "threshold": "finishes >= baseline; crashes <= baseline; chatter <= 1.15 x baseline; paired finish time <= baseline x 1.02; terrain contacts <= baseline + 1; passes > 1.5 m high <= baseline + 2",
+   "baseline": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 14,
+    "contact_s": 25.92,
+    "high_passes": 7,
+    "support_climbs": 0,
+    "chatter": 0.001943,
+    "below_view_fraction": 0.406
+   },
+   "result": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 13,
+    "contact_s": 23.93,
+    "high_passes": 6,
+    "support_climbs": 0,
+    "chatter": 0.001947,
+    "below_view_fraction": 0.3962
+   },
+   "paired": 12,
+   "ratio": 1.0004,
+   "pass": true
+  },
+  "hill_brain09b": {
+   "threshold": "finishes >= baseline; crashes <= baseline; chatter <= 1.15 x baseline; paired finish time <= baseline x 1.02; terrain contacts <= baseline + 1; passes > 1.5 m high <= baseline + 2",
+   "baseline": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 14,
+    "contact_s": 16.78,
+    "high_passes": 8,
+    "support_climbs": 0,
+    "chatter": 0.005468,
+    "below_view_fraction": 0.467
+   },
+   "result": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 12,
+    "contact_s": 16.3,
+    "high_passes": 8,
+    "support_climbs": 1,
+    "chatter": 0.005586,
+    "below_view_fraction": 0.4727
+   },
+   "paired": 12,
+   "ratio": 1.0041,
+   "pass": true
+  },
+  "hill_brain10b": {
+   "threshold": "finishes >= baseline; crashes <= baseline; chatter <= 1.15 x baseline; paired finish time <= baseline x 1.02; terrain contacts <= baseline + 1; passes > 1.5 m high <= baseline + 2",
+   "baseline": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 9,
+    "contact_s": 16.95,
+    "high_passes": 18,
+    "support_climbs": 0,
+    "chatter": 0.002675,
+    "below_view_fraction": 0.5117
+   },
+   "result": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 7,
+    "contact_s": 16.5,
+    "high_passes": 19,
+    "support_climbs": 0,
+    "chatter": 0.002623,
+    "below_view_fraction": 0.5091
+   },
+   "paired": 12,
+   "ratio": 0.9921,
+   "pass": true
+  },
+  "identity": {
+   "threshold": "every pair bit-identical on the COMMAND_KEYS of haltere.obstacles.vertical_replay",
+   "baseline": null,
+   "result": {
+    "pairs": 102,
+    "identical": 102
+   },
+   "pairs": [
+    {
+     "flight": "minus-fast6-wall-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-wall-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-wall-01",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapon-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-gapon-01",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-fast6-ttc-01",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain09b-vg-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain09b-vg-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain09b-vg-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-r4-02",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-r4-02",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-r4-02",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain10b-r4-02",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain10b-r4-02",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain10b-r4-02",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain09b-r4-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain09b-r4-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain09b-r4-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-04",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-04",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-04",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-06",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-06",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-06",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-01",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-01",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-02",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-02",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-02",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-03",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-03",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain08-03",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-01",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-01",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-01",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-02",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-02",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-02",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-03",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-03",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-03",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-brain08-01",
+     "variant": "on-won-von-stream-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-brain08-01",
+     "variant": "none-woff-voff-stream, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "pine-brain08-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-r4b-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-r4b-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-fast6-r4b-01",
+     "variant": "fast PD, --motor-assist on (ma3) vs off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain11cw13-r4b-noassist-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain11cw13-r4b-noassist-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain11cw13-r4b-noassist-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain03-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain03-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain03-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain04-02",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain04-02",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain04-02",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain05-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain05-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain05-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain06-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain06-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain06-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain07-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain07-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain07-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-slow35-01",
+     "variant": "on-won-von-nop-cthr-dv2, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-slow35-01",
+     "variant": "none-woff-voff, assist off",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    },
+    {
+     "flight": "minus-brain08-slow35-01",
+     "variant": "version 1 declaration, this tree vs the baseline tree",
+     "identical": true,
+     "keys": {
+      "cvx": true,
+      "cvy": true,
+      "cvz": true,
+      "yaw_cmd": true,
+      "state": true,
+      "cap": true,
+      "climb": true,
+      "descent_scale": true
+     }
+    }
+   ],
+   "pass": true
+  },
+  "minus_plan": {
+   "threshold": "every Minus Two brain log: no run of >= 0.1 s before x = 73.0 m with the stopping model's bound < 2.0 m/s while the pilot's own horizontal request >= 3.0 m/s",
+   "baseline": null,
+   "result": [
+    {
+     "flight": "minus-brain08-gapon-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.71,
+     "lowest_assisted_before": 0.01,
+     "wall_ahead_s_per_min": 3.134
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.6,
+     "lowest_assisted_before": 0.05,
+     "wall_ahead_s_per_min": 1.026
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.5,
+     "lowest_assisted_before": 0.03,
+     "wall_ahead_s_per_min": 0.275
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.92,
+     "lowest_assisted_before": 0.02,
+     "wall_ahead_s_per_min": 0.0
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.61,
+     "lowest_assisted_before": 0.06,
+     "wall_ahead_s_per_min": 1.572
+    },
+    {
+     "flight": "minus-brain09b-vg-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.5,
+     "lowest_assisted_before": 0.0,
+     "wall_ahead_s_per_min": 1.822
+    },
+    {
+     "flight": "minus-brain09b-r4-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.5,
+     "lowest_assisted_before": 0.05,
+     "wall_ahead_s_per_min": 1.52
+    },
+    {
+     "flight": "minus-brain10b-r4-02",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.5,
+     "lowest_assisted_before": 0.02,
+     "wall_ahead_s_per_min": 1.369
+    },
+    {
+     "flight": "minus-brain11cw13-r4b-noassist-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": 2.5,
+     "lowest_assisted_before": 0.05,
+     "wall_ahead_s_per_min": 1.784
+    },
+    {
+     "flight": "minus-brain03-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": null,
+     "lowest_assisted_before": 0.06,
+     "wall_ahead_s_per_min": 0.34
+    },
+    {
+     "flight": "minus-brain04-02",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": null,
+     "lowest_assisted_before": 0.06,
+     "wall_ahead_s_per_min": 0.029
+    },
+    {
+     "flight": "minus-brain05-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": null,
+     "lowest_assisted_before": 0.06,
+     "wall_ahead_s_per_min": 0.662
+    },
+    {
+     "flight": "minus-brain06-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": null,
+     "lowest_assisted_before": 0.06,
+     "wall_ahead_s_per_min": 0.0
+    },
+    {
+     "flight": "minus-brain07-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": null,
+     "lowest_assisted_before": 0.06,
+     "wall_ahead_s_per_min": 0.142
+    },
+    {
+     "flight": "minus-brain08-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": null,
+     "lowest_assisted_before": 0.06,
+     "wall_ahead_s_per_min": 0.0
+    },
+    {
+     "flight": "minus-brain08-slow35-01",
+     "heldout": false,
+     "planned_crawl_episodes": [],
+     "lowest_plan_before": null,
+     "lowest_assisted_before": 0.04,
+     "wall_ahead_s_per_min": 0.238
+    }
+   ],
+   "pass": true
+  },
+  "warning": {
+   "threshold": "development cases: the assisted request 1.0 m/s below the pilot's own >= 1.0 s before the wall impact",
+   "baseline": null,
+   "result": [
+    {
+     "flight": "minus-brain11cw13-r4b-noassist-01",
+     "development_case": true,
+     "warning_s": 1.2
+    },
+    {
+     "flight": "minus-brain10b-r4-02",
+     "development_case": true,
+     "warning_s": 1.11
+    }
+   ],
+   "pass": true
+  },
+  "quiet": {
+   "threshold": "per Straw Bale / Pine Valley brain lap: stopping source active <= 0.5 s/min; stopping-model removal <= 2% and total removal <= 3% of the pilot's own request travel; no more turn-first episodes",
+   "baseline": null,
+   "result": [
+    {
+     "flight": "straw-brain08-01",
+     "heldout": false,
+     "minutes": 1.27,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 2.513,
+      "governor": 0.529,
+      "turn_first": 0.0,
+      "stopping": 0.07,
+      "approach": 2.61
+     },
+     "removed_share": 0.033,
+     "stop_model_removed_share": 0.0155
+    },
+    {
+     "flight": "straw-brain08-02",
+     "heldout": false,
+     "minutes": 2.74,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 4.806,
+      "governor": 0.276,
+      "turn_first": 0.0,
+      "stopping": 0.046,
+      "approach": 1.737
+     },
+     "removed_share": 0.0356,
+     "stop_model_removed_share": 0.0087
+    },
+    {
+     "flight": "straw-brain08-03",
+     "heldout": false,
+     "minutes": 0.99,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 3.147,
+      "governor": 0.0,
+      "turn_first": 0.0,
+      "stopping": 0.019,
+      "approach": 3.288
+     },
+     "removed_share": 0.0418,
+     "stop_model_removed_share": 0.0198
+    },
+    {
+     "flight": "straw-brain08-04",
+     "heldout": false,
+     "minutes": 5.45,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 2.084,
+      "governor": 0.026,
+      "turn_first": 0.0,
+      "stopping": 0.091,
+      "approach": 1.7
+     },
+     "removed_share": 0.0198,
+     "stop_model_removed_share": 0.0089
+    },
+    {
+     "flight": "straw-brain08-06",
+     "heldout": false,
+     "minutes": 5.45,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 2.473,
+      "governor": 0.173,
+      "turn_first": 0.0,
+      "stopping": 0.116,
+      "approach": 1.943
+     },
+     "removed_share": 0.0243,
+     "stop_model_removed_share": 0.0107
+    },
+    {
+     "flight": "pine-brain08-01",
+     "heldout": false,
+     "minutes": 0.3,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 4.363,
+      "governor": 0.0,
+      "turn_first": 0.0,
+      "stopping": 0.0,
+      "approach": 0.938
+     },
+     "removed_share": 0.0159,
+     "stop_model_removed_share": 0.0021
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "heldout": false,
+     "minutes": 0.16,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 1.429,
+      "governor": 0.0,
+      "turn_first": 0.0,
+      "stopping": 0.0,
+      "approach": 0.0
+     },
+     "removed_share": 0.0028,
+     "stop_model_removed_share": 0.0
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "heldout": false,
+     "minutes": 1.87,
+     "turn_first_episodes": [
+      0,
+      0
+     ],
+     "active_s_per_min": {
+      "request": 0.186,
+      "governor": 0.0,
+      "turn_first": 0.0,
+      "stopping": 0.0,
+      "approach": 0.939
+     },
+     "removed_share": 0.0052,
+     "stop_model_removed_share": 0.0037
+    }
+   ],
+   "pass": false
+  },
+  "slew": {
+   "threshold": "every brain replay: the assist's change per tick <= 15.0 m/s^2 x dt horizontally and vertically",
+   "baseline": null,
+   "result": [
+    {
+     "flight": "minus-brain08-gapon-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain08-gapon-02",
+     "rate_h": 15.0,
+     "rate_z": 15.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain08-loom-01",
+     "rate_h": 15.0,
+     "rate_z": 4.9869,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "pine-brain08-loom-01",
+     "rate_h": 8.0,
+     "rate_z": 0.4902,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain08-vg-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain09b-vg-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain08-gapshadow-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain10b-r4-02",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain09b-r4-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "straw-brain08-04",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "straw-brain08-06",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "straw-brain08-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "straw-brain08-02",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "straw-brain08-03",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "pine-brain08-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain11cw13-r4b-noassist-01",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "rate_h": 15.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain03-01",
+     "rate_h": 8.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain04-02",
+     "rate_h": 8.0001,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain05-01",
+     "rate_h": 8.0,
+     "rate_z": 4.4314,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain06-01",
+     "rate_h": 8.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain07-01",
+     "rate_h": 8.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain08-01",
+     "rate_h": 8.0,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    },
+    {
+     "flight": "minus-brain08-slow35-01",
+     "rate_h": 10.8027,
+     "rate_z": 5.0,
+     "zero_dt_change": 0.0
+    }
+   ],
+   "pass": true
+  }
+ },
+ "reports": {
+  "hairpin": {
+   "brain11cw13": {
+    "baseline": {
+     "n": 12,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 12,
+     "height_loss_mean": 0.1396,
+     "height_loss_max": 0.373,
+     "max_height": 2.008,
+     "chatter": 0.003869,
+     "finish_mean": null
+    },
+    "assist": {
+     "n": 12,
+     "finished": 7,
+     "clean": 7,
+     "crashed": 0,
+     "wall": 2,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 3,
+     "height_loss_mean": 0.1157,
+     "height_loss_max": 0.31,
+     "max_height": 2.108,
+     "chatter": 0.005157,
+     "finish_mean": 14.857
+    }
+   },
+   "brain09b": {
+    "baseline": {
+     "n": 12,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 4,
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 12,
+     "height_loss_mean": 0.1726,
+     "height_loss_max": 0.552,
+     "max_height": 1.621,
+     "chatter": 0.007937,
+     "finish_mean": null
+    },
+    "assist": {
+     "n": 12,
+     "finished": 9,
+     "clean": 9,
+     "crashed": 1,
+     "wall": 0,
+     "floor": 1,
+     "ceiling": 2,
+     "contacts": 3,
+     "height_loss_mean": 0.414,
+     "height_loss_max": 0.804,
+     "max_height": 2.048,
+     "chatter": 0.01023,
+     "finish_mean": 13.866
+    }
+   },
+   "brain10b": {
+    "baseline": {
+     "n": 12,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 12,
+     "height_loss_mean": 0.078,
+     "height_loss_max": 0.385,
+     "max_height": 1.892,
+     "chatter": 0.003959,
+     "finish_mean": null
+    },
+    "assist": {
+     "n": 12,
+     "finished": 10,
+     "clean": 10,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.056,
+     "height_loss_max": 0.472,
+     "max_height": 2.09,
+     "chatter": 0.005631,
+     "finish_mean": 14.585
+    }
+   }
+  },
+  "hill": {
+   "brain11cw13": {
+    "baseline": {
+     "courses": 12,
+     "finished": 12,
+     "crashed": 0,
+     "contacts": 14,
+     "contact_s": 25.92,
+     "high_passes": 7,
+     "support_climbs": 0,
+     "chatter": 0.001943,
+     "below_view_fraction": 0.406
+    },
+    "assist": {
+     "courses": 12,
+     "finished": 12,
+     "crashed": 0,
+     "contacts": 13,
+     "contact_s": 23.93,
+     "high_passes": 6,
+     "support_climbs": 0,
+     "chatter": 0.001947,
+     "below_view_fraction": 0.3962
+    },
+    "paired_finish": [
+     59.315000000000005,
+     59.34166666666667,
+     12
+    ]
+   },
+   "brain09b": {
+    "baseline": {
+     "courses": 12,
+     "finished": 12,
+     "crashed": 0,
+     "contacts": 14,
+     "contact_s": 16.78,
+     "high_passes": 8,
+     "support_climbs": 0,
+     "chatter": 0.005468,
+     "below_view_fraction": 0.467
+    },
+    "assist": {
+     "courses": 12,
+     "finished": 12,
+     "crashed": 0,
+     "contacts": 12,
+     "contact_s": 16.3,
+     "high_passes": 8,
+     "support_climbs": 1,
+     "chatter": 0.005586,
+     "below_view_fraction": 0.4727
+    },
+    "paired_finish": [
+     60.426666666666655,
+     60.67499999999999,
+     12
+    ]
+   },
+   "brain10b": {
+    "baseline": {
+     "courses": 12,
+     "finished": 12,
+     "crashed": 0,
+     "contacts": 9,
+     "contact_s": 16.95,
+     "high_passes": 18,
+     "support_climbs": 0,
+     "chatter": 0.002675,
+     "below_view_fraction": 0.5117
+    },
+    "assist": {
+     "courses": 12,
+     "finished": 12,
+     "crashed": 0,
+     "contacts": 7,
+     "contact_s": 16.5,
+     "high_passes": 19,
+     "support_climbs": 0,
+     "chatter": 0.002623,
+     "below_view_fraction": 0.5091
+    },
+    "paired_finish": [
+     62.42750000000001,
+     61.93416666666666,
+     12
+    ]
+   }
+  },
+  "passthrough": {
+   "note": "REPORT, not a gate: motor_assist_eval.passthrough_scenario for every combination (8): a gate arch flown through with a looming-only surface surface_m beyond the ring, read until see_through_m, clear beyond; the lowest horizontal speed from 1.5 s before to 0.5 s after the arch pass. Development (pt17: turn 0/45/90, see-through 1/2 m, seed 17) showed that the governor's own stand-off holds a slowed brain near 1 m/s there, and the fast PD dips too although it passes these Minus arches live at 3.5-4 m/s, so the scenario's looming is not validated against Liftoff",
+   "brain11cw13": {
+    "baseline": {
+     "counts": {
+      "n": 8,
+      "finished": 8,
+      "clean": 8,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.1584,
+      "height_loss_max": 0.339,
+      "max_height": 1.268,
+      "chatter": 0.002635,
+      "finish_mean": 13.183
+     },
+     "arch": [
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.222,
+       "pass_speed": 5.255,
+       "finish_s": 13.31
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.074,
+       "pass_speed": 5.326,
+       "finish_s": 13.27
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.554,
+       "pass_speed": 5.517,
+       "finish_s": 12.9
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.128,
+       "pass_speed": 5.343,
+       "finish_s": 13.34
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.254,
+       "pass_speed": 5.314,
+       "finish_s": 13.15
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.064,
+       "pass_speed": 5.438,
+       "finish_s": 13.22
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.65,
+       "pass_speed": 5.518,
+       "finish_s": 12.94
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.043,
+       "pass_speed": 5.341,
+       "finish_s": 13.33
+      }
+     ]
+    },
+    "assist": {
+     "counts": {
+      "n": 8,
+      "finished": 6,
+      "clean": 6,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.1554,
+      "height_loss_max": 0.475,
+      "max_height": 1.736,
+      "chatter": 0.003775,
+      "finish_mean": 14.525
+     },
+     "arch": [
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.758,
+       "pass_speed": 1.465,
+       "finish_s": null
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.241,
+       "pass_speed": 1.573,
+       "finish_s": 14.29
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.717,
+       "pass_speed": 1.734,
+       "finish_s": null
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.054,
+       "pass_speed": 2.15,
+       "finish_s": 14.43
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 1.065,
+       "pass_speed": 1.511,
+       "finish_s": 14.77
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.249,
+       "pass_speed": 1.295,
+       "finish_s": 14.37
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.893,
+       "pass_speed": 1.794,
+       "finish_s": 14.76
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.214,
+       "pass_speed": 2.036,
+       "finish_s": 14.53
+      }
+     ]
+    }
+   },
+   "brain09b": {
+    "baseline": {
+     "counts": {
+      "n": 8,
+      "finished": 8,
+      "clean": 8,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.3155,
+      "height_loss_max": 0.593,
+      "max_height": 1.097,
+      "chatter": 0.00633,
+      "finish_mean": 13.248
+     },
+     "arch": [
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.31,
+       "pass_speed": 5.555,
+       "finish_s": 13.17
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 3.82,
+       "pass_speed": 5.546,
+       "finish_s": 13.31
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 3.975,
+       "pass_speed": 5.579,
+       "finish_s": 13.16
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.037,
+       "pass_speed": 5.624,
+       "finish_s": 13.45
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.638,
+       "pass_speed": 5.678,
+       "finish_s": 13.0
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 3.166,
+       "pass_speed": 5.401,
+       "finish_s": 13.43
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.201,
+       "pass_speed": 5.53,
+       "finish_s": 13.11
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 3.712,
+       "pass_speed": 5.406,
+       "finish_s": 13.35
+      }
+     ]
+    },
+    "assist": {
+     "counts": {
+      "n": 8,
+      "finished": 6,
+      "clean": 6,
+      "crashed": 2,
+      "wall": 0,
+      "floor": 2,
+      "ceiling": 0,
+      "contacts": 2,
+      "height_loss_mean": 0.5391,
+      "height_loss_max": 0.807,
+      "max_height": 1.547,
+      "chatter": 0.008996,
+      "finish_mean": 14.485
+     },
+     "arch": [
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.818,
+       "pass_speed": 1.738,
+       "finish_s": null
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.465,
+       "pass_speed": 0.692,
+       "finish_s": null
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 1.422,
+       "pass_speed": 1.98,
+       "finish_s": 14.62
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.368,
+       "pass_speed": 2.135,
+       "finish_s": 14.28
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 1.117,
+       "pass_speed": 1.332,
+       "finish_s": 14.78
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.735,
+       "pass_speed": 3.219,
+       "finish_s": 14.24
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.94,
+       "pass_speed": 1.889,
+       "finish_s": 14.71
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.577,
+       "pass_speed": 3.24,
+       "finish_s": 14.28
+      }
+     ]
+    }
+   },
+   "brain10b": {
+    "baseline": {
+     "counts": {
+      "n": 8,
+      "finished": 8,
+      "clean": 8,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.1654,
+      "height_loss_max": 0.343,
+      "max_height": 1.473,
+      "chatter": 0.003025,
+      "finish_mean": 13.054
+     },
+     "arch": [
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.747,
+       "pass_speed": 5.542,
+       "finish_s": 12.95
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.552,
+       "pass_speed": 5.573,
+       "finish_s": 13.2
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.655,
+       "pass_speed": 5.53,
+       "finish_s": 12.83
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.98,
+       "pass_speed": 5.63,
+       "finish_s": 13.38
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 5.049,
+       "pass_speed": 5.675,
+       "finish_s": 12.74
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 4.044,
+       "pass_speed": 5.478,
+       "finish_s": 13.23
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.628,
+       "pass_speed": 5.559,
+       "finish_s": 12.79
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 4.212,
+       "pass_speed": 5.443,
+       "finish_s": 13.31
+      }
+     ]
+    },
+    "assist": {
+     "counts": {
+      "n": 8,
+      "finished": 8,
+      "clean": 8,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 0,
+      "contacts": 0,
+      "height_loss_mean": 0.1763,
+      "height_loss_max": 0.469,
+      "max_height": 1.486,
+      "chatter": 0.00413,
+      "finish_mean": 14.705
+     },
+     "arch": [
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.84,
+       "pass_speed": 1.535,
+       "finish_s": 15.48
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.497,
+       "pass_speed": 1.601,
+       "finish_s": 14.0
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.644,
+       "pass_speed": 1.821,
+       "finish_s": 15.44
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 1.5,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.331,
+       "pass_speed": 2.083,
+       "finish_s": 13.95
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 1.12,
+       "pass_speed": 1.605,
+       "finish_s": 14.68
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.0
+       },
+       "min_speed": 0.677,
+       "pass_speed": 1.314,
+       "finish_s": 14.06
+      },
+      {
+       "params": {
+        "turn_deg": 30.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.802,
+       "pass_speed": 1.891,
+       "finish_s": 15.98
+      },
+      {
+       "params": {
+        "turn_deg": 80.0,
+        "see_through_m": 2.0,
+        "surface_m": 0.25
+       },
+       "min_speed": 0.446,
+       "pass_speed": 2.081,
+       "finish_s": 14.05
+      }
+     ]
+    }
+   }
+  },
+  "windows": {
+   "note": "REPORT, not a gate (DEVELOPMENT cases): motor_assist_eval.live_window, the logged state at t0 in the surrogate, the brain warmed on the recorded inputs; the pilot's own request from an open-loop replay of the log through this tree's stack and, with the assist, the assisted request from the surrogate's measured velocity with the binding caps and the wall-ahead condition the pilot had at each logged state (the sources come from the logged positions: a surrogate drone that slows falls behind them, so the later bounds are conservative)",
+   "brain11cw13": {
+    "baseline": [
+     {
+      "flight": "minus-brain11cw13-r4b-noassist-01",
+      "t0": 22.0,
+      "horizon_s": 1.55,
+      "min_speed": 3.886,
+      "live_min_speed": 3.925,
+      "end_speed": 3.886,
+      "live_end_speed": 3.925,
+      "min_height": 0.768,
+      "live_min_height": 0.768,
+      "request_end": [
+       0.762,
+       3.28,
+       0.105
+      ],
+      "speed_trace": [
+       4.59,
+       4.56,
+       4.53,
+       4.51,
+       4.52,
+       4.57,
+       4.66,
+       4.77,
+       4.89,
+       5.0,
+       5.08,
+       5.12,
+       5.07,
+       4.94,
+       4.65,
+       4.14
+      ],
+      "height_trace": [
+       0.77,
+       0.77,
+       0.77,
+       0.78,
+       0.78,
+       0.79,
+       0.8,
+       0.81,
+       0.82,
+       0.83,
+       0.84,
+       0.83,
+       0.83,
+       0.83,
+       0.83,
+       0.85
+      ],
+      "request_vz_trace": [
+       -0.03,
+       -0.04,
+       -0.03,
+       -0.03,
+       -0.04,
+       -0.03,
+       -0.04,
+       -0.02,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.11
+      ],
+      "request_h_trace": [
+       5.7,
+       5.71,
+       5.74,
+       5.77,
+       5.8,
+       5.84,
+       5.87,
+       5.89,
+       5.91,
+       4.47,
+       3.64,
+       3.61,
+       3.48,
+       3.52,
+       3.64,
+       3.47
+      ]
+     }
+    ],
+    "assist": [
+     {
+      "flight": "minus-brain11cw13-r4b-noassist-01",
+      "t0": 22.0,
+      "horizon_s": 1.55,
+      "min_speed": 0.723,
+      "live_min_speed": 3.925,
+      "end_speed": 0.877,
+      "live_end_speed": 3.925,
+      "min_height": 0.768,
+      "live_min_height": 0.768,
+      "request_end": [
+       -1.534,
+       2.006,
+       0.555
+      ],
+      "speed_trace": [
+       4.59,
+       4.56,
+       4.53,
+       4.51,
+       4.52,
+       4.56,
+       4.59,
+       4.58,
+       4.51,
+       4.31,
+       3.7,
+       3.05,
+       1.92,
+       1.31,
+       0.88,
+       0.74
+      ],
+      "height_trace": [
+       0.77,
+       0.77,
+       0.77,
+       0.78,
+       0.78,
+       0.79,
+       0.79,
+       0.79,
+       0.79,
+       0.8,
+       0.84,
+       0.92,
+       1.03,
+       1.14,
+       1.21,
+       1.25
+      ],
+      "request_vz_trace": [
+       -0.03,
+       -0.04,
+       -0.03,
+       -0.03,
+       -0.04,
+       -0.03,
+       -0.04,
+       -0.02,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.0,
+       0.36
+      ],
+      "request_h_trace": [
+       5.7,
+       5.71,
+       5.74,
+       5.77,
+       4.47,
+       3.24,
+       3.6,
+       2.94,
+       1.54,
+       0.35,
+       0.96,
+       1.21,
+       1.03,
+       1.47,
+       2.07,
+       2.48
+      ]
+     }
+    ]
+   },
+   "brain09b": {
+    "baseline": [
+     {
+      "flight": "minus-brain09b-r4-01",
+      "t0": 21.3,
+      "horizon_s": 1.5,
+      "min_speed": 1.812,
+      "live_min_speed": 1.913,
+      "end_speed": 1.812,
+      "live_end_speed": 1.913,
+      "min_height": 0.609,
+      "live_min_height": 0.609,
+      "request_end": [
+       -0.442,
+       0.505,
+       0.0
+      ],
+      "speed_trace": [
+       3.98,
+       4.17,
+       4.36,
+       4.54,
+       4.69,
+       4.82,
+       4.93,
+       5.01,
+       5.04,
+       4.94,
+       4.66,
+       4.26,
+       3.74,
+       3.24,
+       2.72
+      ],
+      "height_trace": [
+       0.61,
+       0.62,
+       0.63,
+       0.65,
+       0.67,
+       0.69,
+       0.7,
+       0.72,
+       0.72,
+       0.71,
+       0.7,
+       0.7,
+       0.7,
+       0.72,
+       0.73
+      ],
+      "request_vz_trace": [
+       0.15,
+       0.16,
+       0.16,
+       0.16,
+       0.13,
+       0.12,
+       0.04,
+       -0.01,
+       -0.09,
+       -0.15,
+       -0.09,
+       0.02,
+       -0.06,
+       0.0,
+       0.0
+      ],
+      "request_h_trace": [
+       5.19,
+       5.46,
+       5.63,
+       5.76,
+       5.84,
+       5.89,
+       5.59,
+       4.11,
+       3.47,
+       3.47,
+       3.36,
+       3.15,
+       2.83,
+       2.0,
+       0.67
+      ]
+     }
+    ],
+    "assist": [
+     {
+      "flight": "minus-brain09b-r4-01",
+      "t0": 21.3,
+      "horizon_s": 1.5,
+      "min_speed": 1.67,
+      "live_min_speed": 1.913,
+      "end_speed": 2.362,
+      "live_end_speed": 1.913,
+      "min_height": 0.048,
+      "live_min_height": 0.609,
+      "request_end": [
+       -0.093,
+       -1.411,
+       0.636
+      ],
+      "speed_trace": [
+       3.98,
+       4.17,
+       4.36,
+       4.54,
+       4.67,
+       4.67,
+       4.16,
+       2.74,
+       1.95,
+       1.67,
+       2.18,
+       2.9,
+       3.37,
+       3.61,
+       3.24
+      ],
+      "height_trace": [
+       0.61,
+       0.62,
+       0.63,
+       0.65,
+       0.67,
+       0.67,
+       0.68,
+       0.68,
+       0.64,
+       0.56,
+       0.47,
+       0.4,
+       0.31,
+       0.2,
+       0.08
+      ],
+      "request_vz_trace": [
+       0.15,
+       0.16,
+       0.16,
+       0.16,
+       0.14,
+       0.12,
+       0.04,
+       0.0,
+       0.25,
+       0.64,
+       0.53,
+       0.46,
+       0.69,
+       0.89,
+       0.82
+      ],
+      "request_h_trace": [
+       5.26,
+       5.51,
+       5.67,
+       4.43,
+       3.01,
+       1.56,
+       0.67,
+       0.69,
+       1.7,
+       2.5,
+       2.5,
+       2.44,
+       1.44,
+       0.99,
+       1.32
+      ]
+     }
+    ]
+   },
+   "brain10b": {
+    "baseline": [
+     {
+      "flight": "minus-brain10b-r4-02",
+      "t0": 20.2,
+      "horizon_s": 1.35,
+      "min_speed": 4.853,
+      "live_min_speed": 4.932,
+      "end_speed": 4.853,
+      "live_end_speed": 4.932,
+      "min_height": 0.863,
+      "live_min_height": 0.861,
+      "request_end": [
+       2.982,
+       -2.59,
+       0.0
+      ],
+      "speed_trace": [
+       4.96,
+       4.97,
+       5.03,
+       5.07,
+       5.07,
+       5.07,
+       5.06,
+       5.07,
+       5.1,
+       5.15,
+       5.17,
+       5.14,
+       5.05,
+       4.91
+      ],
+      "height_trace": [
+       0.86,
+       0.92,
+       1.03,
+       1.14,
+       1.25,
+       1.33,
+       1.4,
+       1.46,
+       1.53,
+       1.61,
+       1.71,
+       1.79,
+       1.86,
+       1.92
+      ],
+      "request_vz_trace": [
+       1.0,
+       0.82,
+       0.78,
+       0.77,
+       0.69,
+       0.66,
+       0.75,
+       0.84,
+       1.0,
+       0.74,
+       0.44,
+       0.15,
+       0.0,
+       0.0
+      ],
+      "request_h_trace": [
+       5.28,
+       4.39,
+       4.08,
+       4.18,
+       3.98,
+       3.72,
+       3.65,
+       3.71,
+       3.84,
+       3.86,
+       3.96,
+       4.01,
+       3.97,
+       3.96
+      ]
+     }
+    ],
+    "assist": [
+     {
+      "flight": "minus-brain10b-r4-02",
+      "t0": 20.2,
+      "horizon_s": 1.35,
+      "min_speed": 2.176,
+      "live_min_speed": 4.932,
+      "end_speed": 3.241,
+      "live_end_speed": 4.932,
+      "min_height": 0.863,
+      "live_min_height": 0.861,
+      "request_end": [
+       -0.549,
+       -3.113,
+       0.0
+      ],
+      "speed_trace": [
+       4.96,
+       4.98,
+       5.06,
+       5.1,
+       5.08,
+       5.02,
+       4.82,
+       4.37,
+       3.71,
+       3.06,
+       2.5,
+       2.22,
+       2.27,
+       2.95
+      ],
+      "height_trace": [
+       0.86,
+       0.92,
+       1.04,
+       1.17,
+       1.28,
+       1.37,
+       1.44,
+       1.53,
+       1.67,
+       1.86,
+       2.07,
+       2.26,
+       2.4,
+       2.49
+      ],
+      "request_vz_trace": [
+       1.05,
+       1.03,
+       0.79,
+       0.77,
+       0.62,
+       0.69,
+       0.75,
+       0.84,
+       1.0,
+       0.74,
+       0.44,
+       0.15,
+       0.0,
+       0.0
+      ],
+      "request_h_trace": [
+       5.29,
+       4.93,
+       3.52,
+       2.7,
+       1.94,
+       1.25,
+       0.72,
+       0.88,
+       1.37,
+       1.91,
+       1.9,
+       2.31,
+       2.78,
+       2.94
+      ]
+     }
+    ]
+   }
+  },
+  "replay_metrics": {
+   "minus-brain08-gapon-01": {
+    "minutes": 0.32,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.71,
+    "lowest_assisted_before": 0.01,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 9.508,
+     "governor": 3.289,
+     "turn_first": 0.0,
+     "stopping": 1.223,
+     "approach": 6.42
+    },
+    "wall_ahead_s_per_min": 3.134,
+    "removed_share": 0.154,
+    "stop_model_removed_share": 0.0609
+   },
+   "minus-brain08-gapon-02": {
+    "minutes": 0.31,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.6,
+    "lowest_assisted_before": 0.05,
+    "rate_h": 15.0,
+    "rate_z": 15.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 17.616,
+     "governor": 2.729,
+     "turn_first": 0.0,
+     "stopping": 0.605,
+     "approach": 7.081
+    },
+    "wall_ahead_s_per_min": 1.026,
+    "removed_share": 0.2328,
+    "stop_model_removed_share": 0.0774
+   },
+   "minus-brain08-loom-01": {
+    "minutes": 0.21,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.92,
+    "lowest_assisted_before": 0.02,
+    "rate_h": 15.0,
+    "rate_z": 4.9869,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 3.602,
+     "governor": 2.058,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 6.727
+    },
+    "wall_ahead_s_per_min": 0.0,
+    "removed_share": 0.121,
+    "stop_model_removed_share": 0.0796
+   },
+   "pine-brain08-loom-01": {
+    "minutes": 0.16,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 8.0,
+    "rate_z": 0.4902,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 1.429,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.0,
+    "removed_share": 0.0028,
+    "stop_model_removed_share": 0.0
+   },
+   "minus-brain08-vg-01": {
+    "minutes": 0.31,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.61,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 8.858,
+     "governor": 2.546,
+     "turn_first": 0.0,
+     "stopping": 0.471,
+     "approach": 6.632
+    },
+    "wall_ahead_s_per_min": 1.572,
+    "removed_share": 0.1556,
+    "stop_model_removed_share": 0.0685
+   },
+   "minus-brain09b-vg-01": {
+    "minutes": 0.36,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.0,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 2.671,
+     "governor": 0.566,
+     "turn_first": 1.731,
+     "stopping": 0.091,
+     "approach": 7.618
+    },
+    "wall_ahead_s_per_min": 1.822,
+    "removed_share": 0.1131,
+    "stop_model_removed_share": 0.083
+   },
+   "minus-brain08-gapshadow-01": {
+    "minutes": 0.22,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.03,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 8.155,
+     "governor": 2.253,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 6.681
+    },
+    "wall_ahead_s_per_min": 0.275,
+    "removed_share": 0.154,
+    "stop_model_removed_share": 0.0761
+   },
+   "minus-brain10b-r4-02": {
+    "minutes": 0.36,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.02,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 6.036,
+     "governor": 1.849,
+     "turn_first": 0.0,
+     "stopping": 1.369,
+     "approach": 5.152
+    },
+    "wall_ahead_s_per_min": 1.369,
+    "removed_share": 0.113,
+    "stop_model_removed_share": 0.0613
+   },
+   "minus-brain09b-r4-01": {
+    "minutes": 0.39,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.05,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 4.706,
+     "governor": 0.836,
+     "turn_first": 0.931,
+     "stopping": 0.198,
+     "approach": 6.584
+    },
+    "wall_ahead_s_per_min": 1.52,
+    "removed_share": 0.1252,
+    "stop_model_removed_share": 0.0812
+   },
+   "straw-brain08-04": {
+    "minutes": 5.45,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 2.084,
+     "governor": 0.026,
+     "turn_first": 0.0,
+     "stopping": 0.091,
+     "approach": 1.7
+    },
+    "wall_ahead_s_per_min": 1.794,
+    "removed_share": 0.0198,
+    "stop_model_removed_share": 0.0089
+   },
+   "straw-brain08-06": {
+    "minutes": 5.45,
+    "planned_crawl_episodes": [
+     {
+      "t": [
+       7.71,
+       7.82
+      ],
+      "x": 23.6,
+      "min_plan": 0.0
+     }
+    ],
+    "lowest_plan_before": 0.0,
+    "lowest_assisted_before": 0.0,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 2.473,
+     "governor": 0.173,
+     "turn_first": 0.0,
+     "stopping": 0.116,
+     "approach": 1.943
+    },
+    "wall_ahead_s_per_min": 2.085,
+    "removed_share": 0.0243,
+    "stop_model_removed_share": 0.0107
+   },
+   "straw-brain08-01": {
+    "minutes": 1.27,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 2.513,
+     "governor": 0.529,
+     "turn_first": 0.0,
+     "stopping": 0.07,
+     "approach": 2.61
+    },
+    "wall_ahead_s_per_min": 2.756,
+    "removed_share": 0.033,
+    "stop_model_removed_share": 0.0155
+   },
+   "straw-brain08-02": {
+    "minutes": 2.74,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 1.46,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 4.806,
+     "governor": 0.276,
+     "turn_first": 0.0,
+     "stopping": 0.046,
+     "approach": 1.737
+    },
+    "wall_ahead_s_per_min": 1.998,
+    "removed_share": 0.0356,
+    "stop_model_removed_share": 0.0087
+   },
+   "straw-brain08-03": {
+    "minutes": 0.99,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.0,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 3.147,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.019,
+     "approach": 3.288
+    },
+    "wall_ahead_s_per_min": 2.822,
+    "removed_share": 0.0418,
+    "stop_model_removed_share": 0.0198
+   },
+   "pine-brain08-01": {
+    "minutes": 0.3,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 3.41,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 4.363,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.938
+    },
+    "wall_ahead_s_per_min": 0.596,
+    "removed_share": 0.0159,
+    "stop_model_removed_share": 0.0021
+   },
+   "minus-brain11cw13-r4b-noassist-01": {
+    "minutes": 0.39,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 2.5,
+    "lowest_assisted_before": 0.05,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 4.133,
+     "governor": 1.263,
+     "turn_first": 0.138,
+     "stopping": 0.813,
+     "approach": 7.977
+    },
+    "wall_ahead_s_per_min": 1.784,
+    "removed_share": 0.1366,
+    "stop_model_removed_share": 0.1008
+   },
+   "straw-brain11cw13-r4b-noassist-02": {
+    "minutes": 1.87,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": 3.41,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 15.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 0.186,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.939
+    },
+    "wall_ahead_s_per_min": 3.203,
+    "removed_share": 0.0052,
+    "stop_model_removed_share": 0.0037
+   },
+   "minus-brain03-01": {
+    "minutes": 0.23,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 8.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 1.626,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.34,
+    "removed_share": 0.0046,
+    "stop_model_removed_share": 0.0
+   },
+   "minus-brain04-02": {
+    "minutes": 0.22,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 8.0001,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 1.771,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.029,
+    "removed_share": 0.0051,
+    "stop_model_removed_share": 0.0
+   },
+   "minus-brain05-01": {
+    "minutes": 0.25,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 8.0,
+    "rate_z": 4.4314,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 1.346,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.662,
+    "removed_share": 0.0033,
+    "stop_model_removed_share": 0.0
+   },
+   "minus-brain06-01": {
+    "minutes": 0.23,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 8.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 1.432,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.0,
+    "removed_share": 0.0035,
+    "stop_model_removed_share": 0.0
+   },
+   "minus-brain07-01": {
+    "minutes": 0.23,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 8.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 0.677,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.142,
+    "removed_share": 0.0009,
+    "stop_model_removed_share": 0.0
+   },
+   "minus-brain08-01": {
+    "minutes": 0.22,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.06,
+    "rate_h": 8.0,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 1.068,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.0,
+    "removed_share": 0.0018,
+    "stop_model_removed_share": 0.0
+   },
+   "minus-brain08-slow35-01": {
+    "minutes": 0.24,
+    "planned_crawl_episodes": [],
+    "lowest_plan_before": null,
+    "lowest_assisted_before": 0.04,
+    "rate_h": 10.8027,
+    "rate_z": 5.0,
+    "zero_dt_change": 0.0,
+    "active_s_per_min": {
+     "request": 41.887,
+     "governor": 0.0,
+     "turn_first": 0.0,
+     "stopping": 0.0,
+     "approach": 0.0
+    },
+    "wall_ahead_s_per_min": 0.238,
+    "removed_share": 0.5239,
+    "stop_model_removed_share": 0.0
+   }
+  }
+ },
+ "passed": {
+  "hairpin_brain11cw13": true,
+  "hairpin_brain09b": true,
+  "hairpin_brain10b": true,
+  "hill_brain11cw13": true,
+  "hill_brain09b": true,
+  "hill_brain10b": true,
+  "identity": true,
+  "minus_plan": true,
+  "warning": true,
+  "quiet": false,
+  "slew": true
+ },
+ "all_passed": false
+}
