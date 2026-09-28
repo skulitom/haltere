@@ -85,7 +85,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
                                               load_vertical_guard)
     declaration, digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert declaration['version'] == VERTICAL_GUARD_VERSION == 3 and declaration['frozen'] is True
+    assert declaration['version'] == VERTICAL_GUARD_VERSION == 4 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     assert vertical_guard_config(declaration) == VG                     # the declared values are the defaults
     # the declared values the task gave: full sink at 1.5 s, none at 0.6 s; about 1 m/s without rising ground
@@ -96,7 +96,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_vertical_guard(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 4
+    other['version'] = 5
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
@@ -105,12 +105,13 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
         vertical_guard_config(other)
 
 
-@pytest.mark.parametrize('version, prefix', [(1, '703f60e33aa0'), (2, 'e06b690d0d4f')])
+@pytest.mark.parametrize('version, prefix', [(1, '703f60e33aa0'), (2, 'e06b690d0d4f'), (3, 'b70e263ccdc5')])
 def test_earlier_versions_are_kept_verbatim_and_refused(version, prefix):
-    """Version 1 (replayed, never flown) and version 2 (replayed, flown on Minus Two in round 3) are kept for
-    provenance: every version keeps v1's values; version 2 changed three rules (the crossing TTC for the sink rules,
-    the binding test of rising ground, keep speed on contact), version 3 two (a path alarm to start a climb, the
-    binding test over the pilot's recent requests)."""
+    """Version 1 (replayed, never flown), version 2 (replayed, flown on Minus Two in round 3) and version 3 (replayed,
+    flown on Minus Two in round 4) are kept for provenance: every version keeps v1's values; version 2 changed three
+    rules (the crossing TTC for the sink rules, the binding test of rising ground, keep speed on contact), version 3
+    two (a path alarm to start a climb, the binding test over the pilot's recent requests), version 4 one (the
+    surface below must keep looming throughout the rising window); no version changed a value."""
     from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
                                               load_vertical_guard)
     current, _ = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
@@ -291,6 +292,72 @@ def test_the_ceiling_guard_still_cuts_a_guarded_climb():
     rows = run(gov, mound_then_ceiling, 1.2, follow=True)
     assert max(r['climb'] for r in rows if r['t'] < .6) > 0 and gov.counts['overhead_engagements'] == 1
     assert all(r['climb'] == 0. for r in rows if r['t'] > .8)
+
+
+# minus-fast6-r4-02, 32.35-32.96 s (development case of version 4): the looming samples the camera published while the
+# fast PD, 0.4-0.9 m above the garage floor, climbed toward a race arch standing on the floor (alarm ttc, ttc_lower,
+# below_fraction), one per frame at 18 Hz. The first two are path alarms received while it already climbed 0.43-0.51
+# m/s; then the guard's own gentle climb lifts it at 0.8-0.95 m/s while the lower window reads the floor and the arch
+# 0.6-1.4 s ahead. Version 3 confirmed rising ground on these samples (3.5 m/s; ceiling impact 1.2 s later).
+R4_02 = [(1.14, .443, 1.), (1.14, .433, 1.), (1.55, 1.041, 1.), (1.577, 1.337, 1.), (1.55, .699, .853),
+         (1.636, 1.081, .943), (1.636, .96, 1.), (1.685, 1.408, 1.), (1.685, .678, 1.), (1.403, .896, .825),
+         (1.248, .614, .84), (1.099, .607, .769)]
+
+
+def r4_02(t, tail=None):
+    k = int(round(t/FRAME))
+    if k < len(R4_02):
+        ttc, lower, below = R4_02[k]
+        return dict(ttc=ttc, lower=lower, below=below)
+    return tail(t) if tail is not None else None
+
+
+def test_rising_ground_needs_the_surface_below_to_keep_looming():
+    """Version 4: every looming sample of the rising window must see the surface below the path within climb_on_s. On the r4-02 samples (two readings of 1.34 and 1.41 s among the rising alarms) nothing escalates;
+    the gentle climb runs as in version 3. The same samples with those two readings short escalate, and so does the
+    r4-02 sequence once the surface keeps looming for rising_window_s."""
+    def rise(t):
+        return .45 if t < .15 else .9
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, r4_02, 1., rise=rise, pilot=lambda t: .4)
+    climb = series(rows, 'climb')
+    assert not gov.escalated and climb.max() == pytest.approx(VG.gentle_climb) and (climb[-20:] > 0).all()
+    assert gov.vertical_counts['clear_below_blocks'] > 0 and gov.vertical_counts['escalations'] == 0
+    assert gov.vertical_counts['gentle_climbs'] == 1
+    short = [(a, min(b, 1.1), c) for a, b, c in R4_02]
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    run(gov, lambda t: dict(zip(('ttc', 'lower', 'below'), short[int(round(t/FRAME))]))
+        if int(round(t/FRAME)) < len(short) else None, 1., rise=rise, pilot=lambda t: .4)
+    assert gov.escalated and gov.vertical_counts['clear_below_blocks'] == 0
+    # the r4-02 sequence followed by a surface that keeps looming: escalated only once no sample of the last
+    # rising_window_s saw it farther than climb_on_s (the 1.41 s reading was captured at 7 frames, received 0.08 s later)
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, lambda t: r4_02(t, lambda t: dict(ttc=1., lower=.6, below=1.)), 2., rise=rise,
+               pilot=lambda t: .4)
+    first = next(r['t'] for r in rows if r['stage'] == 2)
+    assert first >= 7*FRAME+.08+VG.rising_window_s-1e-9 and gov.escalated
+
+
+def test_a_lower_window_that_sees_no_crossing_counts_as_clear_below():
+    """A sample whose vertical windows have evidence (below_fraction known) but whose lower window sees no crossing
+    (no ttc_lower) is clear below as well: the mound's escalation waits rising_window_s after it."""
+    def mound(t):
+        return dict(ttc=.9, below=.95, lower=.3)
+    plain = TtcClearanceGovernor(TTC, vertical=VG)
+    base = run(plain, mound, 1.5, follow=True)
+    t_plain = next(r['t'] for r in base if r['stage'] == 2)
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, lambda t: dict(ttc=3., below=.2) if 3*FRAME-1e-9 <= t < 4*FRAME-1e-9 else mound(t), 1.5,
+               follow=True)
+    first = next(r['t'] for r in rows if r['stage'] == 2)
+    assert gov.vertical_counts['clear_below_samples'] == 1 and first >= 3*FRAME+.08+VG.rising_window_s-1e-9
+    assert first > t_plain
+    # without vertical-window evidence (no below_fraction, no ttc_lower) a sample says nothing: it is only one alarm
+    # fewer (the next alarm confirms), not a block
+    gov = TtcClearanceGovernor(TTC, vertical=VG)
+    rows = run(gov, lambda t: dict(ttc=3.) if 3*FRAME-1e-9 <= t < 4*FRAME-1e-9 else mound(t), 1.5, follow=True)
+    assert next(r['t'] for r in rows if r['stage'] == 2) == pytest.approx(t_plain+FRAME, abs=.011)
+    assert gov.vertical_counts['clear_below_samples'] == 0 and gov.vertical_counts['clear_below_blocks'] == 0
 
 
 def test_without_the_guard_the_governor_is_unchanged():

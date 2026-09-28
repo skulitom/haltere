@@ -26,30 +26,77 @@ def arrays(n=400, dt=.01, **columns):
 
 def test_gates_declaration_is_frozen_and_names_the_guard_version():
     gates, digest = vr.load_gates()
-    assert gates['version'] == 3 and gates['frozen'] is True and digest == gates['sha256']
+    assert gates['version'] == 4 and gates['frozen'] is True and digest == gates['sha256']
     from haltere.liftoff.visual_brain import VERTICAL_GUARD_DECLARATION, load_vertical_guard
     _, guard_digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 3
+    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 4
+    v3, v3_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v3.json'))
     v2, v2_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v2.json'))
     v1, v1_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v1.json'))
+    assert v3['version'] == 3 and v3['vertical_guard']['version'] == 3 and v3_digest.startswith('689635881467')
     assert v2['version'] == 2 and v2['vertical_guard']['version'] == 2 and v2_digest.startswith('53926ceada10')
     assert v1['version'] == 1 and v1['vertical_guard']['version'] == 1 and v1_digest.startswith('977740fbc0f5')
-    assert [p['sha256'] for p in gates['previous_versions']] == [v2_digest, v1_digest] and gates['change']
-    g = gates['gates']
-    # the version-2 definitions are kept and still scored (old_definitions); none is changed silently
-    assert gates['old_definitions']['V_Straw'] == v2['gates']['V_Straw']
-    assert gates['old_definitions']['V_Pine'] == v2['gates']['V_Pine']
-    kept = {k: v for k, v in v2['gates']['V_Straw'].items() if k not in ('whole_lap', 'pass')}
-    assert {k: g['V_Straw_downhill'][k] for k in kept} == kept
-    assert {k: g['V_Minus'][k] for k in v2['gates']['V_Minus'] if k != 'pass'} == {
-        k: v for k, v in v2['gates']['V_Minus'].items() if k != 'pass'}
-    assert g['V_Minus']['no_escalation']['max_climb'] == 1. and len(g['V_Minus']['no_escalation']['flights']) == 9
-    assert (g['V_Pine']['min_vz'], g['V_Pine']['climb_fraction'], g['V_Pine']['last_s']) == (1., .8, 2.)
-    assert g['V_Pine']['mound_fraction'] == .9 and g['V_Straw_uphill']['max_escalated_per_min'] == .2
-    assert len(g['V_Straw_uphill']['flights']) == 9 and len(g['Identity']['flights']) == 21
+    assert [p['sha256'] for p in gates['previous_versions']] == [v3_digest, v2_digest, v1_digest] and gates['change']
+    g, g3 = gates['gates'], v3['gates']
+    # version 3's gates are kept with their values; the changed ones are also scored as v3 defined them
+    assert g['V_Straw_downhill'] == g3['V_Straw_downhill']
+    assert {k: g['V_Minus'][k] for k in g3['V_Minus'] if k not in ('pass', 'no_escalation')} == {
+        k: v for k, v in g3['V_Minus'].items() if k not in ('pass', 'no_escalation')}
+    assert {k: g['V_Minus']['no_escalation'][k] for k in g3['V_Minus']['no_escalation']} == g3['V_Minus'][
+        'no_escalation']
+    assert g['V_Minus']['no_escalation']['held_out_flights'] == ['minus-brain10b-r4-02', 'minus-brain09b-r4-01']
+    assert {k: g['V_Pine'][k] for k in g3['V_Pine'] if k != 'pass'} == {k: v for k, v in g3['V_Pine'].items()
+                                                                          if k != 'pass'}
+    assert g['V_Pine']['mound_escalated_by_s'] == 4.65
+    # tightened, never loosened: no escalated second on the Straw Bale uphills (v3 allowed 0.2 s/min)
+    assert g['V_Straw_uphill']['max_escalated_per_min'] == 0. < g3['V_Straw_uphill']['max_escalated_per_min']
+    assert {k: g['V_Straw_uphill'][k] for k in ('flights', 'max_new_climb')} == {
+        k: g3['V_Straw_uphill'][k] for k in ('flights', 'max_new_climb')}
+    for name in ('V_Straw_uphill', 'V_Pine', 'V_Minus'):
+        assert gates['old_definitions'][name] == g3[name]
+    assert g['V_R4']['flight'] == 'minus-fast6-r4-02' and g['V_R4']['development'] is True
+    assert g['V_R4']['max_climb'] == 1. and g['V_R4']['window'] == [32.4, 33.4]
+    assert g['Identity']['flights'] == g3['Identity']['flights']+['minus-fast6-r4-02', 'minus-brain10b-r4-02',
+                                                                   'minus-brain09b-r4-01']
+    assert gates['baseline_tree']['commit'].startswith('3decaac') and gates['baseline_tree']['guard_version'] == 3
+    assert set(gates['inputs']['as_flown']) == {'minus-fast6-r4-02', 'minus-brain10b-r4-02', 'minus-brain09b-r4-01'}
+    assert set(gates['inputs']['as_flown']) <= {f[:-4] for f in gates['inputs']['log_sha256']}
     assert set(gates['inputs']['stream_flights']) <= set(g['Identity']['flights'])
     assert set(gates['inputs']['looming_stream']['sha256']) == {f'stream_{f}.npz' for f in
                                                                 gates['inputs']['stream_flights']}
+
+
+def test_score_r4_mound_escalation_and_guard_report():
+    """Gates v4: V_R4 (no escalated tick, guard climb and the window's issued request at most max_climb), the mound
+    escalation (a stage-2 tick inside the first logged climb episode, by mound_escalated_by_s) and the keep report."""
+    gate = dict(window=[1., 2.], max_climb=1.)
+    climb = np.zeros(400)
+    climb[100:300] = 1.
+    stage = np.where(climb > 0, 1., 0.)
+    cvz = np.where(climb > 0, .95, 0.)
+    r = vr.score_r4(arrays(vertical_climb=climb, vertical_stage=stage, cvz=cvz, log_cvz=cvz), gate)
+    assert r['passed'] and r['escalated_ticks'] == 0 and r['max_guard_climb'] == 1.
+    stage[150] = 2
+    assert not vr.score_r4(arrays(vertical_climb=climb, vertical_stage=stage, cvz=cvz, log_cvz=cvz), gate)['passed']
+    stage[150], cvz[160] = 1, 1.2
+    assert not vr.score_r4(arrays(vertical_climb=climb, vertical_stage=stage, cvz=cvz, log_cvz=cvz), gate)['passed']
+    log_climb = np.zeros(400)
+    log_climb[50:150] = 3.
+    log_climb[250:300] = 3.
+    stage = np.zeros(400)
+    stage[70:120] = 2                              # escalated at 0.70 s inside the first logged episode (0.5-1.49 s)
+    m = vr.mound_escalation(arrays(log_climb=log_climb, vertical_stage=stage), dict(mound_escalated_by_s=.75))
+    assert m['passed'] and m['first_escalated_t'] == .7 and m['episode'] == [.5, 1.49]
+    assert not vr.mound_escalation(arrays(log_climb=log_climb, vertical_stage=stage),
+                                   dict(mound_escalated_by_s=.65))['passed']
+    late = np.zeros(400)
+    late[260:280] = 2                              # only in the second episode: the mound is not escalated
+    assert not vr.mound_escalation(arrays(log_climb=log_climb, vertical_stage=late),
+                                   dict(mound_escalated_by_s=4.))['passed']
+    report = vr.guard_report(arrays(vertical_climb=np.where(stage > 0, 3.5, 0.), vertical_stage=stage),
+                             arrays(vertical_climb=climb, vertical_stage=np.where(climb > 0, 1., 0.)))
+    assert report['escalated_s'] == .5 and report['escalations'] == 1 and report['max_guard_climb'] == 3.5
+    assert report['baseline'] == dict(climb_s=2., escalated_s=0., escalations=0, max_guard_climb=1.)
 
 
 def test_identity_compares_bitwise_with_nan():

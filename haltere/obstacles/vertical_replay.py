@@ -30,7 +30,8 @@ aim's target, applied shift, flown offset, mode, committed side, conflict and th
 (haltere.obstacles.gap_commit_eval scores them). ``--descent-view DECLARATION`` adds the view-keeping descent of a
 frozen descent-view declaration to any variant (tag -dv<version>; the arrays gain view_sink_bound, view_withheld and
 view_boost): with ``--stack on --near-on-path`` it is the full round-4 stack as `--obstacle-stack on --descent-view on`
-would fly it.
+would fly it. The gates (``score``) are versioned: version 4 scores guard v4 against the m4 tree (guard v3), with the
+round-4 live flights replayed as flown (their stack variants tagged -nop-dv1).
 
 usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [--stack ...] flight ...
 """
@@ -632,6 +633,8 @@ def score_all(out, baseline, gates_path=GATES_PATH, runs=RUNS):
     """Score the frozen gates from the replay files: `out` is this tree's prefix, `baseline` the baseline tree's.
     Expected files: {prefix}_{variant_tag}_{flight}.npz as written by main()."""
     gates, digest = load_gates(gates_path)
+    if gates['version'] >= 4:
+        return score_all_v4(out, baseline, gates, digest, runs)
     if gates['version'] >= 3:
         return score_all_v3(out, baseline, gates, digest, runs)
     g = gates['gates']
@@ -807,6 +810,181 @@ def score_all_v3(out, baseline, gates, digest, runs=RUNS):
                     late_min_requested_vz=pine_v2['late_min_requested_vz'], passed=pine_v2['passed']))
     result['passed'] = {k: result[k]['passed'] for k in ('Identity', 'V_Straw_downhill', 'V_Straw_uphill', 'V_Minus',
                                                          'V_Pine')}
+    return result
+
+
+def score_r4(guard, gate):
+    """V_R4 (gates v4): the guard's terrain climb request never exceeds max_climb and never escalates (vertical_stage 2)
+    over the flight, and the issued vertical request stays at most max_climb in the window of the live false
+    escalation."""
+    t = np.asarray(guard['t'], float)
+    climb = np.nan_to_num(np.asarray(guard['vertical_climb'], float))
+    stage = np.nan_to_num(np.asarray(guard['vertical_stage'], float))
+    window = (t >= gate['window'][0]) & (t <= gate['window'][1])
+    escalated = stage == 2
+    result = dict(max_guard_climb=round(float(climb.max()), 3), escalated_ticks=int(escalated.sum()),
+                  escalated_s=round(float(durations(t)[escalated].sum()), 3),
+                  first_escalated_t=round(float(t[escalated][0]), 3) if escalated.any() else None,
+                  window_max_requested_vz=round(float(np.max(guard['cvz'][window])), 3),
+                  window_logged_max_requested_vz=round(float(np.nanmax(guard['log_cvz'][window])), 3))
+    result['passed'] = bool(result['max_guard_climb'] <= gate['max_climb']+EPS and not escalated.any()
+                            and result['window_max_requested_vz'] <= gate['max_climb']+EPS)
+    return result
+
+
+def mound_escalation(guard, gate):
+    """V_Pine mound_escalation (gates v4): the first tick with vertical_stage 2 inside the first logged climb episode
+    (clearance_climb > 0), which must come at the latest at mound_escalated_by_s."""
+    t = np.asarray(guard['t'], float)
+    climbing = np.nan_to_num(np.asarray(guard['log_climb'], float)) > 0
+    starts = onsets(climbing)
+    if not len(starts):
+        return dict(first_escalated_t=None, passed=False)
+    i = j = starts[0]
+    while j+1 < len(t) and climbing[j+1]:
+        j += 1
+    stage = np.nan_to_num(np.asarray(guard['vertical_stage'], float))[i:j+1]
+    first = float(t[i:j+1][stage == 2][0]) if (stage == 2).any() else None
+    return dict(episode=[round(float(t[i]), 2), round(float(t[j]), 2)],
+                first_escalated_t=None if first is None else round(first, 3),
+                passed=bool(first is not None and first <= gate['mound_escalated_by_s']+EPS))
+
+
+def guard_report(guard, baseline=None):
+    """V_Keep (gates v4, report): guard climb and escalated seconds, escalations and the maximum guard climb of a
+    replay, with the same numbers for the baseline tree's replay when given."""
+    def numbers(a):
+        t = np.asarray(a['t'], float)
+        dt = durations(t)
+        climb = np.nan_to_num(np.asarray(a['vertical_climb'], float))
+        stage = np.nan_to_num(np.asarray(a['vertical_stage'], float))
+        return dict(climb_s=round(float(dt[climb > 0].sum()), 2), escalated_s=round(float(dt[stage == 2].sum()), 2),
+                    escalations=int(len(onsets(stage == 2))), max_guard_climb=round(float(climb.max()), 3))
+    out = numbers(guard)
+    if baseline is not None:
+        out['baseline'] = numbers(baseline)
+    return out
+
+
+def score_all_v4(out, baseline, gates, digest, runs=RUNS):
+    """Score gates version 4 (see configs/obstacles/vertical_guard_gates.json): the baseline is the previous guard's
+    tree (m4, guard v3); stream flights are replayed with the offline looming stream and the round-4 live flights as
+    flown (their stack variants carry the inputs.as_flown suffix). The v3 definitions changed in v4 are also scored on
+    the same replays (old_definitions), and the baseline's own guard replays are reported beside v4's."""
+    g = gates['gates']
+    stream_flights = set(gates['inputs']['stream_flights'])
+    as_flown = gates['inputs'].get('as_flown', {})
+    result = dict(gates_sha256=digest, gates_version=gates['version'], vertical_guard=gates['vertical_guard'],
+                  baseline_tree=gates['baseline_tree'])
+
+    def tag(stack, wall, vertical, flight, stream=None, suffix=None):
+        stream = flight in stream_flights if stream is None else stream
+        base = variant_tag(stack, wall, vertical, stream)
+        if suffix is None:
+            suffix = as_flown.get(flight, '') if stack in ('on', 'shadow') else ''
+        return base+suffix
+
+    def load(prefix, stack, wall, vertical, flight, stream=None, suffix=None):
+        return _load(prefix, tag(stack, wall, vertical, flight, stream, suffix), flight)
+
+    def side(flight):
+        return json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
+    # Identity: stack off and shadow bit-identical to the baseline tree
+    identity = []
+    for flight in g['Identity']['flights']:
+        streamed = flight in stream_flights
+        pairs = [(('none', 'off', 'off', False, ''), 'gate'), (('shadow', 'off', 'shadow', streamed, None), 'gate'),
+                 (('on', 'off', 'off', streamed, None), 'report')]
+        if streamed:
+            pairs.append((('none', 'off', 'off', True, ''), 'gate'))
+        elif flight in as_flown:
+            pairs.append((('none', 'off', 'off', False, '-dv1'), 'gate'))
+        else:
+            pairs += [(('flown', 'on', 'off', False, ''), 'report'), (('flown', 'shadow', 'off', False, ''), 'report')]
+        for (stack, wall, vertical, stream, suffix), kind in pairs:
+            name = tag(stack, wall, vertical, flight, stream, suffix)
+            try:
+                same, keys = identical(_load(out, name, flight), _load(baseline, name, flight))
+            except FileNotFoundError as exc:
+                same, keys = None, str(exc)
+            identity.append(dict(flight=flight, variant=name, kind=kind, identical=same, keys=keys))
+    gate_rows = [r for r in identity if r['kind'] == 'gate']
+    result['Identity'] = dict(pairs=identity, gate_pairs=len(gate_rows),
+                              identical_gate_pairs=sum(bool(r['identical']) for r in gate_rows),
+                              report_pairs=len(identity)-len(gate_rows),
+                              identical_report_pairs=sum(bool(r['identical']) for r in identity if r['kind'] != 'gate'),
+                              passed=bool(gate_rows and all(r['identical'] for r in gate_rows)))
+    # V_R4: the live false escalation, as flown
+    vr4 = g['V_R4']
+    result['V_R4'] = dict(score_r4(load(out, 'on', 'off', 'on', vr4['flight']), vr4),
+                          baseline_report_only=score_r4(load(baseline, 'on', 'off', 'on', vr4['flight']), vr4))
+    # V_Straw downhill (v3's definitions, unchanged)
+    vd = g['V_Straw_downhill']
+    laps = {}
+    for flight in vd['flights']:
+        laps[flight] = score_straw(load(out, 'on', 'off', 'on', flight, True), load(out, 'on', 'off', 'off', flight, True),
+                                   load(out, 'none', 'off', 'off', flight, False), vd)
+    episodes = [e for lap in laps.values() for e in lap['episodes']]
+    fraction = sum(e['limited_before_contact'] for e in episodes)/len(episodes) if episodes else None
+    result['V_Straw_downhill'] = dict(
+        laps=laps, n_episodes=len(episodes), limited_fraction=None if fraction is None else round(fraction, 3),
+        limited_passed=bool(episodes and fraction >= vd['limited_fraction']),
+        not_raised_passed=all(lap['ticks_raised_above_pilot'] == 0 for lap in laps.values()),
+        horizontal_passed=all(lap['ticks_horizontal_reduced'] == 0 for lap in laps.values()))
+    result['V_Straw_downhill']['passed'] = all(result['V_Straw_downhill'][k] for k in
+                                               ('limited_passed', 'not_raised_passed', 'horizontal_passed'))
+    # V_Straw uphill (tightened to no escalated tick)
+    vu = g['V_Straw_uphill']
+    result['V_Straw_uphill'] = score_straw_uphill({f: load(out, 'on', 'off', 'on', f, True) for f in vu['flights']}, vu)
+    result['V_Straw_uphill']['baseline_report_only'] = score_straw_uphill(
+        {f: load(baseline, 'on', 'off', 'on', f, True) for f in vu['flights']}, vu)
+    # V_Minus: v3's windows and floor sink, no escalation on every Minus Two flight and on the held-out flights
+    vm = g['V_Minus']
+    minus, control = {}, {}
+    for flight, spec in vm['flights'].items():
+        minus[flight] = score_minus(load(out, 'on', 'off', 'on', flight), side(flight), vm, spec['floor_sink'])
+        control[flight] = score_minus(load(out, 'on', 'off', 'off', flight), side(flight), vm, spec['floor_sink'])
+    no_escalation = vm['no_escalation']
+    escalation = {f: score_minus_escalation(load(out, 'on', 'off', 'on', f), no_escalation)
+                  for f in no_escalation['flights']+no_escalation.get('held_out_flights', [])}
+    result['V_Minus'] = dict(flights=minus, control_report_only=control, no_escalation=escalation,
+                             windows_passed=all(r.get('passed') for r in minus.values()),
+                             no_escalation_passed=all(r['passed'] for r in escalation.values()),
+                             held_out_passed=all(escalation[f]['passed']
+                                                 for f in no_escalation.get('held_out_flights', [])))
+    result['V_Minus']['passed'] = result['V_Minus']['windows_passed'] and result['V_Minus']['no_escalation_passed']
+    # V_Pine: v3's three criteria and the mound escalation
+    vp = g['V_Pine']
+    pine = score_pine_v3(load(out, 'on', 'off', 'on', vp['flight']), side(vp['flight']), vp)
+    pine['mound_escalation'] = mound_escalation(load(out, 'on', 'off', 'on', vp['flight']), vp)
+    pine['passed'] = pine['passed'] and pine['mound_escalation']['passed']
+    pine['baseline_report_only'] = score_pine_v3(load(baseline, 'on', 'off', 'on', vp['flight']), side(vp['flight']),
+                                                 vp)
+    pine['baseline_report_only']['mound_escalation'] = mound_escalation(
+        load(baseline, 'on', 'off', 'on', vp['flight']), vp)
+    pine['control_report_only'] = score_pine_v3(load(out, 'on', 'off', 'off', vp['flight']), side(vp['flight']), vp)
+    pine['other_flights_report_only'] = {}
+    for flight in vp.get('report_flights', []):
+        pine['other_flights_report_only'][flight] = guard_report(load(out, 'on', 'off', 'on', flight),
+                                                                 load(baseline, 'on', 'off', 'on', flight))
+    result['V_Pine'] = pine
+    # V_Keep (report): every guard replay against the baseline's
+    result['V_Keep'] = {f: guard_report(load(out, 'on', 'off', 'on', f), load(baseline, 'on', 'off', 'on', f))
+                        for f in g['Identity']['flights']}
+    # the version-3 definitions changed in v4 (report)
+    old = gates['old_definitions']
+    uphill = score_straw_uphill({f: load(out, 'on', 'off', 'on', f, True) for f in old['V_Straw_uphill']['flights']},
+                                old['V_Straw_uphill'])
+    pine_v3 = score_pine_v3(load(out, 'on', 'off', 'on', old['V_Pine']['flight']), side(old['V_Pine']['flight']),
+                            old['V_Pine'])
+    result['old_definitions'] = dict(
+        V_Straw_uphill=dict(escalated_per_min=uphill['escalated_per_min'], passed=uphill['passed']),
+        V_Pine=dict(answered_fraction=pine_v3['answered_fraction'], mound_height_fraction=pine_v3['mound_height_fraction'],
+                    passed=pine_v3['passed']),
+        V_Minus=dict(passed=result['V_Minus']['windows_passed'] and all(
+            escalation[f]['passed'] for f in old['V_Minus']['no_escalation']['flights'])))
+    result['passed'] = {k: result[k]['passed'] for k in ('Identity', 'V_R4', 'V_Straw_downhill', 'V_Straw_uphill',
+                                                         'V_Minus', 'V_Pine')}
     return result
 
 

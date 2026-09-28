@@ -1,0 +1,2815 @@
+{
+ "gates_sha256": "7901b154abbe69a1fad31e818ea91ef3b457dded519bd2aaaa44b1ecdbbe243f",
+ "gates_version": 4,
+ "vertical_guard": {
+  "file": "configs/obstacles/vertical_guard.json",
+  "version": 4,
+  "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8"
+ },
+ "baseline_tree": {
+  "branch": "m4",
+  "commit": "3decaac56cf0afdd3ac01e32131c67bfdb00fe9f",
+  "guard_version": 3,
+  "note": "the previous guard (v3) and the integrated round-4 stack; Identity compares stack off and shadow with it, and its guard replays are reported beside version 4"
+ },
+ "Identity": {
+  "pairs": [
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-wall-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-loom-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-gapshadow-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-fast6-ttc-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "shadow-wshadow-vshadow",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "on-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "flown-won-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-loom-01",
+    "variant": "flown-wshadow-voff",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-01",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-01",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "pine-brain08-01",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-04",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-04",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-04",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-04",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-06",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-06",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-06",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-06",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-01",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-01",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-01",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-02",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-02",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-02",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-02",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-03",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-03",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-03",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-brain08-03",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-01",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-01",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-01",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-02",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-02",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-02",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-02",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-03",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-03",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-03",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-03",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-arc-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-arc-01",
+    "variant": "shadow-wshadow-vshadow-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-arc-01",
+    "variant": "on-won-voff-stream",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "straw-fast6-arc-01",
+    "variant": "none-woff-voff-stream",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-r4-02",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-r4-02",
+    "variant": "shadow-wshadow-vshadow-nop-dv1",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-r4-02",
+    "variant": "on-won-voff-nop-dv1",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-fast6-r4-02",
+    "variant": "none-woff-voff-dv1",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain10b-r4-02",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain10b-r4-02",
+    "variant": "shadow-wshadow-vshadow-nop-dv1",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain10b-r4-02",
+    "variant": "on-won-voff-nop-dv1",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain10b-r4-02",
+    "variant": "none-woff-voff-dv1",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-r4-01",
+    "variant": "none-woff-voff",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-r4-01",
+    "variant": "shadow-wshadow-vshadow-nop-dv1",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-r4-01",
+    "variant": "on-won-voff-nop-dv1",
+    "kind": "report",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   },
+   {
+    "flight": "minus-brain09b-r4-01",
+    "variant": "none-woff-voff-dv1",
+    "kind": "gate",
+    "identical": true,
+    "keys": {
+     "cvx": true,
+     "cvy": true,
+     "cvz": true,
+     "yaw_cmd": true,
+     "state": true,
+     "cap": true,
+     "climb": true,
+     "descent_scale": true
+    }
+   }
+  ],
+  "gate_pairs": 61,
+  "identical_gate_pairs": 61,
+  "report_pairs": 46,
+  "identical_report_pairs": 46,
+  "passed": true
+ },
+ "V_R4": {
+  "max_guard_climb": 1.0,
+  "escalated_ticks": 0,
+  "escalated_s": 0.0,
+  "first_escalated_t": null,
+  "window_max_requested_vz": 0.958,
+  "window_logged_max_requested_vz": 2.721,
+  "passed": true,
+  "baseline_report_only": {
+   "max_guard_climb": 3.5,
+   "escalated_ticks": 34,
+   "escalated_s": 0.34,
+   "first_escalated_t": 32.899,
+   "window_max_requested_vz": 2.742,
+   "window_logged_max_requested_vz": 2.721,
+   "passed": false
+  }
+ },
+ "V_Straw_downhill": {
+  "laps": {
+   "straw-brain08-04": {
+    "episodes": [
+     {
+      "onset_t": 72.31,
+      "contact_t": 71.7,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 49,
+      "descent_scale_guard_min": 1.0,
+      "descent_scale_control_min": 0.476,
+      "descent_scale_guard_mean": 1.0,
+      "descent_scale_control_mean": 0.944
+     },
+     {
+      "onset_t": 176.96,
+      "contact_t": 176.34,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 49,
+      "descent_scale_guard_min": 0.906,
+      "descent_scale_control_min": 0.525,
+      "descent_scale_guard_mean": 0.997,
+      "descent_scale_control_mean": 0.916
+     },
+     {
+      "onset_t": 283.4,
+      "contact_t": 282.79,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 50,
+      "descent_scale_guard_min": 0.86,
+      "descent_scale_control_min": 0.437,
+      "descent_scale_guard_mean": 0.997,
+      "descent_scale_control_mean": 0.898
+     },
+     {
+      "onset_t": 288.48,
+      "contact_t": 287.86,
+      "limited_before_contact": true,
+      "first_limit_t": 284.86,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 49,
+      "descent_scale_guard_min": 0.874,
+      "descent_scale_control_min": 0.508,
+      "descent_scale_guard_mean": 0.997,
+      "descent_scale_control_mean": 0.916
+     }
+    ],
+    "n_episodes": 4,
+    "limited_fraction": 0.25,
+    "ticks_descending_in_windows": 1498,
+    "ticks_raised_above_pilot": 0,
+    "ticks_horizontal_reduced": 0,
+    "max_horizontal_reduction": 0.0,
+    "whole_lap": {
+     "minutes": 5.45,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0,
+     "control_max_climb": 3.276,
+     "control_climb_s": 12.45,
+     "limiting_s": 6.78,
+     "limiting_per_min": 1.29,
+     "arrest_s": 1.14,
+     "arrest_per_min": 0.37,
+     "climb_s": 9.55,
+     "climb_per_min": 1.29,
+     "escalated_s": 0.0,
+     "descent_scale_guard_mean": 0.9985,
+     "descent_scale_control_mean": 0.9891
+    },
+    "passed": false
+   },
+   "straw-brain08-06": {
+    "episodes": [
+     {
+      "onset_t": 71.54,
+      "contact_t": 70.92,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 38,
+      "descent_scale_guard_min": 0.647,
+      "descent_scale_control_min": 0.445,
+      "descent_scale_guard_mean": 0.975,
+      "descent_scale_control_mean": 0.897
+     },
+     {
+      "onset_t": 76.75,
+      "contact_t": 76.13,
+      "limited_before_contact": true,
+      "first_limit_t": 73.14,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 42,
+      "descent_scale_guard_min": 0.871,
+      "descent_scale_control_min": 0.466,
+      "descent_scale_guard_mean": 0.997,
+      "descent_scale_control_mean": 0.906
+     },
+     {
+      "onset_t": 177.51,
+      "contact_t": 176.89,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 50,
+      "descent_scale_guard_min": 1.0,
+      "descent_scale_control_min": 0.508,
+      "descent_scale_guard_mean": 1.0,
+      "descent_scale_control_mean": 0.932
+     },
+     {
+      "onset_t": 182.98,
+      "contact_t": 182.36,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 50,
+      "descent_scale_guard_min": 0.714,
+      "descent_scale_control_min": 0.471,
+      "descent_scale_guard_mean": 0.988,
+      "descent_scale_control_mean": 0.899
+     },
+     {
+      "onset_t": 282.63,
+      "contact_t": 282.01,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 39,
+      "descent_scale_guard_min": 0.913,
+      "descent_scale_control_min": 0.451,
+      "descent_scale_guard_mean": 0.999,
+      "descent_scale_control_mean": 0.896
+     },
+     {
+      "onset_t": 287.84,
+      "contact_t": 287.22,
+      "limited_before_contact": false,
+      "first_limit_t": null,
+      "samples_with_ttc_lower_before": 0,
+      "samples_before": 49,
+      "descent_scale_guard_min": 0.839,
+      "descent_scale_control_min": 0.478,
+      "descent_scale_guard_mean": 0.996,
+      "descent_scale_control_mean": 0.906
+     }
+    ],
+    "n_episodes": 6,
+    "limited_fraction": 0.167,
+    "ticks_descending_in_windows": 2290,
+    "ticks_raised_above_pilot": 0,
+    "ticks_horizontal_reduced": 0,
+    "max_horizontal_reduction": 0.0,
+    "whole_lap": {
+     "minutes": 5.45,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0,
+     "control_max_climb": 2.957,
+     "control_climb_s": 10.4,
+     "limiting_s": 3.67,
+     "limiting_per_min": 2.2,
+     "arrest_s": 0.0,
+     "arrest_per_min": 0.0,
+     "climb_s": 11.21,
+     "climb_per_min": 1.65,
+     "escalated_s": 0.0,
+     "descent_scale_guard_mean": 0.9993,
+     "descent_scale_control_mean": 0.9882
+    },
+    "passed": false
+   }
+  },
+  "n_episodes": 10,
+  "limited_fraction": 0.2,
+  "limited_passed": false,
+  "not_raised_passed": true,
+  "horizontal_passed": true,
+  "passed": false
+ },
+ "V_Straw_uphill": {
+  "laps": {
+   "straw-brain08-04": {
+    "minutes": 5.45,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 9.55,
+    "climb_onsets": 7,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-brain08-06": {
+    "minutes": 5.45,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 11.21,
+    "climb_onsets": 9,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-brain08-01": {
+    "minutes": 1.27,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 4.61,
+    "climb_onsets": 3,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-brain08-02": {
+    "minutes": 2.74,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 7.44,
+    "climb_onsets": 5,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-brain08-03": {
+    "minutes": 0.99,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 4.07,
+    "climb_onsets": 3,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-fast6-01": {
+    "minutes": 1.04,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 4.44,
+    "climb_onsets": 4,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-fast6-02": {
+    "minutes": 5.2,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 13.39,
+    "climb_onsets": 13,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-fast6-03": {
+    "minutes": 5.19,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 14.35,
+    "climb_onsets": 14,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   },
+   "straw-fast6-arc-01": {
+    "minutes": 4.6,
+    "escalated_s": 0.0,
+    "escalated_per_min": 0.0,
+    "escalations": 0,
+    "climb_s": 19.27,
+    "climb_onsets": 17,
+    "max_guard_climb": 1.0,
+    "ticks_guard_climb_above_limit": 0
+   }
+  },
+  "escalated_s": 0.0,
+  "minutes": 31.92,
+  "escalated_per_min": 0.0,
+  "passed": true,
+  "baseline_report_only": {
+   "laps": {
+    "straw-brain08-04": {
+     "minutes": 5.45,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 9.55,
+     "climb_onsets": 7,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-brain08-06": {
+     "minutes": 5.45,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 11.21,
+     "climb_onsets": 9,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-brain08-01": {
+     "minutes": 1.27,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 4.61,
+     "climb_onsets": 3,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-brain08-02": {
+     "minutes": 2.74,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 7.44,
+     "climb_onsets": 5,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-brain08-03": {
+     "minutes": 0.99,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 4.07,
+     "climb_onsets": 3,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-fast6-01": {
+     "minutes": 1.04,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 4.44,
+     "climb_onsets": 4,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-fast6-02": {
+     "minutes": 5.2,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 13.39,
+     "climb_onsets": 13,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-fast6-03": {
+     "minutes": 5.19,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 14.35,
+     "climb_onsets": 14,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    },
+    "straw-fast6-arc-01": {
+     "minutes": 4.6,
+     "escalated_s": 0.0,
+     "escalated_per_min": 0.0,
+     "escalations": 0,
+     "climb_s": 19.27,
+     "climb_onsets": 17,
+     "max_guard_climb": 1.0,
+     "ticks_guard_climb_above_limit": 0
+    }
+   },
+   "escalated_s": 0.0,
+   "minutes": 31.92,
+   "escalated_per_min": 0.0,
+   "passed": true
+  }
+ },
+ "V_Minus": {
+  "flights": {
+   "minus-fast6-wall-01": {
+    "scored": true,
+    "window": [
+     11.52,
+     13.41
+    ],
+    "logged_climb_onset": 12.52,
+    "ticks": 189,
+    "max_requested_vz": 0.97,
+    "logged_max_requested_vz": 3.441,
+    "floor_sink": {
+     "sink_start_t": 12.27,
+     "z_ref": 0.784,
+     "descent_t": [
+      12.36,
+      12.55
+     ],
+     "level_request_from_t": 12.36,
+     "height_loss_at_level_request": 0.022,
+     "max_height_loss_in_sink": 0.086,
+     "min_requested_vz_in_sink": 0.019
+    },
+    "passed": true
+   },
+   "minus-brain08-gapon-01": {
+    "scored": true,
+    "window": [
+     16.61,
+     19.07
+    ],
+    "logged_climb_onset": 17.61,
+    "ticks": 246,
+    "max_requested_vz": 0.116,
+    "logged_max_requested_vz": 3.5,
+    "passed": true
+   },
+   "minus-brain08-gapon-02": {
+    "scored": true,
+    "window": [
+     16.74,
+     18.58
+    ],
+    "logged_climb_onset": 17.74,
+    "ticks": 185,
+    "max_requested_vz": 0.976,
+    "logged_max_requested_vz": 3.5,
+    "passed": true
+   }
+  },
+  "control_report_only": {
+   "minus-fast6-wall-01": {
+    "scored": true,
+    "window": [
+     11.52,
+     13.41
+    ],
+    "logged_climb_onset": 12.52,
+    "ticks": 189,
+    "max_requested_vz": 3.441,
+    "logged_max_requested_vz": 3.441,
+    "floor_sink": {
+     "sink_start_t": 12.27,
+     "z_ref": 0.784,
+     "descent_t": [
+      12.36,
+      12.55
+     ],
+     "level_request_from_t": 12.36,
+     "height_loss_at_level_request": 0.022,
+     "max_height_loss_in_sink": 0.086,
+     "min_requested_vz_in_sink": 0.019
+    },
+    "passed": false
+   },
+   "minus-brain08-gapon-01": {
+    "scored": true,
+    "window": [
+     16.61,
+     19.07
+    ],
+    "logged_climb_onset": 17.61,
+    "ticks": 246,
+    "max_requested_vz": 0.792,
+    "logged_max_requested_vz": 3.5,
+    "passed": true
+   },
+   "minus-brain08-gapon-02": {
+    "scored": true,
+    "window": [
+     16.74,
+     18.58
+    ],
+    "logged_climb_onset": 17.74,
+    "ticks": 185,
+    "max_requested_vz": 3.457,
+    "logged_max_requested_vz": 3.5,
+    "passed": false
+   }
+  },
+  "no_escalation": {
+   "minus-fast6-wall-01": {
+    "max_guard_climb": 1.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain08-gapon-01": {
+    "max_guard_climb": 0.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain08-gapon-02": {
+    "max_guard_climb": 1.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-fast6-gapon-01": {
+    "max_guard_climb": 1.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain08-loom-01": {
+    "max_guard_climb": 0.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain08-gapshadow-01": {
+    "max_guard_climb": 0.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-fast6-vg-02": {
+    "max_guard_climb": 0.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain08-vg-01": {
+    "max_guard_climb": 1.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain09b-vg-01": {
+    "max_guard_climb": 0.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain10b-r4-02": {
+    "max_guard_climb": 1.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   },
+   "minus-brain09b-r4-01": {
+    "max_guard_climb": 0.0,
+    "escalated_s": 0.0,
+    "max_requested_vz": 1.5,
+    "passed": true
+   }
+  },
+  "windows_passed": true,
+  "no_escalation_passed": true,
+  "held_out_passed": true,
+  "passed": true
+ },
+ "V_Pine": {
+  "strong_logged_s": 5.02,
+  "answered_s": 3.73,
+  "answered_fraction": 0.743,
+  "episodes": [
+   {
+    "t": [
+     4.3,
+     6.01
+    ],
+    "strong_s": 1.38,
+    "answered_s": 1.27,
+    "height_request_m": 3.628,
+    "flown_height_request_m": 3.418,
+    "max_requested_vz": 3.5
+   },
+   {
+    "t": [
+     15.21,
+     16.91
+    ],
+    "strong_s": 1.39,
+    "answered_s": 0.38,
+    "height_request_m": 0.512,
+    "flown_height_request_m": 3.169,
+    "max_requested_vz": 1.0
+   },
+   {
+    "t": [
+     17.63,
+     20.53
+    ],
+    "strong_s": 2.25,
+    "answered_s": 2.08,
+    "height_request_m": 4.547,
+    "flown_height_request_m": 4.533,
+    "max_requested_vz": 3.183
+   }
+  ],
+  "late_window": [
+   19.23,
+   21.23
+  ],
+  "late_min_requested_vz": -0.7003,
+  "logged_late_min_requested_vz": -0.717,
+  "mound_height_fraction": 1.0614,
+  "climb_passed": false,
+  "no_descent_passed": false,
+  "mound_passed": true,
+  "passed": false,
+  "mound_escalation": {
+   "episode": [
+    4.3,
+    6.01
+   ],
+   "first_escalated_t": 4.55,
+   "passed": true
+  },
+  "baseline_report_only": {
+   "strong_logged_s": 5.02,
+   "answered_s": 3.9,
+   "answered_fraction": 0.7769,
+   "episodes": [
+    {
+     "t": [
+      4.3,
+      6.01
+     ],
+     "strong_s": 1.38,
+     "answered_s": 1.27,
+     "height_request_m": 3.628,
+     "flown_height_request_m": 3.418,
+     "max_requested_vz": 3.5
+    },
+    {
+     "t": [
+      15.21,
+      16.91
+     ],
+     "strong_s": 1.39,
+     "answered_s": 0.38,
+     "height_request_m": 0.512,
+     "flown_height_request_m": 3.169,
+     "max_requested_vz": 1.0
+    },
+    {
+     "t": [
+      17.63,
+      20.53
+     ],
+     "strong_s": 2.25,
+     "answered_s": 2.25,
+     "height_request_m": 5.431,
+     "flown_height_request_m": 4.533,
+     "max_requested_vz": 3.278
+    }
+   ],
+   "late_window": [
+    19.23,
+    21.23
+   ],
+   "late_min_requested_vz": -0.7003,
+   "logged_late_min_requested_vz": -0.717,
+   "mound_height_fraction": 1.0614,
+   "climb_passed": false,
+   "no_descent_passed": false,
+   "mound_passed": true,
+   "passed": false,
+   "mound_escalation": {
+    "episode": [
+     4.3,
+     6.01
+    ],
+    "first_escalated_t": 4.55,
+    "passed": true
+   }
+  },
+  "control_report_only": {
+   "strong_logged_s": 5.02,
+   "answered_s": 4.49,
+   "answered_fraction": 0.8944,
+   "episodes": [
+    {
+     "t": [
+      4.3,
+      6.01
+     ],
+     "strong_s": 1.38,
+     "answered_s": 1.27,
+     "height_request_m": 3.138,
+     "flown_height_request_m": 3.418,
+     "max_requested_vz": 3.043
+    },
+    {
+     "t": [
+      15.21,
+      16.91
+     ],
+     "strong_s": 1.39,
+     "answered_s": 1.14,
+     "height_request_m": 3.181,
+     "flown_height_request_m": 3.169,
+     "max_requested_vz": 3.5
+    },
+    {
+     "t": [
+      17.63,
+      20.53
+     ],
+     "strong_s": 2.25,
+     "answered_s": 2.08,
+     "height_request_m": 4.452,
+     "flown_height_request_m": 4.533,
+     "max_requested_vz": 3.19
+    }
+   ],
+   "late_window": [
+    19.23,
+    21.23
+   ],
+   "late_min_requested_vz": -0.717,
+   "logged_late_min_requested_vz": -0.717,
+   "mound_height_fraction": 0.9181,
+   "climb_passed": true,
+   "no_descent_passed": false,
+   "mound_passed": true,
+   "passed": false
+  },
+  "other_flights_report_only": {
+   "pine-brain08-loom-01": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0,
+    "baseline": {
+     "climb_s": 0.0,
+     "escalated_s": 0.0,
+     "escalations": 0,
+     "max_guard_climb": 1.0
+    }
+   },
+   "pine-brain08-01": {
+    "climb_s": 3.8,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0,
+    "baseline": {
+     "climb_s": 4.17,
+     "escalated_s": 1.0,
+     "escalations": 1,
+     "max_guard_climb": 3.5
+    }
+   }
+  }
+ },
+ "V_Keep": {
+  "minus-fast6-wall-01": {
+   "climb_s": 0.83,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 0.83,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "minus-brain08-gapon-01": {
+   "climb_s": 0.0,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 0.0,
+   "baseline": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 0.0
+   }
+  },
+  "minus-brain08-gapon-02": {
+   "climb_s": 0.37,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 0.37,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "minus-fast6-gapon-01": {
+   "climb_s": 1.38,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 1.38,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "minus-brain08-loom-01": {
+   "climb_s": 0.0,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 0.0,
+   "baseline": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 0.0
+   }
+  },
+  "minus-brain08-gapshadow-01": {
+   "climb_s": 0.0,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 0.0,
+   "baseline": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 0.0
+   }
+  },
+  "minus-fast6-vg-02": {
+   "climb_s": 0.0,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 0.0,
+   "baseline": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 0.0
+   }
+  },
+  "minus-brain08-vg-01": {
+   "climb_s": 0.75,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 0.75,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "minus-brain09b-vg-01": {
+   "climb_s": 0.0,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 0.0,
+   "baseline": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 0.0
+   }
+  },
+  "pine-fast6-ttc-01": {
+   "climb_s": 5.74,
+   "escalated_s": 3.36,
+   "escalations": 2,
+   "max_guard_climb": 3.5,
+   "baseline": {
+    "climb_s": 5.74,
+    "escalated_s": 3.97,
+    "escalations": 2,
+    "max_guard_climb": 3.5
+   }
+  },
+  "pine-brain08-loom-01": {
+   "climb_s": 0.0,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "pine-brain08-01": {
+   "climb_s": 3.8,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 4.17,
+    "escalated_s": 1.0,
+    "escalations": 1,
+    "max_guard_climb": 3.5
+   }
+  },
+  "straw-brain08-04": {
+   "climb_s": 9.55,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 9.55,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-brain08-06": {
+   "climb_s": 11.21,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 11.21,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-brain08-01": {
+   "climb_s": 4.61,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 4.61,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-brain08-02": {
+   "climb_s": 7.44,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 7.44,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-brain08-03": {
+   "climb_s": 4.07,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 4.07,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-fast6-01": {
+   "climb_s": 4.44,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 4.44,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-fast6-02": {
+   "climb_s": 13.39,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 13.39,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-fast6-03": {
+   "climb_s": 14.35,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 14.35,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "straw-fast6-arc-01": {
+   "climb_s": 19.27,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 19.27,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "minus-fast6-r4-02": {
+   "climb_s": 0.83,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 0.83,
+    "escalated_s": 0.34,
+    "escalations": 1,
+    "max_guard_climb": 3.5
+   }
+  },
+  "minus-brain10b-r4-02": {
+   "climb_s": 1.27,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 1.0,
+   "baseline": {
+    "climb_s": 1.27,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 1.0
+   }
+  },
+  "minus-brain09b-r4-01": {
+   "climb_s": 0.0,
+   "escalated_s": 0.0,
+   "escalations": 0,
+   "max_guard_climb": 0.0,
+   "baseline": {
+    "climb_s": 0.0,
+    "escalated_s": 0.0,
+    "escalations": 0,
+    "max_guard_climb": 0.0
+   }
+  }
+ },
+ "old_definitions": {
+  "V_Straw_uphill": {
+   "escalated_per_min": 0.0,
+   "passed": true
+  },
+  "V_Pine": {
+   "answered_fraction": 0.743,
+   "mound_height_fraction": 1.0614,
+   "passed": false
+  },
+  "V_Minus": {
+   "passed": true
+  }
+ },
+ "passed": {
+  "Identity": true,
+  "V_R4": true,
+  "V_Straw_downhill": false,
+  "V_Straw_uphill": true,
+  "V_Minus": true,
+  "V_Pine": false
+ }
+}

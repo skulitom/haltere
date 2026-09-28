@@ -1,18 +1,55 @@
-# Obstacle stack: vertical guard (rounds 3-4)
+# Obstacle stack: vertical guard (rounds 3-4b)
 
-**Status: version 3 is not flown.** Only open-loop replays of logged flights, an idealised
-closed-loop check and unit tests exist for it. Version 2 flew three Minus Two attempts in
-round 3 (`minus-fast6-vg-02`, `minus-brain08-vg-01`, `minus-brain09b-vg-01`: no ceiling
-climb). The guard is part of the obstacle stack (`--obstacle-stack on|shadow`;
-`--vertical-guard off` removes it). `shadow` computes and logs it without applying it.
-Nothing changes without the stack. The declaration is
-`configs/obstacles/vertical_guard.json` **version 3**. Versions 1 and 2 are kept and
-refused.
+**Status: version 4 is not flown.** Only open-loop replays of logged flights, idealised
+closed-loop checks and unit tests exist for it. Version 3 flew three Minus Two attempts in round
+4 on branch `m4`:
+
+- `minus-fast6-r4-02`: rising ground falsely confirmed, then a ceiling impact;
+- `minus-brain10b-r4-02` and `minus-brain09b-r4-01`: no escalation.
+
+Version 2 flew three attempts in round 3 with no ceiling climb. The guard is part of the
+obstacle stack (`--obstacle-stack on|shadow`; `--vertical-guard off` removes it), and `shadow`
+computes and logs it without applying it. Nothing changes without the stack. The declaration
+is `configs/obstacles/vertical_guard.json` **version 4**. Versions 1-3 are kept and refused.
+
+![Guard v3 and v4 on minus-fast6-r4-02 and the Pine Valley mound (open-loop replays)](vertical_guard_v4.png)
+
+*Open-loop replays (development evidence, not flights). Left: `minus-fast6-r4-02` replayed as
+it flew. Version 3 confirms rising ground at 32.90 s and asks for up to 2.7 m/s; version 4
+stays at the gentle 1 m/s. Its readings of 1.34 and 1.41 s (above the dotted line) show that the
+surface below did not keep looming. Right: the Pine Valley mound. Both versions escalate at
+4.55 s, where no reading exceeds 0.67 s.*
+
+**Round 4b in short.** Version 4 adds one condition to the rising-ground confirmation, with no
+new value: no looming sample of the rising window (0.5 s) may have seen the surface below the
+path farther than `climb_on_s` (1.2 s).
+
+- **Fixed (development case).** The false escalation of `minus-fast6-r4-02` is gone in its
+  replay as flown. The guard stays at 1 m/s, where version 3 asked 3.5 m/s under the ~2.2 m
+  ceiling.
+- **Kept.**
+  - Identity with `m4` (61/61 pairs).
+  - No escalation on Straw Bale (0 s on nine laps).
+  - Minus Two at most 1 m/s on all 11 logs, the two held-out round-4 flights included.
+  - The Pine mound: escalated at 4.55 s, 106% of the flown height request.
+- **Cost.**
+  - The Pine hillside at 17.6 s escalates 0.61 s later. V-Pine's climb fraction falls from
+    77.7% to 74.3%; it fails as with version 3.
+  - `pine-brain08-01` loses its one escalation, 1.0 s before that flight's impact.
+
+Two findings change the picture of round 4:
+
+- **The live surface was not only a floor.** It was the floor at the onset, then a race arch
+  that the gentle climb lifted the path onto.
+- **The floor skim at 26.5-29.5 s came from the looming brake, not the descent view.** A
+  stand-off cap along an 11-deg upward ray turned the pilot's +0.2 m/s into a -0.35 m/s request.
+
+See [Round 4b](#round-4b-version-4) and [Limits](#limits-and-risks).
 
 ![Guard v2 and v3 on a Straw Bale lap and on Pine Valley (open-loop replays)](vertical_guard_v3.png)
 
-*Open-loop replays (development evidence, not flights). Top: the first uphill legs of
-`straw-brain08-04`, which flew without looming and without contact there. Version 2
+*Round 4, version 3. Open-loop replays (development evidence, not flights). Top: the first
+uphill legs of `straw-brain08-04`, which flew without looming and without contact there. Version 2
 escalated three times, to 3.0-3.5 m/s, while the pilot itself climbed toward rings up the
 hill; version 3 follows the pilot. Bottom: `pine-fast6-ttc-01`. Both versions climb the
 mound at up to 3.5 m/s; on the hillside at 15.2 s both answer the flown 3.5 m/s climb with
@@ -43,10 +80,10 @@ It answers three findings of round 2 (see the
   and height instead of sinking into the hill.
 - **Pine Valley.** The mound climb (`pine-fast6-ttc-01`) must keep working.
 
-## The rules (version 3)
+## The rules (version 4)
 
-Rules 1, 2 and 4 are version 2's. Version 3 changes two parts of rule 3 (marked **v3**);
-no value changes.
+Rules 1, 2 and 4 are version 2's. Version 3 changed two parts of rule 3 (marked **v3**).
+Version 4 adds one condition to rule 3 (marked **v4**). No version changed or added a value.
 
 All in `haltere/liftoff/fast_race_cue.py` (`VerticalGuardConfig`, `TtcClearanceGovernor`,
 `FastRaceCue`). The guard is **scale-free**:
@@ -98,6 +135,14 @@ between.
      its own request, and a one-tick dip of that request at a checkpoint switch does not
      make the guard's climb the reason. Version 2 compared the guard's climb only with the
      pilot's request of the same tick.
+   - **v4:** the ground must keep looming throughout the rising window. No looming sample
+     received in the 0.5 s before the confirming alarm may have seen the surface below the
+     path farther than `climb_on_s` (1.2 s). That is a lower-surface TTC, aged by odometry,
+     of 1.2 s or more, or no lower-surface TTC although `below_fraction` is known (the
+     lower window saw no crossing). A sample without vertical-window evidence says nothing.
+     A floor misread below the path, or a structure the climb is already clearing, gives
+     such readings while the gentle climb runs; rising ground that the gentle climb does
+     not clear keeps every reading under 1.2 s. See [Round 4b](#round-4b-version-4).
    - After confirmation the graded rate applies, up to 3.5 m/s and the policy's 2.5 m
      bound.
    - The hold (0.5 s) and release (3 m/s²) are the TTC policy's. The ceiling guard
@@ -145,10 +190,12 @@ The sidecar records these under `pilot_assistance`:
 
 | File | Version | sha256 (content) | Frozen |
 |---|---|---|---|
-| `configs/obstacles/vertical_guard.json` | 3 | `b70e263ccdc5...` | after the replays of v2 (21 logs) and its round-3 flights, before any replay of v3 (commit `79895b7`) |
+| `configs/obstacles/vertical_guard.json` | 4 | `409d06f9ded7...` | after the round-4 live flights of v3; before any replay of v4 except its development cases (r4-02, the Pine mound, the idealised check) (commit `70e0918`) |
+| `configs/obstacles/vertical_guard_v3.json` | 3 | `b70e263ccdc5...` | after the replays of v2 (21 logs) and its round-3 flights, before any replay of v3 (commit `79895b7`); kept verbatim, refused |
 | `configs/obstacles/vertical_guard_v2.json` | 2 | `e06b690d0d4f...` | after the replay of v1, before any replay of v2 (commit `61f10f4`); kept verbatim, refused |
 | `configs/obstacles/vertical_guard_v1.json` | 1 | `703f60e33aa0...` | before any replay of the guard (commit `1861e8e`); kept verbatim, refused |
-| `configs/obstacles/vertical_guard_gates.json` | 3 | `689635881467...` | with guard v3, before its replay (commit `79895b7`) |
+| `configs/obstacles/vertical_guard_gates.json` | 4 | `7901b154abbe...` | with guard v4, before any replay of v4 except its development cases (commit `70e0918`) |
+| `configs/obstacles/vertical_guard_gates_v3.json` | 3 | `689635881467...` | with guard v3, before its replay (commit `79895b7`); kept verbatim |
 | `configs/obstacles/vertical_guard_gates_v2.json` | 2 | `53926ceada10...` | v1's definitions, scoring guard v2, before its replay; kept verbatim |
 | `configs/obstacles/vertical_guard_gates_v1.json` | 1 | `977740fbc0f5...` | with guard v1, before any replay |
 
@@ -176,6 +223,235 @@ evidence.
 version 2 (see [Round 4](#round-4-version-3)). Both changes reuse declared values
 (`climb_on_s`, `rising_window_s`, `rising_min_rise`). Every replayed flight is development
 evidence for version 3.
+
+**Version 4 keeps every value and adds one condition to rule 3**, after the round-4 live
+flight `minus-fast6-r4-02` (see [Round 4b](#round-4b-version-4)). It reuses `climb_on_s` and
+`rising_window_s`. Development evidence for version 4: `minus-fast6-r4-02` (inspected, re-run
+through looming2 on its recorded frames, replayed through v4 while it was designed), the Pine
+Valley mound of `pine-fast6-ttc-01` and the idealised checks. Held out from its design:
+`minus-brain10b-r4-02` and `minus-brain09b-r4-01` (their guard columns were not inspected before
+the freeze) and every other log's v4 replay.
+
+## Round 4b: version 4
+
+### The live failure (`minus-fast6-r4-02`, development case)
+
+Branch `m4` flew guard v3 on Minus Two in round 4. The fast PD passed pillar A, the hairpin and
+pillar C, then struck the ~2.2 m garage ceiling at (73.5, 69.4, 2.13), 34.1 s. The log, the
+video and looming2 re-run on the recorded frames show this sequence. The re-run used 18 fps
+frames with the `prep.pass1/pass2` alignment (epipolar residual 2.5 px). Heights are
+launch-relative, and the launch is on the floor.
+
+![minus-fast6-r4-02 at 32.37, 32.81 and 33.14 s with looming2's windows](vertical_guard_v4_r4-02_frames.jpg)
+
+*Recorded frames of `minus-fast6-r4-02`, with looming2 re-run offline (not the camera's own
+samples). Red: focus of expansion. Green: lower window. Blue: upper window. A race arch stands
+on the floor ahead, with the checkpoint marker through it.*
+
+1. **Onset (32.35-32.41 s).** Two path alarms started the gentle climb (alarm 1.14 s, lower TTC
+   0.43-0.44 s, `below_fraction` 1.0). The drone was 0.40-0.44 m above the floor and already
+   climbing 0.43-0.51 m/s, because the pilot asked +0.47 m/s toward its ring.
+   - The lower window lay on the floor, and a flat floor below a climbing path does not cross
+     it.
+   - The roll was swinging from -25 to +28 deg within 0.7 s. The offline re-run needed a visual
+     rotation correction of 5.5 deg on that frame, against 0.2-3 deg over the next 0.7 s.
+2. **Gentle climb (32.47-32.95 s).** The guard's 1 m/s climb lifted the drone at 0.8-0.95 m/s
+   toward the arch's top.
+   - The lower window read the floor and the arch 0.60-1.41 s ahead (`below_fraction`
+     0.77-1.0). Two readings were at or above `climb_on_s`: 1.34 s at 32.54 s and 1.41 s at
+     32.77 s.
+   - The alarm read 1.40-1.69 s through the arch.
+   - The pilot's own request fell from +0.43 to -0.25 m/s: its ring was now below the path.
+3. **Escalation.** Version 3 confirmed rising ground at 32.96 s in the log (32.90 s in the
+   replay) and climbed at 3.5 m/s.
+   - The guard's climb bound (0.52 m/s over the pilot's requests) once the pilot's 0.53 m/s had
+     left the rising window.
+   - Two alarms while climbing (lower 0.68 and 0.90 s) confirmed rising ground at 0.84 m.
+4. **Ceiling (33.0-34.1 s).**
+   - The upper window then read the ceiling: `below_fraction` 0.84, 0.77, 0.46, 0.32 and 0.28 at
+     32.96-33.16 s, with the alarm at 0.83-1.25 s.
+   - The ceiling guard cut the climb at 33.26 s, at 1.42 m and 2.4 m/s of climb.
+   - The request reached 0 at 33.41 s with 1.8-2.0 m/s still measured. Impact came at 34.1 s.
+
+**So the floor explains only the onset.** At the onset the lower window did read the flat floor
+close below. By the escalation, the looming surface was the arch: a real structure on the path,
+which the guard's own gentle climb had lifted the path onto. The ceiling made the escalation
+fatal.
+
+### The rule (version 4) and what was dropped
+
+Rule 3's confirmation of rising ground needs one more condition: **no looming sample received
+in the last `rising_window_s` (0.5 s) may have seen the surface below the path farther than
+`climb_on_s` (1.2 s).** Such a sample has either:
+
+- a lower-surface TTC of 1.2 s or more, aged by odometry; or
+- no lower-surface TTC although `below_fraction` is known, meaning the lower window had evidence
+  and saw no crossing.
+
+A sample without vertical-window evidence says nothing either way. The condition is version 3's
+own premise ("the ground keeps looming although the drone climbs") made strict. It uses version
+3's values and adds none. It can only withhold a confirmation that version 3 would make at the
+same evidence. A reading that stays under 1.2 s for 0.5 s is still escalated, whatever surface
+produced it.
+
+On r4-02, every one of v3's escalation attempts had such a sample in the 0.5 s before it. On the
+Pine mound (4.09-4.56 s), no reading exceeded 0.67 s.
+
+**Tried on the development cases and dropped before the freeze** (the declaration's
+`vertical_guard_notes.not_used`):
+
+- **The brief's suggestion: the lower-window TTC, or the implied height `ttc_lower x speed x
+  tan(21 deg)`, should grow as the drone climbs.**
+  - On r4-02 the implied height followed the telemetry height gained, as a floor would.
+  - On the open-loop Pine mound it grew even faster, because the recorded 1-1.5 m/s climb cleared
+    the slope's first part.
+  - Any such test drops the mound's open-loop escalation, which the gates keep.
+- **An approach-rate test: the predicted contact moment must not move later.**
+  - In the idealised check it held every ramp at the gentle climb, with clearance down to
+    -6.4 m. The gentle climb buys time while it takes effect, and a ramp then keeps its contact
+    moment, so the comparison is an equality.
+  - It blocked r4-02 only because of one low reading.
+- **An overhead condition: `below_fraction` at most 0.5, alarm under 1.2 s, while climbing.**
+  - It had no effect on either development case.
+  - At the r4-02 escalation, the upper window's urgency (0.24-0.5 /s) was within what the Pine
+    mound's open sky read (0.06-0.35 /s).
+  - A steep hillside reads about 0.5 as well.
+- **A bound on escalated climbs without overhead evidence.**
+  - During the escalated climbs of r4-02 and of the Pine mound, the vertical windows kept
+    evidence (`below_fraction` known). The top 20% HUD mask did not hide the upper window.
+  - A bound on the climb angle that keeps the upper window in view would also cap the mound
+    climb.
+
+### Gates version 4 and scores
+
+`configs/obstacles/vertical_guard_gates.json` version 4 was frozen with guard v4 (commit
+`70e0918`). No v4 replay had been run before the freeze except the development cases.
+
+- **Baseline:** branch `m4` (`3decaac`, guard v3, the integrated round-4 stack).
+- **Replays:** both trees were `git archive` exports, run through the round-3 harness with the
+  round-4 streams.
+- **The round-4 live flights** were replayed as they flew: `--stack on --near-on-path
+  --descent-view configs/pilot/descent_view.json`.
+- **Scores:** `docs/experiments/vertical_guard_v4_scores.json`. Version 3 on the same replays
+  under gates v4 is in `docs/experiments/vertical_guard_v3_under_gates_v4_scores.json`; its
+  Identity row compares the m4 tree with itself and means nothing.
+
+| Gate (v4) | Threshold | **v4** | v3 (same replays) |
+|---|---|---|---|
+| **Identity**: stack off (with and without stream or descent view) and shadow bitwise identical to m4, 24 logs | all | **pass** 61/61 pairs (report: 46/46 more, stack without the guard and flown with wall rules on/shadow) | - |
+| **V_R4** (development): r4-02 as flown, guard climb and issued request at most 1 m/s at 32.4-33.4 s, no confirmation | all | **pass**: climb max 1.0, no escalated tick, issued max 0.96 m/s | escalated at 32.90 s, climb 3.5, issued 2.74 m/s |
+| V_Straw downhill: sink limited before contact / not raised / horizontal | >= 80% / 0 / 0 | 20% / 0 / 0 (fails as in v3: looming cannot see those contacts) | 20% / 0 / 0 |
+| **V_Straw uphill**: escalated s per min, 9 laps (tightened from 0.2) | 0 | **0.0** (climb seconds identical to v3 on every lap) | 0.0 |
+| **V_Minus**: windows wall-01 / gapon-01 / gapon-02 at most 1 m/s; wall-01 levelled before 0.3 m lost | yes | **0.97 / 0.12 / 0.98; 0.02 m** | same |
+| V_Minus no escalation, 9 logs + held out `minus-brain10b-r4-02`, `minus-brain09b-r4-01` | at most 1 m/s | **pass** (max 1.0; the held-out flights did not escalate under v3 either) | pass |
+| V_Pine climb: at least 1 m/s during 80% of the logged governor's >= 1 m/s seconds | >= 80% | 74.3% (fails) | 77.7% (fails) |
+| V_Pine no descent in the last 2 s | min >= 0 | -0.70 (fails, unchanged) | -0.70 |
+| **V_Pine mound**: height request vs flown; escalated by 4.65 s | >= 90%; yes | **106%; at 4.55 s** | 106%; 4.55 s |
+| **Result** | | Identity, V_R4, V_Straw uphill and V_Minus pass; V_Straw downhill and V_Pine fail (as in v3) | V_R4, V_Straw downhill and V_Pine fail |
+
+### What the version-4 replays show
+
+- **r4-02: no escalation.** The guard stays at the gentle 1 m/s. The four confirmations that v3
+  would have attempted at 32.90-33.22 s are blocked; the last one came when the drone was
+  passing over the arch's top, 0.2 s ahead. The issued request drops from 0.95 to 0 m/s at
+  33.07-33.26 s. The looming brake does that (alarms 0.83-0.87 s), and then the ceiling guard.
+  - This is the request at the recorded states, not a flight. With the gentle climb alone, the
+    drone would still have risen over the arch, not through it, because the gentle onset itself
+    was on a misread.
+- **Everything else on Minus Two and Straw Bale is unchanged**, because v3 escalated nowhere
+  there.
+- **Pine Valley: the mound is kept, and two hillsides lose climb.**
+  - The mound escalates at 4.55 s exactly as v3 does (106%).
+  - The hillside at 17.6-20.5 s escalates 0.61 s later (19.05 s against 18.44 s). Its answered
+    seconds fall from 2.25 to 2.08 s, and its height request from 5.43 to 4.55 m (the flown one
+    was 4.53 m). That lowers V_Pine's climb fraction from 77.7% to 74.3%.
+  - `pine-brain08-01` (a report flight with an offline stream, not inspected for v4 before the
+    freeze) loses its only escalation: v3 climbed at 3.5 m/s for 1.0 s from 16.96 s, and v4
+    stays at 1 m/s. That flight, flown without looming, ended in an impact 1.0 s later while
+    climbing 0.9 m/s by itself.
+  - Both hillsides' rising windows hold readings of the surface below beyond 1.2 s.
+    - On `pine-fast6-ttc-01`: 2.4-6.4 s at 18.02-18.25 s and 1.42 s at 18.51 s, while the
+      recorded flight climbed at 1.2-1.3 m/s by the flown governor's climb.
+    - On `pine-brain08-01`: a sample whose lower window saw no crossing (16.74 s) and 1.21 s
+      (16.90 s).
+    - The latter flickers just as r4-02 did. Its upper window's urgency (0.26-1.07 /s) was even
+      higher than r4-02's.
+  - **No rule on these samples separates the three cases.** Version 4 chooses the Minus Two
+    ceiling over part of Pine's hillside climbs. This is the main risk of flying it on Pine.
+
+### Idealised checks (development evidence)
+
+**Noise-free** (round 3's verifier model, 20 cases). Version 4 equals version 3 in 14 cases,
+the garage step included. In 6 cases it keeps 0.02-0.12 m less clearance, because the ramp's
+gentle-climb readings reach 1.2 s while the climb takes effect:
+
+| Case | v3 | v4 |
+|---|---|---|
+| slope 0.20, level from 1.5 m | 0.43 m (max 3.27 m/s) | 0.35 m (max 1.75 m/s) |
+| slope 0.20, sinking 1 m/s from 1.5 m | 0.42 m | 0.36 m |
+| slope 0.20, from 2.5 m / from 1.0 m | 0.22 / 0.29 m | 0.20 / 0.25 m |
+| slope 0.50, level from 1.5 m / from 1.0 m sinking | -0.43 / -1.14 m | -0.47 / -1.25 m |
+| slope 0.70, from 1.0 m sinking | -2.64 m | -2.76 m |
+
+**Noisy**: the same model with log-normal noise on both TTCs (sigma 0.25), 40 seeds, script
+`m4b/guard/sim_noise.py`. Clearance is given as median / worst.
+
+| Case | v3 escalated | v3 clearance | v4 escalated | v4 clearance |
+|---|---|---|---|---|
+| slope 0.20, level from 1.5 m | 98% | 0.48 / 0.27 m | 38% | 0.39 / 0.21 m |
+| slope 0.20, from 1.0 m sinking | 100% | 0.41 / 0.15 m | 90% | 0.30 / -0.29 m |
+| slope 0.35, level | 100% | 0.58 / -0.04 m | 98% | 0.33 / -1.30 m |
+| slope 0.35, from 1.0 m sinking | 100% | 0.51 / -0.99 m | 100% | 0.29 / -0.90 m |
+| slope 0.50, level | 100% | -0.20 / -1.32 m | 100% | 0.30 / -0.84 m |
+| slope 0.50, from 1.0 m sinking | 100% | -0.85 / -2.31 m | 100% | -0.32 / -1.90 m |
+| floor misread below the path (r4-02 onset shape, 2.2 m ceiling), sigma 0.25 / 0.5 | 100% / 100% | climb ends at 2.17 m median | 100% / 88% | 2.17 m median |
+
+In this model a noisy reading of 1.2 s or more delays the escalation on gentle and medium ramps
+(0.2-0.35), which lowers the median clearance by 0.1-0.25 m. On steep ramps (0.5) v4 does
+better. It does not stop a floor misread that stays steady. Version 4 fixes r4-02 because its
+readings flickered, not because it recognises a floor.
+
+### Note: the floor skim of `minus-fast6-r4-02` at 26.5-29.5 s (not the guard; not implemented)
+
+The flight card attributes this skim to the view-keeping descent: it held the sink request above
+-0.8 m/s, so the support climb could not fire. A replay of the flight (m4, as flown) that records
+the governor's cap shows another cause.
+
+- **The pilot did not ask to sink.**
+  - Its own request was +0.1 to +0.23 m/s: the ring it followed lay slightly above the
+    horizontal.
+  - The descent view withheld nothing (`view_withheld` 0), and the guard's target equalled the
+    pilot's.
+- **The looming brake did.**
+  - At 26.1-26.4 s, nearly stopped in front of a wall (alarm 0.43-0.54 s), the TTC governor set
+    a stand-off cap of 0.62 m/s along the travel ray of that moment, (-0.80, 0.58, 0.19). The
+    ray was tilted 11 deg up, because the drone was rising slowly while almost stationary.
+  - Further wall samples renewed the stand-off until 29.7 s.
+  - The braking step `desired -= ray x (along - cap)` removed the pilot's excess speed along that
+    tilted ray, and with it 0.19 x excess from the vertical request. With 2-2.5 m/s of excess,
+    the issued request was -0.3 to -0.4 m/s while the pilot asked +0.1 to +0.2.
+  - The drone sank from 0.77 m onto the floor (0.02 m at 27.6 s, and again at 29.3 s).
+- **Why nothing caught it.**
+  - The support rule needs a requested sink below -0.8 m/s, and the brake asked only -0.3 to
+    -0.4.
+  - Looming had no evidence. In the offline re-run the lower window lay below the image edge or
+    on low-texture floor (usable fraction 0.06-0.29, the minimum is 0.35). The camera's lower
+    TTC was inf.
+- **It is rare in the logs.** Across all 24 replays with the stack on, a "brake-made sink" means
+  the issued request at least 0.3 m/s below the guard's target and below -0.2 m/s under a cap.
+  It totals 3.95 s on r4-02, 3.03 s of it below 0.5 m. On every other log it is at most 0.3 s
+  and never below 0.5 m.
+
+**What causal change could have prevented it:** a brake that does not command a descent. Either
+of these would do:
+
+- the braking correction acts on the horizontal projection of the wall ray only; or
+- braking never lowers the vertical request below `min(pilot's own request, 0)`.
+
+Either is a few lines in `FastRaceCue.update`. But it changes the TTC policy's braking for every
+flight with looming, so it needs its own declaration, gates and replays; it is not part of guard
+v4. A support rule keyed to the view-keeping descent's bounded sink would not have helped here,
+because the pilot requested no sink.
 
 ## Round 4: version 3
 
@@ -506,6 +782,43 @@ Pine Valley per climb episode (logged climb seconds answered with >= 1 m/s):
 
 ## Limits and risks
 
+Version 4 (round 4b):
+
+- **It gives up part of Pine's hillside climbs for the Minus Two ceiling.**
+  - `pine-brain08-01` loses its 3.5 m/s escalation at 16.96 s. That flight hit the hillside 1 s
+    later, flown without the guard.
+  - The Pine hillside at 17.6 s escalates 0.61 s later, with a 4.55 m height request instead of
+    5.43 m.
+  - Hillside readings flicker above 1.2 s like r4-02's did. No rule on the published samples
+    separates them: not the lower window, the upper window or the pilot's request (-0.09 m/s
+    at the r4-02 escalation, +0.04 m/s at the Pine hillside's).
+  - A live Pine attempt with version 4 should be watched for hillside contacts.
+- **It does not recognise a floor misread.** It blocks an escalation only when a reading of the
+  rising window flickers to 1.2 s or more.
+  - In the noisy idealised check, a steady floor misread still escalates in 88-100% of seeds, as
+    with version 3, and the climb ends at the 2.2 m ceiling.
+  - The live misread came with a 5.5 deg rotation correction in the offline re-run. The camera's
+    lower TTC was inf for the 6 s before it, which suggests misreads are transient. One log does
+    not show it.
+  - A robust separation needs either a closed-loop test, which the open-loop Pine gate cannot
+    score, or a looming-side quality signal the camera does not publish (the rotation
+    correction, the epipolar residual or the lower window's gradient).
+- **A thin structure at path height still escalates** when its readings stay under 1.2 s for
+  0.5 s, as the arch's top beam might. Under a ceiling, the ceiling guard's cut remains the only
+  backstop. On r4-02 that cut came with 2.4 m/s of climb and 0.8 m of headroom.
+- **Real rising ground escalates later.** One reading of 1.2 s or more, noise included, delays the
+  escalation by 0.5 s. In the idealised checks, gentle and medium ramps (slope 0.2-0.35) lose
+  0.02-0.12 m of clearance noise-free, and 0.1-0.25 m of median clearance with noise.
+- **The held-out checks are weak.** `minus-brain10b-r4-02` and `minus-brain09b-r4-01` did not
+  escalate under version 3 either. `pine-brain08-01` was not inspected before the freeze, and it
+  is where version 4 loses an escalation.
+- **Development evidence.** r4-02 and the Pine mound were replayed through version 4 while it
+  was designed. Two other conditions were tried on them and dropped before the freeze.
+- **The brake-made descent** of r4-02's floor skim is not addressed (see the note in
+  [Round 4b](#round-4b-version-4)).
+
+Versions 2 and 3 (rounds 3-4):
+
 - **Open loop.** Every replay number is the request a variant would have made at the
   recorded states, not a flight. It does not show whether brain-08 follows a withheld sink
   or a gentle climb.
@@ -549,9 +862,9 @@ Pine Valley per climb episode (logged climb seconds answered with >= 1 m/s):
 
 ## Tests
 
-- **`tests/test_fast_race_cue_vertical.py`**, 31 tests:
-  - the declaration is frozen and refused when edited or of another version; v1 and v2 are
-    kept verbatim and refused;
+- **`tests/test_fast_race_cue_vertical.py`**, 34 tests:
+  - the declaration is frozen and refused when edited or of another version; v1, v2 and v3 are
+    kept verbatim and refused, and every one of their values is v4's;
   - the sink factor's margin, ramp and memory;
   - descent first and the wall-01 shape;
   - confirmation, the gentle bound and its height limit;
@@ -562,18 +875,29 @@ Pine Valley per climb episode (logged climb seconds answered with >= 1 m/s):
   - **v3:** the binding test over the pilot's recent requests: a one-tick dip at a
     checkpoint switch and a steady 0.6 m/s do not escalate, while a pilot that stopped
     climbing more than 0.5 s ago and the mound's 0.4 m/s do;
+  - **v4:** the r4-02 samples of 32.35-32.96 s do not escalate. The same samples with their two
+    long readings shortened do, and so does the sequence once the surface keeps looming for
+    0.5 s after the last long reading;
+  - **v4:** a sample whose lower window saw no crossing (`below_fraction` known) counts as clear
+    below, while a sample without vertical-window evidence does not;
   - the arch pattern (a long alarm limits nothing);
   - the ceiling guard still cuts;
   - unchanged governor without the guard;
   - the pilot's margin, arrest, mound climb and keep speed (withheld sink and contact);
   - shadow flies the unguarded pilot bit for bit;
   - the runner's columns, flags and refusals.
-- **`tests/test_vertical_replay.py`**, 10 tests: the gates declarations (v3 frozen, v1 and v2
-  kept, v2 definitions carried unchanged) and the scoring functions on synthetic arrays,
-  including the v3 V-Pine, uphill and no-escalation scores.
+- **`tests/test_vertical_replay.py`**, 13 tests:
+  - the gates declarations: v4 frozen, v1-v3 kept, v3's gates carried with their values, and
+    the changed ones only tightened;
+  - the scoring functions on synthetic arrays, including v4's V_R4, the mound escalation and
+    the keep report.
 - **`tests/test_gap_pilot.py`** covers the stack field.
-- **The full suite passes:** 961 tests (round 4).
-- **CPU wiring check (plumbing only, no pad, no flight).** `VisualController` was built as
+- **The full suite passes:** 1058 tests (round 4b).
+- **CPU wiring check, round 4b (plumbing only, no pad, no flight).** `VisualController` was
+  built as `run()` does, for brain-08 on and in shadow and for the fast PD on and with
+  `--vertical-guard off`. Each got the version 4 declaration (`409d06f9ded7...`; `applied` true,
+  false, true and absent), the sidecar component and the six log columns.
+- **CPU wiring check, round 4 (version 3).** `VisualController` was built as
   `run()` does for four cases:
   - brain-08 with the stack on;
   - brain-08 in shadow;

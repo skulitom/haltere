@@ -1,21 +1,21 @@
 {
  "schema": "haltere.obstacles.vertical_guard_gates.v1",
- "version": 4,
- "note": "Offline gates of the vertical guard (configs/obstacles/vertical_guard.json version 4), scored by open-loop replays of logged flights through FastRaceCue (haltere/obstacles/vertical_replay.py). The replays are open loop: the recorded motion does not respond to the replayed requests, so a gate shows the request a variant would have made at the recorded states, not a flight. Development evidence: every flight of gates v3 (inspected while guards v1-v3 were designed), minus-fast6-r4-02 (the live failure version 4 answers; inspected, re-run through looming2 on its recorded frames and replayed through version 4 while it was designed) and the Pine Valley mound of pine-fast6-ttc-01 (replayed through version 4 while it was designed). Held out from the design of version 4: minus-brain10b-r4-02 and minus-brain09b-r4-01 (round-4 live flights of guard v3 whose guard columns were not inspected before this freeze), and every other log's version-4 replay. Version 4 was frozen with guard v4, before any replay of those. Every gate of version 3 is kept below with its values (V_Straw_uphill is tightened, V_Pine gains the mound escalation and V_Minus the held-out flights); version 3's definitions are also scored on the same replays (old_definitions). The hash covers everything except frozen/frozen_at/sha256.",
+ "version": 3,
+ "note": "Offline gates of the vertical guard (configs/obstacles/vertical_guard.json version 3), scored by open-loop replays of logged flights through FastRaceCue (haltere/obstacles/vertical_replay.py). The replays are open loop: the recorded motion does not respond to the replayed requests, so a gate shows the request a variant would have made at the recorded states, not a flight. Every flight named here is development evidence (the flights of gates v2 were inspected while guards v1-v3 were designed; the other Straw Bale laps, the round-3 Minus Two flights and the Pine brain-08 flights were replayed through guard v2 before guard v3 was frozen, for its diagnosis). Version 3 was frozen with guard v3 before any replay of guard v3. Every gate of version 2 is kept below (old_definitions, scored and reported on the same replays); where a v2 gate was ill-posed or out of this guard's reach it is split or redefined here with the reason in change, never loosened silently. The hash covers everything except frozen/frozen_at/sha256.",
  "vertical_guard": {
   "file": "configs/obstacles/vertical_guard.json",
-  "version": 4,
-  "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8"
+  "version": 3,
+  "sha256": "b70e263ccdc549844490ca3e60381cecd781f6c2e040b32519805e4624727518"
  },
  "baseline_tree": {
-  "branch": "m4",
-  "commit": "3decaac56cf0afdd3ac01e32131c67bfdb00fe9f",
-  "guard_version": 3,
-  "note": "the previous guard (v3) and the integrated round-4 stack; Identity compares stack off and shadow with it, and its guard replays are reported beside version 4"
+  "branch": "m2-vertical",
+  "commit": "935cfdb4b6d712dc2b239838ce943a8c9ee596b9",
+  "guard_version": 2,
+  "note": "the previous guard (v2) and stack; Identity compares stack off and shadow with it"
  },
  "variants": {
-  "guard": "--stack on: the full obstacle stack declared for the flight's motor contract (gap aim, lag turn, wall-pilot rules and the vertical guard, all applied); the round-4 live flights (inputs.as_flown) as flown: --stack on --near-on-path --descent-view configs/pilot/descent_view.json",
-  "control": "--stack on --vertical off: the same stack without the vertical guard",
+  "guard": "--stack on: the full obstacle stack declared for the flight's motor contract (gap aim, lag turn, wall-pilot rules v3 and the vertical guard v3, all applied)",
+  "control": "--stack on --vertical off: the same stack without the vertical guard (m2-hairpin's stack)",
   "logged_pilot": "--stack none without looming samples (the pilot as flown on the Straw Bale laps, which flew without looming; it reproduces the logged pilot states); used only to find the support-climb episodes and their contact times",
   "tolerance": 1e-09
  },
@@ -42,10 +42,7 @@
    "straw-fast6-01.csv": "e94f239aa798b400ea3e8bb3a78e98c5d78f0b3fccaea22a8ee8c5d1d4ca5685",
    "straw-fast6-02.csv": "38e2895ccc28b102231f12b8664745736bbbd23c9005466b6d9c5844775babd5",
    "straw-fast6-03.csv": "210ad42a279b8cacd6eda9b5e7bfe5f2aef35d4ff7940709940026eae703f724",
-   "straw-fast6-arc-01.csv": "d5c2da9e07b3a01b53b5660263aec6b0dd4f6e72d52300779196eaa2bb4fa136",
-   "minus-fast6-r4-02.csv": "aaa739e7dde86b3d72c66a34fab938c88a56a526ebdbc9062688f216b30fa137",
-   "minus-brain10b-r4-02.csv": "8233fd218142b3d3276a9beb8381bfa356a8eb880a37fd1f2ad535bbf8a7bc39",
-   "minus-brain09b-r4-01.csv": "54b924ee0e7ff83e4e2bc96ddaa4a277be75320f485f923b866562f34bd85563"
+   "straw-fast6-arc-01.csv": "d5c2da9e07b3a01b53b5660263aec6b0dd4f6e72d52300779196eaa2bb4fa136"
   },
   "stream_flights": [
    "straw-brain08-04",
@@ -85,13 +82,7 @@
     "stream_straw-fast6-arc-01.npz": "d05b1ec575353f123b20d6e24f004a8de8b52589fe6e8c92c822245b3c83a379",
     "stream_pine-brain08-01.npz": "320bee5d04b63cdc8c3c563a3f6497c0d148bf7d52db9932e7486c7b971af91b"
    }
-  },
-  "as_flown": {
-   "minus-fast6-r4-02": "-nop-dv1",
-   "minus-brain10b-r4-02": "-nop-dv1",
-   "minus-brain09b-r4-01": "-nop-dv1"
-  },
-  "as_flown_note": "file-tag suffix of the round-4 live flights' stack variants (on, shadow, vertical off): --near-on-path --descent-view configs/pilot/descent_view.json (version 1), as they flew with --obstacle-stack on --descent-view on"
+  }
  },
  "gates": {
   "Identity": {
@@ -116,24 +107,18 @@
     "straw-fast6-01",
     "straw-fast6-02",
     "straw-fast6-03",
-    "straw-fast6-arc-01",
-    "minus-fast6-r4-02",
-    "minus-brain10b-r4-02",
-    "minus-brain09b-r4-01"
+    "straw-fast6-arc-01"
    ],
    "variants": [
     "--stack none (every flight; the stream flights also with their stream)",
-    "--stack shadow (the stream flights with their stream)",
-    "--stack none and --stack none --descent-view (the round-4 flights)",
-    "--stack shadow --near-on-path --descent-view (the round-4 flights)"
+    "--stack shadow (the stream flights with their stream)"
    ],
    "report_only_variants": [
     "--stack on --vertical off",
     "--stack flown --wall on",
-    "--stack flown --wall shadow",
-    "--stack on --vertical off --near-on-path --descent-view (the round-4 flights)"
+    "--stack flown --wall shadow"
    ],
-   "criterion": "per-tick arrays cvx, cvy, cvz, yaw_cmd, state, cap, climb and descent_scale bitwise identical between this tree and the baseline tree (m4, guard v3) (NaN equal to NaN)",
+   "criterion": "per-tick arrays cvx, cvy, cvz, yaw_cmd, state, cap, climb and descent_scale bitwise identical between this tree and the baseline tree (m2-vertical, guard v2) (NaN equal to NaN)",
    "pass": "every flight and gate variant identical"
   },
   "V_Straw_downhill": {
@@ -167,125 +152,11 @@
     "straw-fast6-03",
     "straw-fast6-arc-01"
    ],
-   "max_escalated_per_min": 0.0,
-   "max_new_climb": 1.0,
-   "escalated": "seconds with vertical_stage 2 (rising ground confirmed: the climb may exceed gentle_climb) of the guard variant with the lap's offline looming stream, pooled over the laps, per minute of flight",
-   "report": "per lap: escalated seconds and escalations, guard climb seconds and onsets, ticks whose guard climb exceeds max_new_climb, and the control's climb seconds",
-   "pass": "pooled escalated seconds per minute <= max_escalated_per_min: no escalated tick on any of the nine laps (tightened from v3's 0.2 s/min to v3's own result, 0.0: version 4 must keep it)"
-  },
-  "V_Minus": {
-   "flights": {
-    "minus-fast6-wall-01": {
-     "floor_sink": true
-    },
-    "minus-brain08-gapon-01": {
-     "floor_sink": false
-    },
-    "minus-brain08-gapon-02": {
-     "floor_sink": false
-    }
-   },
-   "window": "from before_onset_s before the last onset of the logged governor climb (clearance_climb > 0) before the impact, to the impact (the end of the log)",
-   "before_onset_s": 1.0,
-   "max_climb": 1.0,
-   "no_climb": "the issued vertical request is at most max_climb at every tick of the window",
-   "level_band": 0.3,
-   "floor_sink": "minus-fast6-wall-01 only: the sink under way at the logged climb onset (the run of ticks with measured vz < -level_band at or last before the onset; z_ref = the height where the measured vertical speed last turned negative before it). The issued vertical request is at least 0 from a tick at which less than max_height_loss_m below z_ref has been lost, to the end of that run",
-   "max_height_loss_m": 0.3,
-   "no_escalation": {
-    "flights": [
-     "minus-fast6-wall-01",
-     "minus-brain08-gapon-01",
-     "minus-brain08-gapon-02",
-     "minus-fast6-gapon-01",
-     "minus-brain08-loom-01",
-     "minus-brain08-gapshadow-01",
-     "minus-fast6-vg-02",
-     "minus-brain08-vg-01",
-     "minus-brain09b-vg-01"
-    ],
-    "max_climb": 1.0,
-    "criterion": "the guard variant's terrain climb request (vertical_climb) is at most max_climb at every tick of every Minus Two flight: no escalation under the ~2.2 m garage ceiling",
-    "held_out_flights": [
-     "minus-brain10b-r4-02",
-     "minus-brain09b-r4-01"
-    ],
-    "held_out_note": "round-4 live flights of guard v3 (minus-brain10b-r4-02: fast-brain-10b; minus-brain09b-r4-01: fast-brain-09b), replayed as flown; their guard columns were not inspected before this freeze"
-   },
-   "pass": "every window flight passes no_climb, wall-01 passes floor_sink (both as in v2 and v3), and every Minus Two flight of no_escalation, the held-out flights included, passes no_escalation"
-  },
-  "V_Pine": {
-   "flight": "pine-fast6-ttc-01",
-   "min_vz": 1.0,
-   "climb_fraction": 0.8,
-   "last_s": 2.0,
-   "mound_fraction": 0.9,
-   "climb": "the issued vertical request is at least min_vz for at least climb_fraction of the seconds in which the logged governor itself requested at least min_vz (clearance_climb >= min_vz; a tick lasts until the next tick). The flown log itself answers 91.4% of those 5.02 s",
-   "no_descent": "as v2: the issued vertical request is at least 0 at every tick of the last last_s before the contact (the logged impact, the end of the log)",
-   "mound": "the first logged climb episode (the mound, 4.30-6.01 s): the issued height request, the integral of the issued vertical request over the episode, is at least mound_fraction of the flown one (the logged issued request: 3.42 m)",
-   "report_flights": [
-    "pine-brain08-loom-01",
-    "pine-brain08-01"
-   ],
-   "pass": "climb, no_descent, mound and mound_escalation",
-   "mound_escalated_by_s": 4.65,
-   "mound_escalation": "the guard confirms rising ground (vertical_stage 2) within the first logged climb episode (the mound), at the latest at mound_escalated_by_s: guard v3 escalated at 4.55 s in the baseline replay; 0.1 s allows about two looming samples"
-  },
-  "V_R4": {
-   "flight": "minus-fast6-r4-02",
-   "development": true,
-   "window": [
-    32.4,
-    33.4
-   ],
-   "max_climb": 1.0,
-   "criterion": "as flown (--stack on --near-on-path --descent-view): the guard's terrain climb request (vertical_climb) is at most max_climb (gentle_climb) at every tick of the flight, no tick has vertical_stage 2 (rising ground confirmed), and the issued vertical request is at most max_climb at every tick of the window (the live false escalation: vertical_stage 2 from 32.96 s, 3.5 m/s, ceiling impact at 34.1 s)",
-   "report": "the baseline tree's replay (guard v3) on the same flight: its first escalated tick, its maximum climb and issued vertical request in the window",
-   "pass": "all three criteria"
-  },
-  "V_Keep": {
-   "report_only": true,
-   "flights": "every flight replayed with the guard (stack on; the stream flights with their stream; the round-4 flights as flown)",
-   "report": "per flight, version 4 against the baseline tree (guard v3) on the same replay: guard climb seconds, escalated seconds, escalations and the maximum guard climb"
-  },
-  "Idealised": {
-   "report_only": true,
-   "note": "the round-3 verifier model (a point drone with a 0.25 s vertical lag at 6 m/s over synthetic ramps and a garage step under a 2.2 m ceiling, ideal looming at 18 Hz received 0.08 s late; session scratchpad m4/vguard/sim.py, unchanged) and its noisy variant (m4b/guard/sim_noise.py: log-normal TTC noise, ramps and a floor misread below the path under a 2.2 m ceiling, 20 seeds), guard v4 against the baseline tree: development evidence, reported in docs/vertical_guard.md"
-  }
- },
- "old_definitions": {
-  "V_Straw_uphill": {
-   "flights": [
-    "straw-brain08-04",
-    "straw-brain08-06",
-    "straw-brain08-01",
-    "straw-brain08-02",
-    "straw-brain08-03",
-    "straw-fast6-01",
-    "straw-fast6-02",
-    "straw-fast6-03",
-    "straw-fast6-arc-01"
-   ],
    "max_escalated_per_min": 0.2,
    "max_new_climb": 1.0,
    "escalated": "seconds with vertical_stage 2 (rising ground confirmed: the climb may exceed gentle_climb) of the guard variant with the lap's offline looming stream, pooled over the laps, per minute of flight",
    "report": "per lap: escalated seconds and escalations, guard climb seconds and onsets, ticks whose guard climb exceeds max_new_climb, and the control's climb seconds",
    "pass": "pooled escalated seconds per minute <= max_escalated_per_min (about 1 s per 5.45-min lap: \"near zero\"; v2 escalated 23-24 s per lap)"
-  },
-  "V_Pine": {
-   "flight": "pine-fast6-ttc-01",
-   "min_vz": 1.0,
-   "climb_fraction": 0.8,
-   "last_s": 2.0,
-   "mound_fraction": 0.9,
-   "climb": "the issued vertical request is at least min_vz for at least climb_fraction of the seconds in which the logged governor itself requested at least min_vz (clearance_climb >= min_vz; a tick lasts until the next tick). The flown log itself answers 91.4% of those 5.02 s",
-   "no_descent": "as v2: the issued vertical request is at least 0 at every tick of the last last_s before the contact (the logged impact, the end of the log)",
-   "mound": "the first logged climb episode (the mound, 4.30-6.01 s): the issued height request, the integral of the issued vertical request over the episode, is at least mound_fraction of the flown one (the logged issued request: 3.42 m)",
-   "report_flights": [
-    "pine-brain08-loom-01",
-    "pine-brain08-01"
-   ],
-   "pass": "climb, no_descent and mound"
   },
   "V_Minus": {
    "flights": {
@@ -323,18 +194,55 @@
    },
    "pass": "every window flight passes no_climb, wall-01 passes floor_sink (both as in v2), and every Minus Two flight passes no_escalation"
   },
-  "note": "the version-3 definitions of the gates changed here, scored and reported on the same replays (not part of the version-4 pass); v3 kept v2's old definitions, which are in vertical_guard_gates_v3.json"
+  "V_Pine": {
+   "flight": "pine-fast6-ttc-01",
+   "min_vz": 1.0,
+   "climb_fraction": 0.8,
+   "last_s": 2.0,
+   "mound_fraction": 0.9,
+   "climb": "the issued vertical request is at least min_vz for at least climb_fraction of the seconds in which the logged governor itself requested at least min_vz (clearance_climb >= min_vz; a tick lasts until the next tick). The flown log itself answers 91.4% of those 5.02 s",
+   "no_descent": "as v2: the issued vertical request is at least 0 at every tick of the last last_s before the contact (the logged impact, the end of the log)",
+   "mound": "the first logged climb episode (the mound, 4.30-6.01 s): the issued height request, the integral of the issued vertical request over the episode, is at least mound_fraction of the flown one (the logged issued request: 3.42 m)",
+   "report_flights": [
+    "pine-brain08-loom-01",
+    "pine-brain08-01"
+   ],
+   "pass": "climb, no_descent and mound"
+  }
  },
- "change": "v4 scores the vertical guard version 4. New: V_R4 (development: the live false escalation of minus-fast6-r4-02 must not recur in its replay as flown). Identity: the baseline is the previous guard's tree (m4, guard v3), and the three round-4 live flights join it (stack none with and without the descent view, shadow as flown). V_Minus keeps v3's criteria and adds the two held-out round-4 flights to no_escalation. V_Straw_uphill is tightened from 0.2 s/min to 0.0 (v3's result: no escalated tick; the task's '0 s'). V_Pine keeps v3's three criteria and adds mound_escalation (the mound climb must still be confirmed as rising ground, by 4.65 s). V_Straw_downhill is v3's, unchanged (expected to fail its first criterion: looming cannot see those contacts). V_Keep and Idealised are reports. No gate is loosened.",
- "previous_versions": [
-  {
-   "version": 3,
-   "sha256": "689635881467a34a7ba84471ee55b3154602206af4aa5dac754fcf26c7182bf7",
-   "frozen_at": "2026-09-27T01:51:29",
-   "file": "configs/obstacles/vertical_guard_gates_v3.json",
-   "scored_guard_version": 3,
-   "result": "docs/experiments/vertical_guard_v3_scores.json"
+ "old_definitions": {
+  "V_Straw": {
+   "flights": [
+    "straw-brain08-04",
+    "straw-brain08-06"
+   ],
+   "episodes": "every support-climb onset of the logged pilot (pilot state 'support_climb'); contact = the start of the support timer (support_since or slope_support_since) that produced it",
+   "lookback_s": 3.0,
+   "limited": "the guard limits the requested sink before contact: at some tick in [contact - lookback_s, contact) the pilot's own request is a sink (vertical_pilot < 0) and the guard's request is above it (vertical_target > vertical_pilot)",
+   "limited_fraction": 0.8,
+   "limited_pooled": "over the episodes of both laps together",
+   "after_onset_s": 0.6,
+   "windows": "the downhill spots: [contact - lookback_s, onset + after_onset_s] of every episode",
+   "level_band": 0.3,
+   "not_raised": "in the windows, at every tick where the measured vertical speed is below -level_band (descending), the guard's vertical request is at most max(the pilot's own request, 0): it may withhold sink, never add a climb the pilot did not ask for",
+   "horizontal": "in the windows, at every tick, the issued horizontal request of the guard variant is at least that of the control; descent_scale of both is reported per episode",
+   "max_new_climb": 1.0,
+   "whole_lap": "the guard's terrain climb request never exceeds max_new_climb over the whole lap (the laps flew without any terrain climb); reported: sink limiting, arrest, climb and escalated seconds and onsets per minute, and the control's climbs",
+   "pass": "limited fraction >= limited_fraction, no raised tick, no reduced tick and no whole-lap climb above max_new_climb, on the pooled episodes / both laps"
   },
+  "V_Pine": {
+   "flight": "pine-fast6-ttc-01",
+   "min_vz": 1.0,
+   "climb_fraction": 0.8,
+   "climb": "the issued vertical request is at least min_vz for at least climb_fraction of the seconds in which the logged governor climbed (clearance_climb > 0; a tick lasts until the next tick)",
+   "last_s": 2.0,
+   "no_descent": "the issued vertical request is at least 0 at every tick of the last last_s before the contact (the logged impact, the end of the log)",
+   "pass": "both"
+  },
+  "note": "the version-2 definitions of the two gates redefined here, scored and reported on the same replays (not part of the version-3 pass)"
+ },
+ "change": "v3 scores the vertical guard version 3. Identity: the baseline is the previous guard's tree (m2-vertical, guard v2) and every replayed flight is included (21: the 9 of v2, the round-3 Minus Two flights minus-fast6-vg-02, minus-brain08-vg-01 and minus-brain09b-vg-01, minus-brain08-gapshadow-01, pine-brain08-01 and six more Straw Bale laps). V-Straw is split: (a) V_Straw_downhill keeps v2's first three criteria unchanged (limited before contact, not raised, horizontal); the round-3 replays showed that no looming sample carries below-path evidence before any of the 10 contacts (the path points below the camera's view), so its first criterion is out of reach of any looming rule and is expected to fail until the pilot keeps its descents inside the view (another change of round 4); it is kept, not loosened. (b) V_Straw_uphill replaces v2's whole-lap criterion (no guard climb above 1 m/s on straw-brain08-04/06) with the escalated seconds per minute pooled over nine laps, at most 0.2 s/min (about 1 s per lap: the task's \"near zero\"; v2: 23-24 s per lap). This is a loosening of that criterion (zero ticks became a rate) and is disclosed: the old criterion is still scored and reported (old_definitions). V-Minus keeps v2's windows and floor sink unchanged and adds no_escalation on all nine Minus Two flights. V-Pine: v2's climb criterion was ill-posed: it counted every second in which the logged governor's climb was positive, including its release tail (3 m/s^2 after the hold) and graded climbs below 1 m/s, for which the flown pilot itself requested less than 1 m/s; the flown log therefore reached only 72.4% against the 80% threshold. Version 3 counts only the seconds in which the logged governor itself requested at least 1 m/s (the flown log: 91.4%), keeps min_vz and the 80% threshold, keeps v2's no-descent criterion unchanged, and adds the mound (the first episode, whose evidence precedes any climb so the open-loop replay is fair up to the onset): at least 90% of the flown height request. v2's V-Pine is still scored and reported (old_definitions).",
+ "previous_versions": [
   {
    "version": 2,
    "sha256": "53926ceada1062b4497fc7df1d2f435192dda8d2a58eda7e1037decbef0f291a",
@@ -353,6 +261,6 @@
   }
  ],
  "frozen": true,
- "frozen_at": "2026-09-27T13:00:22",
- "sha256": "7901b154abbe69a1fad31e818ea91ef3b457dded519bd2aaaa44b1ecdbbe243f"
+ "frozen_at": "2026-09-27T01:51:29",
+ "sha256": "689635881467a34a7ba84471ee55b3154602206af4aa5dac754fcf26c7182bf7"
 }

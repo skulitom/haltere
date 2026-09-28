@@ -639,7 +639,7 @@ def wall_pilot_configs(declaration, contract=None):
 
 
 # The vertical-guard declaration version whose rules this code implements (VerticalGuardConfig); runners refuse others.
-VERTICAL_GUARD_VERSION = 3
+VERTICAL_GUARD_VERSION = 4
 
 
 @dataclass(frozen=True)
@@ -683,9 +683,17 @@ class VerticalGuardConfig:
        request does not make the guard's climb the reason). Then the graded rate applies up to vertical_up, bounded by
        the policy's climb_max_m. The policy's climb hold and release are unchanged. The ceiling guard, when declared,
        still cuts climbs under overhead evidence.
-    Declaration version 3 (version 1 used ttc_lower alone for rules 1 and 2, counted any climb as rising-ground
+       Version 4: the ground must keep looming throughout the rising window. No looming sample received in the
+       rising_window_s before the confirming alarm may have seen the surface below the path farther than climb_on_s
+       (a lower-surface TTC, aged by odometry, of climb_on_s or more, or no lower-surface TTC although the vertical
+       windows had evidence). A floor close below a climbing path (its lower-window reading grows with the height and
+       flickers with the attitude) or a structure the climb is already clearing gives such readings while the gentle
+       climb runs: the climb was enough at that moment, so it is not escalated. Rising ground that the gentle climb
+       does not clear keeps every reading under climb_on_s.
+    Declaration version 4 (version 1 used ttc_lower alone for rules 1 and 2, counted any climb as rising-ground
     evidence and had no contact rule; version 2 started climbs on the lower window alone and compared the guard's
-    climb only with the pilot's request of the same tick; both are kept and refused).
+    climb only with the pilot's request of the same tick; version 3 escalated on alarms of the rising window although
+    other samples of it saw the surface below farther than climb_on_s; all are kept and refused).
     """
     margin_full_s: float = 1.5
     margin_zero_s: float = .6
@@ -824,12 +832,14 @@ class TtcClearanceGovernor:
         self.alarms = []                # (receipt, measured vz, guard climb binding, path alarm) of below-path alarms,
                                         # not descending
         self.escalated = False          # rising ground confirmed in this climb episode
+        self.clear_below_at = -np.inf   # v4: receipt of the latest sample that saw no surface looming below the path
+                                        # within climb_on_s
         self.pilot_vertical = -np.inf   # the pilot's own vertical request this tick (set by the pilot)
         self.pilot_history = []         # (time, pilot's own vertical request) of the last rising_window_s
         if vertical is not None:
             self.vertical_counts = dict(sink_limited_samples=0, descent_first=0, arrest_engagements=0,
                                         unconfirmed_alarms=0, no_path_onsets=0, gentle_climbs=0, escalations=0,
-                                        topped=0)
+                                        topped=0, clear_below_samples=0, clear_below_blocks=0)
         self.samples = []
         self.last_time = self.last_evidence = self.first_input = None
         # The latest wall sample (not braked for as terrain, aged TTC < hold_ttc_s): its capture-time reach along its
@@ -931,8 +941,13 @@ class TtcClearanceGovernor:
         rising = sum(s['received']-t <= v.rising_window_s and r > v.rising_min_rise and b
                      for t, r, b, _ in self.alarms) >= v.rising_confirm
         if confirmed and rising and not self.escalated:
-            self.escalated = True               # the ground keeps looming although the drone climbs: rising ground
-            self.vertical_counts['escalations'] += 1
+            if s['received']-self.clear_below_at <= v.rising_window_s:
+                # v4: a sample of the rising window saw the surface below the path farther than climb_on_s: the climb
+                # was enough at that moment, so the ground did not keep looming
+                self.vertical_counts['clear_below_blocks'] += 1
+            else:
+                self.escalated = True           # the ground keeps looming although the drone climbs: rising ground
+                self.vertical_counts['escalations'] += 1
         if self.escalated:
             return graded
         if confirmed:
@@ -978,6 +993,13 @@ class TtcClearanceGovernor:
                 continue
             closing = float(velocity @ s['ray'])
             ttc = self._aged(s, s['reach'], position, closing)
+            if v is not None and (s['below'] is not None if s['ttc_lower'] is None else self._aged(
+                    s, s['ttc_lower']*s['reach']/max(s['ttc'], 1e-3), position, closing) >= v.climb_on_s):
+                # vertical guard v4: the surface below the path does not loom within climb_on_s (a lower-surface TTC at
+                # least climb_on_s, or none although the vertical windows had evidence): no rising ground is confirmed
+                # for rising_window_s after its receipt
+                self.vertical_counts['clear_below_samples'] += 1
+                self.clear_below_at = s['received']
             weak = unexplained = False
             if s['below'] is not None:
                 terrain = s['below'] >= c.terrain_fraction
@@ -2023,8 +2045,9 @@ class FastRaceCue:
                  'vertical_up), bounded to gentle_climb and gentle_max_m until rising_confirm alarms arrive within '
                  'rising_window_s while climbing faster than rising_min_rise with the guard\'s climb at least '
                  'rising_min_rise above every vertical request the pilot made itself in the last rising_window_s '
-                 '(rising ground), then up to vertical_up and the policy\'s climb_max_m; the policy\'s climb hold and '
-                 'release; the ceiling guard still cuts climbs',
+                 '(rising ground; v4: only if no looming sample of the last rising_window_s saw the surface below the '
+                 'path farther than climb_on_s), then up to vertical_up and the policy\'s climb_max_m; the policy\'s '
+                 'climb hold and release; the ceiling guard still cuts climbs',
             input='causal looming samples (below_fraction, ttc_lower, ttc) and the measured vertical speed; no height '
                   'above ground, no metric distance',
             parameters=asdict(self.vertical_guard),
