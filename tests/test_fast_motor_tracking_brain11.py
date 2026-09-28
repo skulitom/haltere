@@ -84,6 +84,62 @@ def test_turn_brakes_are_off_by_default_and_count_only_speed_over_the_request_ma
     assert brake_mask(request, velocity, turn_deg=45.).tolist() == [True, False, False, False]
 
 
+def test_yaw_holds_start_at_the_declared_rate_last_their_duration_and_never_while_launching():
+    from haltere.train.fast_motor_tracking import YawHoldConfig, YawHolds
+    holds = YawHolds(YawHoldConfig(rate_per_min=30., hold_s=(.5, 1.)), 4, seed=7)
+    masks = [holds.step(k*.01, .01, [k < 100, False, False, False]) for k in range(6000)]
+    masks = np.array(masks)
+    assert not masks[:100, 0].any() and masks.any(axis=0).all()
+    per_min = holds.count/4
+    assert 5 < per_min < 40
+    runs = np.diff(np.flatnonzero(np.diff(np.r_[0, masks[:, 1].astype(int), 0])))[::2]*.01
+    assert runs.min() >= .49 and runs.max() <= 1.01
+    again = YawHolds(YawHoldConfig(rate_per_min=30., hold_s=(.5, 1.)), 4, seed=7)
+    assert np.array_equal(np.array([again.step(k*.01, .01, [k < 100, False, False, False]) for k in range(6000)]), masks)
+    with pytest.raises(ValueError):
+        YawHoldConfig(rate_per_min=0.)
+
+
+def test_a_pilot_share_gives_the_deployed_pilot_to_a_seeded_share_of_the_drones_and_yaw_holds_are_counted():
+    from pathlib import Path
+    parent = Path('C:/DEV/Haltere/runs/motor-brain-10-tracking-05/candidate.pt')
+    profile_path = Path('C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json')
+    if not parent.exists() or not profile_path.exists():
+        pytest.skip('parent checkpoint or measured profile not present')
+    from haltere.train.bptt import load_checkpoint
+    from haltere.train.deployed_pilot import deployed_pilot_kwargs
+    from haltere.train.fast_motor_tracking import YawHoldConfig, fast_contract, rollout
+    torch.set_num_threads(1)
+    profile = json.loads(profile_path.read_text())
+    brain, cfg, _ = load_checkpoint(str(parent), 'cpu')
+    meta = torch.load(parent, map_location='cpu', weights_only=True)['visual_brain']
+    kwargs, _ = deployed_pilot_kwargs('fast_velocity_brain_v1')
+    courses = [synthetic_course(1000+i, steep=.4) for i in range(4)]
+    row, _ = rollout(brain, cfg, meta, profile, fast_contract(6., .4, scaled_speed=2.4), courses, controller='pd',
+                     seconds=3., seed=100, pilot_kwargs=kwargs, pilot_share=.5,
+                     yaw_holds=YawHoldConfig(rate_per_min=600.))
+    expected = sorted(int(i) for i in np.random.default_rng([100, 6]).permutation(4)[:2])
+    assert row['deployed_pilot_drones'] == expected and row['yaw_holds'] > 0
+    plain, _ = rollout(brain, cfg, meta, profile, fast_contract(6., .4, scaled_speed=2.4), courses, controller='pd',
+                       seconds=3., seed=100)
+    assert 'deployed_pilot_drones' not in plain and 'yaw_holds' not in plain
+
+
+def test_cruise_mask_selects_aligned_level_cruise_at_the_contract_speed_that_is_not_over_speed():
+    from haltere.train.fast_motor_tracking import cruise_mask, cruise_weights
+    velocity = torch.tensor([[5.5, 0., 0.]]*6)
+    request = torch.tensor([[6., 0., 0.],      # cruise, under-speed: yes
+                            [5., 0., 0.],      # 0.5 over, below min_excess: yes
+                            [4., 0., 0.],      # below 0.8 x 6 m/s: no
+                            [6., 0., 1.],      # climbing: no
+                            [6., 3., 0.],      # 26.6 deg off the track: no
+                            [4.8, 0., 0.]], dtype=torch.float32)
+    velocity[5, 0] = 5.7                        # 0.9 over the 4.8 m/s request: a brake sample, no
+    assert cruise_mask(request, velocity, 6.).tolist() == [True, True, False, False, False, False]
+    w = cruise_weights(request, velocity, 6., 3.)
+    assert abs(float(w.mean())-1.) < 1e-6 and float(w[0]) == float(w[1]) and abs(float(w[0])-3.*float(w[2])) < 1e-6
+
+
 def test_collection_courses_default_are_the_synthetic_ones_and_hills_are_a_seeded_share():
     courses, hills = collection_courses(2, 10, .4, 0.)
     assert hills == []

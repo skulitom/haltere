@@ -237,6 +237,41 @@ class SyntheticCaps:
         return self.cap, self.cap_ray, 0.
 
 
+@dataclass(frozen=True)
+class YawHoldConfig:
+    """Yaw holds for DAgger rollouts (brain-11; training data only, never used at runtime): on each drone, while its
+    pilot is not launching, a hold starts at `rate_per_min` per minute (Poisson; none while one is active) and holds the
+    yaw stick at 0 for U(hold_s) s. The pilot keeps requesting its world velocity toward the checkpoint, so the request
+    turns in the body frame (lateral and diagonal requests, as in a sharp turn faster than the yaw or after a turn-first
+    stop), and the teacher labels them."""
+    rate_per_min: float = 4.
+    hold_s: tuple = (.5, 2.)
+
+    def __post_init__(self):
+        if not np.isfinite([self.rate_per_min, *self.hold_s]).all() or self.rate_per_min <= 0 \
+                or not 0 < self.hold_s[0] <= self.hold_s[1]:
+            raise ValueError('Use a positive yaw-hold rate and a (low, high) hold range in seconds')
+
+
+class YawHolds:
+    """Per-drone yaw-hold state of a rollout (YawHoldConfig), drawn with rng([seed, 5])."""
+
+    def __init__(self, config, batch, seed):
+        self.config, self.rng = config, np.random.default_rng([seed, 5])
+        self.until = np.full(batch, -np.inf)
+        self.count = 0
+
+    def step(self, now, dt, launching):
+        """Mask (B,) of drones whose yaw stick is held this tick."""
+        c = self.config
+        free = (self.until <= now) & ~np.asarray(launching, bool)
+        start = free & (self.rng.random(len(self.until)) < c.rate_per_min/60.*dt)
+        if start.any():
+            self.until[start] = now+self.rng.uniform(*c.hold_s, size=int(start.sum()))
+            self.count += int(start.sum())
+        return (self.until > now) & ~np.asarray(launching, bool)
+
+
 def capped_turn_relief(request, velocity, relief, *, full_deg=45., zero_deg=90., over_low=.3, over_high=1.,
                        min_speed=1.5):
     """Request seen by the label teacher in a capped turn (training only; the pilot's request is unchanged).
@@ -374,7 +409,7 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
             seed=0, randomize=.1, collect=False, retina_stream=None, retina_dropout=.25, dropout=.1,
             camera_period=.055, camera_latency=.06, delay_steps=3, radius=3., quadratic_drag=.0075,
             pilot_speeds=None, caps=None, cap_fraction=0., cap_seed=None, record_brake=False, teacher_factory=None,
-            label_lead=0, pilot_kwargs=None):
+            label_lead=0, pilot_kwargs=None, yaw_holds=None, pilot_share=1.):
     """Batched closed loop: one synthetic course per drone; controller 'pd' or 'brain'.
 
     Off by default: `pilot_speeds` (one pilot speed per course; default `speed`), `caps` (a SyntheticCapsConfig
@@ -384,7 +419,9 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
     with the teacher's label `label_lead` ticks later, on the same drone if it is still flying, so the student
     learns to anticipate its own latency; the sample's request and velocity stay those of the feature tick) and
     `pilot_kwargs` (FastRaceCue keyword arguments for every drone's pilot, e.g. the deployed pilot of
-    haltere.train.deployed_pilot). Without them the rollout is unchanged."""
+    haltere.train.deployed_pilot; with `pilot_share` < 1 only that share of the drones, drawn with seed [seed, 6], get
+    them) and `yaw_holds` (a YawHoldConfig: training data only, the pilot's yaw stick is held at 0 now and then so the
+    request turns in the body frame). Without them the rollout is unchanged."""
     speed = contract['nominal_speed_mps'] if speed is None else speed
     batch = len(courses)
     device = brain.device
@@ -404,8 +441,12 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
     course_speeds = [speed]*batch if pilot_speeds is None else [float(s) for s in pilot_speeds]
     if len(course_speeds) != batch or not all(np.isfinite(s) and 0 < s <= 20 for s in course_speeds):
         raise ValueError('Give one finite pilot speed in (0, 20] m/s per course')
+    kwargs_for = set(range(batch))
+    if pilot_kwargs and pilot_share < 1:
+        kwargs_for = {int(i) for i in np.random.default_rng([seed, 6]).permutation(batch)[:int(round(pilot_share*batch))]}
     pilots = [FastRaceCue(sensor, histories[i], course_speeds[i], reference_speed=course_speeds[i], yaw_curve=curve,
-                          calibration=calibration, **(pilot_kwargs or {})) for i in range(batch)]
+                          calibration=calibration, **((pilot_kwargs or {}) if i in kwargs_for else {}))
+              for i in range(batch)]
     capped = []
     if caps is not None and cap_fraction > 0:
         base = seed if cap_seed is None else cap_seed
@@ -413,6 +454,7 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
         for i in capped:
             pilots[i].clearance = SyntheticCaps(caps, np.random.default_rng([base, 2, i]), pilots[i])
     teacher = (FastMotorPD if teacher_factory is None else teacher_factory)(profile, calibration)
+    holds = None if yaw_holds is None else YawHolds(yaw_holds, batch, seed)
     idle = torch.tensor([[-1., 0., 0., 0.]]).repeat(batch, 1)
     queue = deque(idle.clone() for _ in range(delay_steps))
     pending = [deque() for _ in range(batch)]
@@ -493,6 +535,9 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
         command = (target_action if controller == 'pd' else action).clone()
         for i in range(batch):
             command[i] = torch.as_tensor(pilots[i].command(command[i].numpy()), dtype=torch.float32)
+        if holds is not None:
+            held = holds.step(now, cfg.brain.dt, [p.launching for p in pilots])
+            command[torch.as_tensor(held), 3] = 0.
         if now < 1.:
             command = idle.clone()
         if collect and k > 50 and k % 5 == 4:
@@ -560,6 +605,10 @@ def rollout(brain, cfg, meta, profile, contract, courses, *, controller='pd', sp
     if capped:
         result['capped_drones'] = capped
         result['synthetic_cap_events'] = int(sum(len(pilots[i].clearance.events) for i in capped))
+    if holds is not None:
+        result['yaw_holds'] = holds.count
+    if pilot_kwargs and pilot_share < 1:
+        result['deployed_pilot_drones'] = sorted(kwargs_for)
     if trace is not None and trace['t']:
         events = [pilots[i].clearance.events if i in capped else [] for i in range(batch)]
         result['brake'] = brake_metrics(np.asarray(trace['t']), np.stack(trace['request']), np.stack(trace['velocity']),
@@ -613,6 +662,24 @@ def brake_mask(request, velocity, *, aligned_deg=20., level=.5, min_speed=3., mi
     magnitude = rh.norm(dim=-1)
     within = (magnitude > 1e-6) & (along >= np.cos(np.radians(turn_deg))*magnitude)
     return mask | (within & (request[:, 2].abs() < level) & (speed >= min_speed) & (speed-magnitude >= min_excess))
+
+
+def cruise_mask(request, velocity, nominal, *, aligned_deg=20., level=.5, min_speed=3., fraction=.8, min_excess=.8):
+    """Samples of cruise at the contract's speed (brain-11): the horizontal request at least `fraction` x `nominal`,
+    within `aligned_deg` of the horizontal velocity, |vertical request| < `level`, |v_h| >= `min_speed` and not a brake
+    sample (speed along the track over the request by less than `min_excess`)."""
+    rh, vh = request[:, :2], velocity[:, :2]
+    speed, magnitude = vh.norm(dim=-1), rh.norm(dim=-1)
+    along = (rh*vh).sum(-1)/speed.clamp_min(1e-6)
+    aligned = (magnitude > 1e-6) & (along >= np.cos(np.radians(aligned_deg))*magnitude)
+    return (aligned & (magnitude >= fraction*nominal) & (request[:, 2].abs() < level) & (speed >= min_speed)
+            & (speed-along < min_excess))
+
+
+def cruise_weights(request, velocity, nominal, weight, **selection):
+    """Up-weight `cruise_mask` samples by `weight` (mean weight one)."""
+    weights = torch.where(cruise_mask(request, velocity, nominal, **selection), float(weight), 1.)
+    return weights*len(weights)/weights.sum()
 
 
 def brake_weights(request, velocity, weight, **selection):
@@ -688,7 +755,7 @@ def slow_leg_speeds(courses, share, low, high, nominal, seed):
 
 # collection settings a --resolve must repeat, with their value for runs made before they existed
 COLLECTION_DEFAULTS = dict(synthetic_caps=0., slow_legs=0., slow_leg_speed=[2.5, 4.5], teacher_gains=[], turn_relief=0.,
-                           label_lead=0., pilot='default', hill_share=0.)
+                           label_lead=0., pilot='default', hill_share=0., yaw_holds=0., pilot_share=1.)
 
 
 def collection_courses(round_index, courses, steep, hill_share):
@@ -751,16 +818,25 @@ def main():
     parser.add_argument('--pilot', choices=['default', 'deployed'], default='default',
                         help='pilot of every rollout: the default fast race-cue pilot, or the deployed one (the runner\'s '
                              '--obstacle-stack on --descent-view on for the brain contract; haltere.train.deployed_pilot)')
+    parser.add_argument('--pilot-share', type=float, default=1.,
+                        help='with --pilot deployed: share of the drones of each collection round flying it (the rest '
+                             'fly the default pilot; evaluations fly it on every drone)')
     parser.add_argument('--hill-share', type=float, default=0.,
                         help='share of the collection courses that are hill courses (long descents; 0: off)')
     parser.add_argument('--brake-level', type=float, default=.5,
                         help='largest |vertical request| of a --brake-weight sample (refit only; default 0.5: level)')
+    parser.add_argument('--yaw-holds', type=float, default=0.,
+                        help='yaw holds per minute per drone in the collection rounds (training data: the yaw stick held '
+                             'at 0 for 0.5-2 s so the request turns in the body frame; 0: off)')
+    parser.add_argument('--cruise-weight', type=float, default=1.,
+                        help='weight of aligned, level samples cruising at >= 0.8 x the nominal speed that are not '
+                             'over-speed (refit only; counters the brake weights\' pull on the cruise speed)')
     parser.add_argument('--brake-turn-deg', type=float, default=0.,
                         help='also up-weight capped turns with the request within this angle of the velocity and its '
                              'magnitude over-speed (refit only; 0: off)')
     args = parser.parse_args()
     if (args.ridge <= 0 or args.rounds < 1 or args.sink_weight <= 0 or args.smooth < 0 or args.brake_weight <= 0
-            or args.sag_weight <= 0):
+            or args.sag_weight <= 0 or args.cruise_weight <= 0):
         raise ValueError('Use positive ridge, sink and brake weights, non-negative smoothing and at least one round')
     if not 0 < args.vertical_goal_seconds <= 2:
         raise ValueError('Use a vertical goal time in (0, 2] s')
@@ -777,6 +853,10 @@ def main():
         raise ValueError('--caps-config needs --synthetic-caps')
     if min(args.smooth_rows) < 0 or (args.smooth_rows != [1., 1., 1.] and args.smooth <= 0):
         raise ValueError('--smooth-rows takes non-negative multipliers of a positive --smooth')
+    if not 0 <= args.yaw_holds <= 60:
+        raise ValueError('--yaw-holds is 0-60 per minute')
+    if not 0 < args.pilot_share <= 1 or (args.pilot_share < 1 and args.pilot != 'deployed'):
+        raise ValueError('--pilot-share is a share in (0, 1] of the drones flying --pilot deployed')
     if not 0 <= args.hill_share <= 1 or not 0 < args.brake_level <= 3.5 or not 0 <= args.brake_turn_deg < 180:
         raise ValueError('--hill-share is a share, --brake-level in (0, 3.5] m/s, --brake-turn-deg in [0, 180)')
     if not args.retina_data and args.validation_retina_data:
@@ -807,7 +887,7 @@ def main():
     if args.resolve:
         source = torch.load(Path(args.resolve)/'training.pt', map_location='cpu', weights_only=False)
         if (args.smooth > 0 and 'step_gram' not in source or args.sink_weight != 1 and 'request' not in source
-                or (args.brake_weight != 1 or args.sag_weight != 1)
+                or (args.brake_weight != 1 or args.sag_weight != 1 or args.cruise_weight != 1)
                 and ('request' not in source or 'velocity' not in source)):
             raise ValueError('That run did not save feature steps / 3D requests / velocities')
         for key in ('checkpoint', 'profile', 'speed', 'scaled_speed', 'vertical_goal_seconds', 'steep', 'seconds',
@@ -869,6 +949,9 @@ def main():
             brake = brake_weights(torch.cat(requests_3d), torch.cat(velocities), args.brake_weight, level=args.brake_level,
                                   turn_deg=args.brake_turn_deg or None)
             weights = brake if weights is None else weights*brake/(weights*brake).mean()
+        if args.cruise_weight != 1:
+            cruise = cruise_weights(torch.cat(requests_3d), torch.cat(velocities), args.speed, args.cruise_weight)
+            weights = cruise if weights is None else weights*cruise/(weights*cruise).mean()
         return fit_readout(brain, torch.cat(rows), torch.cat(targets), args.ridge, weights, args.smooth,
                            steps, step_count, smooth_rows=args.smooth_rows)
 
@@ -893,7 +976,9 @@ def main():
                             retina_stream=training_retina, retina_dropout=args.retina_dropout,
                             pilot_speeds=legs, caps=caps, cap_fraction=args.synthetic_caps,
                             record_brake=caps is not None or legs is not None, teacher_factory=teacher_factory,
-                            label_lead=int(round(args.label_lead/cfg.brain.dt)), pilot_kwargs=pilot_kwargs)
+                            label_lead=int(round(args.label_lead/cfg.brain.dt)), pilot_kwargs=pilot_kwargs,
+                            yaw_holds=YawHoldConfig(rate_per_min=args.yaw_holds) if args.yaw_holds > 0 else None,
+                            pilot_share=args.pilot_share)
         if hills:
             row['hill_courses'] = hills
         record(dict(stage=f'collect-{round_index}', **row, samples=len(data['labels']) if data else 0))
@@ -930,13 +1015,15 @@ def main():
            if teacher_factory is not None or args.label_lead > 0 else {}),
         **({'smooth_rows': args.smooth_rows} if args.smooth_rows != [1., 1., 1.] else {}),
         **({'sag_weight': args.sag_weight} if args.sag_weight != 1 else {}),
-        **({'collection_pilot': dict(kind='deployed', declarations=pilot_record,
+        **({'collection_pilot': dict(kind='deployed', declarations=pilot_record, share=args.pilot_share,
                                      note='DAgger rollouts and evaluations flew the deployed pilot (--obstacle-stack on '
                                           '--descent-view on for the brain contract); training data only')}
            if pilot_record is not None else {}),
         **({'hill_share': args.hill_share} if args.hill_share > 0 else {}),
+        **({'yaw_holds': asdict(YawHoldConfig(rate_per_min=args.yaw_holds))} if args.yaw_holds > 0 else {}),
         **({'brake_selection': dict(level=args.brake_level, turn_deg=args.brake_turn_deg or None)}
            if args.brake_level != .5 or args.brake_turn_deg else {}),
+        **({'cruise_weight': args.cruise_weight} if args.cruise_weight != 1 else {}),
         resolved_training_sha256=config['resolved_training_sha256'],
         resolved_from=None if source is None else dict(
             run=args.resolve, source_sha256=source['config']['source_sha256'],
