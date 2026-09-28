@@ -1,0 +1,542 @@
+{
+ "gates_sha256": "da57c268776995cff6bd771b570f4c56eb09b0e605c2557f2da40eb9de1de6b1",
+ "gates_version": 2,
+ "declarations": {
+  "stale_evidence": {
+   "file": "configs/obstacles/stale_evidence.json",
+   "version": 2,
+   "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a"
+  }
+ },
+ "baseline_tree": {
+  "branch": "m4b",
+  "commit": "2a5bccbdaece4bfdea473d8240d3c0548135e80d",
+  "note": "an archive of m4b; the m4b variants run its own vertical_replay.py"
+ },
+ "identity": {
+  "I1_default": {
+   "identical": 27,
+   "of": 27,
+   "differ": [],
+   "passed": true
+  },
+  "I2_stack_without_rule": {
+   "identical": 27,
+   "of": 27,
+   "differ": [],
+   "passed": true
+  },
+  "I3_shadow": {
+   "identical": 27,
+   "of": 27,
+   "differ": [],
+   "passed": true
+  }
+ },
+ "V1_reproduced": {
+  "rows": {
+   "minus-fast6-r4b-01": true,
+   "minus-fast6-r4-02": true,
+   "straw-fast6-02": true,
+   "minus-fast6-vg-02": true
+  },
+  "passed": true
+ },
+ "DM_minus": {
+  "brake_onset_t": 42.00672340393066,
+  "lead_s": 2.79,
+  "baseline_brake_ticks_in_window": 0,
+  "onset_distance_to_impact_m": 13.738,
+  "first_hairpin_brake_to_rest_m": 2.568,
+  "request_along_travel_at_impact": 3.746,
+  "min_request_along_travel_before_impact": 3.519,
+  "reseats": 1,
+  "DM1_passed": true,
+  "DM2_passed": true
+ },
+ "HA_logs": {
+  "per_flight": {
+   "minus-fast6-wall-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-gapon-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-gapon-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-fast6-gapon-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-loom-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-fast6-vg-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-vg-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain09b-vg-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-gapshadow-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-fast6-r4-02": {
+    "changed_ticks": 0,
+    "max_speedup": -0.0,
+    "max_slowdown": 0.0,
+    "reseats": 1,
+    "passed": true
+   },
+   "minus-brain10b-r4-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain09b-r4-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "pine-fast6-ttc-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "pine-brain08-loom-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "pine-brain08-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-04": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-06": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-03": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-fast6-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-fast6-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-fast6-03": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-fast6-arc-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": 0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain11cw13-r4b-noassist-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain11cw13-r4b-noassist-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   }
+  },
+  "passed": true
+ },
+ "HA_hairpin": {
+  "table": {
+   "pd/heldout": {
+    "baseline": {
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 1,
+     "crashed": 0,
+     "clean": 11,
+     "finish_s_mean": 12.708
+    },
+    "rule": {
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 1,
+     "crashed": 0,
+     "clean": 11,
+     "finish_s_mean": 12.708
+    },
+    "passed": true
+   },
+   "pd/development": {
+    "baseline": {
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 12,
+     "finish_s_mean": 12.117
+    },
+    "rule": {
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 12,
+     "finish_s_mean": 12.117
+    },
+    "passed": true
+   },
+   "pd/fresh": {
+    "baseline": {
+     "wall": 4,
+     "floor": 0,
+     "ceiling": 1,
+     "crashed": 2,
+     "clean": 14,
+     "finish_s_mean": 12.973
+    },
+    "rule": {
+     "wall": 4,
+     "floor": 0,
+     "ceiling": 1,
+     "crashed": 2,
+     "clean": 14,
+     "finish_s_mean": 12.973
+    },
+    "passed": true
+   },
+   "brain08/heldout": {
+    "baseline": {
+     "wall": 10,
+     "floor": 3,
+     "ceiling": 0,
+     "crashed": 2,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 10,
+     "floor": 3,
+     "ceiling": 0,
+     "crashed": 2,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain08/development": {
+    "baseline": {
+     "wall": 11,
+     "floor": 1,
+     "ceiling": 0,
+     "crashed": 1,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 11,
+     "floor": 1,
+     "ceiling": 0,
+     "crashed": 1,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain08/fresh": {
+    "baseline": {
+     "wall": 17,
+     "floor": 5,
+     "ceiling": 0,
+     "crashed": 3,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 17,
+     "floor": 5,
+     "ceiling": 0,
+     "crashed": 3,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain09b/heldout": {
+    "baseline": {
+     "wall": 11,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 4,
+     "clean": 1,
+     "finish_s_mean": 13.24
+    },
+    "rule": {
+     "wall": 11,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 4,
+     "clean": 1,
+     "finish_s_mean": 13.24
+    },
+    "passed": true
+   },
+   "brain09b/development": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain09b/fresh": {
+    "baseline": {
+     "wall": 18,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 9,
+     "clean": 2,
+     "finish_s_mean": 13.6
+    },
+    "rule": {
+     "wall": 18,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 9,
+     "clean": 2,
+     "finish_s_mean": 13.6
+    },
+    "passed": true
+   },
+   "brain10b/heldout": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain10b/development": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain10b/fresh": {
+    "baseline": {
+     "wall": 20,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 20,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain11cw13/heldout": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain11cw13/development": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   },
+   "brain11cw13/fresh": {
+    "baseline": {
+     "wall": 20,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "rule": {
+     "wall": 20,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "finish_s_mean": null
+    },
+    "passed": true
+   }
+  },
+  "gated": [
+   "pd/fresh",
+   "brain08/fresh",
+   "brain09b/fresh",
+   "brain10b/fresh",
+   "brain11cw13/fresh"
+  ],
+  "passed": true,
+  "development_passed": true
+ }
+}

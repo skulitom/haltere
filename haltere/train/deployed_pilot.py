@@ -12,7 +12,11 @@ declarations of the rule versions this code implements), plus a record of every 
 - the vertical guard (configs/obstacles/vertical_guard.json);
 - the view-keeping descent (configs/pilot/descent_view.json) and, from its version 2, its contact support;
 - with ``motor_assist=True`` (``--motor-assist on``, off by default), the motor-assist entry of the contract
-  (configs/pilot/motor_assist.json; none for the fast PD).
+  (configs/pilot/motor_assist.json; none for the fast PD);
+- with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
+  cap follows the ray of its evidence). The runner's stack includes it from round 5 on (``--stale-evidence off`` removes
+  it); it is off here by default so that the brain-11 records built on this module stay reproducible. The surrogate
+  has no looming samples, so it is idle there.
 
 The surrogate has no looming or gap samples, so the gap aim, the ceiling guard and the vertical guard stay idle
 there; the lag-aware turns and the view-keeping descent act, and turn-first acts on a governor cap (for example a
@@ -25,7 +29,8 @@ from ..vision.datasets import sha256
 CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 
-def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False):
+def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
+                          stale_evidence=False):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
@@ -62,6 +67,10 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
             # descent view version 2: contact support, as the runner adds it (it reads the pad calibration, which the
             # surrogate's pilots receive from the checkpoint)
             kwargs['contact_support'] = contact
+    if stack and stale_evidence:
+        stale, digest = vb.load_stale_evidence()
+        note('stale_evidence', vb.STALE_EVIDENCE_DECLARATION, stale, digest)
+        kwargs.update(frc.stale_evidence_configs(stale))
     if motor_assist:
         assist, digest = vb.load_motor_assist()
         note('motor_assist', vb.MOTOR_ASSIST_DECLARATION, assist, digest)

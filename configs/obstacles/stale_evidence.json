@@ -1,0 +1,13 @@
+{
+ "schema": "haltere.liftoff.stale_evidence.v1",
+ "version": 2,
+ "note": "Stale-evidence rule of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow with --stale-evidence on; off by default, also inside the stack; shadow computes and logs it without applying it). 'clearance_ray': haltere.liftoff.fast_race_cue.ClearanceRayConfig. The looming TTC governor keeps one cap along one ray; a confirmed wall sample whose ray lies more than stale_deg from the cap's ray and whose own target does not lower the held one re-seats the cap on its own ray (its own target, the cap starting at the speed along that ray) and ends the old stand-off, but only once that stand-off has lapsed (keep_standoff): a drone holding off a wall keeps that wall's cap. Samples off the cap's ray are confirmed and hold the cap as without the rule (judge_fresh false). Generic and course-agnostic: it reads only the causal looming samples, odometry and the measured velocity; no course geometry, route, logged position or per-course value. stale_deg 60 is a-priori (a cap along a ray 60 deg away bounds at most half, cos 60, of the speed along the new ray). Version 1 (kept verbatim as stale_evidence_v1.json, refused at runtime) judged off-ray samples as first engagements, let them neither hold the cap nor re-aim it, and re-seated during a stand-off; it passed its development case and failed its held-out gates (configs/obstacles/stale_evidence_gates_v1.json, docs/experiments/stale_evidence_v1_scores.json): +2.43 and +1.93 m/s along the travel direction on minus-fast6-r4-02 and straw-fast6-02 and one more fast-PD wall contact on the development hairpin set (turn 60 deg, wall 2.1 m, arch 7 m). Version 2 was designed after reading those results, so every log and both harness hairpin sets are development evidence for it; its held-out evidence is a fresh harness hairpin set declared in configs/obstacles/stale_evidence_gates.json version 2, frozen with this version before any version-2 result. The runner refuses another version (fast_race_cue.STALE_EVIDENCE_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight. Offline replays of this rule are open loop or run in a surrogate and are not flight evidence.",
+ "clearance_ray": {
+  "stale_deg": 60.0,
+  "judge_fresh": false,
+  "keep_standoff": true
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-28T07:13:01+00:00",
+ "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a"
+}

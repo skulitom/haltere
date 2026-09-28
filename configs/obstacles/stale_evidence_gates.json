@@ -1,0 +1,411 @@
+{
+ "schema": "haltere.obstacles.stale_evidence_gates.v1",
+ "version": 2,
+ "note": "Gates of the stale-evidence rule version 2 (configs/obstacles/stale_evidence.json), scored by haltere.obstacles.stale_evidence_gates (score_v2). Frozen with version 2 before any version-2 result. Version 1 of the rule and the ring-marker reader rule version 1 were scored once on gates version 1 (stale_evidence_gates_v1.json, kept verbatim; docs/experiments/stale_evidence_v1_scores.json) and failed their held-out gates; version 2 was designed after reading those results. Therefore every replay log and both motor-assist hairpin sets are DEVELOPMENT evidence here (scored and reported with the same criteria); the only held-out evidence is the fresh hairpin set below (parameters and sim seed never run before). The ring-marker reader rule is not revised here. Every replay is open loop; the hairpins are the synthetic motor-assist harness; nothing here is flight evidence. The m4b-tree replays of gates version 1 (same m4b tree, same harness, same logs) are reused. The hash covers everything except frozen/frozen_at/sha256.",
+ "declarations": {
+  "stale_evidence": {
+   "file": "configs/obstacles/stale_evidence.json",
+   "version": 2,
+   "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a"
+  }
+ },
+ "baseline_tree": {
+  "branch": "m4b",
+  "commit": "2a5bccbdaece4bfdea473d8240d3c0548135e80d",
+  "note": "an archive of m4b; the m4b variants run its own vertical_replay.py"
+ },
+ "baseline_tree_path": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m5/arches/m4b_tree",
+ "runs": "C:/DEV/Haltere/runs/fast-stack-20260923",
+ "development": [
+  "minus-fast6-wall-01",
+  "minus-brain08-gapon-01",
+  "minus-brain08-gapon-02",
+  "minus-fast6-gapon-01",
+  "minus-brain08-loom-01",
+  "minus-fast6-vg-02",
+  "minus-brain08-vg-01",
+  "minus-brain09b-vg-01",
+  "minus-brain08-gapshadow-01",
+  "minus-fast6-r4-02",
+  "minus-brain10b-r4-02",
+  "minus-brain09b-r4-01",
+  "pine-fast6-ttc-01",
+  "pine-brain08-loom-01",
+  "pine-brain08-01",
+  "straw-brain08-04",
+  "straw-brain08-06",
+  "straw-brain08-01",
+  "straw-brain08-02",
+  "straw-brain08-03",
+  "straw-fast6-01",
+  "straw-fast6-02",
+  "straw-fast6-03",
+  "straw-fast6-arc-01",
+  "minus-brain11cw13-r4b-noassist-01",
+  "minus-fast6-r4b-01",
+  "straw-brain11cw13-r4b-noassist-02"
+ ],
+ "replay_flights": [
+  "minus-fast6-wall-01",
+  "minus-brain08-gapon-01",
+  "minus-brain08-gapon-02",
+  "minus-fast6-gapon-01",
+  "minus-brain08-loom-01",
+  "minus-fast6-vg-02",
+  "minus-brain08-vg-01",
+  "minus-brain09b-vg-01",
+  "minus-brain08-gapshadow-01",
+  "minus-fast6-r4-02",
+  "minus-brain10b-r4-02",
+  "minus-brain09b-r4-01",
+  "pine-fast6-ttc-01",
+  "pine-brain08-loom-01",
+  "pine-brain08-01",
+  "straw-brain08-04",
+  "straw-brain08-06",
+  "straw-brain08-01",
+  "straw-brain08-02",
+  "straw-brain08-03",
+  "straw-fast6-01",
+  "straw-fast6-02",
+  "straw-fast6-03",
+  "straw-fast6-arc-01",
+  "minus-brain11cw13-r4b-noassist-01",
+  "minus-fast6-r4b-01",
+  "straw-brain11cw13-r4b-noassist-02"
+ ],
+ "replays": {
+  "stream": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m4/vguard/streams/stream_{flight}.npz",
+  "streamed": [
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01",
+   "pine-brain08-01"
+  ],
+  "stack": "the round-4b replay stack: --stack on --near-on-path --throttle-column command_thr --descent-view (v2 with contact support), the tree's wall pilot v5, vertical guard v4, gap pilot v5, lag turn v2; the offline looming stream for flights flown without looming",
+  "reused": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m5/arches/gates_out/replays (m4b_none, m4b_on, m4b_shadow: copied)",
+  "variants": {
+   "m4b_none": {
+    "tree": "m4b",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "new_none": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "m4b_on": {
+    "tree": "m4b",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json"
+    ]
+   },
+   "new_on": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json"
+    ]
+   },
+   "m4b_shadow": {
+    "tree": "m4b",
+    "args": [
+     "--stack",
+     "shadow",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json"
+    ]
+   },
+   "new_shadow2": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "shadow",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{repo}/configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "new_on_se2": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{repo}/configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "new_on_se1": {
+    "tree": "repo",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{repo}/configs/obstacles/stale_evidence_v1.json"
+    ],
+    "flights": [
+     "minus-fast6-r4b-01",
+     "minus-fast6-r4-02",
+     "straw-fast6-02",
+     "minus-fast6-vg-02"
+    ]
+   }
+  }
+ },
+ "surrogate": {
+  "loop": "haltere.train.brake_gates.replay_window: IdentifiedSim (measured original drone, no randomisation), 3-tick command delay, quadratic drag 0.0075, from the logged state; the request and the yaw stick per logged row from a replay (rows the replay skipped keep the log); a brain warmed on its recorded inputs for warm_s",
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
+  "warm_s": 8.0,
+  "reference": "brain08",
+  "motors": {
+   "pd": {
+    "checkpoint": "pd",
+    "contract": "fast_velocity_pd_v1"
+   },
+   "brain08": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain09b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-09b-caps-r0001m100/candidate.pt",
+    "sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain10b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-10b/candidate.pt",
+    "sha256": "0ccf116190f5135220dbd2cc20a6dd9948654d07509eaa388a2286d8d4640bcd",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain11cw13": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-11-b-cw13/candidate.pt",
+    "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+    "contract": "fast_velocity_brain_v1"
+   }
+  },
+  "flight_motor": {
+   "minus-fast6-wall-01": "pd",
+   "minus-brain08-gapon-01": "brain08",
+   "minus-brain08-gapon-02": "brain08",
+   "minus-fast6-gapon-01": "pd",
+   "minus-brain08-loom-01": "brain08",
+   "minus-fast6-vg-02": "pd",
+   "minus-brain08-vg-01": "brain08",
+   "minus-brain09b-vg-01": "brain09b",
+   "minus-brain08-gapshadow-01": "brain08",
+   "minus-fast6-r4-02": "pd",
+   "minus-brain10b-r4-02": "brain10b",
+   "minus-brain09b-r4-01": "brain09b",
+   "pine-fast6-ttc-01": "pd",
+   "pine-brain08-loom-01": "brain08",
+   "pine-brain08-01": "brain08",
+   "straw-brain08-04": "brain08",
+   "straw-brain08-06": "brain08",
+   "straw-brain08-01": "brain08",
+   "straw-brain08-02": "brain08",
+   "straw-brain08-03": "brain08",
+   "straw-fast6-01": "pd",
+   "straw-fast6-02": "pd",
+   "straw-fast6-03": "pd",
+   "straw-fast6-arc-01": "pd",
+   "minus-brain11cw13-r4b-noassist-01": "brain11cw13",
+   "minus-fast6-r4b-01": "pd",
+   "straw-brain11cw13-r4b-noassist-02": "brain11cw13"
+  }
+ },
+ "gates": {
+  "I1_default": {
+   "rule": "--stack none replays of every replay flight: this tree == the m4b tree, command arrays (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit for bit"
+  },
+  "I2_stack_without_rule": {
+   "rule": "the replay stack without --stale-evidence: this tree == the m4b tree, bit for bit, every replay flight"
+  },
+  "I3_shadow": {
+   "rule": "the replay stack in shadow with the version-2 rule (this tree) == the stack in shadow on the m4b tree, bit for bit, every replay flight"
+  },
+  "V1_reproduced": {
+   "flights": [
+    "minus-fast6-r4b-01",
+    "minus-fast6-r4-02",
+    "straw-fast6-02",
+    "minus-fast6-vg-02"
+   ],
+   "v1_replays": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m5/arches/gates_out/replays",
+   "rule": "the kept version-1 declaration through this code reproduces the version-1 scoring replays (new_on_se) bit for bit (command arrays and re-seat counts) on the four logs version 1 changed"
+  },
+  "DM_minus": {
+   "flight": "minus-fast6-r4b-01",
+   "window": [
+    42.0,
+    44.797
+   ],
+   "impact_t": 44.797,
+   "impact_point": [
+    51.09,
+    93.51
+   ],
+   "slower_mps": 0.3,
+   "brake_lead_s": 0.5,
+   "first_hairpin": {
+    "brake_window": [
+     38.5,
+     39.6
+    ],
+    "rest_window": [
+     39.0,
+     40.0
+    ]
+   },
+   "rule": "DEVELOPMENT, open loop: DM1 and DM2 of gates version 1 with the version-2 rule (new_on_se2 vs m4b_on)"
+  },
+  "HA_logs": {
+   "flights": [
+    "minus-fast6-wall-01",
+    "minus-brain08-gapon-01",
+    "minus-brain08-gapon-02",
+    "minus-fast6-gapon-01",
+    "minus-brain08-loom-01",
+    "minus-fast6-vg-02",
+    "minus-brain08-vg-01",
+    "minus-brain09b-vg-01",
+    "minus-brain08-gapshadow-01",
+    "minus-fast6-r4-02",
+    "minus-brain10b-r4-02",
+    "minus-brain09b-r4-01",
+    "pine-fast6-ttc-01",
+    "pine-brain08-loom-01",
+    "pine-brain08-01",
+    "straw-brain08-04",
+    "straw-brain08-06",
+    "straw-brain08-01",
+    "straw-brain08-02",
+    "straw-brain08-03",
+    "straw-fast6-01",
+    "straw-fast6-02",
+    "straw-fast6-03",
+    "straw-fast6-arc-01",
+    "minus-brain11cw13-r4b-noassist-01",
+    "straw-brain11cw13-r4b-noassist-02"
+   ],
+   "max_speedup": 0.3,
+   "rule": "DEVELOPMENT (every log was read before version 2), open loop: HA_logs of gates version 1 with the version-2 rule on every replay flight except the Minus clip"
+  },
+  "HA_hairpin": {
+   "motors": [
+    "pd",
+    "brain08",
+    "brain09b",
+    "brain10b",
+    "brain11cw13"
+   ],
+   "sets": {
+    "heldout": {
+     "set": {
+      "turn_deg": [
+       45.0,
+       75.0,
+       105.0
+      ],
+      "arch_m": [
+       8.0,
+       13.0
+      ],
+      "wall_m": [
+       2.3,
+       3.0
+      ]
+     },
+     "seconds": 16.0,
+     "sim_seed": 23
+    },
+    "development": {
+     "set": {
+      "turn_deg": [
+       20.0,
+       60.0,
+       90.0
+      ],
+      "arch_m": [
+       7.0,
+       11.0
+      ],
+      "wall_m": [
+       2.1,
+       2.6
+      ]
+     },
+     "seconds": 16.0,
+     "sim_seed": 17
+    },
+    "fresh": {
+     "set": {
+      "turn_deg": [
+       30.0,
+       50.0,
+       70.0,
+       100.0,
+       120.0
+      ],
+      "arch_m": [
+       6.0,
+       9.0
+      ],
+      "wall_m": [
+       2.0,
+       2.8
+      ]
+     },
+     "seconds": 16.0,
+     "sim_seed": 29
+    }
+   },
+   "gated_sets": [
+    "fresh"
+   ],
+   "rule": "closed loop (motor_assist_eval.run_scenarios) with the m4b pilot for the motor contract, with and without the version-2 rule: per motor and set, wall contacts with the rule <= without and clean passes with the rule >= without. HELD-OUT only on the fresh set (20 scenarios, sim seed 29, never run before); the two sets of gates version 1 are development evidence (reported)"
+  }
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-28T07:13:45+00:00",
+ "sha256": "da57c268776995cff6bd771b570f4c56eb09b0e605c2557f2da40eb9de1de6b1"
+}

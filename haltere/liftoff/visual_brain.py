@@ -75,6 +75,24 @@ def load_wall_pilot(path=WALL_PILOT_DECLARATION):
     return declaration, digest
 
 
+# Declared stale-evidence rule of the obstacle stack (the looming governor's cap follows the ray of its evidence).
+STALE_EVIDENCE_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'stale_evidence.json'
+
+
+def load_stale_evidence(path=STALE_EVIDENCE_DECLARATION):
+    """A frozen stale-evidence declaration and its content hash (the lag-turn declaration's canonical hash); refuses an
+    unfrozen or edited file and another rule version than FastRaceCue implements (fast_race_cue.STALE_EVIDENCE_VERSION)."""
+    from .fast_race_cue import STALE_EVIDENCE_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen stale-evidence declaration, or it changed after the freeze')
+    if declaration.get('version') != STALE_EVIDENCE_VERSION:
+        raise ValueError(f'{path} declares stale-evidence rule version {declaration.get("version")}; the fast pilot '
+                         f'flies version {STALE_EVIDENCE_VERSION}')
+    return declaration, digest
+
+
 # Declared vertical guard of the obstacle stack (sink margin, descent first, terrain climb only for rising ground).
 VERTICAL_GUARD_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'vertical_guard.json'
 
@@ -119,6 +137,48 @@ def resolve_descent_view(args):
     if flag in (None,'off'):
         return None
     return str(DESCENT_VIEW_DECLARATION) if flag == 'on' else str(flag)
+
+
+# Declared reader rule of the visible checkpoint ring marker (--ring-marker on; off by default).
+RING_MARKER_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'ring_marker.json'
+
+
+def load_ring_marker(path=RING_MARKER_DECLARATION):
+    """A frozen ring-marker declaration and its content hash (the lag-turn declaration's canonical hash); refuses an
+    unfrozen or edited file and another rule version than the reader implements (race_cues.RING_MARKER_VERSION)."""
+    from ..vision.race_cues import RING_MARKER_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen ring-marker declaration, or it changed after the freeze')
+    if declaration.get('version') != RING_MARKER_VERSION:
+        raise ValueError(f'{path} declares ring-marker rule version {declaration.get("version")}; the reader '
+                         f'implements version {RING_MARKER_VERSION}')
+    return declaration, digest
+
+
+def resolve_ring_marker(args):
+    """The ring-marker declaration path of --ring-marker (on: the default declaration; off/absent: None). It needs the
+    race-cue pilot assistance, whose ring it reads."""
+    flag = getattr(args,'ring_marker',None)
+    if flag in (None,'off'):
+        return None
+    if getattr(args,'pilot_assistance','none') != 'race-cue':
+        raise ValueError('The ring-marker reader rule reads the race cue: use --pilot-assistance race-cue')
+    return str(RING_MARKER_DECLARATION) if flag == 'on' else str(flag)
+
+
+def race_cue_reader(assistance_mode, ring_marker):
+    """The camera's race_cues argument: False without the race-cue assistance, True for the earlier reader (no
+    declared rule: bit for bit as before), or dict(annulus=...) with the declared reader rule (ring_marker: the
+    declaration path)."""
+    if assistance_mode != 'race-cue':
+        return False
+    if ring_marker is None:
+        return True
+    from ..vision.race_cues import ring_marker_rule
+    declaration, _ = load_ring_marker(ring_marker)
+    return dict(annulus=ring_marker_rule(declaration))
 
 
 # Declared pilot-level help for lagging brain motor contracts (--motor-assist on; off by default).
@@ -289,7 +349,8 @@ class RetinaCamera:
                             retina = torch.zeros(1,720)
                         if self.race_cues:
                             from ..vision.race_cues import checkpoint_ring
-                            cue = checkpoint_ring(rgb)
+                            # race_cues True: the earlier reader; a dict: the declared reader rule (--ring-marker)
+                            cue = checkpoint_ring(rgb) if self.race_cues is True else checkpoint_ring(rgb,**self.race_cues)
                             if detection is None:
                                 detection = dict(p=0., point=np.zeros(3), width=0.)
                             detection['race_cue'] = cue
@@ -327,7 +388,8 @@ class VisualController:
                  dynamics_calibration=None, calibration_amplitudes=None, oracle_motor_diagnostic=False,
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
-                 vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None):
+                 vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None, stale_evidence=None,
+                 stale_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -338,6 +400,8 @@ class VisualController:
             raise ValueError('The wall-pilot rules are part of the fast pilot profile')
         if vertical_guard and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The vertical guard is part of the fast pilot profile')
+        if stale_evidence and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The stale-evidence rule is part of the fast pilot profile')
         if descent_view and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The view-keeping descent is part of the fast pilot profile')
         if motor_assist and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
@@ -418,6 +482,7 @@ class VisualController:
         self.vertical_guard_declaration = None
         self.descent_view_declaration = None
         self.motor_assist_declaration = None
+        self.stale_evidence_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -505,6 +570,16 @@ class VisualController:
                                                      file_sha256=sha256(motor_assist), schema=declaration.get('schema'),
                                                      version=declaration.get('version'), motor_contract=contract,
                                                      applied=assist_config is not None)
+            if stale_evidence:
+                # Declared once for every motor contract and course (obstacle stack only); absent (not passed) when off,
+                # so the pilot is built exactly as before.
+                from .fast_race_cue import stale_evidence_configs
+                declaration, digest = load_stale_evidence(stale_evidence)
+                descent_kw.update(stale_evidence_configs(declaration), stale_apply=bool(stale_apply))
+                self.stale_evidence_declaration = dict(path=str(stale_evidence), sha256=digest,
+                                                       file_sha256=sha256(stale_evidence),
+                                                       schema=declaration.get('schema'),
+                                                       version=declaration.get('version'), applied=bool(stale_apply))
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -815,20 +890,25 @@ def resolve_obstacle_stack(args):
     --obstacle-stack on|shadow (requires --pilot-profile fast and --looming-brake) runs the gap cue (depth
     process or camera hook, the pilot's gap aim), the lag-aware turns, the wall-pilot rules (turn first at a
     wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json) and the vertical guard (sink
-    margin, descent first, terrain climb only for rising ground; configs/obstacles/vertical_guard.json); shadow runs
-    the same processes and computations and logs them but applies no aim shift, no lag-turn, no wall-pilot rule and
-    no vertical guard (matched control). --gap-cue off, --lag-turn off, --wall-pilot off and --vertical-guard off
+    margin, descent first, terrain climb only for rising ground; configs/obstacles/vertical_guard.json) and, with
+    --stale-evidence on (off by default, also inside the stack), the stale-evidence rule (the looming governor's cap
+    follows the ray of its evidence; configs/obstacles/stale_evidence.json); shadow runs the same processes and
+    computations and logs them but applies no aim shift, no lag-turn, no wall-pilot rule, no vertical guard and no
+    stale-evidence rule (matched control). --gap-cue off, --lag-turn off, --wall-pilot off and --vertical-guard off
     remove a component from the stack. Outside the stack --lag-turn [on|DECLARATION] keeps its earlier meaning and
-    --gap-cue on / --wall-pilot on / --vertical-guard on are refused.
+    --gap-cue on / --wall-pilot on / --vertical-guard on / --stale-evidence on are refused.
     Returns dict(mode=None|'on'|'shadow', gap=bool, lag_turn=declaration path or None, apply=bool,
-    wall_pilot=declaration path or None, vertical_guard=declaration path or None)."""
+    wall_pilot=declaration path or None, vertical_guard=declaration path or None,
+    stale_evidence=declaration path or None)."""
     mode = getattr(args,'obstacle_stack',None)
     gap_flag = getattr(args,'gap_cue',None)
     wall_flag = getattr(args,'wall_pilot',None)
     vertical_flag = getattr(args,'vertical_guard',None)
+    stale_flag = getattr(args,'stale_evidence',None)
     lag = getattr(args,'lag_turn',None)
-    if gap_flag not in (None,'on','off') or wall_flag not in (None,'on','off') or vertical_flag not in (None,'on','off'):
-        raise ValueError('--gap-cue, --wall-pilot and --vertical-guard are on or off')
+    if (gap_flag not in (None,'on','off') or wall_flag not in (None,'on','off') or vertical_flag not in (None,'on','off')
+            or stale_flag not in (None,'on','off')):
+        raise ValueError('--gap-cue, --wall-pilot, --vertical-guard and --stale-evidence are on or off')
     lag_path = None if lag in (None,'off') else str(LAG_TURN_DECLARATION) if lag == 'on' else str(lag)
     if mode is None:
         if gap_flag == 'on':
@@ -837,14 +917,18 @@ def resolve_obstacle_stack(args):
             raise ValueError('The wall-pilot rules are part of the obstacle stack: use --obstacle-stack on|shadow')
         if vertical_flag == 'on':
             raise ValueError('The vertical guard is part of the obstacle stack: use --obstacle-stack on|shadow')
-        return dict(mode=None,gap=False,lag_turn=lag_path,apply=True,wall_pilot=None,vertical_guard=None)
+        if stale_flag == 'on':
+            raise ValueError('The stale-evidence rule is part of the obstacle stack: use --obstacle-stack on|shadow')
+        return dict(mode=None,gap=False,lag_turn=lag_path,apply=True,wall_pilot=None,vertical_guard=None,
+                    stale_evidence=None)
     if mode not in ('on','shadow'):
         raise ValueError('--obstacle-stack is on or shadow')
     if getattr(args,'pilot_profile','standard') != 'fast' or not getattr(args,'looming_brake',False):
         raise ValueError('The obstacle stack requires --pilot-profile fast and --looming-brake')
     return dict(mode=mode,gap=gap_flag != 'off',lag_turn=str(LAG_TURN_DECLARATION) if lag is None else lag_path,
                 apply=mode == 'on',wall_pilot=None if wall_flag == 'off' else str(WALL_PILOT_DECLARATION),
-                vertical_guard=None if vertical_flag == 'off' else str(VERTICAL_GUARD_DECLARATION))
+                vertical_guard=None if vertical_flag == 'off' else str(VERTICAL_GUARD_DECLARATION),
+                stale_evidence=str(STALE_EVIDENCE_DECLARATION) if stale_flag == 'on' else None)
 
 
 def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
@@ -854,9 +938,11 @@ def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
     result = dict(mode=stack['mode'], applied=stack['apply'],
                   components=dict(looming=True, gap_cue=bool(stack['gap']), lag_turn=stack['lag_turn'] is not None,
                                   wall_pilot=stack.get('wall_pilot') is not None,
-                                  vertical_guard=stack.get('vertical_guard') is not None),
+                                  vertical_guard=stack.get('vertical_guard') is not None,
+                                  **({} if stack.get('stale_evidence') is None else dict(stale_evidence=True))),
                   note=('shadow runs the same processes and computations and logs them; no aim shift, no lag-turn '
-                        'lead or heading change, no wall-pilot rule and no vertical guard is applied')
+                        'lead or heading change, no wall-pilot rule and no vertical guard is applied'
+                        +('' if stack.get('stale_evidence') is None else ' and no stale-evidence rule'))
                   if stack['mode'] == 'shadow' else None)
     if gap_spec:
         path, declaration, digest = gap_declaration
@@ -950,6 +1036,20 @@ def motor_assist_row(assistance):
         return tuple('' if k == 'assist_source' else float('nan') for k in MOTOR_ASSIST_COLUMNS)
     values = log()
     return tuple(values[k] for k in MOTOR_ASSIST_COLUMNS)
+
+
+# Stale-evidence rule (configs/obstacles/stale_evidence.json): appended last, only when the stack declares it.
+STALE_COLUMNS = ('cap_ray_deg','cap_reseat')
+
+
+def stale_row(assistance):
+    """CSV values for STALE_COLUMNS (written only when the stale-evidence rule is declared): the azimuth of the looming
+    governor's cap ray and the re-seats of the cap-ray rule so far (applied, or its shadow copy's)."""
+    log = getattr(assistance,'stale_log',None)
+    if log is None:
+        return (float('nan'),)*len(STALE_COLUMNS)
+    values = log()
+    return tuple(values[k] for k in STALE_COLUMNS)
 
 
 def clearance_row(assistance):
@@ -1104,6 +1204,14 @@ def run(args):
         raise FileExistsError('Use new log and video paths')
     stack = resolve_obstacle_stack(args)
     descent_view = resolve_descent_view(args)
+    ring_marker = resolve_ring_marker(args)
+    ring_marker_record = None
+    if ring_marker is not None:
+        # the declared reader rule of the ring marker (checked here, before the camera starts)
+        declaration, digest = load_ring_marker(ring_marker)
+        ring_marker_record = dict(path=str(ring_marker), sha256=digest, file_sha256=sha256(ring_marker),
+                                  schema=declaration.get('schema'), version=declaration.get('version'),
+                                  applied=True)
     motor_assist = resolve_motor_assist(args)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
@@ -1129,9 +1237,11 @@ def run(args):
                                   gap_pilot=gap_aim_config,gap_apply=stack['apply'],
                                   wall_pilot=stack['wall_pilot'],wall_apply=stack['apply'],
                                   vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
-                                  descent_view=descent_view,motor_assist=motor_assist)
+                                  descent_view=descent_view,motor_assist=motor_assist,
+                                  stale_evidence=stack.get('stale_evidence'),stale_apply=stack['apply'])
     view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
     assist_columns = MOTOR_ASSIST_COLUMNS if controller.motor_assist_declaration is not None else ()
+    stale_columns = STALE_COLUMNS if controller.stale_evidence_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1167,7 +1277,7 @@ def run(args):
         gap_spec = make_gap_spec(declaration, controller.motor_metadata.get('contract'), camera_sensor,
                                  path=path, digest=digest)
     camera = ProcessRetinaCamera(gate_sensor=camera_sensor,backend=args.capture_backend,fps=camera_fps,
-                                  race_cues=controller.assistance_mode=='race-cue',
+                                  race_cues=race_cue_reader(controller.assistance_mode,ring_marker),
                                   detector_device=getattr(args,'vision_device','cpu'),looming=looming,
                                   gap=gap_spec).start()
     if gap_spec:
@@ -1263,7 +1373,8 @@ def run(args):
                                  'looming_ttc','looming_distance','looming_age','looming_below_fraction','looming_ttc_lower',
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
-                                 *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns])
+                                 *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,
+                                 *stale_columns])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1379,7 +1490,8 @@ def run(args):
                                  *vertical_row(controller.assistance),
                                  *commit_row(controller.assistance),
                                  *(descent_view_row(controller.assistance) if view_columns else ()),
-                                 *(motor_assist_row(controller.assistance) if assist_columns else ())])
+                                 *(motor_assist_row(controller.assistance) if assist_columns else ()),
+                                 *(stale_row(controller.assistance) if stale_columns else ())])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1455,6 +1567,10 @@ def run(args):
             pilot_meta['descent_view_declaration'] = controller.descent_view_declaration
         if controller.motor_assist_declaration is not None:
             pilot_meta['motor_assist_declaration'] = controller.motor_assist_declaration
+        if controller.stale_evidence_declaration is not None:
+            pilot_meta['stale_evidence_declaration'] = controller.stale_evidence_declaration
+        if ring_marker_record is not None:
+            pilot_meta['ring_marker_declaration'] = ring_marker_record
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
         result = dict(checkpoint_sha256=sha256(args.checkpoint),checkpoint_requires_teacher=False,
                       runtime_requires_teacher=controller.assistance_mode == 'oracle-route',
@@ -1606,9 +1722,10 @@ def main():
                         'configs/obstacles/gap_pilot.json), lag-aware turns, the wall-pilot rules (turn first at '
                         'a wall, ceiling guard of the terrain climb; configs/obstacles/wall_pilot.json) and the '
                         'vertical guard (sink margin, descent first, terrain climb only for rising ground; '
-                        'configs/obstacles/vertical_guard.json); shadow runs and logs the same processes but applies '
-                        'no aim shift, no lag-turn, no wall-pilot rule and no vertical guard (matched control). No '
-                        'speed cap')
+                        'configs/obstacles/vertical_guard.json) and, with --stale-evidence on, the stale-evidence rule '
+                        '(configs/obstacles/stale_evidence.json); shadow runs and logs the same processes but applies '
+                        'no aim shift, no lag-turn, no wall-pilot rule, no vertical guard and no stale-evidence rule '
+                        '(matched control). No speed cap')
     p.add_argument('--gap-cue',choices=['on','off'],default=None,
                    help='Component override inside --obstacle-stack (default on)')
     p.add_argument('--wall-pilot',choices=['on','off'],default=None,
@@ -1618,6 +1735,15 @@ def main():
                    help='Component override inside --obstacle-stack (default on): keep a time margin to the ground '
                         'below the path, stop a descent before any terrain climb, and climb hard only for rising '
                         'ground (configs/obstacles/vertical_guard.json)')
+    p.add_argument('--stale-evidence',choices=['on','off'],default=None,
+                   help='EXPERIMENTAL component of --obstacle-stack, off by default (on adds it): the looming '
+                        'governor\'s cap follows the ray of its evidence (a confirmed wall sample off the cap\'s ray '
+                        're-seats it once the old stand-off has lapsed; configs/obstacles/stale_evidence.json)')
+    p.add_argument('--ring-marker',default=None,metavar='on|off|DECLARATION',
+                   help='EXPERIMENTAL reader rule for the visible checkpoint ring marker (off by default; needs '
+                        '--pilot-assistance race-cue): a candidate counts only if its white annulus is continuous '
+                        'around its hole, so a dark patch inside a white region (a banner logo) is not read as the marker (on: '
+                        'configs/pilot/ring_marker.json; recorded in the flight-log metadata)')
     p.add_argument('--descent-view',default=None,metavar='on|off|DECLARATION',
                    help='EXPERIMENTAL view-keeping descent of the fast pilot (off by default): bound the sink so the '
                         'flight path stays inside the lower field of view of the camera at the measured attitude, '
