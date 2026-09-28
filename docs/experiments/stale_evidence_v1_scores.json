@@ -1,0 +1,1743 @@
+{
+ "gates_sha256": "81c36bf64403f64e71705e456006d479d1b6f92f49b24a3a75551cab562a1506",
+ "gates_version": 1,
+ "declarations": {
+  "stale_evidence": {
+   "file": "configs/obstacles/stale_evidence.json",
+   "version": 1,
+   "sha256": "afcda589deb5c1ea0612e3d369ae5e35c5494a7cdf9c04d8a85b6f6bc0c61cd6"
+  },
+  "ring_marker": {
+   "file": "configs/pilot/ring_marker.json",
+   "version": 1,
+   "sha256": "09824e473659b7117c6e653c60e3e968015f521b3c6e2b7fb85c863247574f68"
+  }
+ },
+ "baseline_tree": {
+  "branch": "m4b",
+  "commit": "2a5bccbdaece4bfdea473d8240d3c0548135e80d",
+  "note": "an archive of m4b; the m4b variants run its own vertical_replay.py"
+ },
+ "identity": {
+  "I1_default": {
+   "identical": 27,
+   "of": 27,
+   "differ": [],
+   "passed": true
+  },
+  "I2_stack_without_rule": {
+   "identical": 27,
+   "of": 27,
+   "differ": [],
+   "passed": true
+  },
+  "I3_shadow": {
+   "identical": 27,
+   "of": 27,
+   "differ": [],
+   "passed": true
+  },
+  "I4_reader_off": {
+   "frames_checked": 8193,
+   "equal": 8193,
+   "passed": true
+  }
+ },
+ "DM_minus": {
+  "brake_onset_t": 44.04715919494629,
+  "lead_s": 0.75,
+  "baseline_brake_ticks_in_window": 0,
+  "onset_distance_to_impact_m": 4.409,
+  "first_hairpin": {
+   "brake_t": 38.83604621887207,
+   "rest_t": 39.55620002746582,
+   "rest_speed": 0.437,
+   "brake_to_rest_m": 2.568
+  },
+  "min_request_along_travel_before_impact": 3.741,
+  "reseats": 1,
+  "DM1_passed": true,
+  "DM2_passed": true
+ },
+ "DS1_straw_reader": {
+  "false_detections": 2,
+  "verdicts": [
+   "unmatched",
+   "unmatched"
+  ],
+  "confirmed_by_overlay": [
+   false,
+   false
+  ],
+  "passed": false
+ },
+ "DS2_straw_path": {
+  "min_distance_m": {
+   "m4b_on": 0.023,
+   "new_full": 0.023,
+   "logged": 0.022
+  },
+  "side": {
+   "m4b_on": "point on the left (path right of it)",
+   "new_full": "point on the left (path right of it)",
+   "logged": "point on the left (path right of it)"
+  },
+  "validation_passed": true,
+  "passed": false
+ },
+ "HR_reader": {
+  "per_flight": {
+   "loop-fast5-02": {
+    "frames": 1386,
+    "old_markers": 1320,
+    "new_markers": 1362,
+    "overlay_confirmed_old": 1198,
+    "kept": 1197,
+    "retention": 0.99917,
+    "removed_unconfirmed": 1,
+    "gained": 44,
+    "gained_confirmed": 43,
+    "differ": 46,
+    "passed": true
+   },
+   "minus-brain03-01": {
+    "frames": 217,
+    "old_markers": 212,
+    "new_markers": 211,
+    "overlay_confirmed_old": 212,
+    "kept": 211,
+    "retention": 0.99528,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 1,
+    "passed": true
+   },
+   "minus-brain04-02": {
+    "frames": 218,
+    "old_markers": 213,
+    "new_markers": 209,
+    "overlay_confirmed_old": 213,
+    "kept": 209,
+    "retention": 0.98122,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 4,
+    "passed": false
+   },
+   "minus-brain05-01": {
+    "frames": 175,
+    "old_markers": 169,
+    "new_markers": 164,
+    "overlay_confirmed_old": 168,
+    "kept": 164,
+    "retention": 0.97619,
+    "removed_unconfirmed": 1,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 5,
+    "passed": false
+   },
+   "minus-brain06-01": {
+    "frames": 218,
+    "old_markers": 213,
+    "new_markers": 212,
+    "overlay_confirmed_old": 213,
+    "kept": 212,
+    "retention": 0.99531,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 1,
+    "passed": true
+   },
+   "minus-brain07-01": {
+    "frames": 191,
+    "old_markers": 185,
+    "new_markers": 185,
+    "overlay_confirmed_old": 185,
+    "kept": 185,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "minus-brain08-01": {
+    "frames": 220,
+    "old_markers": 214,
+    "new_markers": 214,
+    "overlay_confirmed_old": 214,
+    "kept": 214,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "minus-brain08-gapon-01": {
+    "frames": 301,
+    "old_markers": 278,
+    "new_markers": 277,
+    "overlay_confirmed_old": 277,
+    "kept": 276,
+    "retention": 0.99639,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 1,
+    "passed": true
+   },
+   "minus-brain08-gapon-02": {
+    "frames": 307,
+    "old_markers": 293,
+    "new_markers": 291,
+    "overlay_confirmed_old": 291,
+    "kept": 289,
+    "retention": 0.99313,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 2,
+    "passed": false
+   },
+   "minus-brain08-gapshadow-01": {
+    "frames": 189,
+    "old_markers": 184,
+    "new_markers": 184,
+    "overlay_confirmed_old": 183,
+    "kept": 183,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "minus-brain08-loom-01": {
+    "frames": 158,
+    "old_markers": 154,
+    "new_markers": 154,
+    "overlay_confirmed_old": 154,
+    "kept": 154,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "minus-brain08-slow35-01": {
+    "frames": 165,
+    "old_markers": 165,
+    "new_markers": 165,
+    "overlay_confirmed_old": 162,
+    "kept": 162,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "minus-brain08-vg-01": {
+    "frames": 307,
+    "old_markers": 297,
+    "new_markers": 295,
+    "overlay_confirmed_old": 293,
+    "kept": 291,
+    "retention": 0.99317,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 2,
+    "passed": false
+   },
+   "minus-brain09b-r4-01": {
+    "frames": 389,
+    "old_markers": 372,
+    "new_markers": 363,
+    "overlay_confirmed_old": 357,
+    "kept": 351,
+    "retention": 0.98319,
+    "removed_unconfirmed": 3,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 9,
+    "passed": false
+   },
+   "minus-brain09b-vg-01": {
+    "frames": 360,
+    "old_markers": 353,
+    "new_markers": 348,
+    "overlay_confirmed_old": 346,
+    "kept": 341,
+    "retention": 0.98555,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 5,
+    "passed": false
+   },
+   "minus-brain10b-r4-02": {
+    "frames": 354,
+    "old_markers": 335,
+    "new_markers": 330,
+    "overlay_confirmed_old": 317,
+    "kept": 313,
+    "retention": 0.98738,
+    "removed_unconfirmed": 1,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 5,
+    "passed": false
+   },
+   "minus-brain11cw13-r4b-noassist-01": {
+    "frames": 350,
+    "old_markers": 342,
+    "new_markers": 336,
+    "overlay_confirmed_old": 331,
+    "kept": 326,
+    "retention": 0.98489,
+    "removed_unconfirmed": 1,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 6,
+    "passed": false
+   },
+   "minus-fast6-01": {
+    "frames": 554,
+    "old_markers": 551,
+    "new_markers": 547,
+    "overlay_confirmed_old": 544,
+    "kept": 540,
+    "retention": 0.99265,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 4,
+    "passed": false
+   },
+   "minus-fast6-cur-01": {
+    "frames": 210,
+    "old_markers": 209,
+    "new_markers": 209,
+    "overlay_confirmed_old": 208,
+    "kept": 208,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "minus-fast6-gapon-01": {
+    "frames": 347,
+    "old_markers": 335,
+    "new_markers": 332,
+    "overlay_confirmed_old": 329,
+    "kept": 326,
+    "retention": 0.99088,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 3,
+    "passed": false
+   },
+   "minus-fast6-r4-02": {
+    "frames": 505,
+    "old_markers": 486,
+    "new_markers": 478,
+    "overlay_confirmed_old": 471,
+    "kept": 465,
+    "retention": 0.98726,
+    "removed_unconfirmed": 2,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 8,
+    "passed": false
+   },
+   "minus-fast6-vg-02": {
+    "frames": 385,
+    "old_markers": 379,
+    "new_markers": 370,
+    "overlay_confirmed_old": 367,
+    "kept": 360,
+    "retention": 0.98093,
+    "removed_unconfirmed": 2,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 9,
+    "passed": false
+   },
+   "minus-fast6-wall-01": {
+    "frames": 209,
+    "old_markers": 209,
+    "new_markers": 206,
+    "overlay_confirmed_old": 204,
+    "kept": 202,
+    "retention": 0.9902,
+    "removed_unconfirmed": 1,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 3,
+    "passed": false
+   },
+   "pine-brain03-01": {
+    "frames": 287,
+    "old_markers": 276,
+    "new_markers": 272,
+    "overlay_confirmed_old": 266,
+    "kept": 260,
+    "retention": 0.97744,
+    "removed_unconfirmed": 0,
+    "gained": 2,
+    "gained_confirmed": 2,
+    "differ": 8,
+    "passed": false
+   },
+   "pine-brain04-01": {
+    "frames": 271,
+    "old_markers": 252,
+    "new_markers": 255,
+    "overlay_confirmed_old": 217,
+    "kept": 217,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 3,
+    "gained_confirmed": 3,
+    "differ": 3,
+    "passed": true
+   },
+   "pine-brain05-02": {
+    "frames": 348,
+    "old_markers": 336,
+    "new_markers": 326,
+    "overlay_confirmed_old": 312,
+    "kept": 302,
+    "retention": 0.96795,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 10,
+    "passed": false
+   },
+   "pine-brain06-01": {
+    "frames": 297,
+    "old_markers": 284,
+    "new_markers": 286,
+    "overlay_confirmed_old": 274,
+    "kept": 273,
+    "retention": 0.99635,
+    "removed_unconfirmed": 0,
+    "gained": 3,
+    "gained_confirmed": 3,
+    "differ": 4,
+    "passed": true
+   },
+   "pine-brain06-ttc-01": {
+    "frames": 251,
+    "old_markers": 243,
+    "new_markers": 230,
+    "overlay_confirmed_old": 222,
+    "kept": 205,
+    "retention": 0.92342,
+    "removed_unconfirmed": 0,
+    "gained": 4,
+    "gained_confirmed": 2,
+    "differ": 21,
+    "passed": false
+   },
+   "pine-brain07-01": {
+    "frames": 303,
+    "old_markers": 288,
+    "new_markers": 288,
+    "overlay_confirmed_old": 271,
+    "kept": 268,
+    "retention": 0.98893,
+    "removed_unconfirmed": 0,
+    "gained": 3,
+    "gained_confirmed": 3,
+    "differ": 6,
+    "passed": false
+   },
+   "pine-brain08-01": {
+    "frames": 299,
+    "old_markers": 291,
+    "new_markers": 293,
+    "overlay_confirmed_old": 270,
+    "kept": 270,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 2,
+    "gained_confirmed": 1,
+    "differ": 2,
+    "passed": true
+   },
+   "pine-brain08-loom-01": {
+    "frames": 116,
+    "old_markers": 115,
+    "new_markers": 115,
+    "overlay_confirmed_old": 103,
+    "kept": 103,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "pine-fast6-01": {
+    "frames": 261,
+    "old_markers": 248,
+    "new_markers": 249,
+    "overlay_confirmed_old": 238,
+    "kept": 238,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 1,
+    "gained_confirmed": 1,
+    "differ": 1,
+    "passed": true
+   },
+   "pine-fast6-loom-01": {
+    "frames": 262,
+    "old_markers": 251,
+    "new_markers": 248,
+    "overlay_confirmed_old": 236,
+    "kept": 233,
+    "retention": 0.98729,
+    "removed_unconfirmed": 1,
+    "gained": 1,
+    "gained_confirmed": 1,
+    "differ": 5,
+    "passed": false
+   },
+   "pine-fast6-ttc-01": {
+    "frames": 344,
+    "old_markers": 334,
+    "new_markers": 327,
+    "overlay_confirmed_old": 323,
+    "kept": 315,
+    "retention": 0.97523,
+    "removed_unconfirmed": 0,
+    "gained": 1,
+    "gained_confirmed": 1,
+    "differ": 9,
+    "passed": false
+   },
+   "straw-brain03-01": {
+    "frames": 1480,
+    "old_markers": 1348,
+    "new_markers": 1306,
+    "overlay_confirmed_old": 1286,
+    "kept": 1222,
+    "retention": 0.95023,
+    "removed_unconfirmed": 10,
+    "gained": 32,
+    "gained_confirmed": 29,
+    "differ": 106,
+    "passed": false
+   },
+   "straw-brain04-01": {
+    "frames": 1420,
+    "old_markers": 1266,
+    "new_markers": 1210,
+    "overlay_confirmed_old": 1211,
+    "kept": 1140,
+    "retention": 0.94137,
+    "removed_unconfirmed": 9,
+    "gained": 24,
+    "gained_confirmed": 22,
+    "differ": 104,
+    "passed": false
+   },
+   "straw-brain05-01": {
+    "frames": 1263,
+    "old_markers": 1131,
+    "new_markers": 1113,
+    "overlay_confirmed_old": 1081,
+    "kept": 1041,
+    "retention": 0.963,
+    "removed_unconfirmed": 4,
+    "gained": 26,
+    "gained_confirmed": 25,
+    "differ": 70,
+    "passed": false
+   },
+   "straw-brain05-gov-01": {
+    "frames": 1624,
+    "old_markers": 1481,
+    "new_markers": 1440,
+    "overlay_confirmed_old": 1429,
+    "kept": 1357,
+    "retention": 0.94962,
+    "removed_unconfirmed": 10,
+    "gained": 41,
+    "gained_confirmed": 38,
+    "differ": 123,
+    "passed": false
+   },
+   "straw-brain05-trim-01": {
+    "frames": 1595,
+    "old_markers": 1448,
+    "new_markers": 1406,
+    "overlay_confirmed_old": 1385,
+    "kept": 1319,
+    "retention": 0.95235,
+    "removed_unconfirmed": 12,
+    "gained": 36,
+    "gained_confirmed": 29,
+    "differ": 114,
+    "passed": false
+   },
+   "straw-brain05-trim-02": {
+    "frames": 1631,
+    "old_markers": 1462,
+    "new_markers": 1440,
+    "overlay_confirmed_old": 1385,
+    "kept": 1326,
+    "retention": 0.9574,
+    "removed_unconfirmed": 8,
+    "gained": 45,
+    "gained_confirmed": 36,
+    "differ": 112,
+    "passed": false
+   },
+   "straw-brain06-01": {
+    "frames": 1936,
+    "old_markers": 1700,
+    "new_markers": 1591,
+    "overlay_confirmed_old": 1632,
+    "kept": 1503,
+    "retention": 0.92096,
+    "removed_unconfirmed": 19,
+    "gained": 39,
+    "gained_confirmed": 34,
+    "differ": 187,
+    "passed": false
+   },
+   "straw-brain06-02": {
+    "frames": 5898,
+    "old_markers": 5330,
+    "new_markers": 4965,
+    "overlay_confirmed_old": 5093,
+    "kept": 4688,
+    "retention": 0.92048,
+    "removed_unconfirmed": 72,
+    "gained": 112,
+    "gained_confirmed": 96,
+    "differ": 589,
+    "passed": false
+   },
+   "straw-brain06-03": {
+    "frames": 5838,
+    "old_markers": 5196,
+    "new_markers": 4877,
+    "overlay_confirmed_old": 4956,
+    "kept": 4581,
+    "retention": 0.92433,
+    "removed_unconfirmed": 70,
+    "gained": 126,
+    "gained_confirmed": 113,
+    "differ": 571,
+    "passed": false
+   },
+   "straw-brain07-02": {
+    "frames": 5568,
+    "old_markers": 5079,
+    "new_markers": 4894,
+    "overlay_confirmed_old": 4926,
+    "kept": 4675,
+    "retention": 0.94905,
+    "removed_unconfirmed": 44,
+    "gained": 110,
+    "gained_confirmed": 92,
+    "differ": 405,
+    "passed": false
+   },
+   "straw-brain07-03": {
+    "frames": 5382,
+    "old_markers": 4907,
+    "new_markers": 4702,
+    "overlay_confirmed_old": 4740,
+    "kept": 4474,
+    "retention": 0.94388,
+    "removed_unconfirmed": 50,
+    "gained": 111,
+    "gained_confirmed": 97,
+    "differ": 427,
+    "passed": false
+   },
+   "straw-brain07-nosweep-01": {
+    "frames": 3307,
+    "old_markers": 3109,
+    "new_markers": 3050,
+    "overlay_confirmed_old": 3024,
+    "kept": 2899,
+    "retention": 0.95866,
+    "removed_unconfirmed": 12,
+    "gained": 78,
+    "gained_confirmed": 68,
+    "differ": 215,
+    "passed": false
+   },
+   "straw-brain07-steep-01": {
+    "frames": 0,
+    "old_markers": 0,
+    "new_markers": 0,
+    "overlay_confirmed_old": 0,
+    "kept": 0,
+    "retention": null,
+    "removed_unconfirmed": 0,
+    "gained": 0,
+    "gained_confirmed": 0,
+    "differ": 0,
+    "passed": true
+   },
+   "straw-brain07-steep-02": {
+    "frames": 1346,
+    "old_markers": 1268,
+    "new_markers": 1247,
+    "overlay_confirmed_old": 1229,
+    "kept": 1177,
+    "retention": 0.95769,
+    "removed_unconfirmed": 2,
+    "gained": 33,
+    "gained_confirmed": 31,
+    "differ": 87,
+    "passed": false
+   },
+   "straw-brain08-01": {
+    "frames": 1053,
+    "old_markers": 954,
+    "new_markers": 956,
+    "overlay_confirmed_old": 908,
+    "kept": 889,
+    "retention": 0.97907,
+    "removed_unconfirmed": 3,
+    "gained": 24,
+    "gained_confirmed": 19,
+    "differ": 46,
+    "passed": false
+   },
+   "straw-brain08-02": {
+    "frames": 2371,
+    "old_markers": 2176,
+    "new_markers": 2153,
+    "overlay_confirmed_old": 2082,
+    "kept": 2003,
+    "retention": 0.96206,
+    "removed_unconfirmed": 2,
+    "gained": 58,
+    "gained_confirmed": 50,
+    "differ": 139,
+    "passed": false
+   },
+   "straw-brain08-03": {
+    "frames": 985,
+    "old_markers": 895,
+    "new_markers": 932,
+    "overlay_confirmed_old": 835,
+    "kept": 835,
+    "retention": 1.0,
+    "removed_unconfirmed": 0,
+    "gained": 37,
+    "gained_confirmed": 32,
+    "differ": 37,
+    "passed": true
+   },
+   "straw-brain08-04": {
+    "frames": 5391,
+    "old_markers": 4983,
+    "new_markers": 4821,
+    "overlay_confirmed_old": 4790,
+    "kept": 4540,
+    "retention": 0.94781,
+    "removed_unconfirmed": 15,
+    "gained": 103,
+    "gained_confirmed": 77,
+    "differ": 368,
+    "passed": false
+   },
+   "straw-brain08-05": {
+    "frames": 2492,
+    "old_markers": 2303,
+    "new_markers": 2261,
+    "overlay_confirmed_old": 2219,
+    "kept": 2124,
+    "retention": 0.95719,
+    "removed_unconfirmed": 5,
+    "gained": 58,
+    "gained_confirmed": 45,
+    "differ": 158,
+    "passed": false
+   },
+   "straw-brain08-06": {
+    "frames": 4840,
+    "old_markers": 4459,
+    "new_markers": 4324,
+    "overlay_confirmed_old": 4291,
+    "kept": 4088,
+    "retention": 0.95269,
+    "removed_unconfirmed": 13,
+    "gained": 81,
+    "gained_confirmed": 61,
+    "differ": 297,
+    "passed": false
+   },
+   "straw-brain6-02": {
+    "frames": 607,
+    "old_markers": 584,
+    "new_markers": 602,
+    "overlay_confirmed_old": 548,
+    "kept": 547,
+    "retention": 0.99818,
+    "removed_unconfirmed": 0,
+    "gained": 19,
+    "gained_confirmed": 11,
+    "differ": 20,
+    "passed": true
+   },
+   "straw-fast6-01": {
+    "frames": 956,
+    "old_markers": 886,
+    "new_markers": 900,
+    "overlay_confirmed_old": 837,
+    "kept": 831,
+    "retention": 0.99283,
+    "removed_unconfirmed": 3,
+    "gained": 23,
+    "gained_confirmed": 16,
+    "differ": 32,
+    "passed": false
+   },
+   "straw-fast6-02": {
+    "frames": 4820,
+    "old_markers": 4372,
+    "new_markers": 4133,
+    "overlay_confirmed_old": 4125,
+    "kept": 3835,
+    "retention": 0.9297,
+    "removed_unconfirmed": 63,
+    "gained": 114,
+    "gained_confirmed": 90,
+    "differ": 467,
+    "passed": false
+   },
+   "straw-fast6-03": {
+    "frames": 4851,
+    "old_markers": 4396,
+    "new_markers": 4130,
+    "overlay_confirmed_old": 4155,
+    "kept": 3860,
+    "retention": 0.929,
+    "removed_unconfirmed": 57,
+    "gained": 86,
+    "gained_confirmed": 62,
+    "differ": 438,
+    "passed": false
+   },
+   "straw-fast6-arc-01": {
+    "frames": 4276,
+    "old_markers": 3924,
+    "new_markers": 3750,
+    "overlay_confirmed_old": 3723,
+    "kept": 3518,
+    "retention": 0.94494,
+    "removed_unconfirmed": 41,
+    "gained": 72,
+    "gained_confirmed": 47,
+    "differ": 318,
+    "passed": false
+   }
+  },
+  "pooled": {
+   "differ": 5613,
+   "old_agree": 3749,
+   "new_agree": 1772
+  },
+  "retention_min": 0.92048,
+  "HR1_passed": false,
+  "HR2_passed": false
+ },
+ "HA_logs": {
+  "per_flight": {
+   "minus-fast6-wall-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-gapon-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-gapon-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-fast6-gapon-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-loom-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-fast6-vg-02": {
+    "changed_ticks": 96,
+    "max_speedup": 0.112,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-vg-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain09b-vg-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain08-gapshadow-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-fast6-r4-02": {
+    "changed_ticks": 530,
+    "max_speedup": 2.431,
+    "max_slowdown": 0.768,
+    "reseats": 2,
+    "passed": false
+   },
+   "minus-brain10b-r4-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain09b-r4-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "pine-fast6-ttc-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "pine-brain08-loom-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "pine-brain08-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-04": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-06": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-02": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-brain08-03": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-fast6-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-fast6-02": {
+    "changed_ticks": 188,
+    "max_speedup": 1.926,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": false
+   },
+   "straw-fast6-03": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "straw-fast6-arc-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": 0.0,
+    "reseats": 0,
+    "passed": true
+   },
+   "minus-brain11cw13-r4b-noassist-01": {
+    "changed_ticks": 0,
+    "max_speedup": 0.0,
+    "max_slowdown": -0.0,
+    "reseats": 0,
+    "passed": true
+   }
+  },
+  "passed": false
+ },
+ "HA_hairpin": {
+  "table": {
+   "pd/heldout": {
+    "baseline": {
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 1,
+     "crashed": 0,
+     "clean": 11,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 1,
+     "crashed": 0,
+     "clean": 11,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "pd/development": {
+    "baseline": {
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 12,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 1,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 11,
+     "reseat_scenarios": null
+    },
+    "passed": false
+   },
+   "brain08/heldout": {
+    "baseline": {
+     "wall": 10,
+     "floor": 3,
+     "ceiling": 0,
+     "crashed": 2,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 10,
+     "floor": 3,
+     "ceiling": 0,
+     "crashed": 2,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "brain08/development": {
+    "baseline": {
+     "wall": 11,
+     "floor": 1,
+     "ceiling": 0,
+     "crashed": 1,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 11,
+     "floor": 1,
+     "ceiling": 0,
+     "crashed": 1,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "brain09b/heldout": {
+    "baseline": {
+     "wall": 11,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 4,
+     "clean": 1,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 11,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 4,
+     "clean": 1,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "brain09b/development": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "brain10b/heldout": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "brain10b/development": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "brain11cw13/heldout": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   },
+   "brain11cw13/development": {
+    "baseline": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "rule": {
+     "wall": 12,
+     "floor": 0,
+     "ceiling": 0,
+     "crashed": 0,
+     "clean": 0,
+     "reseat_scenarios": null
+    },
+    "passed": true
+   }
+  },
+  "passed": false
+ },
+ "HP_passes": {
+  "passes": [
+   {
+    "flight": "minus-brain08-gapon-01",
+    "window": [
+     16.35,
+     19.07
+    ],
+    "requests_unchanged": false,
+    "detections": 42,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "minus-brain08-gapon-02",
+    "window": [
+     16.5,
+     18.58
+    ],
+    "requests_unchanged": true,
+    "detections": 37,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "minus-fast6-gapon-01",
+    "window": [
+     18.66,
+     21.64
+    ],
+    "requests_unchanged": true,
+    "detections": 55,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "minus-fast6-vg-02",
+    "window": [
+     17.94,
+     21.78
+    ],
+    "requests_unchanged": false,
+    "detections": 62,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.086,
+    "surrogate_lateral_max_m": 0.085,
+    "surrogate_progress_lost_s": -0.028,
+    "passed": true
+   },
+   {
+    "flight": "minus-brain08-vg-01",
+    "window": [
+     16.37,
+     18.47
+    ],
+    "requests_unchanged": false,
+    "detections": 34,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "minus-brain09b-vg-01",
+    "window": [
+     18.86,
+     21.9
+    ],
+    "requests_unchanged": false,
+    "detections": 44,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "minus-fast6-r4-02",
+    "window": [
+     17.34,
+     20.76
+    ],
+    "requests_unchanged": false,
+    "detections": 55,
+    "dropped": 5,
+    "dropped_confirmed": 3,
+    "max_speedup_rule_A": 0.0,
+    "surrogate_lateral_max_m": 0.178,
+    "surrogate_progress_lost_s": -0.003,
+    "passed": false
+   },
+   {
+    "flight": "minus-fast6-r4-02",
+    "window": [
+     30.1,
+     33.41
+    ],
+    "requests_unchanged": false,
+    "detections": 53,
+    "dropped": 4,
+    "dropped_confirmed": 3,
+    "max_speedup_rule_A": 2.431,
+    "surrogate_lateral_max_m": 5.298,
+    "surrogate_progress_lost_s": -0.077,
+    "passed": false
+   },
+   {
+    "flight": "minus-brain10b-r4-02",
+    "window": [
+     18.87,
+     21.57
+    ],
+    "requests_unchanged": false,
+    "detections": 45,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "minus-brain09b-r4-01",
+    "window": [
+     20.04,
+     23.68
+    ],
+    "requests_unchanged": false,
+    "detections": 60,
+    "dropped": 1,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-04",
+    "window": [
+     5.25,
+     8.78
+    ],
+    "requests_unchanged": true,
+    "detections": 48,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-04",
+    "window": [
+     112.4,
+     115.95
+    ],
+    "requests_unchanged": true,
+    "detections": 38,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-04",
+    "window": [
+     217.74,
+     221.39
+    ],
+    "requests_unchanged": false,
+    "detections": 53,
+    "dropped": 1,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "surrogate_lateral_max_m": 0.076,
+    "surrogate_progress_lost_s": 0.004,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-04",
+    "window": [
+     324.0,
+     326.83
+    ],
+    "requests_unchanged": true,
+    "detections": 29,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-06",
+    "window": [
+     5.25,
+     8.78
+    ],
+    "requests_unchanged": true,
+    "detections": 40,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-06",
+    "window": [
+     112.12,
+     115.7
+    ],
+    "requests_unchanged": true,
+    "detections": 42,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-06",
+    "window": [
+     218.04,
+     221.56
+    ],
+    "requests_unchanged": true,
+    "detections": 33,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-06",
+    "window": [
+     323.91,
+     326.74
+    ],
+    "requests_unchanged": true,
+    "detections": 27,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-01",
+    "window": [
+     5.26,
+     8.78
+    ],
+    "requests_unchanged": true,
+    "detections": 45,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-02",
+    "window": [
+     5.26,
+     8.78
+    ],
+    "requests_unchanged": true,
+    "detections": 42,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-02",
+    "window": [
+     111.35,
+     115.29
+    ],
+    "requests_unchanged": true,
+    "detections": 36,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-brain08-03",
+    "window": [
+     5.25,
+     8.78
+    ],
+    "requests_unchanged": true,
+    "detections": 46,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-01",
+    "window": [
+     5.08,
+     8.61
+    ],
+    "requests_unchanged": true,
+    "detections": 40,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-02",
+    "window": [
+     5.1,
+     8.62
+    ],
+    "requests_unchanged": true,
+    "detections": 40,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-02",
+    "window": [
+     106.74,
+     111.18
+    ],
+    "requests_unchanged": false,
+    "detections": 52,
+    "dropped": 2,
+    "dropped_confirmed": 1,
+    "max_speedup_rule_A": 0.0,
+    "surrogate_lateral_max_m": 0.434,
+    "surrogate_progress_lost_s": 0.04,
+    "passed": false
+   },
+   {
+    "flight": "straw-fast6-02",
+    "window": [
+     208.06,
+     211.61
+    ],
+    "requests_unchanged": true,
+    "detections": 46,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-02",
+    "window": [
+     308.98,
+     311.83
+    ],
+    "requests_unchanged": false,
+    "detections": 32,
+    "dropped": 2,
+    "dropped_confirmed": 2,
+    "max_speedup_rule_A": 0.0,
+    "passed": false
+   },
+   {
+    "flight": "straw-fast6-03",
+    "window": [
+     5.09,
+     8.61
+    ],
+    "requests_unchanged": true,
+    "detections": 37,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-03",
+    "window": [
+     106.6,
+     110.15
+    ],
+    "requests_unchanged": true,
+    "detections": 41,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-03",
+    "window": [
+     207.73,
+     211.27
+    ],
+    "requests_unchanged": true,
+    "detections": 48,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-03",
+    "window": [
+     308.85,
+     311.69
+    ],
+    "requests_unchanged": false,
+    "detections": 33,
+    "dropped": 2,
+    "dropped_confirmed": 2,
+    "max_speedup_rule_A": 0.0,
+    "passed": false
+   },
+   {
+    "flight": "straw-fast6-arc-01",
+    "window": [
+     5.08,
+     8.63
+    ],
+    "requests_unchanged": true,
+    "detections": 42,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-arc-01",
+    "window": [
+     104.65,
+     108.58
+    ],
+    "requests_unchanged": true,
+    "detections": 39,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   },
+   {
+    "flight": "straw-fast6-arc-01",
+    "window": [
+     205.39,
+     208.95
+    ],
+    "requests_unchanged": false,
+    "detections": 45,
+    "dropped": 1,
+    "dropped_confirmed": 1,
+    "max_speedup_rule_A": 0.0,
+    "surrogate_lateral_max_m": 0.104,
+    "surrogate_progress_lost_s": -0.002,
+    "passed": false
+   },
+   {
+    "flight": "minus-brain11cw13-r4b-noassist-01",
+    "window": [
+     20.76,
+     23.59
+    ],
+    "requests_unchanged": false,
+    "detections": 42,
+    "dropped": 0,
+    "dropped_confirmed": 0,
+    "max_speedup_rule_A": 0.0,
+    "passed": true
+   }
+  ],
+  "n": 35,
+  "unchanged": 21,
+  "passed": false
+ },
+ "Q_clean": {
+  "per_flight": {
+   "straw-brain08-04": {
+    "detections": 5863,
+    "dropped": 385,
+    "dropped_fraction": 0.06567,
+    "confirmed": 5333,
+    "dropped_confirmed": 372,
+    "windows": 26,
+    "progress_lost_s": 0.372,
+    "lateral_max_m": 0.428,
+    "passed": false
+   },
+   "straw-brain08-06": {
+    "detections": 5457,
+    "dropped": 344,
+    "dropped_fraction": 0.06304,
+    "confirmed": 4899,
+    "dropped_confirmed": 325,
+    "windows": 24,
+    "progress_lost_s": 0.729,
+    "lateral_max_m": 2.287,
+    "passed": false
+   }
+  },
+  "passed": false
+ }
+}
