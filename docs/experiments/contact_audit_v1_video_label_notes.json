@@ -1,0 +1,85 @@
+{
+ "procedure": "configs/contact_audit.json validation.false_positives.procedure: one contact sheet per review item (12 frames from t_start - 0.4 s to t_end + 0.2 s, contact_audit.review_sheets), labelled after the freeze and after the audit had run; ambiguous and none count as false positives",
+ "counts": {
+  "contact": 18,
+  "ambiguous": 27,
+  "none": 0
+ },
+ "notes": {
+  "pine-brain05-02": {
+   "18.95": "the camera at ground level on the hillside, the ground close and blurred (18.77-19.76)"
+  },
+  "pine-brain07-01": {
+   "19.32": "the camera at ground level on the hillside (19.08-19.83)"
+  },
+  "pine-fast6-ttc-01": {
+   "16.70": "through tree branches (16.30-16.64); the propeller damage icon appears at 16.47 s"
+  },
+  "straw-brain05-trim-02": {
+   "75.68": "hits a course flag (the flag fills the view at 75.40-75.51); damage icon at 75.57 s"
+  },
+  "straw-brain06-01": {
+   "45.08": "uphill skim: straw close in front (44.98-45.48)",
+   "50.95": "uphill skim: straw close in front (50.96-51.26)",
+   "72.88": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "76.12": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "79.76": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  },
+  "straw-brain06-02": {
+   "162.26": "uphill skim: straw close in front (162.07-162.58)",
+   "279.56": "uphill skim: straw close in front (279.36-279.95)",
+   "72.56": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "75.57": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "80.15": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "189.75": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "192.77": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "197.32": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "308.00": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "310.89": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  },
+  "straw-brain06-03": {
+   "162.55": "uphill skim: straw close in front (162.34-162.82)",
+   "74.29": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "76.39": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "190.35": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "193.28": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "307.55": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "310.12": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  },
+  "straw-brain07-02": {
+   "298.80": "hilltop tumble: rolled at the ground, then straw close in front (298.98-299.47)",
+   "76.86": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "192.67": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "308.55": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  },
+  "straw-brain07-nosweep-01": {
+   "183.12": "hilltop tumble: rolled at the ground, then straw close (183.35-183.71)",
+   "76.34": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "192.88": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  },
+  "straw-brain08-02": {
+   "69.21": "downhill: stalks and straw close in front (69.61-70.21)",
+   "74.74": "downhill: ground close and blurred (75.05-75.77)"
+  },
+  "straw-brain08-04": {
+   "76.59": "downhill: stalks close in front (76.83-77.47)",
+   "181.54": "downhill: stalks close in front (182.12)",
+   "79.55": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  },
+  "straw-brain08-05": {
+   "70.94": "downhill: straw close in front (71.28-71.84)",
+   "76.27": "downhill: stalks close in front (76.59-76.95)"
+  },
+  "straw-brain6-02": {
+   "38.45": "uphill scrape: straw close in front throughout (38.05-41.35)"
+  },
+  "straw-brain07-03": {
+   "76.93": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "192.76": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne",
+   "307.54": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  },
+  "straw-brain07-steep-02": {
+   "76.23": "the Straw Bale downhill contact spot (x -36..-39, y 135-172), level nose: the view shows the far field from the lower image edge up and never the ground right in front, so the frames can neither show a touch nor show the drone clearly airborne"
+  }
+ }
+}

@@ -1,0 +1,94 @@
+[
+ {
+  "mode": "on",
+  "motor": "pd",
+  "checkpoint": "fast-brain-08-vgs04-s10r03m30",
+  "wall": {
+   "path": null,
+   "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+   "file_sha256": "833cc94b207db937a3f8f8a1e8c7b1ac8fd37025ee4d4c9870f451e8cc16a088",
+   "schema": "haltere.liftoff.wall_pilot.v2",
+   "version": 5,
+   "applied": true,
+   "motor_contract": "fast_velocity_pd_v1",
+   "stopping_model": "fast_velocity_pd_v1"
+  },
+  "descent_view": {
+   "version": 2,
+   "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26"
+  },
+  "wall_meta_version": 5,
+  "clearance_brake_applied": true,
+  "descent_meta_version": 2,
+  "contact_parameters_ok": true
+ },
+ {
+  "mode": "shadow",
+  "motor": "pd",
+  "checkpoint": "fast-brain-08-vgs04-s10r03m30",
+  "wall": {
+   "path": null,
+   "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+   "file_sha256": "833cc94b207db937a3f8f8a1e8c7b1ac8fd37025ee4d4c9870f451e8cc16a088",
+   "schema": "haltere.liftoff.wall_pilot.v2",
+   "version": 5,
+   "applied": false,
+   "motor_contract": "fast_velocity_pd_v1",
+   "stopping_model": "fast_velocity_pd_v1"
+  },
+  "descent_view": {
+   "version": 2,
+   "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26"
+  },
+  "wall_meta_version": 5,
+  "clearance_brake_applied": false,
+  "descent_meta_version": 2,
+  "contact_parameters_ok": true
+ },
+ {
+  "mode": "on",
+  "motor": "brain",
+  "checkpoint": "fast-brain-09b-caps-r0001m100",
+  "wall": {
+   "path": null,
+   "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+   "file_sha256": "833cc94b207db937a3f8f8a1e8c7b1ac8fd37025ee4d4c9870f451e8cc16a088",
+   "schema": "haltere.liftoff.wall_pilot.v2",
+   "version": 5,
+   "applied": true,
+   "motor_contract": "fast_velocity_brain_v1",
+   "stopping_model": "fast_velocity_brain_v1"
+  },
+  "descent_view": {
+   "version": 2,
+   "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26"
+  },
+  "wall_meta_version": 5,
+  "clearance_brake_applied": true,
+  "descent_meta_version": 2,
+  "contact_parameters_ok": true
+ },
+ {
+  "mode": "on",
+  "motor": "brain",
+  "checkpoint": "fast-brain-10b",
+  "wall": {
+   "path": null,
+   "sha256": "1f37d7024ee40144c1aa219804cf111593cf42b5b7108ceb60db7ea7a91e09af",
+   "file_sha256": "833cc94b207db937a3f8f8a1e8c7b1ac8fd37025ee4d4c9870f451e8cc16a088",
+   "schema": "haltere.liftoff.wall_pilot.v2",
+   "version": 5,
+   "applied": true,
+   "motor_contract": "fast_velocity_brain_v1",
+   "stopping_model": "fast_velocity_brain_v1"
+  },
+  "descent_view": {
+   "version": 2,
+   "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26"
+  },
+  "wall_meta_version": 5,
+  "clearance_brake_applied": true,
+  "descent_meta_version": 2,
+  "contact_parameters_ok": true
+ }
+]

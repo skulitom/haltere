@@ -1,0 +1,262 @@
+{
+ "schema": "haltere.liftoff.contact_support_gates.v1",
+ "version": 1,
+ "note": "Offline gates of the contact support (descent-view declaration version 2, haltere.liftoff.fast_race_cue.ContactSupportConfig), frozen with that declaration after the design and before any gate run: haltere.liftoff.contact_support_eval (rest, surrogate, clean, score) and haltere/obstacles/vertical_replay.py for the replays. Development evidence already seen (disclosed in the declaration's contact_support_development): the rule's code on every logged flight, the resting scenario for the fast PD and fast-brain-10b, the minus-fast6-r4-02 replay and the surrogate on development seeds. CS_Rest, CS_R402 and CS_Clean are therefore not blind; CS_Surrogate (gate seeds, never run with this rule) and CS_Identity are. Nothing here is flight evidence.",
+ "descent_view": {
+  "file": "configs/pilot/descent_view.json",
+  "version": 2,
+  "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26"
+ },
+ "baseline_tree": {
+  "branch": "m4",
+  "commit": "3decaac",
+  "tree": "git archive of 3decaac (the round-4 integrated stack; wall pilot v4, descent view v1), replayed with this tree's harness (haltere/obstacles/vertical_replay.py --tree)"
+ },
+ "controllers": {
+  "pd": {
+   "kind": "pd",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "contract": "fast_velocity_pd_v1",
+   "note": "the fast PD (the checkpoint gives its calibration and camera only)"
+  },
+  "brain08": {
+   "kind": "brain",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "contract": "fast_velocity_brain_v1"
+  },
+  "brain09b": {
+   "kind": "brain",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-09b-caps-r0001m100/candidate.pt",
+   "sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+   "contract": "fast_velocity_brain_v1"
+  },
+  "brain10b": {
+   "kind": "brain",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-10b/candidate.pt",
+   "sha256": "0ccf116190f5135220dbd2cc20a6dd9948654d07509eaa388a2286d8d4640bcd",
+   "contract": "fast_velocity_brain_v1"
+  }
+ },
+ "inputs": {
+  "runs": "C:/DEV/Haltere/runs/fast-stack-20260923",
+  "log_sha256": {
+   "minus-fast6-wall-01.csv": "c13ab87969783ec47d46ccb7740b544a5e052dd6f7cc4a677ba1a30a6748f028",
+   "minus-brain08-gapon-01.csv": "2ec83772275e418212f55dd73d3913860313ffb1569ef24db611f8ff7e68230d",
+   "minus-brain08-gapon-02.csv": "1d7563abbbd65f4990d585f28d2b0811a85e0df47f6a208f1ef26ec56e9a46bb",
+   "minus-fast6-gapon-01.csv": "fc29c96fc6b10170ad71f02037c4e94c6c58284bc1aa884218863a37b613aa43",
+   "minus-brain08-loom-01.csv": "7639dba8e89caef0b2ece4cd29ea76f1eb016bd722773e6e4bb092d0a33db5ed",
+   "minus-fast6-vg-02.csv": "47f2049e0473f40f421705b94a2b9b312012e71def3240c5ed58d976c1307dc3",
+   "minus-brain08-vg-01.csv": "3522d568dd25f9411603e2b2e4f27e18bff8482b48b0be87979c950a02cfc0bc",
+   "minus-brain09b-vg-01.csv": "14a364a04134ee81972893c622c3e523c43a34a75b87bec455a7d146565945c0",
+   "minus-brain08-gapshadow-01.csv": "3f8ae3efd8a0284d4220e34308056e58f9c4c09579aa72f6e096cfb7ba0a3e68",
+   "minus-fast6-r4-02.csv": "aaa739e7dde86b3d72c66a34fab938c88a56a526ebdbc9062688f216b30fa137",
+   "minus-brain10b-r4-02.csv": "8233fd218142b3d3276a9beb8381bfa356a8eb880a37fd1f2ad535bbf8a7bc39",
+   "minus-brain09b-r4-01.csv": "54b924ee0e7ff83e4e2bc96ddaa4a277be75320f485f923b866562f34bd85563",
+   "pine-fast6-ttc-01.csv": "352e86f09407d5c9ea2168771a693b6ef8603324e06af2185db31e25564ee3c4",
+   "pine-brain08-loom-01.csv": "411051a32d0c1473f1f29709b99664631848499fb45f0d341171c00bdaaee19f",
+   "pine-brain08-01.csv": "e28627df086158dec95040d7f7c52016cde718c9529c853b22d6f5c3916cbb2e",
+   "straw-brain08-04.csv": "e08219b19e51fc622cfb82f34b0cc75d6b0c7d698bd5c1e3d71d204981b4b38f",
+   "straw-brain08-06.csv": "9498c64aa12b27dca82f7360819cb6cb4b33e165123f4540e17daddde886a7eb",
+   "straw-brain08-01.csv": "2e1c67091cb7d8195e36d87b79d1726b98706cb76791195b1e4e9479eadda58c",
+   "straw-brain08-02.csv": "6aa69a9bd4b230d126b3e66545b81a781cf77b62be14f2d52a5683ce9d9ab269",
+   "straw-brain08-03.csv": "e647c984c434bf2f0844b1eb212b1968832e84aea80fad72ac617947c141a7ff",
+   "straw-fast6-01.csv": "e94f239aa798b400ea3e8bb3a78e98c5d78f0b3fccaea22a8ee8c5d1d4ca5685",
+   "straw-fast6-02.csv": "38e2895ccc28b102231f12b8664745736bbbd23c9005466b6d9c5844775babd5",
+   "straw-fast6-03.csv": "210ad42a279b8cacd6eda9b5e7bfe5f2aef35d4ff7940709940026eae703f724",
+   "straw-fast6-arc-01.csv": "d5c2da9e07b3a01b53b5660263aec6b0dd4f6e72d52300779196eaa2bb4fa136"
+  },
+  "stream": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m4/vguard/streams/stream_{flight}.npz",
+  "stream_sha256": {
+   "straw-brain08-04": "99067a40c32e4fbc139269df38aa3bdf07e99a8459fbec94a6e0944c48a562e8",
+   "straw-brain08-06": "67029f4eb5284be3588459bb14a86fb9f2e570887428636489afe3a629d7c767",
+   "straw-brain08-01": "351023ceeb27ec1c4c2a0a7586bb1642ea50497e24c36b348f273f96a2cdc216",
+   "straw-brain08-02": "6d53bd960bad89933b325238a461dc6dfcd89d1e646b940acda03cd85a6f1257",
+   "straw-brain08-03": "3ed00182cf3760620cfe521dfdb924881567dc6eeca9a351417e37cac24ab0ee",
+   "straw-fast6-01": "cef5ab61a0ce2bf8915a85e2b4ac2dd7a620b7a070b1cf577d1e832544072d3a",
+   "straw-fast6-02": "ce2a22e71c6019a9ee86171f5d41e393c7f8f9c759dd083fc7f7c7d4f882d2e0",
+   "straw-fast6-03": "5bdb98680ebaead0eddc166c1a990360eb79a30dd0cf2dfe877e618f28f1406a",
+   "straw-fast6-arc-01": "d05b1ec575353f123b20d6e24f004a8de8b52589fe6e8c92c822245b3c83a379",
+   "pine-brain08-01": "320bee5d04b63cdc8c3c563a3f6497c0d148bf7d52db9932e7486c7b971af91b"
+  },
+  "kept_declarations": {
+   "wall_pilot_v4": {
+    "file": "configs/obstacles/wall_pilot_v4.json",
+    "sha256": "92f842a54e569d9eb5171969e7f2bf6521790766450d624f173158a0eef6360e"
+   },
+   "descent_view_v1": {
+    "file": "configs/pilot/descent_view_v1.json",
+    "sha256": "8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d"
+   }
+  }
+ },
+ "variants": {
+  "none": "--stack none (the default pilot; Straw laps and pine-brain08-01 with the offline looming stream)",
+  "shadow": "--stack shadow --near-on-path (every rule of the stack computed and logged, none applied)",
+  "stack": "--stack on --near-on-path (the obstacle stack as the runner builds it for the flight's motor contract; this tree: wall pilot version 5)",
+  "stack_wp4": "--stack on --near-on-path --wall-pilot configs/obstacles/wall_pilot_v4.json (this tree with the kept version 4: the round-4 stack as flown)",
+  "stack_dv1": "--stack on --near-on-path --descent-view configs/pilot/descent_view_v1.json (baseline tree: its descent_view.json, version 1)",
+  "stack_dv1_wp4": "--stack on --near-on-path --descent-view configs/pilot/descent_view_v1.json --wall-pilot configs/obstacles/wall_pilot_v4.json",
+  "stack_dv2_cthr_wp4": "--stack on --near-on-path --descent-view configs/pilot/descent_view.json --throttle-column command_thr --wall-pilot configs/obstacles/wall_pilot_v4.json (the round-4 stack as flown with descent view version 2; the pilot's issued throttle is the motor's command, as in the runner)",
+  "stack_dv2_cthr": "--stack on --near-on-path --descent-view configs/pilot/descent_view.json --throttle-column command_thr (the round-4b stack: wall pilot 5, descent view 2; report)"
+ },
+ "gates": {
+  "CS_Identity": {
+   "definition": "default behaviour with the new rules off is bit-identical to m4: for every flight, this tree's replay equals the baseline tree's on the command keys (vertical_replay.COMMAND_KEYS) for --stack none, --stack shadow, --stack on with the kept wall pilot version 4 (baseline: its own version 4) and --stack on with the kept descent view version 1 and wall pilot version 4 (baseline: its own versions)",
+   "flights": [
+    "minus-fast6-wall-01",
+    "minus-brain08-gapon-01",
+    "minus-brain08-gapon-02",
+    "minus-fast6-gapon-01",
+    "minus-brain08-loom-01",
+    "minus-fast6-vg-02",
+    "minus-brain08-vg-01",
+    "minus-brain09b-vg-01",
+    "minus-brain08-gapshadow-01",
+    "minus-fast6-r4-02",
+    "minus-brain10b-r4-02",
+    "minus-brain09b-r4-01",
+    "pine-fast6-ttc-01",
+    "pine-brain08-loom-01",
+    "pine-brain08-01",
+    "straw-brain08-04",
+    "straw-brain08-06",
+    "straw-brain08-01",
+    "straw-brain08-02",
+    "straw-brain08-03",
+    "straw-fast6-01",
+    "straw-fast6-02",
+    "straw-fast6-03",
+    "straw-fast6-arc-01"
+   ],
+   "stream_flights": [
+    "straw-brain08-04",
+    "straw-brain08-06",
+    "straw-brain08-01",
+    "straw-brain08-02",
+    "straw-brain08-03",
+    "straw-fast6-01",
+    "straw-fast6-02",
+    "straw-fast6-03",
+    "straw-fast6-arc-01",
+    "pine-brain08-01"
+   ],
+   "pass_rule": "every pair identical"
+  },
+  "CS_Rest": {
+   "definition": "the round-4 review's resting case (scratchpad m4/review/scenarios.py) with the motor that would fly: contact_support_eval.resting_scenario: level free flight at (speed, 0, 0) with the ring ahead for prologue_s, then resting on a surface (measured velocity held, vz 0) with the ring clipped at the bottom edge for rest_s, the pilot with descent view version 2; the first support-climb onset after the rest begins",
+   "motors": [
+    "pd",
+    "brain08",
+    "brain09b",
+    "brain10b"
+   ],
+   "speeds": [
+    0.0,
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0
+   ],
+   "prologue_s": 3.5,
+   "rest_s": 3.0,
+   "max_delay_s": 0.8,
+   "pass_rule": "every (motor, speed): a support climb within max_delay_s of the rest; none in the prologue"
+  },
+  "CS_R402": {
+   "definition": "minus-fast6-r4-02 replayed through the round-4 stack as flown with descent view version 2 (variant stack_dv2_cthr_wp4): a contact-rule onset (contact_fire) during the garage-floor contact, log phase within window (z < 0.1 m for 1.5 s)",
+   "flight": "minus-fast6-r4-02",
+   "tag": "on-won-von-nop-cthr-dv2-wp4",
+   "window": [
+    27.4,
+    28.9
+   ],
+   "pass_rule": "at least one contact-rule onset in the window"
+  },
+  "CS_Surrogate": {
+   "definition": "the round-4 surrogate (descent_rehearsal.run_batch: IdentifiedSim, 10% per-drone randomisation, HUD marker latency and dropout, three-tick command delay) on the gate course sets, the intended deployed pilot (variant full: --obstacle-stack on as the runner builds it for the motor contract, wall pilot version 5, + --descent-view on, version 2). The surrogate has no ground reaction (its hills are scoring-only), so every contact-rule onset is a false support; with none, every course must equal the round-4 'full' run (m4 tree: wall pilot 4, descent view 1; stored in reference_dir) on compare_keys",
+   "motors": [
+    "pd",
+    "brain08",
+    "brain09b",
+    "brain10b"
+   ],
+   "sets": [
+    "flat:3000-3007",
+    "steep:3000-3007",
+    "hill:6000-6011"
+   ],
+   "variant": "full",
+   "seconds": 150.0,
+   "sim_seed": 17,
+   "profile": "runs/measured-dynamics-low-speed-20260923/profile.json",
+   "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
+   "reference_dir": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m4/integrate/surrogate",
+   "reference_variant": "full",
+   "reference_sha256": {
+    "pd_flat_3000-3007_full.json": "57de37bbf098a27d168826106d2e1eda37817c9491cc2d9669a8c38e6a5a3289",
+    "pd_steep_3000-3007_full.json": "31f5ff4fd44fcf55142d5cb6e93ef8a996a486d2a6c2758b69411266df7df601",
+    "pd_hill_6000-6011_full.json": "cdc272222b2afdbb11bfc04c98de21cebb9dc41abb2be92fe94060aa0fa3d2d0",
+    "brain08_flat_3000-3007_full.json": "38969421fa172c9a249085333e301d47132a8c4261d7d00259de9009a6819f01",
+    "brain08_steep_3000-3007_full.json": "ab7811059d9e0fcd19d62d2c2f0c0d851e74b116a6707d3269725459560ecf66",
+    "brain08_hill_6000-6011_full.json": "bc83199e40e2e691abcd331d92faf8618a05ac39f39c81346c635e786dbb5351",
+    "brain09b_flat_3000-3007_full.json": "00b3fc99c4b484b2a9fcb6d722b6ef36965c1323c0e67b8fe1e4b5fc498abcfd",
+    "brain09b_steep_3000-3007_full.json": "6a1931e505ec286545c8a96896280121c4773aaadfc9934154e1dc7b4fdff981",
+    "brain09b_hill_6000-6011_full.json": "c12d68f0e6eb73361124b51dc2efd6461b9674c6a8bcbda411e8677f65ba3aac",
+    "brain10b_flat_3000-3007_full.json": "5ff7db7c82299d92cf8a7aa292eb91429d47fa39b0e7aa23fbf801a1dce0bfde",
+    "brain10b_steep_3000-3007_full.json": "d081f8bab220115bb84d8b22aee3c41b8a653522eea97f1d76a183700503689f",
+    "brain10b_hill_6000-6011_full.json": "ed3f8aa0ec1ea379d1210320808ac4dcb5bb7b4cc4602822cd5fe607719b9711"
+   },
+   "compare_keys": [
+    "finished",
+    "crashed",
+    "finish_s",
+    "gates",
+    "of",
+    "mean_speed",
+    "stick_chatter",
+    "states",
+    "support_climbs",
+    "descent_view",
+    "descent_s",
+    "below_view_s",
+    "high_passes",
+    "max_pass_height_m",
+    "pass_heights_m",
+    "hill_legs",
+    "hill_s",
+    "hill_descent_s",
+    "hill_below_view_s",
+    "viewable_hill_descent_s",
+    "viewable_hill_below_view_s",
+    "contacts",
+    "contact_s",
+    "contact_legs",
+    "max_penetration_m",
+    "max_into_speed_mps",
+    "min_clearance_m"
+   ],
+   "pass_rule": "0 contact-rule onsets on every course; every course identical to its reference on compare_keys"
+  },
+  "CS_Clean": {
+   "definition": "the rule's code on every logged flight with at least min_frames rows (contact_support_eval.detector_on_log: the recorded motion and attitude, the logged velocity command and issued throttle command_thr of the previous tick): an onset counts as a false support when it lies outside every contact the frozen contact audit (configs/contact_audit.json version 1) reports for that log, widened by margin_s, and outside the last terminal_s of a run that ended on an impact",
+   "min_frames": 100,
+   "margin_s": 1.0,
+   "terminal_s": 1.0,
+   "max_outside": 0,
+   "pass_rule": "no onset outside the audit contacts"
+  }
+ },
+ "reports": {
+  "floor_scenario": "contact_support_eval.floor_scenario (nominal surrogate with a flat floor) for the four motors",
+  "full_stack": "variant stack_dv2_cthr on every flight: contact-rule onsets and brake sink withheld (the round-4b stack as it would fly)",
+  "straw_contacts": "the rule on the ten labelled Straw Bale downhill contacts (straw-brain08-04/-06)"
+ },
+ "previous_versions": [],
+ "frozen": true,
+ "frozen_at": "2026-09-27T16:56:09",
+ "sha256": "a7d033cee81937c153c1f3e55a2a16b53dc92da828c5bc41920f596ef54ceb0e"
+}

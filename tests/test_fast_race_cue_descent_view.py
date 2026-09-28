@@ -70,21 +70,31 @@ def test_config_validation():
         FastRaceCue(SENSOR, CameraPoseHistory(), 6., descent_view=dict(margin_deg=3.))
     with pytest.raises(ValueError, match='version'):
         descent_view_config(dict(version=DESCENT_VIEW_VERSION+1, descent_view={}))
+    with pytest.raises(ValueError, match='version'):
+        descent_view_config(dict(version=0, descent_view={}))
 
 
 def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import DESCENT_VIEW_DECLARATION, lag_turn_declaration_sha256, load_descent_view
     declaration, digest = load_descent_view(DESCENT_VIEW_DECLARATION)
-    assert declaration['version'] == DESCENT_VIEW_VERSION == 1 and declaration['frozen'] is True
+    # version 2 (round 4b) = version 1's view rule, unchanged, + contact support; version 1 is kept and refused
+    assert declaration['version'] == DESCENT_VIEW_VERSION == 2 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     assert descent_view_config(declaration) == DV                   # the declared values are the defaults
+    kept_path = DESCENT_VIEW_DECLARATION.with_name('descent_view_v1.json')
+    kept = json.loads(kept_path.read_text(encoding='utf-8'))
+    assert kept['version'] == 1 and kept['sha256'] == '8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d'
+    assert kept['descent_view'] == declaration['descent_view'] and descent_view_config(kept) == DV
+    assert declaration['previous_versions'][0]['sha256'] == kept['sha256']
+    with pytest.raises(ValueError, match='version'):
+        load_descent_view(kept_path)
     edited = dict(declaration, descent_view=dict(declaration['descent_view'], margin_deg=0.))
     path = tmp_path/'edited.json'
     path.write_text(json.dumps(edited))
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_descent_view(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 2
+    other['version'] = 3
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
@@ -150,7 +160,8 @@ def test_a_bottom_clipped_ring_keeps_speed_and_the_sink_stays_in_view():
     assert path_deg(rows[-1][1]) == pytest.approx(-9., abs=.5)        # the rule: 3 degrees inside a -12 degree edge
     assert rows[-1][4]['view_withheld'] > 0 and rows[-1][4]['view_sink_bound'] == pytest.approx(-rows[-1][1][2], abs=.02)
     meta = json.loads(json.dumps(pilot.metadata()))['descent_view']
-    assert meta['version'] == DESCENT_VIEW_VERSION and meta['parameters'] == asdict(strict)
+    # the view rule alone is version 1's (version 2 adds contact support)
+    assert meta['version'] == 1 and meta['parameters'] == asdict(strict)
     assert meta['seconds']['limiting'] > 2. and meta['withheld_m'] > 0
 
 

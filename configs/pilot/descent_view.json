@@ -1,7 +1,7 @@
 {
- "schema": "haltere.liftoff.descent_view.v1",
- "version": 1,
- "note": "View-keeping descent of the fast race-cue pilot (haltere.liftoff.fast_race_cue.DescentViewConfig; visual_brain --descent-view on|off|DECLARATION, off by default, recorded in the flight-log sidecar under pilot_assistance.descent_view and descent_view_declaration, CSV columns view_sink_bound, view_withheld, view_boost only when on). Generic and course-agnostic: it reads the measured attitude and velocity, the visible ring cue state the pilot already has and the calibrated camera (30 deg up, focal 100 px at 320x180: lower image edge 12 deg below the body x axis); no height above ground, no course geometry, no per-course value. It answers the user's request of 2026-09-26 (Straw Bale downhill: 'increase throttle and pitch forward' instead of dropping onto the hill; touch the ground less). Diagnosis of straw-brain08-04/-06 (10 support-climb contacts, two spots per lap at y 161-166 and y 144-147) and -01 (the hillside slide): in the 3 s before every contact the pilot was 56-80% in 'below' at a requested 3.0-4.0 m/s (below_speed_fraction 0.5 of 6 m/s), each bottom clip began with a brake that pitched the nose 10-20 deg up (lower image edge up to +11 deg), requested descents were 16-30 deg (edge depression + a margin growing 5 -> 20 deg) against a lower image edge at -13 to -16 deg, so the measured flight path pointed below the image 70-79% of that time, into a hillside of about 12 deg; during contact the descent-path governor cut the horizontal request to 0.35-0.53x (straw-brain08-01 slid for 5 s at 0.35x with the throttle 0.37 below hover). The live logs also show the Straw rings 5-10 deg below the drone when seen with a level nose (inside a level camera's view) and a steady cruise pitch of only about -2 deg at 5-6 m/s (drag-light drone: speed alone does not lower the camera). The fast PD laps (straw-fast6-03) porpoise on the same downhill: brake (nose +12..+33) in 'below', then accelerate (nose -28..-45) in 'cue'. The values were chosen on development seeds of the offline surrogate with scoring-only hills (haltere.liftoff.descent_rehearsal: hill:6100-6111 and steep:5000-5007, fast PD and fast-brain-08; variants with a strict bound, with late steepening and with other margins, attitude filters and speed fractions were compared there, see the design notes), before the frozen gates (configs/pilot/descent_view_gates.json) and before any run of the gate seeds. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze, and every version is reported. Surrogate results and open-loop replays are development evidence, never flight evidence.",
+ "schema": "haltere.liftoff.descent_view.v2",
+ "version": 2,
+ "note": "View-keeping descent of the fast race-cue pilot, version 2: version 1's view rule unchanged (the descent_view block has the same values) plus contact support (haltere.liftoff.fast_race_cue.ContactSupportConfig; visual_brain --descent-view on|off|DECLARATION, off by default; the runner flies only this version and refuses version 1, kept as configs/pilot/descent_view_v1.json). Why version 2: the round-4 review found, and minus-fast6-r4-02 showed live, that version 1's sink bound keeps the pilot's sink request above about -0.8 m/s below about 5 m/s, while both older support rules need a command below -0.8 m/s: the drone lay on the Minus Two garage floor at 27.4-28.9 s (command -0.3..-0.5 m/s) with no support climb. Contact support reads the ground reaction instead: the vertical specific force that the thrust of the issued throttle (the measured thrust curve of runs/measured-dynamics-low-speed-20260923/profile.json, sha256 266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5: full_input_twr, exponent, translation_drag_s_inv), gravity and drag cannot explain, while the command asks to sink and the drone does not follow it. Generic and course-agnostic: measured velocity and attitude, the issued throttle and the pad calibration; no height above ground, no course geometry, no per-course value. Values were chosen on development evidence only (contact_support_development): the live logs (every one of them is a development case for this rule, the round-4 live logs included), the review's resting scenario with motors, a floor scenario in the nominal surrogate and surrogate development seeds (flat:5000-5007, steep:5000-5007, hill:6100-6111), before the frozen gates (configs/pilot/contact_support_gates.json) and before any run of the gate seeds (flat:3000-3007, steep:3000-3007, hill:6000-6011) with this rule. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze, and every version is reported. Surrogate results, scenarios and open-loop replays are development evidence, never flight evidence.",
  "descent_view": {
   "margin_deg": 3.0,
   "free_sink": 0.3,
@@ -24,17 +24,56 @@
   "interactions": "order in FastRaceCue.update: the pilot's request (search, launch and launch-surface rules first), then the view bound, then the descent-path governor, the speed rise and the support rule, then the looming governor and the vertical guard (which see the bounded request as the pilot's own), turn-first and the command slews. Search (no sink), launch and support climbs are unchanged; the slope-support rule needs a request below -0.8 m/s, which the bound allows only above about 5 m/s: a slow drone resting on a slope is not recognised by it. The rise toward the speed schedule is still capped by the looming governor's wall cap and by turn-first, which act later",
   "brain_limit_found": "fast-brain-08 does not keep 6 m/s while it sinks: asked for (6 m/s, -1.8 m/s) it flew about (3.0, -1.05) in the development runs, where asked for (3, -1.8) by the default pilot it tracked the request; its distillation data paired descents with the default pilot's half speed. With this rule it therefore descends shallower than asked and passes lower checkpoints high (1 -> 15 on the development hills) although its contacts fell 13 -> 3. A brain distilled under this pilot is the expected fix, not a pilot value"
  },
- "previous_versions": [],
- "development_results": {
-  "scope": "surrogate with scoring-only hills on the development seeds only (hill:6100-6111, steep:5000-5007), 110 s, sim seed 17; per set: contacts, share of the descent time with the path below the image, passes > 1.5 m above a checkpoint, mean finish time; baseline -> this version (all courses finished, no crash in any run)",
-  "fast_pd_hill": "contacts 11 -> 2, below view 47% -> 32%, high passes 2 -> 6, 55.1 s -> 50.6 s",
-  "fast_pd_steep": "contacts 5 -> 3, below view 30% -> 25%, high passes 1 -> 6, 62.6 s -> 55.3 s",
-  "brain08_hill": "contacts 13 -> 3, below view 57% -> 54%, high passes 1 -> 15, 61.6 s -> 63.4 s",
-  "brain08_steep": "contacts 3 -> 1, below view 35% -> 36%, high passes 1 -> 6, 63.2 s -> 63.5 s",
-  "brain09b_hill": "contacts 15 -> 3, below view 55% -> 44%, high passes 2 -> 5, 58.5 s -> 59.7 s",
-  "variants_compared": "a strict bound without late steepening (attitude low-pass 0, 0.3 and 1 s): fast PD hill high passes 17-19 and fast-brain-08 12-18, with circling back to overflown rings (brain-08 +11-12% time); late steepening after 0.5-1 s at 4-8 deg/s; a 0 deg in-view margin with a 0.5 descent floor; a 0.75 below-speed fraction: none brought fast-brain-08's high passes below 15; this version was the fast PD's best compromise and within brain-08's range. The design seeds differ from every gate seed."
+ "contact_support": {
+  "thrust_twr": 3.1378033647887618,
+  "thrust_exponent": 1.9728633605611887,
+  "body_drag_s_inv": [
+   0.02745813096840542,
+   0.0,
+   0.3490431637001165
+  ],
+  "throttle_delay_s": 0.03,
+  "window_s": 0.3,
+  "drive_min": 0.4,
+  "drive_max": 0.8,
+  "unexplained_on": 0.8,
+  "sink_min": 0.1,
+  "shortfall": 0.1,
+  "rest_vz": 0.5,
+  "hold_s": 0.15,
+  "arm_after_s": 3.2,
+  "gain_time_constant": 1.0,
+  "gain_quiet": 0.4,
+  "gain_rising": 0.05,
+  "gain_step": 0.15,
+  "gain_min": 0.75,
+  "gain_max": 1.3
  },
+ "contact_support_notes": {
+  "thrust_model": "thrust_twr, thrust_exponent and body_drag_s_inv are the measured profile's full_input_twr, exponent and translation_drag_s_inv (the fast PD flies on the same curve). The live residual of the vertical specific force against it (10 logs, fast PD and brains, Minus Two, Pine Valley, Straw Bale): median -0.03..-0.08 m/s^2, p10..p90 about +-0.2 m/s^2 at a drive of 0.5-0.7; at a drive of 0.3-0.4 a median of +0.4..+3.7 m/s^2 (idle thrust, spin-down), hence drive_min 0.40 (a window with any tick below it is not used) and drive_max 0.80. throttle_delay_s 0.03: the calibrated processed throttle leads the measured acceleration by 2-4 frames",
+  "detection": "unexplained = dvz/dt - (gain*mean(thrust*up_z) - g - mean(drag_z)) over window_s 0.3 s; a support climb (FastCueConfig.support_climb_s 0.6 s at >= 1 m/s, the older rules' climb) after hold_s 0.15 s of: command <= -sink_min 0.1 m/s, vz >= command + shortfall 0.1 m/s, vz <= rest_vz 0.5 m/s, unexplained >= unexplained_on 0.8 m/s^2. The older support rules stay as in version 1",
+  "arming": "arm_after_s 3.2 s after the pilot's first tick: the runner holds the throttle for 1 s and ramps it until 3 s, so the issued throttle is not the game's before; never while launching",
+  "gain": "gain starts at 1 (the measured vehicle) and follows the observed gain with gain_time_constant 1 s, each step's difference clipped to gain_step 0.15 (so it moves at most about 0.15 per second), within [gain_min 0.75, gain_max 1.3], on armed valid windows outside a contact episode and a support climb, when the unexplained force is at most gain_quiet 0.4 m/s^2 or the drone rises (the window's lowest vz >= gain_rising 0.05 m/s). On the logged flights (the rule's code on the logged motion, command and issued throttle) it stays within 0.95-1.10, except straw-brain6-02: an uphill scrape at 38.7-39.3 s (the drone climbing 1.2-1.35 m/s at a drive of 0.52-0.53, below hover, pushed up by the hill) raised it to 1.195; a gain that high hides about 1.9 m/s^2 of ground reaction at hover until quiet windows bring it back (about 1-1.5 s). The surrogate randomises twr and exponent by 10% each (a thrust gain of up to about +-20% at hover): without learning, a strong drone flying level with a brain motor that does not follow a small sink request looks like a drone resting on the ground (a draft that did not learn from rising windows fired twice on brain-08 steep:5001)",
+  "interactions": "a support climb the rule starts is the older rules' support climb (state support_climb, climb_until); their timers are reset when it fires. The descent-path governor, the view bound, the vertical guard and turn-first are unchanged (turn-first hands off to support climbs as before)"
+ },
+ "contact_support_development": {
+  "scope": "development evidence only; the gates are frozen separately and scored afterwards",
+  "resting_scenario": "the review's case (ring clipped below, measured velocity (v, 0, 0) held, vz 0) after a 3.5 s level prologue: support climb 0.28 s after the rest begins at 0-6 m/s with the fast PD (drive_min 0.45 gave 0.66-0.82 s at 3-5 m/s: the PD's sink onset takes the drive to 0.40-0.45), 0.19-0.47 s with fast-brain-08, brain-09b and fast-brain-10b",
+  "floor_scenario": "nominal surrogate with a floor: 0.16-0.17 s after touchdown for the fast PD at 0.5-6 m/s, brain-09b and fast-brain-10b at 0.5-6 m/s and fast-brain-08 at 4-6 m/s; fast-brain-08 at pilot speeds of 0.5-3 m/s touches the floor during the level phase with its throttle at the idle floor (drive 0.34, where the curve is not used) and is detected late (0.3-0.9 s) or not at all",
+  "logs": "the rule's code on every logged flight (logged commands and issued throttle): fires only on the Minus Two floor (minus-fast6-r4-02 at 27.67 and 29.32 s) and on the Straw Bale downhill contact spots (x -35..-39, y 133-174) of the brain-06/07/08 laps and the straw-brain08-01 slide (from 68.54 s, every 0.76 s); none on Pine Valley, the other Minus Two flights, the Straw uphill and hilltop or the fast-PD Straw laps. The full round-4 stack replayed on minus-fast6-r4-02 fires at 27.72 s",
+  "surrogate": "development seeds flat:5000-5007, steep:5000-5007, hill:6100-6111, 150 s, sim seed 17: 0 contact-rule onsets for the fast PD, fast-brain-08, brain-09b and fast-brain-10b (112 courses); finishes, crashes and descent scores as with version 1",
+  "attempts": "round 4b ran in two attempts; the first was cut off before committing and its uncommitted draft was reused. First attempt (all development): the rule's code on every logged flight (all logs in runs/fast-stack-20260923, including the round-4 live logs), the resting and floor scenarios for all four motors, the surrogate on the development seeds only (flat:5000-5007, steep:5000-5007, hill:6100-6111; no gate seed), contact sheets of the labelled Straw Bale contacts, the straw-brain08-01 slide and the minus-fast6-r4-02 floor, and the draft contact audit on an unrecorded subset of logs. Second attempt, before the freeze: the minus-fast6-r4-02 replay (m4 stack as flown with this declaration: onsets 27.72 and 29.38 s), the resting scenario for the fast PD (0.28 s at 0-6 m/s) and fast-brain-10b (0.39-0.46 s), the rule's gain trace on straw-brain6-02. No value was changed by the second attempt"
+ },
+ "previous_versions": [
+  {
+   "version": 1,
+   "file": "configs/pilot/descent_view_v1.json",
+   "sha256": "8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d",
+   "frozen_at": "2026-09-27T02:54:10",
+   "result": "failed its frozen surrogate gates (configs/pilot/descent_view_gates.json v1); flown on Minus Two in round 4 as a disclosed development deviation"
+  }
+ ],
  "frozen": true,
- "frozen_at": "2026-09-27T02:54:10",
- "sha256": "8afb64d730adcfc9ba7e502df38901a04ac42edc3e0011d15a7672019c79e33d"
+ "frozen_at": "2026-09-27T16:55:59",
+ "sha256": "7dc36efc6377adb3b96d5135b4687fc6e6bfe87a19f4d45fe8d1f76825ea4e26"
 }

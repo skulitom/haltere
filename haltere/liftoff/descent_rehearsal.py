@@ -218,6 +218,9 @@ def run_batch(controller, profile, courses, terrains, *, pilot_kwargs=None, spee
                          states={s: round(v, 2) for s, v in p.state_time.items()},
                          support_climbs=int(support_climbs[i]),
                          descent_view=p.descent_view_summary() if hasattr(p, 'descent_view_summary') else None,
+                         # the contact-support rule's own onsets (descent view version 2), only when it is declared
+                         **({} if getattr(p, 'contact_support', None) is None
+                            else dict(contact_support=p.contact_summary())),
                          **scores[i].result()))
     return rows, trace
 

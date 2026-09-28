@@ -89,14 +89,27 @@ def test_config_validation():
 
 def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import WALL_PILOT_DECLARATION, lag_turn_declaration_sha256, load_wall_pilot
+    from haltere.liftoff.fast_race_cue import ClearanceBrakeConfig
     declaration, digest = load_wall_pilot(WALL_PILOT_DECLARATION)
-    assert declaration['version'] == WALL_PILOT_VERSION == 4 and declaration['frozen'] is True
+    assert declaration['version'] == WALL_PILOT_VERSION == 5 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
     configs = wall_pilot_configs(declaration)
-    assert configs == dict(turn_first=TURN, ceiling_guard=GUARD)            # the declared values are the defaults
+    # the declared values are the defaults; version 5 adds the clearance brake's sink floor
+    assert configs == dict(turn_first=TURN, ceiling_guard=GUARD, clearance_brake=ClearanceBrakeConfig())
+    # the kept version 4 (the round-4 stack as flown) is rebuilt for replays without it, and refused by the runner
+    kept = json.loads((WALL_PILOT_DECLARATION.parent/'wall_pilot_v4.json').read_text(encoding='utf-8'))
+    assert kept['version'] == 4 and declaration['previous_versions'][0]['sha256'] == kept['sha256']
+    assert wall_pilot_configs(kept) == dict(turn_first=TURN, ceiling_guard=GUARD)
+    assert {k: v for k, v in declaration.items() if k.startswith(('turn_first', 'ceiling_guard'))} == \
+        {k: v for k, v in kept.items() if k.startswith(('turn_first', 'ceiling_guard'))}
+    with pytest.raises(ValueError, match='version'):
+        load_wall_pilot(WALL_PILOT_DECLARATION.parent/'wall_pilot_v4.json')
+    configs = {k: v for k, v in configs.items() if k != 'clearance_brake'}
     # turn-first's stopping model per motor contract: the brain's is the default, the fast PD brakes harder
-    assert wall_pilot_configs(declaration, 'fast_velocity_brain_v1') == configs
-    assert wall_pilot_configs(declaration, 'some_other_contract') == configs
+    assert {k: v for k, v in wall_pilot_configs(declaration, 'fast_velocity_brain_v1').items()
+            if k != 'clearance_brake'} == configs
+    assert {k: v for k, v in wall_pilot_configs(declaration, 'some_other_contract').items()
+            if k != 'clearance_brake'} == configs
     pd = wall_pilot_configs(declaration, 'fast_velocity_pd_v1')['turn_first']
     assert pd.stop_latency_s < TURN.stop_latency_s and pd.stop_deceleration > TURN.stop_deceleration
     assert asdict(pd) == dict(asdict(TURN), **declaration['turn_first_stopping']['fast_velocity_pd_v1'])
@@ -106,7 +119,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_wall_pilot(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 5
+    other['version'] = 6
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
@@ -121,12 +134,19 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
 def test_earlier_versions_are_kept_verbatim_and_refused():
     """Versions 1-3 (replayed, never flown as the current rules; version 3 flew in round 3) are kept for
     provenance: version 2 added the ceiling guard's overhead_min_rise to version 1, version 3 its
-    overhead_positive; version 4 changed only turn-first (the stopping-distance engagement)."""
+    overhead_positive; version 4 changed only turn-first (the stopping-distance engagement); version 5 (round 4b)
+    only added the clearance brake's sink floor."""
     from haltere.liftoff.visual_brain import (WALL_PILOT_DECLARATION, lag_turn_declaration_sha256,
                                               load_wall_pilot)
-    current, _ = load_wall_pilot(WALL_PILOT_DECLARATION)
+    latest, _ = load_wall_pilot(WALL_PILOT_DECLARATION)
     older = {n: json.loads(WALL_PILOT_DECLARATION.with_name(f'wall_pilot_v{n}.json').read_text(encoding='utf-8'))
-             for n in (1, 2, 3)}
+             for n in (1, 2, 3, 4)}
+    current = older[4]
+    assert current['version'] == 4 and current['sha256'].startswith('92f842a54e56')
+    assert lag_turn_declaration_sha256(current) == current['sha256']
+    assert latest['previous_versions'][0]['sha256'] == current['sha256'] and latest['change']
+    assert {k: latest[k] for k in ('turn_first', 'turn_first_stopping', 'ceiling_guard')} ==         {k: current[k] for k in ('turn_first', 'turn_first_stopping', 'ceiling_guard')}
+    assert latest['previous_versions'][1:] == current['previous_versions']
     assert older[1]['sha256'].startswith('17fecfb1fad7') and older[2]['sha256'].startswith('095addc577c0')
     assert older[3]['sha256'].startswith('cafe4aa8c8bf')
     added = {2: 'overhead_min_rise', 3: 'overhead_positive'}
@@ -142,10 +162,11 @@ def test_earlier_versions_are_kept_verbatim_and_refused():
     assert current['ceiling_guard'] == old['ceiling_guard']                   # version 4 changed turn-first only
     kept = {k: v for k, v in old['turn_first'].items() if k != 'slow_speed'}
     assert {k: current['turn_first'][k] for k in kept} == kept
-    for n in (1, 2, 3):
+    for n in (1, 2, 3, 4):
         with pytest.raises(ValueError, match='version'):
             load_wall_pilot(WALL_PILOT_DECLARATION.with_name(f'wall_pilot_v{n}.json'))
     assert [v['version'] for v in current['previous_versions']] == [3, 2, 1]
+    assert [v['version'] for v in latest['previous_versions']] == [4, 3, 2, 1]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -328,7 +349,9 @@ def test_the_pilot_levels_off_fast_under_overhead_evidence_and_shadow_flies_the_
     assert shadow[cut][2]['ceiling_status'] == 'overhead' and shadow[cut][2]['ceiling_vertical_cap'] == 0.
     assert np.isnan(flown[-1][2]['ceiling_climb']) and flown[-1][2]['ceiling_status'] == ''
     meta = json.loads(json.dumps(guarded.metadata()))['wall_pilot']
-    assert meta['version'] == WALL_PILOT_VERSION and meta['applied'] is True and meta['turn_first'] is None
+    # without the clearance brake's sink floor the rules are version 4's (the runner flies version 5 with it)
+    assert meta['version'] == 4 and meta['applied'] is True and meta['turn_first'] is None
+    assert 'clearance_brake' not in meta
     assert meta['ceiling_guard']['parameters'] == asdict(GUARD)
     assert meta['ceiling_guard']['counts']['overhead_engagements'] == 1
     assert json.loads(json.dumps(plain.metadata()))['wall_pilot'] is None

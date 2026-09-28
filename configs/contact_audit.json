@@ -1,0 +1,149 @@
+{
+ "schema": "haltere.liftoff.contact_audit.v1",
+ "version": 1,
+ "note": "Pilot-independent ground-contact audit of a flight log (haltere.liftoff.contact_audit; offline scoring only, never read by a pilot). It counts contacts from the telemetry alone: the vertical specific force the thrust of the game's processed throttle (the measured curve of runs/measured-dynamics-low-speed-20260923/profile.json: full_input_twr, exponent, translation_drag_s_inv), gravity and drag cannot explain; the arrest of a descent below hover thrust; off-axis impacts (flightlog.collisions' criterion); the recorded height; and the runner's terminal impact. The values were set on design logs (validation.design_logs) before this freeze; the validation below is frozen with them and scored afterwards. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze.",
+ "audit": {
+  "thrust_twr": 3.1378033647887618,
+  "thrust_exponent": 1.9728633605611887,
+  "body_drag_s_inv": [
+   0.02745813096840542,
+   0.0,
+   0.3490431637001165
+  ],
+  "half_frames": 3,
+  "window_s": 0.3,
+  "drive_min": 0.4,
+  "drive_max": 0.8,
+  "support_on": 1.0,
+  "rate_free": 3.0,
+  "support_rate_gain": 0.5,
+  "arrest_descent": 0.3,
+  "arrest_accel": 1.5,
+  "arrest_lookback_s": 0.1,
+  "impact_accel": 20.0,
+  "impact_offaxis": 6.0,
+  "merge_s": 0.3,
+  "min_s": 0.15,
+  "slide_s": 1.0,
+  "slide_speed": 1.0,
+  "launch_plane_m": 0.3,
+  "arming_s": 3.5,
+  "depart_m": 0.5
+ },
+ "audit_notes": {
+  "support": "support: the external vertical force averaged over window_s (centred) >= support_on + support_rate_gain x max(0, the window's highest body rate - rate_free), with the drive (in_thr+1)/2 within [drive_min, drive_max] on every frame of the window",
+  "arrest": "arrest: vz <= -arrest_descent at the window start, the drive at or below the hover drive for the window and arrest_lookback_s before it, and a mean (dvz/dt + drag_z) >= arrest_accel over the window",
+  "impact": "impact: 3-frame mean acceleration > impact_accel with > impact_offaxis off the thrust axis",
+  "episodes": "frames closer than merge_s form one contact; a contact needs min_s of support or arrest, or one impact frame; kind slide when supported >= slide_s at a median horizontal speed >= slide_speed; frames before arming_s or before the first departure (|z| > depart_m) are not scored"
+ },
+ "validation": {
+  "min_frames": 100,
+  "design_logs": {
+   "second_attempt": [
+    "straw-brain06-02",
+    "straw-brain07-02",
+    "straw-fast6-03",
+    "pine-fast6-ttc-01",
+    "pine-brain08-01",
+    "minus-fast6-vg-02",
+    "minus-brain08-vg-01"
+   ],
+   "first_attempt": "an unrecorded subset of logs; its frame grabs point to pine-fast6-ttc-01, pine-brain08-01, straw-fast6-03, straw-fast6-arc-01 and straw-brain06-02. It cannot be excluded that it also ran its draft on validation logs: the validation is not blind",
+   "note": "the audit's values are the first attempt's draft, checked unchanged on the second attempt's design logs (all contacts it reported there were at hill, hilltop, uphill-skim or Pine impact spots; two uphill skims and a hilltop tumble were confirmed on the videos)"
+  },
+  "straw_downhill": {
+   "cases": [
+    [
+     "straw-brain08-04",
+     72.31
+    ],
+    [
+     "straw-brain08-04",
+     176.96
+    ],
+    [
+     "straw-brain08-04",
+     283.4
+    ],
+    [
+     "straw-brain08-04",
+     288.48
+    ],
+    [
+     "straw-brain08-06",
+     71.54
+    ],
+    [
+     "straw-brain08-06",
+     76.75
+    ],
+    [
+     "straw-brain08-06",
+     177.51
+    ],
+    [
+     "straw-brain08-06",
+     182.98
+    ],
+    [
+     "straw-brain08-06",
+     282.63
+    ],
+    [
+     "straw-brain08-06",
+     287.84
+    ]
+   ],
+   "window_s": [
+    -2.0,
+    0.3
+   ],
+   "min_detected": 9,
+   "labels": "the ten support-climb onsets of straw-brain08-04/-06 on the downhill; each confirmed on the video before the freeze (contact sheets every 0.2 s from onset-1.6 s: the camera at ground level with grass and straw close in front, 0.6-1.0 s before each onset)",
+   "pass_rule": "an audit contact overlapping [onset + window_s[0], onset + window_s[1]] for >= min_detected"
+  },
+  "slide": {
+   "log": "straw-brain08-01",
+   "window": [
+    70.5,
+    75.8
+   ],
+   "min_coverage": 0.5,
+   "kind": "slide",
+   "labels": "the video shows the drone sliding on the hillside (camera at ground level, grass close) from 70.6 s to the impact at about 75.9 s; 68.8-70.0 s is not clear on the video (the log shows vz -0.5..-0.7 m/s at a drive below hover from 68.5 s)",
+   "pass_rule": "audit contacts cover >= min_coverage of the window, one of them of kind slide"
+  },
+  "floor": {
+   "log": "minus-fast6-r4-02",
+   "windows": [
+    [
+     27.4,
+     28.9
+    ],
+    [
+     29.1,
+     29.6
+    ]
+   ],
+   "labels": "the garage floor is the launch plane (z launch-relative): z < 0.1 m at 27.4-28.9 s and 29.1-29.6 s; the dark video does not show the touch clearly",
+   "pass_rule": "an audit contact overlapping the first window (the second is reported)"
+  },
+  "terminal_s": 1.0,
+  "terminal_rule": "every run that ended on the runner's impact is listed with its terminal record (reported: whether the CSV carries contact evidence in its last terminal_s)",
+  "height_confirmed_prefixes": [
+   "minus-"
+  ],
+  "height_confirmed_m": 0.3,
+  "false_positives": {
+   "max_review": 80,
+   "seed": 17,
+   "max_per_min": 0.05,
+   "procedure": "every audit contact outside the labelled windows, not within terminal_s of the end of a run that ended on an impact, and (Minus Two, whose floor is the launch plane) not within height_confirmed_m of the launch plane, is looked up on the video: a sheet of 12 frames from t_start - 0.4 s to t_end + 0.2 s (contact_audit.review_sheets). Label 'contact' when the frames show the drone touching the ground or an object (the camera at ground level with the surface close, debris, a tumble or a jolt at an obstacle), 'none' when it is clearly airborne throughout, 'ambiguous' otherwise; 'none', 'ambiguous' and a missing label count as false positives. More than max_review items: a seeded random sample of max_review is labelled and the count scaled. Rate: false positives per minute of scored flight over every log",
+   "pass_rule": "false positives per scored minute <= max_per_min"
+  }
+ },
+ "previous_versions": [],
+ "frozen": true,
+ "frozen_at": "2026-09-27T16:56:09",
+ "sha256": "1c82c7f45668eadb92036a9b492463aa6ae3292a5998e54b46c320e2089ee55f"
+}
