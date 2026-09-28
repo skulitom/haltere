@@ -1230,10 +1230,10 @@ What to look for:
 - **Boulder:** no rule arrests the descent into it.
 
 Optional matched control for (a): the same stack in shadow, which isolates the obstacle stack
-(descent view and assist stay on):
+(the descent view and motor assist stay on; contact support stays applied even in shadow, see the review):
 
 ```powershell
-.venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --descent-view on --motor-assist on --seconds 480 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/straw-brain11cw13-r4b-01.csv --record runs/fast-stack-20260923/straw-brain11cw13-r4b-01.mp4 --video-encoder h264_nvencONTROL
+.venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack shadow --descent-view on --motor-assist on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-fast6-r4b-shadow-01.csv --record runs/fast-stack-20260923/minus-fast6-r4b-shadow-01.mp4 --video-encoder h264_nvenc
 ```
 
 **Stop criteria.**
