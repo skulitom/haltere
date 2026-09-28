@@ -1,4 +1,4 @@
-﻿"""brain-12 training options (all off by default): mirrored collection courses, the motor assist in the deployed pilot,
+"""brain-12 training options (all off by default): mirrored collection courses, the motor assist in the deployed pilot,
 descent weights and cap rate ranges."""
 from dataclasses import asdict
 import json
@@ -131,3 +131,54 @@ def test_motor_assist_in_the_deployed_pilot_is_the_round5_declaration():
     assert 'motor_assist' not in plain and 'motor_assist' not in plain_record
     pd, _ = deployed_pilot_kwargs('fast_velocity_pd_v1', motor_assist=True)
     assert 'motor_assist' not in pd
+
+
+def test_synthetic_turns_turn_both_ways_hold_and_return():
+    from haltere.train.fast_motor_tracking import SyntheticTurnConfig, SyntheticTurns
+    config = SyntheticTurnConfig(rate_per_min=600., angle_deg=(60., 60.), rate=(1., 1.), hold_s=(.5, .5))
+    turns = SyntheticTurns(config, 64, 3)
+    seen_left = seen_right = False
+    for k in range(400):
+        angle, omega, active = turns.step(k*.01, .01, np.zeros(64, bool), np.full(64, 5.))
+        assert np.all(np.abs(angle) <= np.radians(60.)+1e-9) and np.all(np.abs(omega) <= 1.+1e-9)
+        assert np.all(angle[~active] == 0.)
+        seen_left |= bool((angle > np.radians(59.9)).any())
+        seen_right |= bool((angle < -np.radians(59.9)).any())
+    assert seen_left and seen_right and 0 < turns.left < turns.count
+    idle = SyntheticTurns(config, 4, 3)
+    for k in range(200):
+        angle, _, active = idle.step(k*.01, .01, np.ones(4, bool), np.full(4, 5.))   # launching: never
+        assert not active.any()
+    slow = SyntheticTurns(config, 4, 3)
+    assert not slow.step(0., .01, np.zeros(4, bool), np.zeros(4))[2].any()
+    for bad in (dict(angle_deg=(0., 30.)), dict(rate=(2., 1.)), dict(angle_deg=(30., 170.)), dict(rate_per_min=0.)):
+        with pytest.raises(ValueError):
+            SyntheticTurnConfig(**bad)
+
+
+def test_rotate_request_turns_the_request_and_adds_the_rotation_to_the_feedforward():
+    from haltere.train.fast_motor_tracking import rotate_request
+    r, f = rotate_request(np.array([4., 0., -1.]), np.array([1., 0., .5]), np.pi/2, .5)
+    assert np.allclose(r, [0., 4., -1.]) and np.allclose(f, [-.5*4., 1., .5])
+    same, ff = rotate_request(np.array([4., 0., 0.]), np.zeros(3), 0., 0.)
+    assert np.array_equal(same, [4., 0., 0.]) and np.array_equal(ff, np.zeros(3))
+
+
+def test_lateral_mask_selects_turns_on_either_side_at_speed():
+    from haltere.train.fast_motor_tracking import lateral_mask, lateral_weights
+    v = torch.tensor([[5., 0., 0.]]*4)
+    a = np.radians(30.)
+    request = torch.tensor([[5., 0., 0.], [5*np.cos(a), 5*np.sin(a), 0.], [5*np.cos(a), -5*np.sin(a), 0.],
+                            [.5, .1, 0.]], dtype=torch.float32)
+    assert lateral_mask(request, v).tolist() == [False, True, True, False]
+    w = lateral_weights(request, v, 3.)
+    assert torch.isclose(w.mean(), torch.tensor(1.)) and torch.isclose(w[1]/w[0], torch.tensor(3.))
+
+
+def test_descent_sink_relief_reduces_only_the_sink_beyond_the_free_part():
+    from haltere.train.fast_motor_tracking import LabelTeacher, descent_sink_relief
+    request = torch.tensor([[6., 0., -2.], [6., 0., -.4], [6., 0., 1.], [0., 0., -3.]])
+    shaped = descent_sink_relief(request, .1)
+    assert torch.allclose(shaped[:, 2], torch.tensor([-1.85, -.4, 1., -2.75]))
+    assert torch.equal(shaped[:, :2], request[:, :2]) and torch.equal(descent_sink_relief(request, 0.), request)
+    assert LabelTeacher.__init__.__defaults__[-1] == 0.
