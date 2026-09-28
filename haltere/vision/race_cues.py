@@ -6,23 +6,85 @@ no track coordinates or checkpoint list and is not a freestyle planner.
 import numpy as np
 
 
-def checkpoint_ring(rgb):
+# The ring-marker declaration version whose reader rule checkpoint_ring implements (configs/pilot/ring_marker.json);
+# runners refuse others.
+RING_MARKER_VERSION = 1
+
+
+def ring_marker_rule(declaration):
+    """The reader rule (checkpoint_ring's `annulus`) of a ring-marker declaration already parsed and hash-checked by the
+    runner; refuses another version (RING_MARKER_VERSION) or invalid values. This module reads no files."""
+    if (declaration or {}).get('version') != RING_MARKER_VERSION:
+        raise ValueError(f'The ring-marker declaration is version {(declaration or {}).get("version")}; the reader '
+                         f'implements version {RING_MARKER_VERSION}')
+    rule = declaration.get('annulus')
+    if not isinstance(rule, dict) or set(rule) != {'min_white', 'offsets_px', 'samples'}:
+        raise ValueError('A ring-marker declaration declares annulus = {min_white, offsets_px, samples}')
+    min_white, offsets, samples = float(rule['min_white']), [float(o) for o in rule['offsets_px']], rule['samples']
+    if not (0 < min_white <= 1 and offsets and all(0 < o <= 5 for o in offsets)
+            and int(samples) == samples and samples >= 8):
+        raise ValueError('Use 0 < min_white <= 1, offsets_px in (0, 5] px and at least 8 samples')
+    return dict(min_white=min_white, offsets_px=tuple(offsets), samples=int(samples))
+
+
+def annulus_white(mask, u, v, radius, samples=32):
+    """Share of the in-image points of a circle of `radius` px about (u, v) that lie on the white `mask` (NaN when no
+    point falls inside the image)."""
+    angles = np.arange(int(samples))*2*np.pi/int(samples)
+    xx = np.rint(u+radius*np.cos(angles)).astype(int)
+    yy = np.rint(v+radius*np.sin(angles)).astype(int)
+    inside = (xx >= 0) & (xx < mask.shape[1]) & (yy >= 0) & (yy < mask.shape[0])
+    if not inside.any():
+        return float('nan')
+    return float(np.mean(mask[yy[inside], xx[inside]] > 0))
+
+
+def checkpoint_ring(rgb, annulus=None):
     """Return normalized image position and whether the cue is edge-clamped.
 
     Liftoff draws a small thick white annulus. Its hole/area ratio separates
     it from the thin central reticle. Exclude timer, standings and stick HUD.
     Ambiguous frames are missing observations, never an arbitrary target.
+
+    ``annulus`` (off by default: None keeps this reader bit for bit): the ring-marker declaration's reader rule, a dict
+    with min_white, offsets_px and samples. A candidate is kept only if the white mask covers at least min_white of the
+    in-image points of each circle of radius (w + h)/4 + offset (offset in offsets_px) about its hole centre: the HUD
+    marker's white annulus is continuous around its hole. A dark square of a checkered structure (the legs of the
+    Straw Bale start arches) inside a white region passes the hole tests but its surround alternates white and dark:
+    on straw-brain11cw13-r4b-noassist-02 at 111.3-111.4 s such a check on the right leg of the second start arch was
+    read as the marker, 16.6 deg right of the ring, and turned the pilot into that leg.
     """
+    frame = _ring_frame(rgb)
+    hits = ring_candidates(frame, annulus)
+    hits = [dict(u=h['u'], v=h['v'], edge=h['edge']) for h in hits if h['annulus_ok']]
+    if len(hits) != 1:
+        return None
+    cue = hits[0]
+    cue['aim_u'] = flag_clearance(frame, cue)
+    return cue
+
+
+def _ring_frame(rgb):
     import cv2
     frame = np.asarray(rgb)
     if frame.shape[:2] != (720, 1280):
         frame = cv2.resize(frame, (1280, 720), interpolation=cv2.INTER_LINEAR)
+    return frame
+
+
+def ring_candidates(rgb, annulus=None):
+    """Every marker candidate that passes the earlier reader's tests (hole size and shape, HUD exclusions, the high-view
+    digit test, not a hole in a white cloud or wall), as dict(u, v, edge, annulus_ok): with a reader rule `annulus`
+    annulus_ok says whether the candidate also passes it (always True without one). checkpoint_ring reads the marker
+    only when exactly one candidate passes; the evaluation (haltere.obstacles.stale_evidence_gates) lists them."""
+    import cv2
+    frame = _ring_frame(rgb)
     r, g, b = frame[..., 0], frame[..., 1], frame[..., 2]
     lo, hi = np.minimum(r, np.minimum(g, b)), np.maximum(r, np.maximum(g, b))
     mask = ((lo > 190) & (hi.astype(np.int16)-lo < 55)).astype(np.uint8)*255
     contours, tree = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     if tree is None:
-        return None
+        return []
     hits = []
     for i, contour in enumerate(contours):
         parent = tree[0, i, 3]
@@ -51,12 +113,12 @@ def checkpoint_ring(rgb):
         yy = np.clip(np.rint(v+10*np.sin(angles)).astype(int), 0, 719)
         if np.mean(mask[yy, xx] > 0) > .5:  # a hole in a white cloud or wall
             continue
-        hits.append(dict(u=u/1280, v=v/720, edge=bool(edge)))
-    if len(hits) != 1:
-        return None
-    cue = hits[0]
-    cue['aim_u'] = flag_clearance(frame, cue)
-    return cue
+        # annulus rule: a continuous white annulus around the hole (a dark check of a checkered structure is not)
+        ok = annulus is None or all(
+            annulus_white(mask, u, v, (w+h)/4+float(offset), annulus['samples']) >= annulus['min_white']
+            for offset in annulus['offsets_px'])
+        hits.append(dict(u=u/1280, v=v/720, edge=bool(edge), annulus_ok=bool(ok)))
+    return hits
 
 
 def flag_clearance(rgb, cue):

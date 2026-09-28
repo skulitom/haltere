@@ -1,0 +1,16 @@
+{
+ "schema": "haltere.vision.ring_marker.v1",
+ "version": 1,
+ "note": "Reader rule for the visible next-checkpoint ring marker (haltere.vision.race_cues.checkpoint_ring, the race-cue runtime's reading of the game HUD; visual_brain --ring-marker on|DECLARATION, off by default, with or without the obstacle stack; recorded in the flight-log metadata). 'annulus': a candidate is kept only if the white mask covers at least min_white of the in-image points (samples per circle) of each circle of radius (w + h)/4 + offset px, offset in offsets_px, about its hole centre: the HUD marker is a continuous white annulus, a dark check of a checkered structure inside a white region is not. Generic and course-agnostic: it reads one frame's pixels only; no course geometry, route or per-course value. The values are a-priori: a continuous drawn ring covers its own circles fully, min_white 0.9 leaves 10% for anti-aliasing and compression; offsets 1 and 2 px lie inside the marker's white band (its hole radius ~4-5 px, outer radius ~7-8 px at 1280 x 720); 32 samples per circle (about one per pixel at these radii). Designed after inspecting the round-4b live log it addresses (straw-brain11cw13-r4b-noassist-02, 111.3-111.4 s: a dark check on the right leg of the second start arch was read as the marker and turned the pilot into that leg) and the recorded frames of that clip and of minus-fast6-r4b-01 at 43.5-44.0 s, which are therefore development evidence, not held-out evidence. Frozen with the offline gates (configs/obstacles/stale_evidence_gates.json) before any gate was scored. The runner refuses another version (race_cues.RING_MARKER_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight. The offline evidence runs the reader on recorded (h264) video frames, which differ from the live captures.",
+ "annulus": {
+  "min_white": 0.9,
+  "offsets_px": [
+   1.0,
+   2.0
+  ],
+  "samples": 32
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-28T05:08:26+00:00",
+ "sha256": "29d0e83fa3ab58ca9f7d681504654d53b2e842fe9d067d29f81782fec01462bd"
+}

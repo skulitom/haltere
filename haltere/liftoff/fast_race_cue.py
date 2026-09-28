@@ -676,6 +676,51 @@ def wall_pilot_configs(declaration, contract=None):
     return out
 
 
+# The stale-evidence declaration version whose rules this code implements (ClearanceRayConfig;
+# configs/obstacles/stale_evidence.json); runners refuse others.
+STALE_EVIDENCE_VERSION = 1
+
+
+@dataclass(frozen=True)
+class ClearanceRayConfig:
+    """The TTC governor's cap follows the ray its evidence lies on (stale-evidence declaration version 1; obstacle
+    stack only, off unless a runner passes it; in shadow the flown governor lacks it and the shadow copy fed the same
+    samples has it). TTC policy only.
+
+    The governor keeps one cap on the speed along one looming ray: the travel direction when the wall sample that set
+    the cap was captured. Without this rule a later wall sample that does not lower the target keeps that cap, holds
+    it (a wall sample with TTC < hold_ttc_s) and, while the held target is at or below standoff_speed, renews the
+    stand-off, whatever its own ray. On minus-fast6-r4b-01 a stand-off set at the first wall at 39.5 s (cap ray 28 deg,
+    target 0.48 m/s) was renewed from 42.0 s to the impact at 44.8 s by samples along 139 deg and then -150..-162 deg:
+    the wall behind the next arch (TTC 0.86 -> 0.35 s along the travel direction, 0.9 s before the impact) never
+    lowered the cap, which bounded only the speed along the old ray, 180 deg from the flight.
+
+    With this rule a sample whose ray lies more than stale_deg from the cap's ray describes another path:
+    - it neither holds the cap (hold_ttc_s) nor counts as the engaged cap's hysteresis (it is confirmed against
+      ttc_on, as a first engagement);
+    - once confirmed with a slow-down it re-seats the cap on its own ray: the target is its own target, the cap
+      starts at the drone's speed along that ray and falls at brake_rate, and the stand-off along the old ray ends
+      (samples on the new ray renew a stand-off as before, once the new target is at or below standoff_speed).
+    Samples within stale_deg of the cap's ray are handled as before. The cap is still one cap along one ray.
+    """
+    stale_deg: float = 60.
+
+    def __post_init__(self):
+        if not np.isfinite(self.stale_deg) or not 0 < self.stale_deg < 180:
+            raise ValueError('Use 0 < stale_deg < 180 degrees')
+
+
+def stale_evidence_configs(declaration):
+    """dict(clearance_ray=ClearanceRayConfig) from a stale-evidence declaration already parsed (and hash-checked) by the
+    runner; refuses another rule version (STALE_EVIDENCE_VERSION). This module reads no files."""
+    if (declaration or {}).get('version') != STALE_EVIDENCE_VERSION:
+        raise ValueError(f'The stale-evidence declaration is version {(declaration or {}).get("version")}; the fast '
+                         f'pilot implements version {STALE_EVIDENCE_VERSION}')
+    if not isinstance(declaration.get('clearance_ray'), dict):
+        raise ValueError('A stale-evidence declaration declares its clearance_ray rule')
+    return dict(clearance_ray=ClearanceRayConfig(**declaration['clearance_ray']))
+
+
 # The vertical-guard declaration version whose rules this code implements (VerticalGuardConfig); runners refuse others.
 VERTICAL_GUARD_VERSION = 4
 
@@ -1048,16 +1093,23 @@ class TtcClearanceGovernor:
     `vertical` (a `VerticalGuardConfig`, off by default) adds the graded vertical guard: its terrain climb replaces
     the policy's, and `sink_factor` / `arrest` tell the pilot how much of its own sink to keep and whether to hold
     at least level (1. / False without it).
+    `ray` (a `ClearanceRayConfig`, off by default) re-seats the cap on the ray of a confirmed sample that lies more than
+    its stale_deg from the cap's ray (stale-evidence declaration version 1).
     """
 
-    def __init__(self, config=None, ceiling=None, vertical=None):
+    def __init__(self, config=None, ceiling=None, vertical=None, ray=None):
         self.config = config or TtcClearanceConfig()
         if ceiling is not None and not isinstance(ceiling, CeilingGuardConfig):
             raise ValueError('Pass a CeilingGuardConfig (or None) for the ceiling guard')
         if vertical is not None and not isinstance(vertical, VerticalGuardConfig):
             raise ValueError('Pass a VerticalGuardConfig (or None) for the vertical guard')
+        if ray is not None and not isinstance(ray, ClearanceRayConfig):
+            raise ValueError('Pass a ClearanceRayConfig (or None) for the cap-ray rule')
         self.ceiling = ceiling
         self.vertical = vertical
+        self.ray_rule = ray
+        self.stale_cos = None if ray is None else float(np.cos(np.radians(ray.stale_deg)))
+        self.reseat_at = -np.inf        # the latest re-seat (ray rule; -inf without it)
         # Vertical guard state (unused without it)
         self.sink_factor = 1.
         self.arrest = False
@@ -1095,6 +1147,9 @@ class TtcClearanceGovernor:
         if ceiling is not None:
             self.counts.update(overhead_samples=0, overhead_engagements=0, unexplained_walls=0, weak_climb_samples=0,
                                suppressed_climb_samples=0)
+        if ray is not None:
+            # wall samples off the cap's ray (more than stale_deg), and the confirmed ones that re-seated the cap
+            self.counts.update(stale_ray_samples=0, reseats=0)
 
     def ingest(self, time, ttc, distance, below_fraction, position, ray, closing_speed, received=None, ttc_lower=None):
         """Add one fresh sample captured at `time` at `position` and received at `received`
@@ -1302,8 +1357,13 @@ class TtcClearanceGovernor:
             brake_terrain = terrain and not overhead
             if not brake_terrain and ttc < c.hold_ttc_s:
                 self.wall_evidence = dict(time=s['time'], reach=s['reach'], position=s['position'], ray=s['ray'])
-            active = self.cap is not None and self.cap < max(closing, 0.)+1.
-            if self.target is not None and not brake_terrain and ttc < c.hold_ttc_s:
+            # ray rule (ClearanceRayConfig): a sample more than stale_deg off the cap's ray describes another path
+            stale = (self.ray_rule is not None and self.cap_ray is not None
+                     and float(np.asarray(s['ray'], float) @ np.asarray(self.cap_ray, float)) < self.stale_cos)
+            if stale:
+                self.counts['stale_ray_samples'] += 1
+            active = self.cap is not None and self.cap < max(closing, 0.)+1. and not stale
+            if self.target is not None and not brake_terrain and ttc < c.hold_ttc_s and not stale:
                 self.lowered_at = now               # a wall still in view: hold the cap
             threshold = c.ttc_target if active else c.ttc_on
             votes = sum(r['ttc'] < threshold for r in recent)
@@ -1317,7 +1377,14 @@ class TtcClearanceGovernor:
             target = (closing*fraction if (ttc < c.stop_ttc_s and not brake_terrain)
                       else max(c.min_speed, closing*fraction))
             self.lowered_at = now                   # TTC has not recovered to ttc_target: keep holding
-            if self.target is None or target < self.target:
+            if stale:
+                # re-seat: the cap along the old ray (and its stand-off) no longer bounds the path the drone is on
+                self.counts['brake_engagements'] += 1
+                self.counts['reseats'] += 1
+                self.target, self.cap_ray, self.cap = target, s['ray'], closing
+                self.standoff_until = -np.inf
+                self.reseat_at = now
+            elif self.target is None or target < self.target:
                 if self.cap is None or not active:
                     self.counts['brake_engagements'] += 1
                 self.target, self.cap_ray = target, s['ray']
@@ -1369,7 +1436,7 @@ class FastRaceCue:
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
                  ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None,
-                 contact_support=None, clearance_brake=None, motor_assist=None):
+                 contact_support=None, clearance_brake=None, motor_assist=None, clearance_ray=None, stale_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -1532,6 +1599,14 @@ class FastRaceCue:
         self.assist_time = {name: 0. for name in MOTOR_ASSIST_SOURCES+('sag',)}
         self.assist_removed = 0.               # metres of horizontal request travel removed (integral)
         self.assist_added = 0.                 # metres of climb requested by the sag compensation (integral)
+        # Stale-evidence rule (off unless declared; obstacle stack only): see ClearanceRayConfig. stale_apply False
+        # computes and logs it without applying it (the stack's shadow control): the flown governor then has no ray rule
+        # and the shadow copy fed the same samples has it.
+        if clearance_ray is not None and not isinstance(clearance_ray, ClearanceRayConfig):
+            raise ValueError('Pass a ClearanceRayConfig (or None) for the cap-ray rule')
+        if clearance_ray is not None and not isinstance(self.clearance_config, TtcClearanceConfig):
+            raise ValueError('The cap-ray rule is part of the TTC clearance policy')
+        self.clearance_ray, self.stale_apply = clearance_ray, bool(stale_apply)
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -1539,16 +1614,20 @@ class FastRaceCue:
         if stamp is None or not np.isfinite(stamp):
             raise ValueError('A clearance sample needs its capture time')
         if self.clearance is None:
-            guard, vertical = self.ceiling_guard, self.vertical_guard
+            guard, vertical, ray = self.ceiling_guard, self.vertical_guard, self.clearance_ray
             flown = dict(ceiling=guard if self.wall_apply else None,
                          vertical=vertical if self.vertical_apply else None)
-            if flown['ceiling'] is not None or flown['vertical'] is not None:
+            if ray is not None and self.stale_apply:
+                flown['ray'] = ray              # absent without the rule: the governor is built exactly as before
+            if any(v is not None for v in flown.values()):
                 self.clearance = TtcClearanceGovernor(c, **flown)
             else:
                 self.clearance = clearance_governor(c)
-            if (guard is not None and not self.wall_apply) or (vertical is not None and not self.vertical_apply):
+            if ((guard is not None and not self.wall_apply) or (vertical is not None and not self.vertical_apply)
+                    or (ray is not None and not self.stale_apply)):
                 # shadow: a copy with every declared rule, fed the same samples, reports what the rules would do
-                self.clearance_shadow = TtcClearanceGovernor(c, ceiling=guard, vertical=vertical)
+                self.clearance_shadow = TtcClearanceGovernor(c, ceiling=guard, vertical=vertical,
+                                                             **({} if ray is None else dict(ray=ray)))
         if not (0 <= now-stamp <= c.max_age_s
                 and (self.clearance.last_time is None or stamp > self.clearance.last_time)):
             return
@@ -2620,6 +2699,40 @@ class FastRaceCue:
                     ceiling_climb=float(guard.climb) if guard is not None else nan,
                     ceiling_vertical_cap=nan if cap is None else float(cap))
 
+    def _ray_governor(self):
+        """The governor that runs the cap-ray rule: the flown one, or its shadow copy; None without the rule."""
+        for governor in (self.clearance, self.clearance_shadow):
+            if getattr(governor, 'ray_rule', None) is not None:
+                return governor
+        return None
+
+    def stale_log(self):
+        """Per-tick stale-evidence values for logs: the azimuth (deg) of the flown governor's cap ray (NaN without a
+        cap) and the re-seats the cap-ray rule has made so far (its governor: flown, or the shadow copy; NaN without the
+        rule)."""
+        nan = float('nan')
+        ray = None if self.clearance is None else getattr(self.clearance, 'cap_ray', None)
+        governor = self._ray_governor()
+        return dict(cap_ray_deg=nan if ray is None or np.hypot(ray[0], ray[1]) < 1e-9
+                    else float(np.degrees(np.arctan2(ray[1], ray[0]))),
+                    cap_reseat=nan if self.clearance_ray is None else
+                    float(governor.counts['reseats']) if governor is not None else 0.)
+
+    def _stale_metadata(self):
+        if self.clearance_ray is None:
+            return None
+        governor = self._ray_governor()
+        return dict(
+            version=STALE_EVIDENCE_VERSION, applied=self.stale_apply,
+            clearance_ray=dict(
+                rule='a looming sample whose ray lies more than stale_deg from the TTC governor\'s cap ray neither holds '
+                     'the cap nor counts as its hysteresis (confirmed against ttc_on); once confirmed with a slow-down it '
+                     're-seats the cap on its own ray (its own target, the cap starting at the speed along that ray and '
+                     'falling at brake_rate) and ends the stand-off along the old ray',
+                parameters=asdict(self.clearance_ray),
+                governor='flown' if self.stale_apply else 'shadow copy fed the same samples',
+                counts=None if governor is None else {k: governor.counts[k] for k in ('stale_ray_samples', 'reseats')}))
+
     def brake_log(self):
         """Per-tick clearance-brake sink values (m/s; logged by the replay harness): the sink the brake added this
         tick below min(the request before it, 0) (measured with or without the sink floor), the sink it left after
@@ -2807,4 +2920,7 @@ class FastRaceCue:
                 parameters=asdict(self.contact_support), **self.contact_summary())
         if self.motor_assist is not None:
             out['motor_assist'] = self._motor_assist_metadata()     # absent when the rule is off (default unchanged)
+        stale = self._stale_metadata()
+        if stale is not None:
+            out['stale_evidence'] = stale                           # absent when the rules are off (default unchanged)
         return out

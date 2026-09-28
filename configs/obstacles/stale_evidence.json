@@ -1,0 +1,11 @@
+{
+ "schema": "haltere.liftoff.stale_evidence.v1",
+ "version": 1,
+ "note": "Stale-evidence rule of the fast race-cue pilot inside the obstacle stack (visual_brain --obstacle-stack on|shadow; off by default and outside the stack; --stale-evidence off removes it from the stack; shadow computes and logs it without applying it). 'clearance_ray': haltere.liftoff.fast_race_cue.ClearanceRayConfig, the looming TTC governor's cap follows the ray its evidence lies on: a looming sample more than stale_deg from the cap's ray never holds the old cap nor counts as its hysteresis, and once confirmed with a slow-down it re-seats the cap on its own ray and ends the stand-off along the old ray. Generic and course-agnostic: it reads only the causal looming samples, odometry and the measured velocity; no course geometry, route, logged position or per-course value. stale_deg 60 is a-priori, fitted to no flight: a cap along a ray 60 deg away bounds at most half (cos 60) of the speed along the new ray. Designed after inspecting the round-4b live log it addresses (minus-fast6-r4b-01: a stand-off set at the first wall at 39.5 s along a ray of 28 deg was renewed along 139 and -150..-162 deg until the impact with the wall behind the next arch at 44.8 s), which is therefore development evidence, not held-out evidence. Frozen with the offline gates (configs/obstacles/stale_evidence_gates.json) before any gate was scored. The runner refuses another version (fast_race_cue.STALE_EVIDENCE_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze before any live flight. Offline replays of this rule are open loop or run in a surrogate and are not flight evidence.",
+ "clearance_ray": {
+  "stale_deg": 60.0
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-28T05:08:26+00:00",
+ "sha256": "afcda589deb5c1ea0612e3d369ae5e35c5494a7cdf9c04d8a85b6f6bc0c61cd6"
+}
