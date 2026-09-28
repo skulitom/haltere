@@ -1297,3 +1297,26 @@ What this shows:
   and with fewer downhill contacts in this one lap; one lap is not a repeatability result.
 - New failures: arch legs beside rings (Minus at 44.8 s, Straw start arch in lap 2 while coasting), and
   the brain hairpin still needs earlier braking (the looming warning comes ~0.5 s before the wall).
+
+## Round 5 (offline): brain-12 (branch `m5-brain12`, not flown)
+
+`m5-brain12` merges `m5-brake` (motor assist v3; the only round-5 pilot branch returned flight ready) and distils
+brain-12 under that round-5 pilot. Its gates are frozen before any candidate existed: `configs/brain12_gates.json` v1
+`8fb1b1a0c412...`, with fresh held-out course seeds, G13 terrain contact seconds, G14 (the r4b live windows, development
+cases), G15 (right-hand mirrors of G10/G11) and G16 (harness hairpins).
+
+**No candidate passes.** The best-ranked is `fast-brain-12-b-cw26d3` (`2ecf3f1f9b38...`), with 6 of 15 primary gates;
+fast-brain-11-b-cw13 also passes 6 of 15 on the same gates. Compared with brain-11:
+
+- **Better:**
+  - left 60-degree re-acceleration (G11 passes);
+  - harness hairpins with the assist: 8 of 12 clean, no wall (G16);
+  - the Straw downhill replay: it passes 1.22 m above the live contact onset.
+- **Worse:**
+  - it overshoots moderate requests and caps (G1, G2, G5);
+  - the live r4b hairpin: capped excess 1.50 against 1.17.
+- **Terrain contacts are not lower:** 23 in 34.88 s against 21 in 33.29 s.
+
+The left over-braking comes from a weak roll toward lateral requests that arrive without a yaw rate; synthetic
+body-frame turns made it symmetric but did not fix it. Details: `docs/fast_brain_12_candidate.md`. Graduation is not
+advanced by this round.

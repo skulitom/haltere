@@ -3,7 +3,22 @@
  "base": "git archive 2a5bccb (m4b) unpacked in the session scratchpad (m5/brain12/m4btree)",
  "tree": "m5-brain12 with m5-brake merged (010daa3) plus the brain-12 training and gate code",
  "run": "haltere.train.fast_motor_tracking on both trees with the fast-brain-11-b recipe at small scale: parent motor-brain-10-tracking-05, 2 rounds x 3 courses x 14 s, --synthetic-caps 0.6 --caps-config configs/brain11_caps.json --slow-legs 0.5 --pilot deployed --pilot-share 0.5 --yaw-holds 4 --hill-share 0.5 --teacher-gains attitude_gain=4 vertical_velocity_gain=7 --turn-relief 0.5 --label-lead 0.08 --brake-weight 5 --brake-level 1.6 --brake-turn-deg 90 --cruise-weight 1.3 --smooth 100 --smooth-rows 0.3 1 1 --ridge 0.003, evaluation seeds 7100-7101",
- "result": {"training.features": true, "training.labels": true, "training.requested_speed": true, "training.request": true, "training.velocity": true, "training.step_gram": true, "training.step_count": true, "candidate.model": true, "log_rows": true},
+ "result": {
+  "training.features": true,
+  "training.labels": true,
+  "training.requested_speed": true,
+  "training.request": true,
+  "training.velocity": true,
+  "training.step_gram": true,
+  "training.step_count": true,
+  "candidate.model": true,
+  "log_rows": true
+ },
  "verdict": "bit-identical (every saved training tensor, every exported model tensor and every logged rollout row)",
- "gate_runner": "brake_gates: a gate file without the brain-12 tests runs exactly the earlier parts (PARTS12 run only when declared); regression16 builds the same harness command unless seeds/groups/sim_seed are declared (tests/test_brake_gates_brain12.py); full_pilot adds the motor assist only with motor_assist: true"
+ "gate_runner": "brake_gates: a gate file without the brain-12 tests runs exactly the earlier parts (PARTS12 run only when declared); regression16 builds the same harness command unless seeds/groups/sim_seed are declared (tests/test_brake_gates_brain12.py); full_pilot adds the motor assist only with motor_assist: true",
+ "rechecks": [
+  "before collection a, with --synthetic-turns/--lateral-weight added (ident/b-this): bit-identical",
+  "on the final trainer committed in d032c5a (with --sink-relief; ident/c-final): bit-identical"
+ ],
+ "dev_refit_reproduction": "the development refit script reproduces the readout of fast-brain-11-b-cw13 from fast-brain-11-b's data, and of fast-brain-12-a and -b from their own data, bit for bit; the promoted refits fast-brain-12-a-cw20 and -b-cw26d3 equal their development refits bit for bit"
 }

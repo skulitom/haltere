@@ -1,0 +1,2778 @@
+{
+ "scope": "development screening only (scratchpad m5/brain12); none of it is a gate or flight evidence. Dev sets: scripted capped turns +-60/+-75 deg at 1.2 rad/s to 3.5 m/s (level and 0.8 m/s climb) from a 2 m hover at 5.5 m/s with the yaw stick held; hard accelerations toward +-15/+-45/+-75 deg from a 0.3 m/s creep or a stop at 1.5 m; the default pilot at 4.5 and 6 m/s on steep 7200-7203 (cruise excess); the round-5 pilot on steep 7200-7207 and hill 7210-7215, sim seed 23 (terrain contacts); hairpins turn 55/85 x arch 10/12 x wall 2.2/2.6, sim seed 61. All disjoint from configs/brain12_gates.json.",
+ "side_balance_of_fast_brain_11_b_data": {
+  "note": "fast-brain-11-b training.pt split by the side of the request relative to the velocity (left = counterclockwise, z up), |v_h| > 2, |request_h| > 1",
+  "per_round": {
+   "0 (label teacher)": {
+    "fast_ge30deg": [
+     21,
+     19
+    ],
+    "fast_10_30deg": [
+     190,
+     192
+    ],
+    "overspeed": [
+     316,
+     324
+    ]
+   },
+   "1 (brain)": {
+    "fast_ge30deg": [
+     230,
+     1259
+    ],
+    "fast_10_30deg": [
+     168,
+     835
+    ],
+    "overspeed": [
+     749,
+     2788
+    ]
+   },
+   "2 (brain)": {
+    "fast_ge30deg": [
+     95,
+     58
+    ],
+    "fast_10_30deg": [
+     549,
+     307
+    ],
+    "overspeed": [
+     977,
+     2139
+    ]
+   },
+   "3 (brain)": {
+    "fast_ge30deg": [
+     69,
+     63
+    ],
+    "fast_10_30deg": [
+     334,
+     261
+    ],
+    "overspeed": [
+     417,
+     633
+    ]
+   },
+   "4 (brain)": {
+    "fast_ge30deg": [
+     45,
+     39
+    ],
+    "fast_10_30deg": [
+     337,
+     200
+    ],
+    "overspeed": [
+     474,
+     534
+    ]
+   }
+  },
+  "format": "[left, right] sample counts; fast = |v_h| >= 4.5 m/s; overspeed = |v_h| - |request_h| >= 0.8"
+ },
+ "refits_of_fast_brain_11_b_data": {
+  "note": "dev turn screen (settled excess 1-3 s after the cap, [min, max] per side; brain-11-b-cw13 reproduced bit for bit by the dev refit script): none of the weights or regularisations removes the left fault",
+  "rows": {
+   "brain11cw13 (reproduced)": {
+    "settled_L": [
+     -1.821,
+     -0.479
+    ],
+    "settled_R": [
+     -0.576,
+     -0.25
+    ]
+   },
+   "side balance 4": {
+    "settled_L": [
+     -1.851,
+     -0.461
+    ],
+    "settled_R": [
+     -0.521,
+     -0.155
+    ]
+   },
+   "side balance 2": {
+    "settled_L": [
+     -1.849,
+     -0.461
+    ],
+    "settled_R": [
+     -0.522,
+     -0.159
+    ]
+   },
+   "smooth rows 0.3/0.3/1": {
+    "settled_L": [
+     -1.752,
+     -0.396
+    ],
+    "settled_R": [
+     -0.573,
+     -0.189
+    ]
+   },
+   "smooth rows 0.3/0.1/1": {
+    "settled_L": [
+     -1.722,
+     -0.34
+    ],
+    "settled_R": [
+     -0.581,
+     -0.172
+    ]
+   },
+   "lateral weight 3": {
+    "settled_L": [
+     -1.659,
+     -0.427
+    ],
+    "settled_R": [
+     -0.591,
+     -0.389
+    ]
+   },
+   "rows 0.3/0.3/1 + lateral 3": {
+    "settled_L": [
+     -1.603,
+     -0.3
+    ],
+    "settled_R": [
+     -0.579,
+     -0.336
+    ]
+   },
+   "rows 0.3/0.3/0.3": {
+    "settled_L": [
+     -1.808,
+     -0.404
+    ],
+    "settled_R": [
+     -0.579,
+     -0.2
+    ]
+   },
+   "ridge 1e-3": {
+    "settled_L": [
+     -1.827,
+     -0.364
+    ],
+    "settled_R": [
+     -0.672,
+     -0.491
+    ]
+   },
+   "ridge 3e-4": {
+    "settled_L": [
+     -1.764,
+     -0.629
+    ],
+    "settled_R": [
+     -0.83,
+     -0.733
+    ]
+   },
+   "ridge 1e-4": {
+    "settled_L": [
+     -1.607,
+     -0.645
+    ],
+    "settled_R": [
+     -0.999,
+     -0.85
+    ]
+   },
+   "+1 synthetic-turn round (12/min)": {
+    "settled_L": [
+     -1.59,
+     -1.514
+    ],
+    "settled_R": [
+     -1.038,
+     -0.637
+    ]
+   },
+   "+2 synthetic-turn rounds": {
+    "settled_L": [
+     -1.355,
+     -1.218
+    ],
+    "settled_R": [
+     -1.035,
+     -0.628
+    ]
+   },
+   "+2 synthetic-turn rounds, lateral 3": {
+    "settled_L": [
+     -1.07,
+     -0.986
+    ],
+    "settled_R": [
+     -1.024,
+     -0.675
+    ],
+    "excess": [
+     -0.046,
+     -0.031
+    ]
+   }
+  }
+ },
+ "diagnosis": {
+  "turn_trace": "dev 60 deg capped turn, yaw held, fast-brain-11-b-cw13 vs its label teacher in the same states: left, the teacher asks roll -0.25..-0.50 and the brain gives -0.07..-0.11, decaying to 0 (and later +0.1); right, teacher +0.26..+0.44, brain +0.06..+0.17. Pitch-back is about half the teacher's on both sides.",
+  "yaw_follows": "the same turn with the yaw stick following the request: fast-brain-11-b-cw13 left 3.51 m/s settled at a 3.5 cap (fine), right 4.22 (0.72 over); FastMotorPD 3.48 both; the fault needs a yaw-free lateral request. With two synthetic-turn rounds and lateral weight 3: left 3.94, right 3.76 (yaw following); 2.51 / 2.78 (yaw held).",
+  "heading": "identical results from starting headings 0/90/180/270 deg: the compass input plays no part",
+  "readout_capacity": "refits of the saved data reproduce the teacher's roll on lateral samples with slope 0.49-0.66 (left) and 0.57-0.92 (right); ridge 1e-4 raises both to 0.74-0.95 but the closed-loop turns get slower on both sides",
+  "contacts": "dev hill 7210-7215: fast-brain-11-b-cw13 6 contacts 13.97 s, fast-brain-12-a 9 / 19.46 s; both track the descent request vertically within 0.004 m/s; brain-12-a keeps more horizontal speed (-0.36 vs -0.66 m/s under the request) but the pilot asks it for steeper descents (-1.92 vs -1.78 m/s); on the fresh gate sets brain-08 (which sinks 0.29 m/s less than asked) has the fewest contacts and FastMotorPD (exact) more than fast-brain-10b"
+ },
+ "dev12": {
+  "a-cw20": {
+   "sha256": "95c2b914972fca64bd62bad751f0be42dffd7ca396324c13bbc08f1db813adc0",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.77,
+      -0.007,
+      -0.922
+     ],
+     [
+      60.0,
+      0.8,
+      0.82,
+      0.133,
+      -0.961
+     ],
+     [
+      -60.0,
+      0.0,
+      0.92,
+      0.4,
+      -0.407
+     ],
+     [
+      -60.0,
+      0.8,
+      0.82,
+      0.393,
+      -0.351
+     ],
+     [
+      75.0,
+      0.0,
+      0.77,
+      0.006,
+      -1.06
+     ],
+     [
+      75.0,
+      0.8,
+      0.82,
+      0.102,
+      -1.029
+     ],
+     [
+      -75.0,
+      0.0,
+      0.92,
+      0.366,
+      -0.648
+     ],
+     [
+      -75.0,
+      0.8,
+      0.82,
+      0.415,
+      -0.496
+     ]
+    ],
+    "settled_L": [
+     -1.06,
+     -0.922
+    ],
+    "settled_R": [
+     -0.648,
+     -0.351
+    ],
+    "excess_max": 0.415,
+    "t_within_max": 0.92
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      -0.026,
+      1.08
+     ],
+     [
+      "creep",
+      -15.0,
+      -0.034,
+      0.97
+     ],
+     [
+      "creep",
+      45.0,
+      -0.017,
+      1.25
+     ],
+     [
+      "creep",
+      -45.0,
+      0.01,
+      0.9
+     ],
+     [
+      "creep",
+      75.0,
+      -0.013,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      -0.014,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      -0.135,
+      1.04
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.135,
+      0.92
+     ],
+     [
+      "stop",
+      45.0,
+      -0.12,
+      1.12
+     ],
+     [
+      "stop",
+      -45.0,
+      -0.075,
+      0.88
+     ],
+     [
+      "stop",
+      75.0,
+      -0.135,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      -0.135,
+      null
+     ]
+    ],
+    "height_loss_max": 0.01,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.211,
+     "crashed": 0,
+     "chatter": 0.00146
+    },
+    "6.0": {
+     "excess": -0.639,
+     "crashed": 0,
+     "chatter": 0.00177
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.0906,
+     "height_loss_max": 0.198,
+     "max_height": 2.197,
+     "chatter": 0.004553,
+     "finish_mean": 14.613
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": 0.2405,
+     "height_loss_max": 0.503,
+     "max_height": 1.264,
+     "chatter": 0.003639,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 14,
+    "contact_s": 31.75,
+    "high_passes": 4,
+    "stick_chatter_16": 0.002,
+    "mean_finish_terrain_s": 62.73
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 5,
+     "contact_s": 12.94,
+     "descent_s": 84.54,
+     "below_view_s": 32.13,
+     "below_view_fraction": 0.3801,
+     "high_passes": 1,
+     "mean_finish_s": 67.27
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 9,
+     "contact_s": 18.81,
+     "descent_s": 95.1,
+     "below_view_s": 28.53,
+     "below_view_fraction": 0.3,
+     "high_passes": 3,
+     "mean_finish_s": 56.68
+    }
+   }
+  },
+  "a-cw20desc3": {
+   "sha256": "f861db64c866ad8a1ca05003fa0038e7d1bf86efe5ebd1e4df4d9d0568bef035",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.75,
+      -0.107,
+      -1.015
+     ],
+     [
+      60.0,
+      0.8,
+      0.8,
+      0.058,
+      -1.025
+     ],
+     [
+      -60.0,
+      0.0,
+      0.92,
+      0.402,
+      -0.381
+     ],
+     [
+      -60.0,
+      0.8,
+      0.81,
+      0.383,
+      -0.324
+     ],
+     [
+      75.0,
+      0.0,
+      0.75,
+      -0.09,
+      -1.052
+     ],
+     [
+      75.0,
+      0.8,
+      0.8,
+      0.025,
+      -1.017
+     ],
+     [
+      -75.0,
+      0.0,
+      0.92,
+      0.368,
+      -0.617
+     ],
+     [
+      -75.0,
+      0.8,
+      0.81,
+      0.407,
+      -0.46
+     ]
+    ],
+    "settled_L": [
+     -1.052,
+     -1.015
+    ],
+    "settled_R": [
+     -0.617,
+     -0.324
+    ],
+    "excess_max": 0.407,
+    "t_within_max": 0.92
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.052,
+      1.07
+     ],
+     [
+      "creep",
+      -15.0,
+      0.046,
+      0.96
+     ],
+     [
+      "creep",
+      45.0,
+      0.059,
+      1.19
+     ],
+     [
+      "creep",
+      -45.0,
+      0.113,
+      0.91
+     ],
+     [
+      "creep",
+      75.0,
+      0.066,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      0.102,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      -0.096,
+      1.05
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.096,
+      0.92
+     ],
+     [
+      "stop",
+      45.0,
+      -0.096,
+      1.11
+     ],
+     [
+      "stop",
+      -45.0,
+      -0.007,
+      0.89
+     ],
+     [
+      "stop",
+      75.0,
+      -0.096,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      -0.084,
+      null
+     ]
+    ],
+    "height_loss_max": 0.113,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.281,
+     "crashed": 0,
+     "chatter": 0.00158
+    },
+    "6.0": {
+     "excess": -0.597,
+     "crashed": 0,
+     "chatter": 0.00181
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.1546,
+     "height_loss_max": 0.441,
+     "max_height": 1.882,
+     "chatter": 0.00481,
+     "finish_mean": 14.423
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": 0.2665,
+     "height_loss_max": 0.608,
+     "max_height": 1.286,
+     "chatter": 0.003653,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 15,
+    "contact_s": 30.07,
+    "high_passes": 3,
+    "stick_chatter_16": 0.00211,
+    "mean_finish_terrain_s": 61.57
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 6,
+     "contact_s": 12.43,
+     "descent_s": 82.69,
+     "below_view_s": 29.32,
+     "below_view_fraction": 0.3546,
+     "high_passes": 1,
+     "mean_finish_s": 66.28
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 9,
+     "contact_s": 17.64,
+     "descent_s": 88.56,
+     "below_view_s": 26.03,
+     "below_view_fraction": 0.2939,
+     "high_passes": 2,
+     "mean_finish_s": 55.28
+    }
+   }
+  },
+  "a-desc3": {
+   "sha256": "d5d2828acdf83dfc388488e845ca3af4a34a439c399906cd36be18a1bb818322",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.71,
+      -0.168,
+      -1.014
+     ],
+     [
+      60.0,
+      0.8,
+      0.77,
+      0.031,
+      -1.02
+     ],
+     [
+      -60.0,
+      0.0,
+      0.86,
+      0.297,
+      -0.406
+     ],
+     [
+      -60.0,
+      0.8,
+      0.77,
+      0.308,
+      -0.344
+     ],
+     [
+      75.0,
+      0.0,
+      0.71,
+      -0.154,
+      -1.055
+     ],
+     [
+      75.0,
+      0.8,
+      0.77,
+      -0.0,
+      -1.015
+     ],
+     [
+      -75.0,
+      0.0,
+      0.86,
+      0.267,
+      -0.64
+     ],
+     [
+      -75.0,
+      0.8,
+      0.77,
+      0.334,
+      -0.479
+     ]
+    ],
+    "settled_L": [
+     -1.055,
+     -1.014
+    ],
+    "settled_R": [
+     -0.64,
+     -0.344
+    ],
+    "excess_max": 0.334,
+    "t_within_max": 0.86
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.061,
+      1.08
+     ],
+     [
+      "creep",
+      -15.0,
+      0.055,
+      0.97
+     ],
+     [
+      "creep",
+      45.0,
+      0.069,
+      1.2
+     ],
+     [
+      "creep",
+      -45.0,
+      0.113,
+      0.91
+     ],
+     [
+      "creep",
+      75.0,
+      0.076,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      0.114,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      -0.106,
+      1.06
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.106,
+      0.93
+     ],
+     [
+      "stop",
+      45.0,
+      -0.106,
+      1.12
+     ],
+     [
+      "stop",
+      -45.0,
+      -0.008,
+      0.89
+     ],
+     [
+      "stop",
+      75.0,
+      -0.106,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      -0.067,
+      null
+     ]
+    ],
+    "height_loss_max": 0.114,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.126,
+     "crashed": 0,
+     "chatter": 0.00155
+    },
+    "6.0": {
+     "excess": -0.814,
+     "crashed": 0,
+     "chatter": 0.00175
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.1038,
+     "height_loss_max": 0.367,
+     "max_height": 2.09,
+     "chatter": 0.004781,
+     "finish_mean": 14.743
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": 0.269,
+     "height_loss_max": 0.516,
+     "max_height": 1.259,
+     "chatter": 0.003685,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 15,
+    "contact_s": 30.5,
+    "high_passes": 4,
+    "stick_chatter_16": 0.00204,
+    "mean_finish_terrain_s": 62.74
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 6,
+     "contact_s": 12.74,
+     "descent_s": 82.17,
+     "below_view_s": 28.7,
+     "below_view_fraction": 0.3493,
+     "high_passes": 1,
+     "mean_finish_s": 67.59
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 9,
+     "contact_s": 17.76,
+     "descent_s": 88.41,
+     "below_view_s": 25.6,
+     "below_view_fraction": 0.2896,
+     "high_passes": 3,
+     "mean_finish_s": 56.28
+    }
+   }
+  },
+  "a-sink5desc3": {
+   "sha256": "6f075fb9f54eaf3ecdca4177eb28931c0248d3628e8d50564d6d4fc1c5855b56",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.7,
+      -0.177,
+      -1.019
+     ],
+     [
+      60.0,
+      0.8,
+      0.77,
+      0.047,
+      -1.005
+     ],
+     [
+      -60.0,
+      0.0,
+      0.86,
+      0.279,
+      -0.45
+     ],
+     [
+      -60.0,
+      0.8,
+      0.8,
+      0.338,
+      -0.371
+     ],
+     [
+      75.0,
+      0.0,
+      0.7,
+      -0.161,
+      -1.111
+     ],
+     [
+      75.0,
+      0.8,
+      0.77,
+      0.018,
+      -1.059
+     ],
+     [
+      -75.0,
+      0.0,
+      0.86,
+      0.244,
+      -0.705
+     ],
+     [
+      -75.0,
+      0.8,
+      0.8,
+      0.356,
+      -0.527
+     ]
+    ],
+    "settled_L": [
+     -1.111,
+     -1.005
+    ],
+    "settled_R": [
+     -0.705,
+     -0.371
+    ],
+    "excess_max": 0.356,
+    "t_within_max": 0.86
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      -0.04,
+      1.12
+     ],
+     [
+      "creep",
+      -15.0,
+      -0.045,
+      0.97
+     ],
+     [
+      "creep",
+      45.0,
+      -0.032,
+      null
+     ],
+     [
+      "creep",
+      -45.0,
+      -0.015,
+      0.91
+     ],
+     [
+      "creep",
+      75.0,
+      -0.029,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      -0.018,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      -0.137,
+      1.06
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.137,
+      0.92
+     ],
+     [
+      "stop",
+      45.0,
+      -0.137,
+      1.14
+     ],
+     [
+      "stop",
+      -45.0,
+      -0.103,
+      0.88
+     ],
+     [
+      "stop",
+      75.0,
+      -0.137,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      -0.137,
+      null
+     ]
+    ],
+    "height_loss_max": -0.015,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.06,
+     "crashed": 0,
+     "chatter": 0.00156
+    },
+    "6.0": {
+     "excess": -0.844,
+     "crashed": 0,
+     "chatter": 0.00169
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.074,
+     "height_loss_max": 0.31,
+     "max_height": 1.966,
+     "chatter": 0.004536,
+     "finish_mean": 14.885
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": 0.1769,
+     "height_loss_max": 0.418,
+     "max_height": 1.251,
+     "chatter": 0.003611,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 13,
+    "contact_s": 28.76,
+    "high_passes": 2,
+    "stick_chatter_16": 0.00195,
+    "mean_finish_terrain_s": 63.36
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 6,
+     "contact_s": 12.53,
+     "descent_s": 81.62,
+     "below_view_s": 30.17,
+     "below_view_fraction": 0.3696,
+     "high_passes": 0,
+     "mean_finish_s": 68.27
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 7,
+     "contact_s": 16.23,
+     "descent_s": 92.15,
+     "below_view_s": 26.35,
+     "below_view_fraction": 0.2859,
+     "high_passes": 2,
+     "mean_finish_s": 56.81
+    }
+   }
+  },
+  "b-cw13-side2": {
+   "sha256": "84c21e10b19c973e0c57e8b64b24157ba09648bead99eb9e219f0511589c234e",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.63,
+      -1.061,
+      -1.812
+     ],
+     [
+      60.0,
+      0.8,
+      0.67,
+      -0.813,
+      -1.849
+     ],
+     [
+      -60.0,
+      0.0,
+      0.89,
+      0.391,
+      -0.418
+     ],
+     [
+      -60.0,
+      0.8,
+      0.77,
+      0.324,
+      -0.283
+     ],
+     [
+      75.0,
+      0.0,
+      0.63,
+      -0.959,
+      -0.461
+     ],
+     [
+      75.0,
+      0.8,
+      0.67,
+      -0.791,
+      -0.604
+     ],
+     [
+      -75.0,
+      0.0,
+      0.89,
+      0.365,
+      -0.522
+     ],
+     [
+      -75.0,
+      0.8,
+      0.77,
+      0.375,
+      -0.159
+     ]
+    ],
+    "settled_L": [
+     -1.849,
+     -0.461
+    ],
+    "settled_R": [
+     -0.522,
+     -0.159
+    ],
+    "excess_max": 0.391,
+    "t_within_max": 0.89
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.055,
+      1.02
+     ],
+     [
+      "creep",
+      -15.0,
+      0.209,
+      0.89
+     ],
+     [
+      "creep",
+      45.0,
+      -0.011,
+      1.37
+     ],
+     [
+      "creep",
+      -45.0,
+      0.4,
+      0.9
+     ],
+     [
+      "creep",
+      75.0,
+      -0.012,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      -0.016,
+      1.13
+     ],
+     [
+      "stop",
+      15.0,
+      -0.012,
+      0.93
+     ],
+     [
+      "stop",
+      -15.0,
+      0.215,
+      0.83
+     ],
+     [
+      "stop",
+      45.0,
+      -0.012,
+      1.25
+     ],
+     [
+      "stop",
+      -45.0,
+      0.413,
+      0.81
+     ],
+     [
+      "stop",
+      75.0,
+      -0.012,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      0.097,
+      0.86
+     ]
+    ],
+    "height_loss_max": 0.413,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.072,
+     "crashed": 0,
+     "chatter": 0.00157
+    },
+    "6.0": {
+     "excess": -0.633,
+     "crashed": 0,
+     "chatter": 0.00188
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 1,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": -0.0325,
+     "height_loss_max": 0.117,
+     "max_height": 2.572,
+     "chatter": 0.005466,
+     "finish_mean": 14.42
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": -0.0209,
+     "height_loss_max": 0.126,
+     "max_height": 1.945,
+     "chatter": 0.003949,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 11,
+    "contact_s": 27.66,
+    "high_passes": 4,
+    "stick_chatter_16": 0.00207,
+    "mean_finish_terrain_s": 63.13
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 4,
+     "contact_s": 11.07,
+     "descent_s": 89.03,
+     "below_view_s": 42.88,
+     "below_view_fraction": 0.4816,
+     "high_passes": 2,
+     "mean_finish_s": 67.61
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 7,
+     "contact_s": 16.59,
+     "descent_s": 99.51,
+     "below_view_s": 36.69,
+     "below_view_fraction": 0.3687,
+     "high_passes": 2,
+     "mean_finish_s": 57.16
+    }
+   }
+  },
+  "b-cw13-side4": {
+   "sha256": "176a27289c1c5269c4d39e4b60643b138eaea352ecdeae9e12902af93ebb6a13",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.63,
+      -1.063,
+      -1.813
+     ],
+     [
+      60.0,
+      0.8,
+      0.67,
+      -0.821,
+      -1.851
+     ],
+     [
+      -60.0,
+      0.0,
+      0.89,
+      0.396,
+      -0.414
+     ],
+     [
+      -60.0,
+      0.8,
+      0.77,
+      0.326,
+      -0.28
+     ],
+     [
+      75.0,
+      0.0,
+      0.63,
+      -0.961,
+      -0.461
+     ],
+     [
+      75.0,
+      0.8,
+      0.67,
+      -0.798,
+      -0.601
+     ],
+     [
+      -75.0,
+      0.0,
+      0.89,
+      0.369,
+      -0.521
+     ],
+     [
+      -75.0,
+      0.8,
+      0.77,
+      0.378,
+      -0.155
+     ]
+    ],
+    "settled_L": [
+     -1.851,
+     -0.461
+    ],
+    "settled_R": [
+     -0.521,
+     -0.155
+    ],
+    "excess_max": 0.396,
+    "t_within_max": 0.89
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.057,
+      1.02
+     ],
+     [
+      "creep",
+      -15.0,
+      0.206,
+      0.89
+     ],
+     [
+      "creep",
+      45.0,
+      -0.009,
+      1.37
+     ],
+     [
+      "creep",
+      -45.0,
+      0.402,
+      0.9
+     ],
+     [
+      "creep",
+      75.0,
+      -0.01,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      -0.014,
+      1.12
+     ],
+     [
+      "stop",
+      15.0,
+      -0.013,
+      0.93
+     ],
+     [
+      "stop",
+      -15.0,
+      0.212,
+      0.83
+     ],
+     [
+      "stop",
+      45.0,
+      -0.013,
+      1.25
+     ],
+     [
+      "stop",
+      -45.0,
+      0.416,
+      0.8
+     ],
+     [
+      "stop",
+      75.0,
+      -0.013,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      0.113,
+      0.86
+     ]
+    ],
+    "height_loss_max": 0.416,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.072,
+     "crashed": 0,
+     "chatter": 0.00157
+    },
+    "6.0": {
+     "excess": -0.634,
+     "crashed": 0,
+     "chatter": 0.00189
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 5,
+     "crashed": 0,
+     "wall": 1,
+     "floor": 0,
+     "ceiling": 3,
+     "contacts": 3,
+     "height_loss_mean": -0.0312,
+     "height_loss_max": 0.164,
+     "max_height": 2.564,
+     "chatter": 0.005454,
+     "finish_mean": 14.762
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": -0.0201,
+     "height_loss_max": 0.129,
+     "max_height": 1.935,
+     "chatter": 0.003945,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 11,
+    "contact_s": 28.05,
+    "high_passes": 4,
+    "stick_chatter_16": 0.00208,
+    "mean_finish_terrain_s": 63.12
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 4,
+     "contact_s": 11.06,
+     "descent_s": 88.69,
+     "below_view_s": 42.91,
+     "below_view_fraction": 0.4838,
+     "high_passes": 2,
+     "mean_finish_s": 67.59
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 7,
+     "contact_s": 16.99,
+     "descent_s": 99.58,
+     "below_view_s": 36.73,
+     "below_view_fraction": 0.3688,
+     "high_passes": 2,
+     "mean_finish_s": 57.16
+    }
+   }
+  },
+  "b-cw26": {
+   "sha256": "beb2217405677c9aa6f3507987151b8ed44d780fcc263bbafa411050966b6e6b",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.79,
+      0.016,
+      -0.984
+     ],
+     [
+      60.0,
+      0.8,
+      0.85,
+      0.138,
+      -1.037
+     ],
+     [
+      -60.0,
+      0.0,
+      0.91,
+      0.367,
+      -0.367
+     ],
+     [
+      -60.0,
+      0.8,
+      0.8,
+      0.355,
+      -0.306
+     ],
+     [
+      75.0,
+      0.0,
+      0.79,
+      0.018,
+      -1.13
+     ],
+     [
+      75.0,
+      0.8,
+      0.85,
+      0.094,
+      -1.11
+     ],
+     [
+      -75.0,
+      0.0,
+      0.91,
+      0.333,
+      -0.6
+     ],
+     [
+      -75.0,
+      0.8,
+      0.8,
+      0.373,
+      -0.467
+     ]
+    ],
+    "settled_L": [
+     -1.13,
+     -0.984
+    ],
+    "settled_R": [
+     -0.6,
+     -0.306
+    ],
+    "excess_max": 0.373,
+    "t_within_max": 0.91
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.255,
+      1.01
+     ],
+     [
+      "creep",
+      -15.0,
+      0.254,
+      1.0
+     ],
+     [
+      "creep",
+      45.0,
+      0.259,
+      1.05
+     ],
+     [
+      "creep",
+      -45.0,
+      0.254,
+      1.0
+     ],
+     [
+      "creep",
+      75.0,
+      0.264,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      0.281,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      -0.013,
+      0.98
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.013,
+      0.93
+     ],
+     [
+      "stop",
+      45.0,
+      0.175,
+      1.04
+     ],
+     [
+      "stop",
+      -45.0,
+      0.054,
+      0.92
+     ],
+     [
+      "stop",
+      75.0,
+      -0.013,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      0.165,
+      null
+     ]
+    ],
+    "height_loss_max": 0.281,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.241,
+     "crashed": 0,
+     "chatter": 0.00165
+    },
+    "6.0": {
+     "excess": -0.627,
+     "crashed": 0,
+     "chatter": 0.0018
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.0309,
+     "height_loss_max": 0.346,
+     "max_height": 2.015,
+     "chatter": 0.004704,
+     "finish_mean": 14.748
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": 0.0129,
+     "height_loss_max": 0.428,
+     "max_height": 1.999,
+     "chatter": 0.00365,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 13,
+    "contact_s": 28.8,
+    "high_passes": 5,
+    "stick_chatter_16": 0.00201,
+    "mean_finish_terrain_s": 64.0
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 5,
+     "contact_s": 11.86,
+     "descent_s": 91.9,
+     "below_view_s": 44.78,
+     "below_view_fraction": 0.4873,
+     "high_passes": 2,
+     "mean_finish_s": 67.98
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 8,
+     "contact_s": 16.94,
+     "descent_s": 99.61,
+     "below_view_s": 37.7,
+     "below_view_fraction": 0.3785,
+     "high_passes": 3,
+     "mean_finish_s": 58.69
+    }
+   }
+  },
+  "b-desc3": {
+   "sha256": "b22fab1b7bc7567edd20793c47615d78bb799131a1938f9a8bb7412458b92d8a",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.75,
+      -0.1,
+      -1.037
+     ],
+     [
+      60.0,
+      0.8,
+      0.81,
+      0.026,
+      -1.118
+     ],
+     [
+      -60.0,
+      0.0,
+      0.87,
+      0.297,
+      -0.375
+     ],
+     [
+      -60.0,
+      0.8,
+      0.76,
+      0.275,
+      -0.315
+     ],
+     [
+      75.0,
+      0.0,
+      0.75,
+      -0.098,
+      -1.163
+     ],
+     [
+      75.0,
+      0.8,
+      0.81,
+      -0.021,
+      -1.131
+     ],
+     [
+      -75.0,
+      0.0,
+      0.87,
+      0.263,
+      -0.603
+     ],
+     [
+      -75.0,
+      0.8,
+      0.76,
+      0.295,
+      -0.472
+     ]
+    ],
+    "settled_L": [
+     -1.163,
+     -1.037
+    ],
+    "settled_R": [
+     -0.603,
+     -0.315
+    ],
+    "excess_max": 0.297,
+    "t_within_max": 0.87
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.301,
+      1.02
+     ],
+     [
+      "creep",
+      -15.0,
+      0.3,
+      1.01
+     ],
+     [
+      "creep",
+      45.0,
+      0.304,
+      1.05
+     ],
+     [
+      "creep",
+      -45.0,
+      0.3,
+      1.0
+     ],
+     [
+      "creep",
+      75.0,
+      0.31,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      0.31,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      0.029,
+      0.99
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.005,
+      0.94
+     ],
+     [
+      "stop",
+      45.0,
+      0.17,
+      1.06
+     ],
+     [
+      "stop",
+      -45.0,
+      0.089,
+      0.91
+     ],
+     [
+      "stop",
+      75.0,
+      -0.005,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      0.181,
+      null
+     ]
+    ],
+    "height_loss_max": 0.31,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.173,
+     "crashed": 0,
+     "chatter": 0.00176
+    },
+    "6.0": {
+     "excess": -0.782,
+     "crashed": 0,
+     "chatter": 0.00185
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.091,
+     "height_loss_max": 0.379,
+     "max_height": 2.069,
+     "chatter": 0.004821,
+     "finish_mean": 14.852
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": 0.0781,
+     "height_loss_max": 0.489,
+     "max_height": 2.085,
+     "chatter": 0.003669,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 13,
+    "contact_s": 24.83,
+    "high_passes": 6,
+    "stick_chatter_16": 0.00218,
+    "mean_finish_terrain_s": 62.91
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 5,
+     "contact_s": 9.7,
+     "descent_s": 83.15,
+     "below_view_s": 30.0,
+     "below_view_fraction": 0.3608,
+     "high_passes": 3,
+     "mean_finish_s": 67.39
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 8,
+     "contact_s": 15.13,
+     "descent_s": 92.31,
+     "below_view_s": 28.65,
+     "below_view_fraction": 0.3104,
+     "high_passes": 3,
+     "mean_finish_s": 56.94
+    }
+   }
+  },
+  "brain11cw13": {
+   "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.63,
+      -1.061,
+      -1.782
+     ],
+     [
+      60.0,
+      0.8,
+      0.67,
+      -0.796,
+      -1.821
+     ],
+     [
+      -60.0,
+      0.0,
+      0.9,
+      0.39,
+      -0.449
+     ],
+     [
+      -60.0,
+      0.8,
+      0.78,
+      0.302,
+      -0.334
+     ],
+     [
+      75.0,
+      0.0,
+      0.63,
+      -0.956,
+      -0.479
+     ],
+     [
+      75.0,
+      0.8,
+      0.67,
+      -0.775,
+      -0.612
+     ],
+     [
+      -75.0,
+      0.0,
+      0.9,
+      0.351,
+      -0.576
+     ],
+     [
+      -75.0,
+      0.8,
+      0.78,
+      0.335,
+      -0.25
+     ]
+    ],
+    "settled_L": [
+     -1.821,
+     -0.479
+    ],
+    "settled_R": [
+     -0.576,
+     -0.25
+    ],
+    "excess_max": 0.39,
+    "t_within_max": 0.9
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.031,
+      1.02
+     ],
+     [
+      "creep",
+      -15.0,
+      0.195,
+      0.89
+     ],
+     [
+      "creep",
+      45.0,
+      -0.015,
+      1.36
+     ],
+     [
+      "creep",
+      -45.0,
+      0.429,
+      0.91
+     ],
+     [
+      "creep",
+      75.0,
+      -0.016,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      -0.02,
+      1.29
+     ],
+     [
+      "stop",
+      15.0,
+      -0.016,
+      0.93
+     ],
+     [
+      "stop",
+      -15.0,
+      0.205,
+      0.83
+     ],
+     [
+      "stop",
+      45.0,
+      -0.016,
+      1.24
+     ],
+     [
+      "stop",
+      -45.0,
+      0.444,
+      0.81
+     ],
+     [
+      "stop",
+      75.0,
+      -0.016,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      0.019,
+      0.91
+     ]
+    ],
+    "height_loss_max": 0.444,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.072,
+     "crashed": 0,
+     "chatter": 0.00156
+    },
+    "6.0": {
+     "excess": -0.635,
+     "crashed": 0,
+     "chatter": 0.00186
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 2,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": -0.0309,
+     "height_loss_max": 0.18,
+     "max_height": 2.339,
+     "chatter": 0.005333,
+     "finish_mean": 14.775
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": -0.0144,
+     "height_loss_max": 0.215,
+     "max_height": 1.958,
+     "chatter": 0.003929,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 10,
+    "contact_s": 25.16,
+    "high_passes": 4,
+    "stick_chatter_16": 0.00208,
+    "mean_finish_terrain_s": 63.16
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 4,
+     "contact_s": 11.19,
+     "descent_s": 88.14,
+     "below_view_s": 43.29,
+     "below_view_fraction": 0.4912,
+     "high_passes": 2,
+     "mean_finish_s": 67.66
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 6,
+     "contact_s": 13.97,
+     "descent_s": 98.6,
+     "below_view_s": 37.28,
+     "below_view_fraction": 0.3781,
+     "high_passes": 2,
+     "mean_finish_s": 57.18
+    }
+   }
+  },
+  "fast-brain-12-a": {
+   "sha256": "fa3618a510887cf79e415c45333d3ab5adca037ed749b111cdebd23c9706cf4b",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.71,
+      -0.1,
+      -0.935
+     ],
+     [
+      60.0,
+      0.8,
+      0.77,
+      0.072,
+      -0.96
+     ],
+     [
+      -60.0,
+      0.0,
+      0.85,
+      0.27,
+      -0.434
+     ],
+     [
+      -60.0,
+      0.8,
+      0.76,
+      0.295,
+      -0.376
+     ],
+     [
+      75.0,
+      0.0,
+      0.71,
+      -0.087,
+      -1.067
+     ],
+     [
+      75.0,
+      0.8,
+      0.77,
+      0.043,
+      -1.027
+     ],
+     [
+      -75.0,
+      0.0,
+      0.85,
+      0.241,
+      -0.674
+     ],
+     [
+      -75.0,
+      0.8,
+      0.76,
+      0.319,
+      -0.52
+     ]
+    ],
+    "settled_L": [
+     -1.067,
+     -0.935
+    ],
+    "settled_R": [
+     -0.674,
+     -0.376
+    ],
+    "excess_max": 0.319,
+    "t_within_max": 0.85
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      -0.017,
+      1.09
+     ],
+     [
+      "creep",
+      -15.0,
+      -0.024,
+      0.97
+     ],
+     [
+      "creep",
+      45.0,
+      -0.007,
+      1.29
+     ],
+     [
+      "creep",
+      -45.0,
+      0.011,
+      0.91
+     ],
+     [
+      "creep",
+      75.0,
+      -0.003,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      -0.005,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      -0.152,
+      1.05
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.152,
+      0.93
+     ],
+     [
+      "stop",
+      45.0,
+      -0.123,
+      1.13
+     ],
+     [
+      "stop",
+      -45.0,
+      -0.078,
+      0.89
+     ],
+     [
+      "stop",
+      75.0,
+      -0.152,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      -0.147,
+      null
+     ]
+    ],
+    "height_loss_max": 0.011,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.006,
+     "crashed": 0,
+     "chatter": 0.0014
+    },
+    "6.0": {
+     "excess": -0.903,
+     "crashed": 0,
+     "chatter": 0.00167
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 5,
+     "clean": 5,
+     "crashed": 0,
+     "wall": 1,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 3,
+     "height_loss_mean": 0.094,
+     "height_loss_max": 0.32,
+     "max_height": 2.008,
+     "chatter": 0.004666,
+     "finish_mean": 14.692
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": 0.1856,
+     "height_loss_max": 0.446,
+     "max_height": 1.383,
+     "chatter": 0.003565,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 14,
+    "contact_s": 32.76,
+    "high_passes": 4,
+    "stick_chatter_16": 0.00193,
+    "mean_finish_terrain_s": 64.28
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 5,
+     "contact_s": 13.3,
+     "descent_s": 83.75,
+     "below_view_s": 31.83,
+     "below_view_fraction": 0.3801,
+     "high_passes": 1,
+     "mean_finish_s": 69.04
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 9,
+     "contact_s": 19.46,
+     "descent_s": 95.98,
+     "below_view_s": 27.95,
+     "below_view_fraction": 0.2912,
+     "high_passes": 3,
+     "mean_finish_s": 57.92
+    }
+   }
+  },
+  "fast-brain-12-b": {
+   "sha256": "8769b46fb3d275465fec96d5675a9a362ab9224c8e3bafa9e5b8eb1fb327df8c",
+   "capped_turns": {
+    "rows": [
+     [
+      60.0,
+      0.0,
+      0.75,
+      -0.048,
+      -0.986
+     ],
+     [
+      60.0,
+      0.8,
+      0.83,
+      0.142,
+      -1.008
+     ],
+     [
+      -60.0,
+      0.0,
+      0.86,
+      0.272,
+      -0.393
+     ],
+     [
+      -60.0,
+      0.8,
+      0.77,
+      0.3,
+      -0.325
+     ],
+     [
+      75.0,
+      0.0,
+      0.75,
+      -0.045,
+      -1.135
+     ],
+     [
+      75.0,
+      0.8,
+      0.83,
+      0.099,
+      -1.093
+     ],
+     [
+      -75.0,
+      0.0,
+      0.86,
+      0.24,
+      -0.625
+     ],
+     [
+      -75.0,
+      0.8,
+      0.77,
+      0.318,
+      -0.487
+     ]
+    ],
+    "settled_L": [
+     -1.135,
+     -0.986
+    ],
+    "settled_R": [
+     -0.625,
+     -0.325
+    ],
+    "excess_max": 0.318,
+    "t_within_max": 0.86
+   },
+   "accelerate": {
+    "rows": [
+     [
+      "creep",
+      15.0,
+      0.255,
+      1.02
+     ],
+     [
+      "creep",
+      -15.0,
+      0.254,
+      1.0
+     ],
+     [
+      "creep",
+      45.0,
+      0.259,
+      1.05
+     ],
+     [
+      "creep",
+      -45.0,
+      0.254,
+      1.0
+     ],
+     [
+      "creep",
+      75.0,
+      0.264,
+      null
+     ],
+     [
+      "creep",
+      -75.0,
+      0.286,
+      null
+     ],
+     [
+      "stop",
+      15.0,
+      -0.016,
+      0.98
+     ],
+     [
+      "stop",
+      -15.0,
+      -0.028,
+      0.94
+     ],
+     [
+      "stop",
+      45.0,
+      0.161,
+      1.04
+     ],
+     [
+      "stop",
+      -45.0,
+      0.052,
+      0.92
+     ],
+     [
+      "stop",
+      75.0,
+      -0.028,
+      null
+     ],
+     [
+      "stop",
+      -75.0,
+      0.172,
+      null
+     ]
+    ],
+    "height_loss_max": 0.286,
+    "t_reach_max": 9.0
+   },
+   "cruise": {
+    "4.5": {
+     "excess": 0.073,
+     "crashed": 0,
+     "chatter": 0.00164
+    },
+    "6.0": {
+     "excess": -0.829,
+     "crashed": 0,
+     "chatter": 0.00172
+    }
+   },
+   "hairpins": {
+    "assist": {
+     "n": 8,
+     "finished": 6,
+     "clean": 6,
+     "crashed": 0,
+     "wall": 0,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 2,
+     "height_loss_mean": 0.0135,
+     "height_loss_max": 0.342,
+     "max_height": 2.012,
+     "chatter": 0.004609,
+     "finish_mean": 14.905
+    },
+    "no_assist": {
+     "n": 8,
+     "finished": 0,
+     "clean": 0,
+     "crashed": 0,
+     "wall": 8,
+     "floor": 0,
+     "ceiling": 2,
+     "contacts": 8,
+     "height_loss_mean": -0.0112,
+     "height_loss_max": 0.422,
+     "max_height": 1.956,
+     "chatter": 0.003545,
+     "finish_mean": null
+    }
+   },
+   "courses": {
+    "courses": 14,
+    "finished": 14,
+    "crashed": 0,
+    "contacts": 12,
+    "contact_s": 29.38,
+    "high_passes": 5,
+    "stick_chatter_16": 0.00195,
+    "mean_finish_terrain_s": 65.19
+   },
+   "courses_sets": {
+    "steep:7200-7207": {
+     "courses": 8,
+     "finished": 8,
+     "crashed": 0,
+     "contacts": 5,
+     "contact_s": 12.07,
+     "descent_s": 93.15,
+     "below_view_s": 44.55,
+     "below_view_fraction": 0.4783,
+     "high_passes": 2,
+     "mean_finish_s": 69.43
+    },
+    "hill:7210-7215": {
+     "courses": 6,
+     "finished": 6,
+     "crashed": 0,
+     "contacts": 7,
+     "contact_s": 17.31,
+     "descent_s": 99.58,
+     "below_view_s": 37.5,
+     "below_view_fraction": 0.3766,
+     "high_passes": 3,
+     "mean_finish_s": 59.54
+    }
+   }
+  }
+ }
+}

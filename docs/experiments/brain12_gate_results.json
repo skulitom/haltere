@@ -1,0 +1,1533 @@
+{
+ "gates_file": "configs/brain12_gates.json",
+ "gates_version": 1,
+ "gates_sha256": "8fb1b1a0c41266dc840b1ade6ba480a2c9b3108347aa8eb44dcfdf3523470ce9",
+ "frozen_at": "2026-09-28T11:46:18",
+ "selection_rule": "A candidate is selectable only if it passes every primary gate (G1, G2, G3v2, G5-G16) with its weights audit clean (only readout rows 0-2 and their biases changed against the parent). Among selectable candidates the fewest terrain contact seconds under the round-5 pilot (G13 full_pilot.overall.contact_s) win, then the lowest 16-course stick chatter (regression16). If none is selectable, none is selected; candidates are ranked by primary gates passed, then G13 contact seconds, then 16-course chatter, as a report only.",
+ "scope": "measured surrogate (IdentifiedSim) development checks; not flight evidence",
+ "candidates": [
+  {
+   "name": "fast-brain-12-a-cw20",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-12-a-cw20/candidate.pt",
+   "sha256": "e7b66b44ad0baeeab2bb4c59fc754e9e34a1e47c715a2a65b49a22b0535ef757",
+   "passed_primary": 2,
+   "primary_total": 15,
+   "gates": {
+    "G1_cap_step": false,
+    "G2_sustained": false,
+    "G3_live_swaps": false,
+    "G5_in_course_caps": false,
+    "G6_regressions": false,
+    "G7_smoothness": true,
+    "G8_regressions": true,
+    "G3v2_live_swaps_latency": false,
+    "G9_r4_live_windows": false,
+    "G10_capped_turns": false,
+    "G11_accelerate": false,
+    "G12_in_course_caps2": false,
+    "G13_full_pilot": false,
+    "G14_r4b_live_windows": false,
+    "G15_right_turns_accelerate": false,
+    "G16_hairpins": false
+   },
+   "failing_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G5_in_course_caps": [
+     "cap_excess"
+    ],
+    "G6_regressions": [
+     "descending passes > 1.5 m above the gate",
+     "post-switch lateral 40-75 at 1 s (brain-08 + 0.3 m)"
+    ],
+    "G3v2_live_swaps_latency": [
+     "distance from the PD..PD+80ms band at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G9_r4_live_windows": [
+     "hairpin: speed excess over the capped request"
+    ],
+    "G10_capped_turns": [
+     "hover t_within",
+     "hover excess 0.5-1.5 s",
+     "hover settled excess 1-3 s",
+     "live t_within",
+     "live excess 0.5-1.5 s",
+     "live settled excess 1-3 s"
+    ],
+    "G11_accelerate": [
+     "time to 4 m/s"
+    ],
+    "G12_in_course_caps2": [
+     "in_course_caps2.brake.cap_excess_mps"
+    ],
+    "G13_full_pilot": [
+     "terrain contacts <= fast-brain-10b",
+     "terrain contact seconds <= fast-brain-10b"
+    ],
+    "G14_r4b_live_windows": [
+     "hairpin: capped speed excess",
+     "downhill: height over the live contact onset"
+    ],
+    "G15_right_turns_accelerate": [
+     "right turns: hover t_within",
+     "right turns: hover excess 0.5-1.5 s",
+     "right turns: hover settled excess 1-3 s",
+     "right turns: live t_within",
+     "right turns: live excess 0.5-1.5 s",
+     "right turns: live settled excess 1-3 s"
+    ],
+    "G16_hairpins": [
+     "clean passes >= fast-brain-11-b-cw13 + 2"
+    ]
+   },
+   "audit_only_readout_rows_0_2": true,
+   "recipe": {
+    "resolve": "C:/DEV/Haltere/runs/fast-brain-12-a",
+    "caps_source": "configs/brain12_caps.json",
+    "synthetic_turns": 6.0,
+    "lateral_weight": 3.0,
+    "side_balance": 4.0,
+    "mirror_courses": false,
+    "motor_assist": true,
+    "cruise_weight": 2.0,
+    "descent_weight": 1.0,
+    "sink_weight": 10.0,
+    "ridge": 0.003,
+    "smooth": 100.0,
+    "smooth_rows": [
+     0.3,
+     1.0,
+     1.0
+    ],
+    "label_lead": 0.08,
+    "teacher_gains": [
+     "attitude_gain=4",
+     "vertical_velocity_gain=7"
+    ],
+    "turn_relief": 0.5,
+    "pilot_share": 0.5,
+    "yaw_holds": 4.0,
+    "brake_weight": 5.0
+   },
+   "metrics": {
+    "g2_cruise_excess": [
+     0.539,
+     0.291,
+     -0.564
+    ],
+    "g3v2_band_distance_1s": [
+     0.427,
+     0.236,
+     0.322,
+     0.663,
+     0.876,
+     0.0,
+     0.376,
+     0.501,
+     0.494
+    ],
+    "g5_cap_excess": 0.543,
+    "regression16": {
+     "finished": 16,
+     "crashed": 0,
+     "mean_speed": 4.891,
+     "stick_chatter": 0.00199,
+     "steep_sink_shortfall_mps": 0.017,
+     "descending_passes_high": 1
+    },
+    "lateral_1s_40_75": 3.005,
+    "chatter_8": 0.00177,
+    "chatter_caps": 0.00203,
+    "g9": {
+     "hairpin_cap_climb": {
+      "speed_excess_mean": 0.527,
+      "height_loss": -0.002,
+      "vh_final": 4.049
+     },
+     "stop_accelerate": {
+      "speed_excess_mean": -1.338,
+      "height_loss": 0.249,
+      "vh_final": 5.766
+     }
+    },
+    "g10_left": {
+     "t_within_max": 1.41,
+     "never": 0,
+     "excess_max": 1.04,
+     "settled": [
+      -1.305,
+      0.508
+     ]
+    },
+    "g15_right": {
+     "t_within_max": 1.41,
+     "never": 0,
+     "excess_max": 1.04,
+     "settled": [
+      -1.115,
+      0.508
+     ]
+    },
+    "g11_left": [
+     [
+      "creep",
+      0.0,
+      0.118,
+      1.11
+     ],
+     [
+      "creep",
+      30.0,
+      0.125,
+      1.09
+     ],
+     [
+      "creep",
+      60.0,
+      0.136,
+      null
+     ],
+     [
+      "stop",
+      0.0,
+      -0.08,
+      1.04
+     ],
+     [
+      "stop",
+      30.0,
+      -0.08,
+      1.05
+     ],
+     [
+      "stop",
+      60.0,
+      -0.08,
+      null
+     ]
+    ],
+    "g15_right_accel": [
+     [
+      "creep",
+      -30.0,
+      0.114,
+      0.92
+     ],
+     [
+      "creep",
+      -60.0,
+      0.13,
+      0.97
+     ],
+     [
+      "stop",
+      -30.0,
+      -0.08,
+      0.89
+     ],
+     [
+      "stop",
+      -60.0,
+      0.007,
+      0.96
+     ]
+    ],
+    "g12": {
+     "cap_excess": 0.468,
+     "finished": 16,
+     "crashed": 0
+    },
+    "g13": {
+     "courses": 28,
+     "finished": 28,
+     "crashed": 0,
+     "contacts": 24,
+     "contact_s": 44.39,
+     "high_passes": 5,
+     "stick_chatter_16": 0.00223,
+     "mean_finish_terrain_s": 58.06
+    },
+    "g14": {
+     "hairpin_r4b": {
+      "controller_speed_end": 4.276,
+      "controller_capped_excess": 1.503,
+      "controller_min_z": 0.768,
+      "controller_assist_speed_end": 0.405,
+      "controller_assist_capped_excess": -1.71,
+      "controller_assist_min_z": 0.768,
+      "logged_minus_live_speed_end": -0.056
+     },
+     "downhill_r4b": {
+      "controller_contact_margin": 0.075,
+      "controller_reached_contact": true,
+      "controller_speed_shortfall": 0.281,
+      "controller_sink_excess": 0.1,
+      "logged_contact_margin": 0.084,
+      "logged_minus_live_contact_margin": 0.084
+     }
+    },
+    "g16": {
+     "assist": {
+      "n": 12,
+      "finished": 6,
+      "clean": 5,
+      "crashed": 0,
+      "wall": 1,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 5,
+      "height_loss_mean": 0.1188,
+      "height_loss_max": 0.343,
+      "max_height": 2.283,
+      "chatter": 0.004611,
+      "finish_mean": 14.582
+     },
+     "no_assist": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 12,
+      "height_loss_mean": 0.199,
+      "height_loss_max": 0.363,
+      "max_height": 2.277,
+      "chatter": 0.003669,
+      "finish_mean": null
+     }
+    }
+   },
+   "report": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m5\\brain12\\cands\\fast-brain-12-a-cw20.json"
+  },
+  {
+   "name": "fast-brain-12-a",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-12-a/candidate.pt",
+   "sha256": "fa3618a510887cf79e415c45333d3ab5adca037ed749b111cdebd23c9706cf4b",
+   "passed_primary": 4,
+   "primary_total": 15,
+   "gates": {
+    "G1_cap_step": false,
+    "G2_sustained": false,
+    "G3_live_swaps": false,
+    "G5_in_course_caps": false,
+    "G6_regressions": false,
+    "G7_smoothness": true,
+    "G8_regressions": true,
+    "G3v2_live_swaps_latency": false,
+    "G9_r4_live_windows": true,
+    "G10_capped_turns": false,
+    "G11_accelerate": false,
+    "G12_in_course_caps2": true,
+    "G13_full_pilot": false,
+    "G14_r4b_live_windows": false,
+    "G15_right_turns_accelerate": false,
+    "G16_hairpins": false
+   },
+   "failing_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G5_in_course_caps": [
+     "cap_excess"
+    ],
+    "G6_regressions": [
+     "descending passes > 1.5 m above the gate",
+     "8-course velocity error (1.05 x brain-08)"
+    ],
+    "G3v2_live_swaps_latency": [
+     "distance from the PD..PD+80ms band at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G10_capped_turns": [
+     "hover t_within",
+     "hover excess 0.5-1.5 s",
+     "hover settled excess 1-3 s",
+     "live t_within",
+     "live excess 0.5-1.5 s",
+     "live settled excess 1-3 s"
+    ],
+    "G11_accelerate": [
+     "time to 4 m/s"
+    ],
+    "G13_full_pilot": [
+     "terrain contacts <= fast-brain-10b",
+     "terrain contact seconds <= fast-brain-10b"
+    ],
+    "G14_r4b_live_windows": [
+     "hairpin: capped speed excess",
+     "downhill: height over the live contact onset",
+     "downhill: horizontal speed kept"
+    ],
+    "G15_right_turns_accelerate": [
+     "right turns: hover t_within",
+     "right turns: hover excess 0.5-1.5 s",
+     "right turns: hover settled excess 1-3 s",
+     "right turns: live t_within",
+     "right turns: live excess 0.5-1.5 s",
+     "right turns: live settled excess 1-3 s"
+    ],
+    "G16_hairpins": [
+     "clean passes >= fast-brain-11-b-cw13 + 2"
+    ]
+   },
+   "audit_only_readout_rows_0_2": true,
+   "recipe": {
+    "resolve": "",
+    "caps_source": "configs/brain12_caps.json",
+    "synthetic_turns": 6.0,
+    "lateral_weight": 3.0,
+    "side_balance": 4.0,
+    "mirror_courses": false,
+    "motor_assist": true,
+    "cruise_weight": 1.3,
+    "descent_weight": 1.0,
+    "sink_weight": 10.0,
+    "ridge": 0.003,
+    "smooth": 100.0,
+    "smooth_rows": [
+     0.3,
+     1.0,
+     1.0
+    ],
+    "label_lead": 0.08,
+    "teacher_gains": [
+     "attitude_gain=4",
+     "vertical_velocity_gain=7"
+    ],
+    "turn_relief": 0.5,
+    "pilot_share": 0.5,
+    "yaw_holds": 4.0,
+    "brake_weight": 5.0
+   },
+   "metrics": {
+    "g2_cruise_excess": [
+     0.387,
+     0.074,
+     -0.82
+    ],
+    "g3v2_band_distance_1s": [
+     0.292,
+     0.368,
+     0.502,
+     0.453,
+     0.654,
+     0.183,
+     0.541,
+     0.356,
+     0.362
+    ],
+    "g5_cap_excess": 0.401,
+    "regression16": {
+     "finished": 16,
+     "crashed": 0,
+     "mean_speed": 4.722,
+     "stick_chatter": 0.00192,
+     "steep_sink_shortfall_mps": 0.029,
+     "descending_passes_high": 1
+    },
+    "lateral_1s_40_75": 2.913,
+    "chatter_8": 0.00172,
+    "chatter_caps": 0.00205,
+    "g9": {
+     "hairpin_cap_climb": {
+      "speed_excess_mean": 0.472,
+      "height_loss": -0.002,
+      "vh_final": 3.993
+     },
+     "stop_accelerate": {
+      "speed_excess_mean": -1.342,
+      "height_loss": 0.251,
+      "vh_final": 5.714
+     }
+    },
+    "g10_left": {
+     "t_within_max": 1.25,
+     "never": 0,
+     "excess_max": 0.882,
+     "settled": [
+      -1.308,
+      0.405
+     ]
+    },
+    "g15_right": {
+     "t_within_max": 1.25,
+     "never": 0,
+     "excess_max": 0.882,
+     "settled": [
+      -1.174,
+      0.405
+     ]
+    },
+    "g11_left": [
+     [
+      "creep",
+      0.0,
+      0.123,
+      1.13
+     ],
+     [
+      "creep",
+      30.0,
+      0.13,
+      1.1
+     ],
+     [
+      "creep",
+      60.0,
+      0.141,
+      null
+     ],
+     [
+      "stop",
+      0.0,
+      -0.096,
+      1.05
+     ],
+     [
+      "stop",
+      30.0,
+      -0.096,
+      1.06
+     ],
+     [
+      "stop",
+      60.0,
+      -0.089,
+      null
+     ]
+    ],
+    "g15_right_accel": [
+     [
+      "creep",
+      -30.0,
+      0.119,
+      0.93
+     ],
+     [
+      "creep",
+      -60.0,
+      0.13,
+      0.97
+     ],
+     [
+      "stop",
+      -30.0,
+      -0.093,
+      0.9
+     ],
+     [
+      "stop",
+      -60.0,
+      0.015,
+      0.96
+     ]
+    ],
+    "g12": {
+     "cap_excess": 0.297,
+     "finished": 16,
+     "crashed": 0
+    },
+    "g13": {
+     "courses": 28,
+     "finished": 28,
+     "crashed": 0,
+     "contacts": 25,
+     "contact_s": 47.16,
+     "high_passes": 5,
+     "stick_chatter_16": 0.00213,
+     "mean_finish_terrain_s": 59.52
+    },
+    "g14": {
+     "hairpin_r4b": {
+      "controller_speed_end": 4.109,
+      "controller_capped_excess": 1.319,
+      "controller_min_z": 0.768,
+      "controller_assist_speed_end": 0.376,
+      "controller_assist_capped_excess": -1.679,
+      "controller_assist_min_z": 0.768,
+      "logged_minus_live_speed_end": -0.056
+     },
+     "downhill_r4b": {
+      "controller_contact_margin": 0.04,
+      "controller_reached_contact": true,
+      "controller_speed_shortfall": 0.303,
+      "controller_sink_excess": 0.104,
+      "logged_contact_margin": 0.084,
+      "logged_minus_live_contact_margin": 0.084
+     }
+    },
+    "g16": {
+     "assist": {
+      "n": 12,
+      "finished": 7,
+      "clean": 6,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 4,
+      "height_loss_mean": 0.1246,
+      "height_loss_max": 0.376,
+      "max_height": 2.246,
+      "chatter": 0.004313,
+      "finish_mean": 14.687
+     },
+     "no_assist": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 12,
+      "height_loss_mean": 0.2142,
+      "height_loss_max": 0.398,
+      "max_height": 2.24,
+      "chatter": 0.003617,
+      "finish_mean": null
+     }
+    }
+   },
+   "report": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m5\\brain12\\cands\\fast-brain-12-a.json"
+  },
+  {
+   "name": "fast-brain-12-b-cw26d3",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-12-b-cw26d3/candidate.pt",
+   "sha256": "2ecf3f1f9b388c16f1ccbea3a9321aae15263a8e5369eadc090258d9f66728ec",
+   "passed_primary": 6,
+   "primary_total": 15,
+   "gates": {
+    "G1_cap_step": false,
+    "G2_sustained": false,
+    "G3_live_swaps": false,
+    "G5_in_course_caps": false,
+    "G6_regressions": false,
+    "G7_smoothness": true,
+    "G8_regressions": true,
+    "G3v2_live_swaps_latency": false,
+    "G9_r4_live_windows": true,
+    "G10_capped_turns": false,
+    "G11_accelerate": true,
+    "G12_in_course_caps2": true,
+    "G13_full_pilot": false,
+    "G14_r4b_live_windows": false,
+    "G15_right_turns_accelerate": false,
+    "G16_hairpins": true
+   },
+   "failing_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G5_in_course_caps": [
+     "cap_excess"
+    ],
+    "G6_regressions": [
+     "post-switch lateral 40-75 at 1 s (brain-08 + 0.3 m)"
+    ],
+    "G3v2_live_swaps_latency": [
+     "distance from the PD..PD+80ms band at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G10_capped_turns": [
+     "hover t_within",
+     "hover excess 0.5-1.5 s",
+     "hover settled excess 1-3 s",
+     "live t_within",
+     "live excess 0.5-1.5 s",
+     "live settled excess 1-3 s"
+    ],
+    "G13_full_pilot": [
+     "terrain contacts <= fast-brain-10b",
+     "terrain contact seconds <= fast-brain-10b"
+    ],
+    "G14_r4b_live_windows": [
+     "hairpin: capped speed excess"
+    ],
+    "G15_right_turns_accelerate": [
+     "right turns: hover t_within",
+     "right turns: hover excess 0.5-1.5 s",
+     "right turns: hover settled excess 1-3 s",
+     "right turns: live t_within",
+     "right turns: live excess 0.5-1.5 s",
+     "right turns: live settled excess 1-3 s",
+     "right accelerations: time to 4 m/s"
+    ]
+   },
+   "audit_only_readout_rows_0_2": true,
+   "recipe": {
+    "resolve": "C:/DEV/Haltere/runs/fast-brain-12-b",
+    "caps_source": "configs/brain12_caps.json",
+    "synthetic_turns": 6.0,
+    "lateral_weight": 3.0,
+    "side_balance": 4.0,
+    "mirror_courses": false,
+    "motor_assist": true,
+    "cruise_weight": 2.6,
+    "descent_weight": 3.0,
+    "sink_weight": 10.0,
+    "ridge": 0.003,
+    "smooth": 100.0,
+    "smooth_rows": [
+     0.3,
+     1.0,
+     1.0
+    ],
+    "label_lead": 0.08,
+    "teacher_gains": [
+     "attitude_gain=4",
+     "vertical_velocity_gain=7"
+    ],
+    "turn_relief": 0.5,
+    "pilot_share": 0.5,
+    "yaw_holds": 4.0,
+    "brake_weight": 5.0
+   },
+   "metrics": {
+    "g2_cruise_excess": [
+     0.716,
+     0.422,
+     -0.502
+    ],
+    "g3v2_band_distance_1s": [
+     0.268,
+     0.371,
+     0.619,
+     0.548,
+     0.929,
+     0.195,
+     0.388,
+     0.678,
+     0.692
+    ],
+    "g5_cap_excess": 0.585,
+    "regression16": {
+     "finished": 16,
+     "crashed": 0,
+     "mean_speed": 4.913,
+     "stick_chatter": 0.00219,
+     "steep_sink_shortfall_mps": 0.041,
+     "descending_passes_high": 0
+    },
+    "lateral_1s_40_75": 3.044,
+    "chatter_8": 0.002,
+    "chatter_caps": 0.0022,
+    "g9": {
+     "hairpin_cap_climb": {
+      "speed_excess_mean": 0.254,
+      "height_loss": -0.002,
+      "vh_final": 4.199
+     },
+     "stop_accelerate": {
+      "speed_excess_mean": -1.244,
+      "height_loss": 0.305,
+      "vh_final": 5.896
+     }
+    },
+    "g10_left": {
+     "t_within_max": 1.36,
+     "never": 7,
+     "excess_max": 1.158,
+     "settled": [
+      -1.358,
+      0.727
+     ]
+    },
+    "g15_right": {
+     "t_within_max": 1.36,
+     "never": 7,
+     "excess_max": 1.158,
+     "settled": [
+      -1.136,
+      0.727
+     ]
+    },
+    "g11_left": [
+     [
+      "creep",
+      0.0,
+      0.231,
+      1.05
+     ],
+     [
+      "creep",
+      30.0,
+      0.233,
+      1.01
+     ],
+     [
+      "creep",
+      60.0,
+      0.239,
+      1.31
+     ],
+     [
+      "stop",
+      0.0,
+      0.057,
+      0.97
+     ],
+     [
+      "stop",
+      30.0,
+      0.275,
+      1.0
+     ],
+     [
+      "stop",
+      60.0,
+      0.057,
+      1.2
+     ]
+    ],
+    "g15_right_accel": [
+     [
+      "creep",
+      -30.0,
+      0.231,
+      0.96
+     ],
+     [
+      "creep",
+      -60.0,
+      0.263,
+      null
+     ],
+     [
+      "stop",
+      -30.0,
+      0.057,
+      0.9
+     ],
+     [
+      "stop",
+      -60.0,
+      0.171,
+      1.01
+     ]
+    ],
+    "g12": {
+     "cap_excess": 0.375,
+     "finished": 16,
+     "crashed": 0
+    },
+    "g13": {
+     "courses": 28,
+     "finished": 28,
+     "crashed": 0,
+     "contacts": 23,
+     "contact_s": 34.88,
+     "high_passes": 9,
+     "stick_chatter_16": 0.00245,
+     "mean_finish_terrain_s": 57.79
+    },
+    "g14": {
+     "hairpin_r4b": {
+      "controller_speed_end": 4.288,
+      "controller_capped_excess": 1.498,
+      "controller_min_z": 0.768,
+      "controller_assist_speed_end": 0.554,
+      "controller_assist_capped_excess": -1.705,
+      "controller_assist_min_z": 0.765,
+      "logged_minus_live_speed_end": -0.056
+     },
+     "downhill_r4b": {
+      "controller_contact_margin": 1.215,
+      "controller_reached_contact": true,
+      "controller_speed_shortfall": -0.422,
+      "controller_sink_excess": -0.042,
+      "logged_contact_margin": 0.084,
+      "logged_minus_live_contact_margin": 0.084
+     }
+    },
+    "g16": {
+     "assist": {
+      "n": 12,
+      "finished": 8,
+      "clean": 8,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 4,
+      "height_loss_mean": 0.1279,
+      "height_loss_max": 0.449,
+      "max_height": 2.122,
+      "chatter": 0.004707,
+      "finish_mean": 14.454
+     },
+     "no_assist": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 1,
+      "ceiling": 4,
+      "contacts": 12,
+      "height_loss_mean": 0.1928,
+      "height_loss_max": 0.764,
+      "max_height": 2.173,
+      "chatter": 0.003737,
+      "finish_mean": null
+     }
+    }
+   },
+   "report": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m5\\brain12\\cands\\fast-brain-12-b-cw26d3.json"
+  },
+  {
+   "name": "fast-brain-12-b",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-12-b/candidate.pt",
+   "sha256": "8769b46fb3d275465fec96d5675a9a362ab9224c8e3bafa9e5b8eb1fb327df8c",
+   "passed_primary": 5,
+   "primary_total": 15,
+   "gates": {
+    "G1_cap_step": false,
+    "G2_sustained": false,
+    "G3_live_swaps": false,
+    "G5_in_course_caps": false,
+    "G6_regressions": false,
+    "G7_smoothness": true,
+    "G8_regressions": true,
+    "G3v2_live_swaps_latency": false,
+    "G9_r4_live_windows": true,
+    "G10_capped_turns": false,
+    "G11_accelerate": false,
+    "G12_in_course_caps2": true,
+    "G13_full_pilot": false,
+    "G14_r4b_live_windows": false,
+    "G15_right_turns_accelerate": false,
+    "G16_hairpins": true
+   },
+   "failing_checks": {
+    "G1_cap_step": [
+     "hover t_within",
+     "hover settled_excess",
+     "live t_within",
+     "live settled_excess"
+    ],
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5",
+     "rollout(S) cruise excess 6"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G5_in_course_caps": [
+     "cap_excess"
+    ],
+    "G6_regressions": [
+     "8-course velocity error (1.05 x brain-08)"
+    ],
+    "G3v2_live_swaps_latency": [
+     "distance from the PD..PD+80ms band at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G10_capped_turns": [
+     "hover t_within",
+     "hover excess 0.5-1.5 s",
+     "hover settled excess 1-3 s",
+     "live t_within",
+     "live excess 0.5-1.5 s",
+     "live settled excess 1-3 s"
+    ],
+    "G11_accelerate": [
+     "time to 4 m/s"
+    ],
+    "G13_full_pilot": [
+     "terrain contacts <= fast-brain-10b",
+     "terrain contact seconds <= fast-brain-10b"
+    ],
+    "G14_r4b_live_windows": [
+     "hairpin: capped speed excess",
+     "downhill: height over the live contact onset",
+     "downhill: horizontal speed kept"
+    ],
+    "G15_right_turns_accelerate": [
+     "right turns: hover t_within",
+     "right turns: hover excess 0.5-1.5 s",
+     "right turns: hover settled excess 1-3 s",
+     "right turns: live t_within",
+     "right turns: live excess 0.5-1.5 s",
+     "right turns: live settled excess 1-3 s",
+     "right accelerations: time to 4 m/s"
+    ]
+   },
+   "audit_only_readout_rows_0_2": true,
+   "recipe": {
+    "resolve": "",
+    "caps_source": "configs/brain12_caps.json",
+    "synthetic_turns": 6.0,
+    "lateral_weight": 3.0,
+    "side_balance": 4.0,
+    "mirror_courses": false,
+    "motor_assist": true,
+    "cruise_weight": 2.0,
+    "descent_weight": 1.0,
+    "sink_weight": 10.0,
+    "ridge": 0.003,
+    "smooth": 100.0,
+    "smooth_rows": [
+     0.3,
+     1.0,
+     1.0
+    ],
+    "label_lead": 0.08,
+    "teacher_gains": [
+     "attitude_gain=4",
+     "vertical_velocity_gain=7"
+    ],
+    "turn_relief": 0.5,
+    "pilot_share": 0.5,
+    "yaw_holds": 4.0,
+    "brake_weight": 5.0
+   },
+   "metrics": {
+    "g2_cruise_excess": [
+     0.428,
+     0.168,
+     -0.725
+    ],
+    "g3v2_band_distance_1s": [
+     0.098,
+     0.508,
+     0.733,
+     0.353,
+     0.697,
+     0.376,
+     0.562,
+     0.458,
+     0.49
+    ],
+    "g5_cap_excess": 0.457,
+    "regression16": {
+     "finished": 16,
+     "crashed": 0,
+     "mean_speed": 4.719,
+     "stick_chatter": 0.002,
+     "steep_sink_shortfall_mps": 0.214,
+     "descending_passes_high": 0
+    },
+    "lateral_1s_40_75": 2.898,
+    "chatter_8": 0.00178,
+    "chatter_caps": 0.00211,
+    "g9": {
+     "hairpin_cap_climb": {
+      "speed_excess_mean": 0.353,
+      "height_loss": -0.002,
+      "vh_final": 4.256
+     },
+     "stop_accelerate": {
+      "speed_excess_mean": -1.266,
+      "height_loss": 0.294,
+      "vh_final": 5.742
+     }
+    },
+    "g10_left": {
+     "t_within_max": 2.3,
+     "never": 0,
+     "excess_max": 1.039,
+     "settled": [
+      -1.361,
+      0.522
+     ]
+    },
+    "g15_right": {
+     "t_within_max": 2.3,
+     "never": 0,
+     "excess_max": 1.039,
+     "settled": [
+      -1.22,
+      0.522
+     ]
+    },
+    "g11_left": [
+     [
+      "creep",
+      0.0,
+      0.207,
+      1.06
+     ],
+     [
+      "creep",
+      30.0,
+      0.209,
+      1.0
+     ],
+     [
+      "creep",
+      60.0,
+      0.215,
+      null
+     ],
+     [
+      "stop",
+      0.0,
+      0.025,
+      0.98
+     ],
+     [
+      "stop",
+      30.0,
+      0.23,
+      0.99
+     ],
+     [
+      "stop",
+      60.0,
+      0.038,
+      1.19
+     ]
+    ],
+    "g15_right_accel": [
+     [
+      "creep",
+      -30.0,
+      0.207,
+      0.97
+     ],
+     [
+      "creep",
+      -60.0,
+      0.248,
+      null
+     ],
+     [
+      "stop",
+      -30.0,
+      0.025,
+      0.91
+     ],
+     [
+      "stop",
+      -60.0,
+      0.153,
+      1.03
+     ]
+    ],
+    "g12": {
+     "cap_excess": 0.3,
+     "finished": 16,
+     "crashed": 0
+    },
+    "g13": {
+     "courses": 28,
+     "finished": 28,
+     "crashed": 0,
+     "contacts": 21,
+     "contact_s": 41.81,
+     "high_passes": 10,
+     "stick_chatter_16": 0.00222,
+     "mean_finish_terrain_s": 61.14
+    },
+    "g14": {
+     "hairpin_r4b": {
+      "controller_speed_end": 4.216,
+      "controller_capped_excess": 1.388,
+      "controller_min_z": 0.768,
+      "controller_assist_speed_end": 0.51,
+      "controller_assist_capped_excess": -1.711,
+      "controller_assist_min_z": 0.768,
+      "logged_minus_live_speed_end": -0.056
+     },
+     "downhill_r4b": {
+      "controller_contact_margin": -0.167,
+      "controller_reached_contact": true,
+      "controller_speed_shortfall": 0.985,
+      "controller_sink_excess": -0.15,
+      "logged_contact_margin": 0.084,
+      "logged_minus_live_contact_margin": 0.084
+     }
+    },
+    "g16": {
+     "assist": {
+      "n": 12,
+      "finished": 7,
+      "clean": 7,
+      "crashed": 0,
+      "wall": 1,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 5,
+      "height_loss_mean": 0.0884,
+      "height_loss_max": 0.277,
+      "max_height": 2.058,
+      "chatter": 0.004532,
+      "finish_mean": 14.799
+     },
+     "no_assist": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 12,
+      "height_loss_mean": 0.1105,
+      "height_loss_max": 0.643,
+      "max_height": 2.056,
+      "chatter": 0.003565,
+      "finish_mean": null
+     }
+    }
+   },
+   "report": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m5\\brain12\\cands\\fast-brain-12-b.json"
+  },
+  {
+   "name": "fast-brain-12-c",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-12-c/candidate.pt",
+   "sha256": "1beff2d0b809761d8ac1b98c037107b8ab43cdc8449411c5e42d55f63f5200b2",
+   "passed_primary": 4,
+   "primary_total": 15,
+   "gates": {
+    "G1_cap_step": true,
+    "G2_sustained": false,
+    "G3_live_swaps": false,
+    "G5_in_course_caps": false,
+    "G6_regressions": false,
+    "G7_smoothness": true,
+    "G8_regressions": true,
+    "G3v2_live_swaps_latency": false,
+    "G9_r4_live_windows": false,
+    "G10_capped_turns": false,
+    "G11_accelerate": false,
+    "G12_in_course_caps2": false,
+    "G13_full_pilot": false,
+    "G14_r4b_live_windows": false,
+    "G15_right_turns_accelerate": false,
+    "G16_hairpins": true
+   },
+   "failing_checks": {
+    "G2_sustained": [
+     "hover settled_excess",
+     "live steady_excess",
+     "rollout(S) cruise excess 3.5/4.5"
+    ],
+    "G3_live_swaps": [
+     "controller - PD at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G5_in_course_caps": [
+     "cap_excess"
+    ],
+    "G6_regressions": [
+     "descending passes > 1.5 m above the gate",
+     "post-switch lateral 40-75 at 1 s (brain-08 + 0.3 m)"
+    ],
+    "G3v2_live_swaps_latency": [
+     "distance from the PD..PD+80ms band at +1 s",
+     "3.5 m/s steady from slow35/loom"
+    ],
+    "G9_r4_live_windows": [
+     "hairpin: speed excess over the capped request"
+    ],
+    "G10_capped_turns": [
+     "hover t_within",
+     "hover excess 0.5-1.5 s",
+     "hover settled excess 1-3 s",
+     "live t_within",
+     "live excess 0.5-1.5 s",
+     "live settled excess 1-3 s"
+    ],
+    "G11_accelerate": [
+     "height loss",
+     "time to 4 m/s"
+    ],
+    "G12_in_course_caps2": [
+     "in_course_caps2.brake.cap_excess_mps"
+    ],
+    "G13_full_pilot": [
+     "terrain contacts <= fast-brain-10b",
+     "terrain contact seconds <= fast-brain-10b"
+    ],
+    "G14_r4b_live_windows": [
+     "hairpin: capped speed excess",
+     "hairpin with the motor assist: speed at the wall",
+     "downhill: horizontal speed kept"
+    ],
+    "G15_right_turns_accelerate": [
+     "right turns: hover t_within",
+     "right turns: hover excess 0.5-1.5 s",
+     "right turns: hover settled excess 1-3 s",
+     "right turns: live t_within",
+     "right turns: live excess 0.5-1.5 s",
+     "right turns: live settled excess 1-3 s",
+     "right accelerations: height loss"
+    ]
+   },
+   "audit_only_readout_rows_0_2": true,
+   "recipe": {
+    "resolve": "",
+    "caps_source": "configs/brain12_caps.json",
+    "synthetic_turns": 0.0,
+    "lateral_weight": 1.0,
+    "side_balance": 4.0,
+    "mirror_courses": false,
+    "motor_assist": true,
+    "cruise_weight": 2.6,
+    "descent_weight": 3.0,
+    "sink_weight": 10.0,
+    "ridge": 0.003,
+    "smooth": 100.0,
+    "smooth_rows": [
+     0.3,
+     1.0,
+     1.0
+    ],
+    "label_lead": 0.08,
+    "teacher_gains": [
+     "attitude_gain=4",
+     "vertical_velocity_gain=7"
+    ],
+    "turn_relief": 0.5,
+    "pilot_share": 0.5,
+    "yaw_holds": 4.0,
+    "brake_weight": 5.0
+   },
+   "metrics": {
+    "g2_cruise_excess": [
+     0.394,
+     0.239,
+     -0.508
+    ],
+    "g3v2_band_distance_1s": [
+     0.059,
+     0.754,
+     0.69,
+     0.485,
+     0.339,
+     0.218,
+     0.878,
+     0.128,
+     0.262
+    ],
+    "g5_cap_excess": 0.413,
+    "regression16": {
+     "finished": 16,
+     "crashed": 0,
+     "mean_speed": 4.974,
+     "stick_chatter": 0.0019,
+     "steep_sink_shortfall_mps": 0.096,
+     "descending_passes_high": 2
+    },
+    "lateral_1s_40_75": 3.084,
+    "chatter_8": 0.00164,
+    "chatter_caps": 0.00184,
+    "g9": {
+     "hairpin_cap_climb": {
+      "speed_excess_mean": 0.576,
+      "height_loss": -0.002,
+      "vh_final": 3.957
+     },
+     "stop_accelerate": {
+      "speed_excess_mean": -1.441,
+      "height_loss": 0.263,
+      "vh_final": 5.254
+     }
+    },
+    "g10_left": {
+     "t_within_max": 1.04,
+     "never": 0,
+     "excess_max": 0.734,
+     "settled": [
+      -1.806,
+      0.242
+     ]
+    },
+    "g15_right": {
+     "t_within_max": 2.26,
+     "never": 0,
+     "excess_max": 0.913,
+     "settled": [
+      -0.587,
+      0.333
+     ]
+    },
+    "g11_left": [
+     [
+      "creep",
+      0.0,
+      0.519,
+      1.04
+     ],
+     [
+      "creep",
+      30.0,
+      0.519,
+      1.11
+     ],
+     [
+      "creep",
+      60.0,
+      0.52,
+      null
+     ],
+     [
+      "stop",
+      0.0,
+      0.126,
+      0.97
+     ],
+     [
+      "stop",
+      30.0,
+      0.082,
+      1.08
+     ],
+     [
+      "stop",
+      60.0,
+      0.082,
+      null
+     ]
+    ],
+    "g15_right_accel": [
+     [
+      "creep",
+      -30.0,
+      0.615,
+      0.96
+     ],
+     [
+      "creep",
+      -60.0,
+      0.519,
+      1.04
+     ],
+     [
+      "stop",
+      -30.0,
+      0.701,
+      0.95
+     ],
+     [
+      "stop",
+      -60.0,
+      0.079,
+      0.97
+     ]
+    ],
+    "g12": {
+     "cap_excess": 0.458,
+     "finished": 16,
+     "crashed": 0
+    },
+    "g13": {
+     "courses": 28,
+     "finished": 28,
+     "crashed": 0,
+     "contacts": 20,
+     "contact_s": 29.38,
+     "high_passes": 14,
+     "stick_chatter_16": 0.00215,
+     "mean_finish_terrain_s": 56.78
+    },
+    "g14": {
+     "hairpin_r4b": {
+      "controller_speed_end": 3.784,
+      "controller_capped_excess": 1.026,
+      "controller_min_z": 0.768,
+      "controller_assist_speed_end": 1.133,
+      "controller_assist_capped_excess": -1.868,
+      "controller_assist_min_z": 0.768,
+      "logged_minus_live_speed_end": -0.056
+     },
+     "downhill_r4b": {
+      "controller_contact_margin": 0.499,
+      "controller_reached_contact": true,
+      "controller_speed_shortfall": 0.383,
+      "controller_sink_excess": -0.081,
+      "logged_contact_margin": 0.084,
+      "logged_minus_live_contact_margin": 0.084
+     }
+    },
+    "g16": {
+     "assist": {
+      "n": 12,
+      "finished": 9,
+      "clean": 8,
+      "crashed": 0,
+      "wall": 0,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 4,
+      "height_loss_mean": -0.0246,
+      "height_loss_max": 0.195,
+      "max_height": 2.397,
+      "chatter": 0.004587,
+      "finish_mean": 14.719
+     },
+     "no_assist": {
+      "n": 12,
+      "finished": 0,
+      "clean": 0,
+      "crashed": 0,
+      "wall": 12,
+      "floor": 0,
+      "ceiling": 4,
+      "contacts": 12,
+      "height_loss_mean": 0.0298,
+      "height_loss_max": 0.171,
+      "max_height": 2.395,
+      "chatter": 0.003596,
+      "finish_mean": null
+     }
+    }
+   },
+   "report": "C:\\Users\\artem\\AppData\\Local\\Temp\\claude\\C--DEV-Haltere\\6f308e08-af33-4f7e-b2e8-e1cad1c82b5f\\scratchpad\\m5\\brain12\\cands\\fast-brain-12-c.json"
+  }
+ ],
+ "selected": null,
+ "ranking": [
+  "fast-brain-12-b-cw26d3",
+  "fast-brain-12-b",
+  "fast-brain-12-c",
+  "fast-brain-12-a",
+  "fast-brain-12-a-cw20"
+ ]
+}
