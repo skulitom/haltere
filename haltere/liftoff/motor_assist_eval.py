@@ -78,6 +78,33 @@ def hairpin_scenario(turn_deg=90., wall_m=2.1, side_m=6., back_m=1., leg_m=20., 
                             height_m=height_m, ceiling_m=ceiling_m, wall_half_m=wall_half_m, dropout_s=dropout_s))
 
 
+def passthrough_scenario(turn_deg=0., surface_m=0., next_m=15., leg_m=24., height_m=.8, ceiling_m=2.2,
+                         surface_half_m=4., clear_ttc=4., see_through_m=1.5):
+    """A gate arch flown through (the Minus Two first arch, the 90-degree arch): from the ground, north `leg_m` to ring
+    R1, whose looming surface stands `surface_m` beyond it across the leg (a virtual plane `surface_half_m` to each side:
+    it reads like a wall in the looming samples, below_fraction 0.5, but nothing is there to touch); R2 lies `next_m`
+    beyond R1 after a right turn of `turn_deg`, R3 20 m further on. A travel ray that meets no surface gives a clear
+    sample (TTC `clear_ttc`: the open space beyond the arch), as the live samples read past an arch; so does the surface
+    itself once it is `see_through_m` or closer (the arch frame leaves the looming window and the ring's opening fills it:
+    the live Minus Two samples at the arches read 0.4-0.5 s at 5 m/s, then clear at the pass). Scored: the lowest
+    horizontal speed from 1.5 s before the R1 pass to 0.5 s after it (a stop or crawl at the arch) and the finish time."""
+    start = np.zeros(3)
+    north = np.array([0., 1., 0.])
+    r1 = np.array([0., leg_m, height_m])
+    a = np.radians(turn_deg)
+    d2 = np.array([np.sin(a), np.cos(a), 0.])
+    r2 = r1+d2*next_m
+    plane = r1+north*surface_m
+    east = np.array([1., 0.])
+    surface = (plane[:2]-east*surface_half_m, plane[:2]+east*surface_half_m)
+    return dict(kind='passthrough', start=start, yaw=np.pi/2, rings=[r1, r2, r2+d2*20.], walls=[],
+                loom_walls=[surface], clear_ttc=clear_ttc, see_through_m=see_through_m, ceiling=ceiling_m,
+                dropout_after=None, dropout_s=0., wall_ring=None, height=height_m, arch_ring=0,
+                params=dict(turn_deg=turn_deg, surface_m=surface_m, next_m=next_m, leg_m=leg_m, height_m=height_m,
+                            ceiling_m=ceiling_m, surface_half_m=surface_half_m, clear_ttc=clear_ttc,
+                            see_through_m=see_through_m))
+
+
 def accelerate_scenario(height_m=.8, bearing_deg=0., ring_m=25., near_m=3., ceiling_m=2.2):
     """Stop-then-accelerate (see the module docstring); a scoring-only ceiling at `ceiling_m` (None: none)."""
     start = np.zeros(3)
@@ -211,6 +238,10 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
     chatter, chatter_n = np.zeros(batch), np.zeros(batch)
     previous = None
     min_z_after = [[] for _ in range(batch)]
+    # passthrough scenarios: horizontal speeds of the last 1.5 s, the lowest from 1.5 s before the arch pass to 0.5 s
+    # after it, and the speed at the pass
+    speed_hist = [deque() for _ in range(batch)]
+    arch_min, arch_pass = np.full(batch, np.nan), np.full(batch, np.nan)
     trace = [] if record else None
     steps = int(seconds/dt)
     for k in range(steps):
@@ -226,8 +257,19 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
             sc = scenarios[i]
             if not active[i]:
                 continue
+            arch = sc.get('arch_ring')
+            if arch is not None:
+                hs = float(np.hypot(velocities[i, 0], velocities[i, 1]))
+                speed_hist[i].append((now, hs))
+                while speed_hist[i] and now-speed_hist[i][0][0] > 1.5:
+                    speed_hist[i].popleft()
+                if len(passes[i]) > arch and now-passes[i][arch] <= .5:
+                    arch_min[i] = min(arch_min[i], hs)
             if np.linalg.norm(sc['rings'][targets[i]]-positions[i]) < radius:
                 passes[i].append(now)
+                if arch is not None and len(passes[i]) == arch+1:
+                    arch_pass[i] = float(np.hypot(velocities[i, 0], velocities[i, 1]))
+                    arch_min[i] = min(v for _, v in speed_hist[i])
                 targets[i] += 1
                 if targets[i] == len(sc['rings']):
                     finish[i] = now
@@ -244,11 +286,19 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
             while pending[i] and pending[i][0][1] <= now:
                 captures[i], _, cue = pending[i].popleft()
                 detections[i] = dict(race_cue=cue) if cue is not None else None
-            if sc['walls'] and now >= next_loom[i]:
+            looms = sc.get('loom_walls', sc['walls'])
+            if looms and now >= next_loom[i]:
                 w, x, y, z = quaternions[i]
                 heading = np.array([1-2*(y*y+z*z), 2*(x*y+w*z)])
                 heading /= max(np.linalg.norm(heading), 1e-9)
-                hit = _wall_hit(positions[i], velocities[i], heading, sc['walls'])
+                hit = _wall_hit(positions[i], velocities[i], heading, looms)
+                if hit is not None and hit[0] <= sc.get('see_through_m', 0.):
+                    hit = None                     # passthrough: the ring's opening fills the looming window
+                clear = sc.get('clear_ttc')
+                if hit is None and clear is not None and np.hypot(velocities[i, 0], velocities[i, 1]) > .5:
+                    # passthrough scenarios: open space beyond the arch reads as a long TTC
+                    hit = (clear*float(np.hypot(velocities[i, 0], velocities[i, 1])),
+                           float(np.hypot(velocities[i, 0], velocities[i, 1])))
                 sample = (dict(time=now, ttc=None, distance=None, below_fraction=None, ttc_lower=None) if hit is None
                           else dict(time=now, ttc=hit[0]/hit[1], distance=hit[0],
                                     below_fraction=None if live_wall_samples else .5,
@@ -344,6 +394,9 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
                          min_wall_gap_m=None if not np.isfinite(wall_gap[i]) else round(float(wall_gap[i]), 3),
                          past_wall_ring=None if wr is None else bool(targets[i] > wr+1),
                          stick_chatter=round(float(chatter[i]/max(chatter_n[i], 1)), 5),
+                         **({} if sc.get('arch_ring') is None else dict(
+                             arch_min_speed=None if not np.isfinite(arch_min[i]) else round(float(arch_min[i]), 3),
+                             arch_pass_speed=None if not np.isfinite(arch_pass[i]) else round(float(arch_pass[i]), 3))),
                          states={s: round(v, 2) for s, v in p.state_time.items()},
                          turn_first=None if p.turn_first is None else dict(p.turn_first_counts),
                          motor_assist=p.motor_assist_summary() if hasattr(p, 'motor_assist_summary') else None))
@@ -355,6 +408,12 @@ def hairpin_set(spec):
     import itertools
     keys = sorted(spec)
     return [hairpin_scenario(**dict(zip(keys, values))) for values in itertools.product(*(spec[k] for k in keys))]
+
+
+def passthrough_set(spec):
+    import itertools
+    keys = sorted(spec)
+    return [passthrough_scenario(**dict(zip(keys, values))) for values in itertools.product(*(spec[k] for k in keys))]
 
 
 def accelerate_set(spec):
@@ -420,7 +479,9 @@ def live_window(ctl, profile, flight, t0, horizon_s, *, assist=None, arrays=None
             own = np.array([arrays['assist_pilot_vx'][jj], arrays['assist_pilot_vy'][jj], arrays['assist_pilot_vz'][jj]])
             if np.isfinite(own).all():
                 r = own
-            srcs, pstate = sources[jj]
+            srcs, pstate = sources[jj][:2]
+            # version 2: the wall-ahead condition the pilot had at that logged state
+            helper.assist_wall_ahead = bool(sources[jj][2]) if len(sources[jj]) > 2 else False
             velocity = s.quad.vel[0].numpy().astype(float)
             r = helper._motor_assist(r, velocity, DT, pstate, srcs)
         rt = torch.tensor(r[None], dtype=torch.float32)

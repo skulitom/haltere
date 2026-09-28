@@ -5,11 +5,15 @@ These tests pin the rule on synthetic states: cap tracking of the binding caps (
 governor's cap, turn-first's wall ray and creep bound, the stopping model), its bounded reversal and rate limits, the
 sag compensation and its exclusions, that the pilot keeps its own request as its state while the support rule reads the
 request the motor received, the frozen declaration and runner wiring, and that the pilot with the rule off (default,
-and the full round-4 stack) is bit-identical to m4 (3decaac). The surrogate scenarios are in
+and the full round-4 stack) is bit-identical to m4 (3decaac). Version 2 (the declaration the runner flies): the slew
+bound on the assist's change, the wall-ahead gate of the stopping source with its memory, the floored approach source
+and its climb exclusion, no governor tracking during a stand-off, and version 1 rebuilt bit-identically from its kept
+declaration (the digest computed on `git archive m4b`). The surrogate scenarios are in
 haltere/liftoff/motor_assist_eval.py. None of this is flight evidence.
 """
 import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -27,8 +31,15 @@ AHEAD = cue_toward([20., 0., 0.])
 
 
 def assist(**kw):
+    """A version-2 rule (the code's defaults are the declared brain entry)."""
     from haltere.liftoff.fast_race_cue import MotorAssistConfig
     return MotorAssistConfig(**kw)
+
+
+def assist_v1(**kw):
+    """A version-1 rule as version 1 flew it (MOTOR_ASSIST_V1_FIELDS; replays only)."""
+    from haltere.liftoff.fast_race_cue import MOTOR_ASSIST_SOURCES, MOTOR_ASSIST_V1_FIELDS, MotorAssistConfig
+    return MotorAssistConfig(**{'cap_sources': MOTOR_ASSIST_SOURCES[:4], **MOTOR_ASSIST_V1_FIELDS, 'version': 1, **kw})
 
 
 def run(*, seconds=1., velocity=(5., 0., 0.), cue=AHEAD, plant=None, pilot=None, **kw):
@@ -62,25 +73,40 @@ def bare(config):
 # ---------------------------------------------------------------------------------------------
 def test_config_validation():
     from haltere.liftoff.fast_race_cue import MOTOR_ASSIST_SOURCES
-    assert set(MOTOR_ASSIST_SOURCES) == {'request', 'governor', 'turn_first', 'stopping'}
-    assert assist().cap_sources == MOTOR_ASSIST_SOURCES
+    assert set(MOTOR_ASSIST_SOURCES) == {'request', 'governor', 'turn_first', 'stopping', 'approach'}
+    assert assist().cap_sources == MOTOR_ASSIST_SOURCES and assist().version == 2
+    assert assist_v1().cap_sources == MOTOR_ASSIST_SOURCES[:4] and assist_v1().slew == 0.
     for bad in (dict(cap_gain=0.), dict(cap_deadband=-.1), dict(sag_max=float('nan')), dict(cap_sources=('wall',)),
                 dict(cap_sources=('request', 'request')), dict(stop_confirm=1.5), dict(stop_deceleration=0.),
-                dict(sag_lead_gain=-.1), dict(request_states=(1,))):
+                dict(sag_lead_gain=-.1), dict(request_states=(1,)), dict(stop_gate='never'), dict(version=3),
+                dict(wall_ahead_deg=0.), dict(slew=-1.), dict(approach_climb_max=float('nan')), dict(version=1)):
         with pytest.raises(ValueError):
             assist(**bad)
+    with pytest.raises(ValueError):
+        assist_v1(cap_sources=('request', 'approach'))
     for removed in ('governor_horizontal', 'turn_first_max_speed', 'climb_gain', 'sag_tilt_gain'):
         with pytest.raises(TypeError):
             assist(**{removed: 0})
 
 
 def test_contract_entries_and_version():
-    from haltere.liftoff.fast_race_cue import MOTOR_ASSIST_VERSION, motor_assist_for_contract
+    from haltere.liftoff.fast_race_cue import (MOTOR_ASSIST_V1_FIELDS, MOTOR_ASSIST_VERSION, MOTOR_ASSIST_VERSIONS,
+                                               motor_assist_for_contract)
+    assert MOTOR_ASSIST_VERSION == 2 and MOTOR_ASSIST_VERSIONS == (1, 2)
     declaration = dict(version=MOTOR_ASSIST_VERSION, contracts=dict(
         fast_velocity_brain_v1=dict(cap_sources=['request', 'stopping'], request_states=['cue'], cap_gain=2.),
         fast_velocity_pd_v1=None))
     config = motor_assist_for_contract(declaration, 'fast_velocity_brain_v1')
     assert config.cap_sources == ('request', 'stopping') and config.request_states == ('cue',) and config.cap_gain == 2.
+    assert config.version == 2 and config.slew == 15.
+    # a version-1 entry is rebuilt as version 1 flew it; it carries no version-2 field
+    old = dict(version=1, contracts=dict(fast_velocity_brain_v1=dict(cap_gain=2.)))
+    rebuilt = motor_assist_for_contract(old, 'fast_velocity_brain_v1')
+    assert rebuilt.version == 1 and all(getattr(rebuilt, k) == v for k, v in MOTOR_ASSIST_V1_FIELDS.items())
+    assert 'approach' not in rebuilt.cap_sources
+    with pytest.raises(ValueError, match='version-2'):
+        motor_assist_for_contract(dict(version=1, contracts=dict(fast_velocity_brain_v1=dict(slew=15.))),
+                                  'fast_velocity_brain_v1')
     assert motor_assist_for_contract(declaration, 'fast_velocity_pd_v1') is None
     assert motor_assist_for_contract(declaration, 'motor_tracking_teacher_v1') is None
     with pytest.raises(ValueError, match='version'):
@@ -101,7 +127,7 @@ def test_off_by_default_logs_nan_and_adds_no_metadata():
 
 
 def test_request_tracking_lowers_the_request_while_the_motor_overshoots_and_releases_after():
-    a = assist(cap_sources=('request',), cap_gain=1., cap_deadband=.3, cap_max=2., cap_rise=8., cap_fall=8.,
+    a = assist_v1(cap_sources=('request',), cap_gain=1., cap_deadband=.3, cap_max=2., cap_rise=8., cap_fall=8.,
                sag_gain=0., sag_lead_gain=0.)
     # the pilot's speed schedule asks for less toward a ring 20 deg off the flown course than the motor flies
     off = cue_toward([20., 7.3, 0.])
@@ -125,7 +151,7 @@ def test_request_tracking_lowers_the_request_while_the_motor_overshoots_and_rele
 
 
 def test_the_request_never_reverses_along_its_own_direction():
-    a = assist(cap_sources=('request',), cap_gain=5., cap_max=5., cap_rise=100., sag_gain=0., sag_lead_gain=0.)
+    a = assist_v1(cap_sources=('request',), cap_gain=5., cap_max=5., cap_rise=100., sag_gain=0., sag_lead_gain=0.)
     pilot, rows = run(velocity=(9., 0., 0.), cue=cue_toward([6., 4., 0.]), motor_assist=a, seconds=1.)
     for _, flown, own, _ in rows:
         n = np.linalg.norm(own[:2])
@@ -135,7 +161,7 @@ def test_the_request_never_reverses_along_its_own_direction():
 
 
 def test_motor_assist_math_for_wall_sources_and_the_reverse_bound():
-    pilot = bare(assist(cap_gain=2., cap_max=3., cap_reverse=1., cap_rise=1000., sag_gain=0.))
+    pilot = bare(assist_v1(cap_gain=2., cap_max=3., cap_reverse=1., cap_rise=1000., sag_gain=0.))
     wall = np.array([1., 0.])
     command = np.array([2., 1., 0.])
     # turn-first: no speed toward the wall (c = 0); the motor still closes at 4 m/s -> reverse, bounded at 1 m/s
@@ -189,7 +215,7 @@ def wall_run(assist_config, seconds=1.5, speed=5., wall_x=12., clear_after=None)
 
 def test_stopping_source_starts_braking_before_the_governor():
     base, rows_off = wall_run(None)
-    on, rows_on = wall_run(assist(cap_sources=('governor', 'stopping'), sag_gain=0., sag_lead_gain=0.))
+    on, rows_on = wall_run(assist_v1(cap_sources=('governor', 'stopping'), sag_gain=0., sag_lead_gain=0.))
     first = lambda rows: next((x for _, x, c, _ in rows if c < 5.), None)
     # without the stopping source the governor's first cut comes later (closer to the wall) than the stopping model's
     assert first(rows_on) is not None and (first(rows_off) is None or first(rows_on) < first(rows_off))
@@ -200,7 +226,7 @@ def test_stopping_source_starts_braking_before_the_governor():
 def test_a_clear_sample_ends_the_stopping_bound():
     """A wall sample that stops arriving (a gate arch flown through) does not keep bounding the speed: the stopping
     source needs the newest looming sample to be a confirming wall sample."""
-    a = assist(cap_sources=('stopping',), sag_gain=0., sag_lead_gain=0.)
+    a = assist_v1(cap_sources=('stopping',), sag_gain=0., sag_lead_gain=0.)
     pilot, rows = wall_run(a, seconds=1.4, wall_x=9., clear_after=5.)
     stopped = [x for _, x, _, src in rows if src == 'stopping']
     assert stopped and min(stopped) < 5.
@@ -210,7 +236,7 @@ def test_a_clear_sample_ends_the_stopping_bound():
 
 
 def test_sag_compensation_adds_a_bounded_climb_and_respects_its_exclusions():
-    a = assist(cap_sources=(), sag_gain=1., sag_deadband=.3, sag_max=1., sag_rise=5., sag_fall=2.)
+    a = assist_v1(cap_sources=(), sag_gain=1., sag_deadband=.3, sag_max=1., sag_rise=5., sag_fall=2.)
     pilot, rows = run(velocity=(3., 0., -1.5), motor_assist=a, seconds=1.)
     _, flown, own, _ = rows[-1]
     assert flown[2]-own[2] == pytest.approx(1.)                           # (own - (-1.5) - 0.3) clipped to sag_max
@@ -238,7 +264,7 @@ def test_sag_compensation_adds_a_bounded_climb_and_respects_its_exclusions():
 
 
 def test_lead_bias_acts_at_low_speed_before_the_sink():
-    a = assist(cap_sources=(), sag_gain=0., sag_lead_gain=.3, sag_lead_deadband=.5, sag_lead_max_speed=2.5,
+    a = assist_v1(cap_sources=(), sag_gain=0., sag_lead_gain=.3, sag_lead_deadband=.5, sag_lead_max_speed=2.5,
                sag_rise=1000.)
     pilot = bare(a)
     # at 0.5 m/s asked for 4 m/s: a bias of 0.3 x (3.5 - 0.5) before any sink
@@ -250,7 +276,7 @@ def test_lead_bias_acts_at_low_speed_before_the_sink():
     pilot.assist_sag = 0.
     assert pilot._motor_assist(np.array([4., 0., 0.]), np.array([.5, 0., .5]), .01, 'cue', [])[2] == 0.
     # sag_lead_max_speed 0: at any speed
-    anywhere = bare(assist(cap_sources=(), sag_gain=0., sag_lead_gain=.3, sag_lead_deadband=.5, sag_lead_max_speed=0.,
+    anywhere = bare(assist_v1(cap_sources=(), sag_gain=0., sag_lead_gain=.3, sag_lead_deadband=.5, sag_lead_max_speed=0.,
                            sag_rise=1000.))
     assert anywhere._motor_assist(np.array([6., 0., 0.]), np.array([3., 0., 0.]), .01, 'cue', [])[2] == pytest.approx(.75)
 
@@ -289,9 +315,187 @@ def test_the_support_rule_reads_the_vertical_request_the_motor_received():
 def test_metadata_records_the_rule_and_its_activity():
     pilot, _ = run(motor_assist=assist(), velocity=(6., 0., -1.), cue=cue_toward([10., 12., 0.]), seconds=.5)
     meta = pilot.metadata()['motor_assist']
-    assert meta['version'] == 1 and meta['parameters']['cap_sources'] == ['request', 'governor', 'turn_first', 'stopping']
-    assert set(meta['seconds']) == {'request', 'governor', 'turn_first', 'stopping', 'sag'}
-    assert 'no course' in meta['input']
+    assert meta['version'] == 2 and meta['parameters']['cap_sources'] == ['request', 'governor', 'turn_first', 'stopping',
+                                                                          'approach']
+    assert set(meta['seconds']) == {'request', 'governor', 'turn_first', 'stopping', 'approach', 'sag'}
+    assert set(meta['v2_seconds']) == {'wall_ahead', 'slew_limited', 'approach', 'stopping'}
+    assert 'no course' in meta['input'] and 'version 2' in meta['rule']
+    pilot, _ = run(motor_assist=assist_v1(), velocity=(6., 0., -1.), cue=cue_toward([10., 12., 0.]), seconds=.5)
+    meta = pilot.metadata()['motor_assist']
+    assert meta['version'] == 1 and 'v2_seconds' not in meta and 'version 2' not in meta['rule']
+
+
+# ---------------------------------------------------------------------------------------------
+# Version 2: slew, wall ahead, approach, stand-off
+# ---------------------------------------------------------------------------------------------
+SIDE = dict(u=.98, v=.5, edge=True)                 # the marker clamped at the right edge: pilot state 'side'
+
+
+def wall_run_v2(config, *, seconds=1.8, speed=5., wall_x=12., cue=None, samples_until=None, clear_from=None):
+    """wall_run with full rows: a motor at a constant speed straight at a wall at wall_x (perfect looming every 0.055 s,
+    received 0.085 s later); `cue(x)` gives the marker (default: a ring straight ahead beyond the wall); no samples
+    from `samples_until` (x), long-TTC samples (a clear view) from `clear_from` (x). Rows: dict(t, x, own, flown, source,
+    plan, wall_ahead, sources)."""
+    history = CameraPoseHistory()
+    pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., motor_assist=config)
+    x, rows, pending, next_sample = 0., [], [], 0.
+    for k in range(int(round(seconds/.01))):
+        t = 10.+k*.01
+        s = senses(position=(x, 0., 5.), velocity=(speed, 0., 0.), yaw=0.)
+        history.append(t, [x, 0., 5.], s['quat'][0].numpy())
+        if k*.01 >= next_sample:
+            if samples_until is None or x < samples_until:
+                ttc = (wall_x-x)/speed if clear_from is None or x < clear_from else 5.
+                pending.append((t+.085, dict(time=t, ttc=ttc, distance=ttc*speed, below_fraction=.5, ttc_lower=ttc)))
+            next_sample += .055
+        sample = None
+        while pending and pending[0][0] <= t:
+            sample = pending.pop(0)[1]
+        extra = dict(clearance=sample) if sample is not None else {}
+        marker = cue(x) if cue is not None else cue_toward([wall_x+10.-x, 0., 0.])
+        pilot.update(s, [0., 0., 0.], dict(race_cue=dict(marker)), t-.05, t, **extra)
+        rows.append(dict(t=t, x=x, own=np.array(pilot.pilot_command, float), flown=pilot.velocity_command.copy(),
+                         source=pilot.assist_source, plan=pilot.assist_plan, wall_ahead=pilot.assist_wall_ahead,
+                         sources=[name for name, _, _ in pilot.assist_sources]))
+        x += speed*.01
+    return pilot, rows
+
+
+def test_v2_slew_bounds_the_assists_change_per_tick_on_onsets_and_releases():
+    """Version 1 stepped the request by metres per second in one tick at a stopping onset; version 2 moves the assist's
+    change (flown - own) by at most slew x dt, horizontally and vertically, also when a clear sample releases it."""
+    _, rows_v1 = wall_run_v2(assist_v1(), wall_x=9., clear_from=5.5, seconds=1.2)
+    steps_v1 = [np.linalg.norm((b['flown']-b['own'])[:2]-(a['flown']-a['own'])[:2]) for a, b in zip(rows_v1, rows_v1[1:])]
+    assert max(steps_v1) > .5                                          # > 3 x the slew room
+    config = assist()
+    for kw in (dict(wall_x=9., clear_from=5.5, seconds=1.2), dict(cue=lambda x: SIDE)):
+        pilot, rows = wall_run_v2(config, **kw)
+        delta = np.array([r['flown']-r['own'] for r in rows])
+        assert np.abs(delta).max() > .5                                    # the assist acted
+        room = config.slew*.01+1e-9
+        assert np.linalg.norm(np.diff(delta[:, :2], axis=0), axis=1).max() <= room
+        assert np.abs(np.diff(delta[:, 2])).max() <= room
+    # the release: after the clear sample the change returns to exactly zero, at the slew
+    _, rows = wall_run_v2(config, wall_x=9., clear_from=5.5, seconds=1.6)
+    assert np.array_equal(rows[-1]['flown'], rows[-1]['own'])
+
+
+def test_v2_with_the_ring_ahead_the_stopping_model_only_approaches_never_below_the_floor():
+    """The ring straight ahead through the looming surface (a gate arch flown through): no wall-ahead condition, the
+    stopping model plans the approach and its bound never falls below floor_speed, even at the surface."""
+    config = assist()
+    pilot, rows = wall_run_v2(config, wall_x=9., seconds=1.8)
+    plans = [r['plan'] for r in rows if np.isfinite(r['plan'])]
+    assert plans and min(plans) == pytest.approx(config.floor_speed)
+    assert not any(r['wall_ahead'] for r in rows) and all('stopping' not in r['sources'] for r in rows)
+    assert any(r['source'] == 'approach' for r in rows)
+    assert pilot.motor_assist_summary()['v2_seconds']['approach'] > 0
+    # the approach bound is the declared stopping model, floored
+    from haltere.liftoff.fast_race_cue import stopping_speed
+    far = [r for r in rows if 'approach' in r['sources'] and r['plan'] > config.floor_speed+.1]
+    assert far and all(r['plan'] >= config.floor_speed for r in far)
+    v = stopping_speed(3., config.stop_deceleration, config.stop_latency_s, config.stop_margin_m)
+    assert v == pytest.approx(max(config.floor_speed, v)) or v < config.floor_speed
+
+
+def test_v2_wall_ahead_stops_and_keeps_the_wall_until_a_clear_view():
+    """The marker clamped at the side (the next ring does not lie through the surface): the stopping source plans a stop
+    at the wall; once the samples stop (no evidence at arm's length) it keeps the latest wall for stop_memory_s after
+    the last confirmation, and a clear sample ends it at once."""
+    config = assist()
+    _, rows = wall_run_v2(config, cue=lambda x: SIDE, wall_x=9., seconds=1.75)
+    stops = [r for r in rows if 'stopping' in r['sources']]
+    assert stops and all(r['wall_ahead'] for r in stops) and min(r['plan'] for r in stops) == pytest.approx(0.)
+    # no samples from x = 3.5 m (TTC 1.17 s there): the stop continues on memory, then ends stop_memory_s after the
+    # last confirmation
+    short = assist(stop_memory_s=.5)
+    _, rows = wall_run_v2(short, cue=lambda x: SIDE, speed=3., wall_x=7., samples_until=3.5, seconds=2.2)
+    last_sample = max(r['t'] for r in rows if r['x'] < 3.5)+.085
+    kept = [r['t'] for r in rows if 'stopping' in r['sources'] and r['t'] > last_sample+.2]
+    # (the last confirmation is up to stop_window_s after the last sample's receipt)
+    end = last_sample+short.stop_window_s+short.stop_memory_s+.02
+    assert kept and end-.1 <= max(kept) <= end
+    assert not any('stopping' in r['sources'] for r in rows if r['t'] > end)
+    # a clear sample ends it
+    _, rows = wall_run_v2(config, cue=lambda x: SIDE, wall_x=12., clear_from=4., seconds=1.5)
+    assert not any('stopping' in r['sources'] for r in rows if r['x'] > 4.+5.*(.055+.085)+1e-9)
+    # version 1 has no memory: the samples stop, the bound ends
+    _, rows = wall_run_v2(assist_v1(), cue=lambda x: SIDE, speed=3., wall_x=7., samples_until=3.5, seconds=2.2)
+    assert not any(r['source'] == 'stopping' for r in rows if r['t'] > last_sample+.3)
+
+
+def test_v2_wall_ahead_conditions():
+    from haltere.liftoff.fast_race_cue import TtcClearanceGovernor
+    pilot = bare(assist())
+    for state in ('side', 'coast', 'search'):
+        assert pilot._assist_wall_ahead(state, 0., 10.)
+    assert not pilot._assist_wall_ahead('cue', 0., 10.)                   # no marker bearing yet: nothing off heading
+    pilot.direction = np.array([np.cos(np.radians(60.)), np.sin(np.radians(60.)), 0.])
+    assert pilot._assist_wall_ahead('cue', 0., 10.) and pilot._assist_wall_ahead('below', 0., 10.)
+    assert not pilot._assist_wall_ahead('cue', np.radians(40.), 10.)     # 20 deg off
+    pilot.turn_first_active = True
+    assert pilot._assist_wall_ahead('cue', np.radians(40.), 10.)
+    pilot.turn_first_active = False
+    pilot.clearance = TtcClearanceGovernor()
+    pilot.clearance.cap, pilot.clearance.standoff_until = 1., 11.
+    assert not pilot._assist_wall_ahead('cue', np.radians(40.), 10.)     # the declared rule leaves the stand-off out
+    assert bare(assist(wall_ahead_standoff=True))._assist_wall_ahead.__self__ is not None
+    other = bare(assist(wall_ahead_standoff=True))
+    other.clearance, other.direction = pilot.clearance, pilot.direction
+    assert other._assist_wall_ahead('cue', np.radians(40.), 10.)
+    launching = bare(assist())
+    launching.launching = True
+    assert not launching._assist_wall_ahead('side', 0., 10.)
+
+
+def test_v2_no_approach_while_the_pilots_own_path_climbs():
+    """A surface looming while the pilot follows its checkpoint up (rising ground: the vertical guard's) gets no
+    approach bound; version 2 reads the pilot's vertical request before the governor and the guard."""
+    config = assist()
+    up = lambda x: cue_toward([22.-x, 0., 4.])                           # the ring well above: the pilot climbs
+    _, rows = wall_run_v2(config, cue=up, wall_x=9., seconds=1.6)
+    assert not any('approach' in r['sources'] for r in rows)
+    _, rows = wall_run_v2(assist(approach_climb_max=10.), cue=up, wall_x=9., seconds=1.6)
+    assert any('approach' in r['sources'] for r in rows)
+
+
+def test_v2_no_governor_tracking_during_its_standoff():
+    from haltere.liftoff.fast_race_cue import TtcClearanceGovernor
+    for tracking, expected in ((False, False), (True, True)):
+        pilot = bare(assist(standoff_tracking=tracking))
+        pilot.clearance = TtcClearanceGovernor()
+        pilot.clearance.standoff_until = 11.
+        pilot.pilot_command = np.array([1.5, 0., 0.])
+        pilot.clearance_braking = True
+        sources = pilot._assist_sources('cue', .8, np.array([1., 0., 0.]), None, np.inf, np.zeros(3), 10.)
+        assert any(name == 'governor' for name, _, _ in sources) is expected
+        sources = pilot._assist_sources('cue', .8, np.array([1., 0., 0.]), None, np.inf, np.zeros(3), 12.)
+        assert any(name == 'governor' for name, _, _ in sources)
+
+
+def test_v2_approach_and_stopping_share_one_extra_reduction():
+    """A wall-ahead condition that starts mid-approach (the arch passed, the next marker to the side) carries the cap
+    tracking's extra reduction over instead of restarting it from zero."""
+    pilot = bare(assist(slew=0., sag_gain=0., sag_lead_gain=0.))
+    h = np.array([1., 0.])
+    for _ in range(20):
+        pilot._motor_assist(np.array([5., 0., 0.]), np.array([5., 0., 0.]), .01, 'cue', [('approach', h, 3.)])
+    carried = pilot.assist_extra['stopping']
+    assert carried > .5 and pilot.assist_extra['approach'] == 0.
+    out = pilot._motor_assist(np.array([5., 0., 0.]), np.array([5., 0., 0.]), .01, 'side', [('stopping', h, 3.)])
+    assert pilot.assist_extra['stopping'] >= carried and out[0] == pytest.approx(3.-pilot.assist_extra['stopping'])
+    assert pilot.assist_plan == 3.
+
+
+def test_v2_passthrough_scenario_geometry():
+    from haltere.liftoff.motor_assist_eval import _wall_hit, passthrough_scenario
+    sc = passthrough_scenario(turn_deg=90., surface_m=.5, see_through_m=1.5)
+    (surface,) = sc['loom_walls']
+    assert sc['walls'] == [] and sc['kind'] == 'passthrough' and sc['arch_ring'] == 0
+    assert np.allclose(surface[0][1], 24.5) and np.allclose(surface[1][1], 24.5)       # 0.5 m beyond R1 (y 24)
+    hit = _wall_hit(np.array([0., 20., .8]), np.array([0., 5., 0.]), np.array([0., 1.]), sc['loom_walls'])
+    assert hit == (pytest.approx(4.5), pytest.approx(5.))
+    assert np.allclose(sc['rings'][1], sc['rings'][0]+np.array([15., 0., 0.]))          # R2 after a right turn
 
 
 # ---------------------------------------------------------------------------------------------
@@ -376,6 +580,20 @@ def test_full_stack_with_the_rule_off_is_bit_identical_to_m4():
     assert not np.array_equal(assisted, trace)
 
 
+# the full stack with motor assist version 1 (its kept declaration), computed with this function on `git archive m4b`
+M4B_V1_ASSIST_DIGEST = 'e3dd0b2490eb9f9565f9f0b6d0017427ae267918c582a8c9844ab1b080372a43'
+
+
+def test_version_1_rebuilt_from_its_kept_declaration_is_bit_identical_to_m4b():
+    from haltere.liftoff.fast_race_cue import motor_assist_for_contract
+    from haltere.liftoff.visual_brain import MOTOR_ASSIST_DECLARATION
+    kept = json.loads(MOTOR_ASSIST_DECLARATION.with_name('motor_assist_v1.json').read_text(encoding='utf-8'))
+    trace, pilot = stack_scenario(motor_assist=motor_assist_for_contract(kept, 'fast_velocity_brain_v1'))
+    digest = hashlib.sha256(np.ascontiguousarray(trace.astype(np.float64)).tobytes()).hexdigest()
+    assert pilot.motor_assist_summary()['seconds']['stopping'] > 0
+    assert digest == M4B_V1_ASSIST_DIGEST
+
+
 # ---------------------------------------------------------------------------------------------
 # Runner and replay harness
 # ---------------------------------------------------------------------------------------------
@@ -388,10 +606,11 @@ def test_runner_flag_columns_and_refusals(tmp_path):
     assert resolve_motor_assist(SimpleNamespace(motor_assist='on')) == str(MOTOR_ASSIST_DECLARATION)
     assert resolve_motor_assist(SimpleNamespace(motor_assist='x.json')) == 'x.json'
     row = motor_assist_row(None)
-    assert len(row) == len(MOTOR_ASSIST_COLUMNS) == 6 and all(np.isnan(row[:5])) and row[5] == ''
+    assert len(row) == len(MOTOR_ASSIST_COLUMNS) == 8 and all(np.isnan(row[:5])) and row[5] == ''
+    assert MOTOR_ASSIST_COLUMNS[6:] == ('assist_plan', 'assist_wall_ahead') and all(np.isnan(row[6:]))
     pilot, _ = run(motor_assist=assist(), velocity=(6., 0., -1.), cue=cue_toward([10., 12., 0.]), seconds=.5)
     values = motor_assist_row(pilot)
-    assert all(np.isfinite(values[:5])) and isinstance(values[5], str)
+    assert all(np.isfinite(values[:5])) and isinstance(values[5], str) and values[7] in (0., 1.)
     with pytest.raises(ValueError, match='fast pilot'):
         VisualController('missing.pt', 'missing.json', 'cpu', pilot_assistance='race-cue', motor_assist='x.json')
     unfrozen = tmp_path/'assist.json'
@@ -425,19 +644,23 @@ def test_scenario_wall_geometry():
 # ---------------------------------------------------------------------------------------------
 # The frozen declaration and gates
 # ---------------------------------------------------------------------------------------------
-DECLARATION_SHA256 = 'eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02'
+DECLARATION_SHA256 = 'f3f3502247d766b8b59529350746ca53e6c24a66bc818dc1f4494e65e2e36901'
+V1_DECLARATION_SHA256 = 'eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02'
+GATES_SHA256 = '8d7ce785478697b490b370ab09b2cc359be90231a7a43dde249f306ecac47264'
+V1_GATES_SHA256 = '9abfb80d9ff95a65d0b6400bef0133966aa0de83644c4f55980d1ef34cb7e3c5'
 
 
 def test_frozen_declaration_assigns_the_rule_to_the_brain_contract_only(tmp_path):
     from haltere.liftoff.fast_race_cue import MotorAssistConfig, motor_assist_for_contract
     from haltere.liftoff.visual_brain import MOTOR_ASSIST_DECLARATION, load_motor_assist
     declaration, digest = load_motor_assist()
-    assert digest == DECLARATION_SHA256 and declaration['version'] == 1
+    assert digest == DECLARATION_SHA256 and declaration['version'] == 2
     # the declared brain entry is the code's default rule; the fast PD (and any other contract) has none
     assert motor_assist_for_contract(declaration, 'fast_velocity_brain_v1') == MotorAssistConfig()
     assert motor_assist_for_contract(declaration, 'fast_velocity_pd_v1') is None
     assert 'fast_velocity_pd_v1' in declaration['contracts']
-    # an edited copy or another version is refused
+    assert declaration['previous_versions'][0]['sha256'] == V1_DECLARATION_SHA256
+    # an edited copy or another version is refused; the runner refuses the kept version 1
     edited = json.loads(MOTOR_ASSIST_DECLARATION.read_text(encoding='utf-8'))
     edited['contracts']['fast_velocity_brain_v1']['cap_gain'] = 3.
     path = tmp_path/'edited.json'
@@ -445,22 +668,63 @@ def test_frozen_declaration_assigns_the_rule_to_the_brain_contract_only(tmp_path
     with pytest.raises(ValueError, match='frozen'):
         load_motor_assist(path)
     from haltere.train.brake_gates import gates_sha256
-    other = dict(declaration, version=2)
+    other = dict(declaration, version=3)
     other['sha256'] = gates_sha256(other)
     path.write_text(json.dumps(other), encoding='utf-8')
     with pytest.raises(ValueError, match='version'):
         load_motor_assist(path)
+    kept = MOTOR_ASSIST_DECLARATION.with_name('motor_assist_v1.json')
+    with pytest.raises(ValueError, match='version 1'):
+        load_motor_assist(kept)
+    v1 = json.loads(kept.read_text(encoding='utf-8'))
+    assert v1['version'] == 1 and v1['sha256'] == V1_DECLARATION_SHA256 == gates_sha256(v1)
 
 
 def test_frozen_gates_name_the_frozen_declaration():
     from haltere.liftoff.motor_assist_gates import load_gates
     gates, digest, declaration = load_gates()
+    assert digest == GATES_SHA256 and gates['version'] == 2
     assert gates['motor_assist']['sha256'] == DECLARATION_SHA256 == declaration['sha256']
-    # the held-out scenario sets and seeds differ from the development sets the rule was designed on
-    assert gates['hairpin']['sim_seed'] != 17 and gates['accelerate']['sim_seed'] != 17
-    assert not set(gates['hairpin']['set']['turn_deg']) & {20., 60., 90.}
-    assert not set(gates['accelerate']['set']['bearing_deg']) & {0., 90., 150.}
-    assert set(gates['controllers']) == {'brain08', 'brain09b', 'brain10b'}
+    assert set(gates['controllers']) == {'brain11cw13', 'brain09b', 'brain10b'}
+    # the held-out hairpin set, seeds and hill courses differ from every development set of either version
+    h = gates['hairpin']
+    assert h['sim_seed'] not in (17, 23) and gates['passthrough']['sim_seed'] not in (17, 23)
+    assert not set(h['set']['turn_deg']) & {20., 60., 90., 45., 75., 105.}
+    assert not set(h['set']['arch_m']) & {7., 11., 8., 13.} and not set(h['set']['wall_m']) & {2.1, 2.6, 2.3, 3.}
+    assert gates['course_sets']['hill'] == ['hill:6300-6311']
+    r = gates['replays']
+    assert not set(r['minus_heldout']) & set(r['minus_development'])
+    assert 'minus-brain11cw13-r4b-noassist-01' in r['minus_development']
+    assert r['quiet_heldout'] == ['straw-brain11cw13-r4b-noassist-02']
+    # the kept version-1 gates still load, with the kept version-1 declaration
+    v1, v1_digest, v1_declaration = load_gates(REPO_GATES_V1)
+    assert v1_digest == V1_GATES_SHA256 and v1_declaration['sha256'] == V1_DECLARATION_SHA256
+    assert gates['previous_versions'][0]['sha256'] == V1_GATES_SHA256
+
+
+def test_gate_replay_metrics_on_a_synthetic_log():
+    """motor_assist_gates.replay_metrics / warning_s: planned-crawl episodes before x, the per-tick slew rates and the
+    source activity, on a hand-made replay."""
+    from haltere.liftoff.motor_assist_gates import replay_metrics, warning_s
+    n = 300
+    t = np.arange(n)*.01
+    a = dict(t=t, now=t+100., x=np.linspace(0., 90., n), assist_pilot_vx=np.full(n, 5.), assist_pilot_vy=np.zeros(n),
+             assist_pilot_vz=np.zeros(n), cvx=np.full(n, 5.), cvy=np.zeros(n), cvz=np.zeros(n),
+             assist_plan=np.full(n, np.nan), assist_source=np.array(['']*n, dtype='<U12'), assist_wall_ahead=np.zeros(n))
+    a['assist_plan'][50:70] = 1.5                        # a planned crawl of 0.19 s at x 15-21 m
+    a['assist_plan'][260:280] = 0.                       # a stop beyond x = 73 m (the hairpin): not counted
+    a['cvx'][100:120] = 5.-np.minimum(np.arange(20)*.15, 2.)
+    a['assist_source'][100:120] = 'approach'
+    a['cvx'][280:] = 3.5
+    m = replay_metrics(a)
+    assert len(m['planned_crawl_episodes']) == 1 and m['planned_crawl_episodes'][0]['min_plan'] == 1.5
+    assert m['rate_h'] == pytest.approx(200.) and m['rate_z'] == 0. and m['zero_dt_change'] == 0.   # the 2 m/s release
+    assert m['active_s_per_min']['approach'] == pytest.approx(.2/(t[-1]/60), abs=1e-3)
+    assert m['stop_model_removed_share'] > 0 and m['removed_share'] >= m['stop_model_removed_share']
+    assert warning_s(a) == pytest.approx(t[-1]-t[107]) and warning_s(a, window_s=1.) == pytest.approx(t[-1]-t[280])
+
+
+REPO_GATES_V1 = Path(__file__).resolve().parents[1]/'configs'/'pilot'/'motor_assist_gates_v1.json'
 
 
 def test_replay_harness_adds_nothing_for_the_fast_pd():
