@@ -243,11 +243,12 @@ TURN_FIRST_HANDOFF_STATES = ('search', 'launch', 'wait', 'support_climb')
 # The wall-pilot declaration version whose rules this code implements (TurnFirstConfig, CeilingGuardConfig);
 # version 2 added the ceiling guard's overhead_min_rise, version 3 its overhead_positive, version 4 replaced
 # turn-first's fixed slow_speed engagement with the stopping-distance one, version 5 added the clearance brake's
-# sink floor (ClearanceBrakeConfig). Runners fly only WALL_PILOT_VERSION (versions 1-4 are kept for provenance and
-# refused); WALL_PILOT_VERSIONS are the versions this code can rebuild for replays (version 4: the same rules without
-# the sink floor).
-WALL_PILOT_VERSION = 5
-WALL_PILOT_VERSIONS = (4, 5)
+# sink floor (ClearanceBrakeConfig), version 6 the ceiling guard's any_climb (the overhead cut bounds every climb, not
+# only the governor's). Runners fly only WALL_PILOT_VERSION (versions 1-5 are kept for provenance and refused);
+# WALL_PILOT_VERSIONS are the versions this code can rebuild for replays (version 4: the same rules without the sink
+# floor; version 5: without any_climb).
+WALL_PILOT_VERSION = 6
+WALL_PILOT_VERSIONS = (4, 5, 6)
 # Pilot state in which the checkpoint's bearing is unknown (its marker was lost for more than 0.25 s and the pilot
 # repeats its last request): turn-first may engage there too (version 4), with the horizontal request bounded to
 # coast_creep_speed, because the direction to creep toward is not known.
@@ -603,6 +604,18 @@ class CeilingGuardConfig:
       vertical request is bounded to vertical_cap, brought down at up to vertical_slew m/s^2.
     Below-path climbs (below_fraction >= terrain_fraction) are otherwise unchanged. Declaration version 3
     (version 1 had no overhead_min_rise, version 2 no overhead_positive).
+    any_climb (ceiling-guard version 4, wall-pilot declaration version 6; False in the earlier versions): the overhead
+    cut is not limited to the governor's own terrain climb. Whenever the measured vertical speed exceeds
+    overhead_min_rise, whatever made the drone climb (a support climb, a contact-support climb, the search climb, the
+    motor assist's sag climb, the climb of a ring clipped at the top edge, a coast on an earlier climb request), confirmed
+    overhead evidence starts the overhead hold and bounds the whole vertical request to vertical_cap. The one exception
+    is the pilot's own climb toward the ring in view (pilot state cue, no motor-assist sag climb; the pilot tells the
+    governor each tick through `extra_climb`): it aims at a ring, which lies below any ceiling it flies under, and on
+    the Straw Bale uphill the arch over a ring read as overhead evidence (development replays). Outside a governor climb
+    a sample without vertical evidence is overhead evidence only when the lower window does not explain it (the same
+    test as during a climb: its lower-surface TTC unknown or longer than lower_ratio x the alarm TTC), so the surface
+    below a climbing path is never read as a ceiling. On the Minus Two garage (2.2 m) the earlier versions let every
+    climb but the governor's rise into the ceiling (round-4b review).
     """
     lower_ratio: float = 1.
     weak_climb: float = 1.
@@ -615,9 +628,12 @@ class CeilingGuardConfig:
     hold_s: float = 1.
     vertical_cap: float = 0.
     vertical_slew: float = 15.
+    any_climb: bool = False
 
     def __post_init__(self):
         values = asdict(self)
+        if not isinstance(values.pop('any_climb'), bool):
+            raise ValueError('any_climb is true or false')
         cap = values.pop('vertical_cap')
         if not np.isfinite(list(values.values())+[cap]).all() or min(values.values()) <= 0:
             raise ValueError('Use finite positive ceiling-guard parameters (vertical_cap may be <= 0)')
@@ -658,9 +674,9 @@ def wall_pilot_configs(declaration, contract=None):
     """dict(turn_first=TurnFirstConfig, ceiling_guard=CeilingGuardConfig[, clearance_brake=ClearanceBrakeConfig]) from
     a wall-pilot declaration already parsed (and hash-checked) by the runner; refuses a rule version this code does
     not implement (WALL_PILOT_VERSIONS; the runner itself flies only WALL_PILOT_VERSION). Version 5 adds the clearance
-    brake's sink floor. Turn-first's stopping model (the motor's measured braking) is declared per motor contract
-    under 'turn_first_stopping'; a contract it does not list (or None) gets its 'default' entry. This module reads no
-    files."""
+    brake's sink floor, version 6 the ceiling guard's any_climb. Turn-first's stopping model (the motor's measured
+    braking) is declared per motor contract under 'turn_first_stopping'; a contract it does not list (or None) gets its
+    'default' entry. This module reads no files."""
     version = (declaration or {}).get('version')
     if version not in WALL_PILOT_VERSIONS:
         raise ValueError(f'The wall-pilot declaration is version {version}; the fast pilot implements versions '
@@ -669,8 +685,11 @@ def wall_pilot_configs(declaration, contract=None):
     if not isinstance(stopping, dict) or not isinstance(stopping.get('default'), dict):
         raise ValueError('A wall-pilot declaration lists turn-first stopping models per motor contract and a default')
     model = stopping.get(contract) if isinstance(stopping.get(contract), dict) else stopping['default']
+    ceiling = dict(declaration['ceiling_guard'])
+    if (version >= 6) != (ceiling.get('any_climb') is True):
+        raise ValueError('Wall-pilot version 6 (and only it) declares the ceiling guard\'s any_climb true')
     out = dict(turn_first=TurnFirstConfig(**declaration['turn_first'], **model),
-               ceiling_guard=CeilingGuardConfig(**declaration['ceiling_guard']))
+               ceiling_guard=CeilingGuardConfig(**ceiling))
     if version >= 5:
         out['clearance_brake'] = ClearanceBrakeConfig(**declaration['clearance_brake'])
     return out
@@ -828,10 +847,14 @@ def vertical_guard_config(declaration):
     return VerticalGuardConfig(**declaration['vertical_guard'])
 
 
-# The descent-view declaration version runners fly (DescentViewConfig and, from version 2, ContactSupportConfig);
-# runners refuse others. DESCENT_VIEW_VERSIONS are the versions this code can rebuild (for replays and the surrogate).
-DESCENT_VIEW_VERSION = 2
-DESCENT_VIEW_VERSIONS = (1, 2)
+# The descent-view declaration version runners fly (DescentViewConfig and, from version 2, ContactSupportConfig; version 3
+# is contact support version 3); runners refuse others. DESCENT_VIEW_VERSIONS are the versions this code can rebuild
+# (for replays and the surrogate).
+DESCENT_VIEW_VERSION = 3
+DESCENT_VIEW_VERSIONS = (1, 2, 3)
+# Contact-support modes of the runner (--contact-support; descent view version 3): applied, not built, or computed and
+# logged without a climb.
+CONTACT_SUPPORT_MODES = ('on', 'off', 'shadow')
 # States whose horizontal request follows the speed schedule toward the ring (the view rule may restore it).
 DESCENT_VIEW_BOOST_STATES = ('cue', 'below', 'below_weak')
 
@@ -903,6 +926,8 @@ def descent_view_config(declaration):
 
 # Gravity of the contact rule's thrust model (the fast PD's value).
 CONTACT_GRAVITY = 9.81
+# Version 3: the most recent observed gains kept for the gain learnt before arming (5 s of 100 Hz windows).
+CONTACT_PREARM_WINDOWS = 500
 
 
 @dataclass(frozen=True)
@@ -938,6 +963,26 @@ class ContactSupportConfig:
     randomises the thrust by up to about +-20%, which the gain absorbs.
     Reads only the measured velocity and attitude, the throttle the motor issued and the pad calibration: no height above
     ground, no course geometry.
+
+    Version 3 (descent-view declaration version 3; `version` 3, and the fields below set; version 2 leaves them None /
+    0 / True and behaves as above, bit for bit):
+    - Manoeuvre windows are not used (round-4b review: the fast PD's airborne hard brakes read 1.0-1.8 m/s^2 of
+      unexplained upward force for 0.15-0.29 s as the nose pitched up, before the horizontal speed fell; the thrust of
+      the mean drive underestimates a motor set split hard for a pitch or roll manoeuvre): a window whose highest
+      pitch/roll body rate (hypot of the body x and y rates the pilot receives) exceeds max_body_rate, or whose
+      horizontal speed along its first horizontal velocity falls faster than max_braking, is not valid (no suspicion,
+      no gain learning), as a window outside the drive range.
+    - The gain is learnt before arming (round-4b integration: a drone about 15% above the curve read 1.2-1.5 m/s^2 at
+      arming with the gain still 1 and fired): from learn_after_s after the pilot's first tick (the runner's throttle
+      ramp ends at 3 s; every sample of the window at or after it) and not while launching, every valid window that
+      is quiet (unexplained <= gain_quiet at the current gain) or rising (lowest vz >= gain_rising) adds its observed
+      gain, and the gain is the median of those (within [gain_min, gain_max]). The rule arms once arm_after_s has
+      passed AND arm_learn_s seconds of such windows were collected; afterwards the gain follows version 2's slow
+      learning. A drone that never gives such a window is never armed (the older support rules still act).
+    - turn_first_handoff False: a support climb this rule starts never ends a turn-first episode (a false or true
+      contact at a wall must not hand the horizontal request back toward the wall).
+    With the runner's --contact-support shadow the rule is computed and logged (contact_fire marks where it would start
+    a climb) and changes nothing: no support climb, no timer reset, no turn-first effect.
     """
     thrust_twr: float = 3.1378033647887618
     thrust_exponent: float = 1.9728633605611887
@@ -958,11 +1003,30 @@ class ContactSupportConfig:
     gain_step: float = .15
     gain_min: float = .75
     gain_max: float = 1.3
+    # version 3 (None / 0 / True: version 2)
+    version: int = 2
+    max_body_rate: float = None
+    max_braking: float = None
+    learn_after_s: float = None
+    arm_learn_s: float = 0.
+    turn_first_handoff: bool = True
 
     def __post_init__(self):
         drag = tuple(float(v) for v in self.body_drag_s_inv)
         object.__setattr__(self, 'body_drag_s_inv', drag)
-        values = [v for k, v in asdict(self).items() if k != 'body_drag_s_inv']
+        v3 = ('max_body_rate', 'max_braking', 'learn_after_s')
+        if self.version not in (2, 3) or not isinstance(self.turn_first_handoff, bool):
+            raise ValueError('Contact support is version 2 or 3; turn_first_handoff is true or false')
+        if self.version == 2 and (any(getattr(self, k) is not None for k in v3) or self.arm_learn_s != 0
+                                  or not self.turn_first_handoff):
+            raise ValueError('Contact support version 2 has no manoeuvre exclusion, gain learning before arming or '
+                             'turn-first rule')
+        if self.version == 3 and not all(getattr(self, k) is not None and np.isfinite(getattr(self, k))
+                                         and getattr(self, k) > 0 for k in v3+('arm_learn_s',)):
+            raise ValueError('Contact support version 3 declares positive max_body_rate, max_braking, learn_after_s '
+                             'and arm_learn_s')
+        values = [v for k, v in asdict(self).items() if k not in ('body_drag_s_inv', 'version', 'turn_first_handoff')
+                  + v3]
         if len(drag) != 3 or not np.isfinite(values+list(drag)).all() or min(drag) < 0:
             raise ValueError('Use finite contact-support parameters and three non-negative drag coefficients')
         if min(self.thrust_twr-1, self.thrust_exponent, self.window_s, self.hold_s, self.unexplained_on,
@@ -973,13 +1037,26 @@ class ContactSupportConfig:
             raise ValueError('Use 0 <= drive_min < drive_max <= 1 and gain bounds around one')
 
 
+# The contact-support fields a descent-view declaration of version 3 must declare beyond version 2's.
+CONTACT_SUPPORT_V3_FIELDS = ('max_body_rate', 'max_braking', 'learn_after_s', 'arm_learn_s', 'turn_first_handoff')
+
+
 def contact_support_config(declaration):
     """The ContactSupportConfig of a descent-view declaration (version 2 and later; None for version 1, which has no
-    contact rule). This module reads no files."""
+    contact rule; version 3 declares CONTACT_SUPPORT_V3_FIELDS too). This module reads no files."""
     descent_view_config(declaration)            # the same version check
-    if declaration['version'] < 2:
+    version = declaration['version']
+    if version < 2:
         return None
-    return ContactSupportConfig(**declaration['contact_support'])
+    block = dict(declaration['contact_support'])
+    if 'version' in block:
+        raise ValueError('The contact-support block takes its version from the declaration')
+    missing = [k for k in CONTACT_SUPPORT_V3_FIELDS if k not in block]
+    if version >= 3 and missing:
+        raise ValueError(f'Descent-view version {version} declares contact support {missing}')
+    if version == 2:
+        return ContactSupportConfig(**block)
+    return ContactSupportConfig(**block, version=3)
 # The motor-assist declaration version whose rule this code implements (MotorAssistConfig); runners fly only this one.
 # MOTOR_ASSIST_VERSIONS are the versions this code can rebuild for replays: versions 1 and 2 are kept for provenance
 # (the kept version-1 and version-2 declarations in configs/pilot) and refused by the runner; version-1 entries get
@@ -1227,6 +1304,9 @@ class TtcClearanceGovernor:
                            standoff_engagements=0)
         # Ceiling guard state (unused without it)
         self.overhead_until = -np.inf
+        # any_climb: whether the climb comes from something else than the pilot's own climb toward the ring in view
+        # (set by the pilot each tick; True when nobody sets it)
+        self.extra_climb = True
         self.overhead_times = []        # (receipt time, positive) of recent overhead samples
         self.strong_height = None       # height where the last below-path climb request was accepted
         self.vertical_cap = None
@@ -1388,7 +1468,13 @@ class TtcClearanceGovernor:
                 self.counts['unexplained_walls'] += int(climbing and unexplained)
             recent = [r for r in self.samples if s['received']-r['received'] <= c.confirm_window_s
                       and r['received'] <= s['received']]
-            if (g is not None and (climbing or overhead) and rise > g.overhead_min_rise and ttc < g.overhead_ttc_s
+            if g is not None and g.any_climb and not climbing and s['below'] is None:
+                # ceiling-guard version 4 outside a governor climb: a sample the lower window explains is the surface
+                # below the climbing path, not a ceiling (during a governor climb `unexplained` is this same test)
+                unexplained = not (s['ttc_lower'] is not None
+                                   and s['ttc_lower'] <= g.lower_ratio*max(s['ttc'], 1e-3))
+            if (g is not None and (climbing or overhead or (g.any_climb and self.extra_climb))
+                    and rise > g.overhead_min_rise and ttc < g.overhead_ttc_s
                     and (unexplained or (s['below'] is not None and s['below'] <= g.overhead_fraction))):
                 # the alarm lies above a rising path (or is not explained by the surface below it); positive when
                 # something shows it is not the surface below (expansion above the path, or a farther lower surface)
@@ -1526,7 +1612,8 @@ class FastRaceCue:
                  yaw_curve=DEFAULT_YAW_CURVE, calibration=None, velocity_scale=None, clearance_config=None,
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
                  ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None,
-                 contact_support=None, clearance_brake=None, motor_assist=None, clearance_ray=None, stale_apply=True):
+                 contact_support=None, clearance_brake=None, motor_assist=None, clearance_ray=None, stale_apply=True,
+                 contact_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -1664,7 +1751,12 @@ class FastRaceCue:
         if contact_support is not None and self.calibration is None:
             raise ValueError('Contact support needs the pad throttle calibration (the issued throttle\'s thrust)')
         self.contact_support = contact_support
-        self.contact_samples = []              # (time, measured vz, nominal thrust along world z, drag z, drive)
+        # False (--contact-support shadow, version 3): the rule is computed and logged, and starts no climb
+        self.contact_apply = bool(contact_apply)
+        if not self.contact_apply and (contact_support is None or contact_support.version < 3):
+            raise ValueError('Contact support in shadow needs a version-3 ContactSupportConfig')
+        self.contact_samples = []              # (time, measured vz, nominal thrust along world z, drag z, drive[, vx, vy,
+                                               # pitch/roll body rate: version 3])
         self.contact_throttle = []             # (issue time, issued throttle) of recent motor commands
         self.contact_gain = 1.                 # thrust gain against the declared curve (learnt in free air)
         self.contact_first = None              # the pilot's first tick (arming)
@@ -1673,6 +1765,15 @@ class FastRaceCue:
         self.contact_fired = False             # the rule started a support climb this tick
         self.contact_time = dict(valid=0., suspected=0., gain_updates=0.)
         self.contact_onsets = 0
+        self.climb_source = None               # what set climb_until last: 'contact' (this rule) or 'support' (older)
+        if contact_support is not None and contact_support.version >= 3:
+            self.contact_time.update(excluded=0., prearm_learning=0.)
+        self.contact_prearm = []               # version 3: observed gains of the windows learnt before arming
+        self.contact_learned_s = 0.            # version 3: seconds of those windows
+        self.contact_armed = False             # the rule is armed (version 3: logged)
+        self.contact_armed_at = None           # seconds after the first tick at which it armed
+        self.contact_excluded = False          # version 3: this tick's window is a manoeuvre window (not used)
+        self.contact_shadow_until = None       # shadow: end of the climb the rule would have started
         # Motor assist (off unless declared for the motor contract): see MotorAssistConfig. With it, velocity_command
         # after update() is the assisted request the motor receives; pilot_command keeps the pilot's own request, which
         # is restored as the pilot's state at the start of the next update().
@@ -2009,7 +2110,11 @@ class FastRaceCue:
         off = self._bearing_off_deg(yaw)
         self.side_guard_active = False
         if self.turn_first_since is not None:
-            end = ('handoff' if state in TURN_FIRST_HANDOFF_STATES or self.launching else
+            handoff = state in TURN_FIRST_HANDOFF_STATES or self.launching
+            if (handoff and state == 'support_climb' and not self.launching and self.climb_source == 'contact'
+                    and self.contact_support is not None and not self.contact_support.turn_first_handoff):
+                handoff = False                 # contact support version 3: its climb never ends turn-first
+            end = ('handoff' if handoff else
                    'aligned' if state in TURN_FIRST_BEARING_STATES and off is not None and off <= tf.release_deg else
                    'timeout' if now-self.turn_first_since >= tf.max_s else None)
             if end is not None:
@@ -2422,7 +2527,7 @@ class FastRaceCue:
             # Contact support (ContactSupportConfig): a ground reaction the thrust cannot explain starts the climb.
             # It compares the measured vertical speed with the request the motor received (`issued`), as the older
             # support rules below do; without a motor assist that is the pilot's own request (unchanged).
-            self._contact_step(now, issued_at, velocity, rotation, dt, issued)
+            self._contact_step(now, issued_at, velocity, rotation, dt, issued, omega=omega)
         # Support: a requested descent the vehicle cannot achieve means contact
         # below (terrain or an object), not a controller fault. Climb briefly.
         if self.climb_until is not None and now < self.climb_until:
@@ -2434,6 +2539,7 @@ class FastRaceCue:
             self.slope_support_since = None
             if now-self.support_since > c.support_after_s:
                 self.climb_until, self.support_since = now+c.support_climb_s, None
+                self.climb_source = 'support'
         elif (issued is not None and issued[2] < -.8
               and velocity[2] > issued[2]+c.support_slope_shortfall
               and self.calibration is not None and self.issued_throttle is not None
@@ -2445,6 +2551,7 @@ class FastRaceCue:
             self.slope_support_since = now if self.slope_support_since is None else self.slope_support_since
             if now-self.slope_support_since > c.support_slope_after_s:
                 self.climb_until, self.slope_support_since = now+c.support_climb_s, None
+                self.climb_source = 'support'
         else:
             self.support_since = self.slope_support_since = None
         cap = ray = vertical_cap = None
@@ -2461,6 +2568,10 @@ class FastRaceCue:
             for governor in (self.clearance, self.clearance_shadow):
                 if getattr(governor, 'vertical', None) is not None:
                     governor.pilot_vertical = self.pilot_vertical     # the binding test of its rising-ground rule
+                if getattr(governor, 'ceiling', None) is not None and governor.ceiling.any_climb:
+                    # ceiling-guard any_climb: every climb but the pilot's own climb toward the ring in view (state cue
+                    # without a motor-assist sag climb) can be cut
+                    governor.extra_climb = not (state == 'cue' and not self.assist_sag > 0)
             cap, ray, climb = self.clearance.limits(position, velocity, now, dt, c.vertical_up)
             shadow_climb = 0.
             if self.clearance_shadow is not None:
@@ -2664,17 +2775,21 @@ class FastRaceCue:
             self.view_slope += (1-np.exp(-dt/dv.attitude_time_constant))*(lowest-self.view_slope)
         return float(max(dv.free_sink, -speed*self.view_slope))
 
-    def _contact_step(self, now, issued_at, velocity, rotation, dt, issued=None):
+    def _contact_step(self, now, issued_at, velocity, rotation, dt, issued=None, omega=None):
         """One tick of contact support (ContactSupportConfig): the window's unexplained upward specific force, the
         thrust gain in free air, and a support climb (climb_until) after hold_s of contact conditions. `issued`: the
         velocity request the motor received on the previous tick (update() passes it; it differs from the pilot's own
         request, self.velocity_command at this point, only with a motor assist, whose declaration has the support rules
-        compare the measured vertical speed with the request the motor received); None reads self.velocity_command."""
+        compare the measured vertical speed with the request the motor received); None reads self.velocity_command.
+        `omega`: the body rates the pilot receives (version 3 reads the pitch/roll rate; None: unknown, never excluded).
+        Version 2 is unchanged, bit for bit."""
         if issued is None:
             issued = self.velocity_command
         cs, c = self.contact_support, self.config
         g = CONTACT_GRAVITY
+        v3 = cs.version >= 3
         self.contact_fired = False
+        self.contact_excluded = False
         self.contact_first = now if self.contact_first is None else self.contact_first
         if self.issued_throttle is not None and issued_at is not None:
             self.contact_throttle.append((float(issued_at), float(self.issued_throttle)))
@@ -2688,13 +2803,33 @@ class FastRaceCue:
         thrust_z = (g*cs.thrust_twr*drive**cs.thrust_exponent*float(rotation[2, 2]) if np.isfinite(drive)
                     else float('nan'))
         drag_z = float((rotation @ (np.asarray(cs.body_drag_s_inv)*(rotation.T @ velocity)))[2])
-        self.contact_samples.append((float(now), float(velocity[2]), thrust_z, drag_z, drive))
+        rate = float('nan')
+        if omega is not None:
+            w = np.asarray(omega, dtype=float).reshape(-1)
+            rate = float(np.hypot(w[0], w[1]))
+        self.contact_samples.append((float(now), float(velocity[2]), thrust_z, drag_z, drive, float(velocity[0]),
+                                     float(velocity[1]), rate))
         while self.contact_samples[0][0] < now-cs.window_s-1e-9:
             self.contact_samples.pop(0)
+        # arming: arm_after_s after the first tick and never while launching (version 3: and arm_learn_s of gain learning)
+        time_armed = not self.launching and now-self.contact_first >= cs.arm_after_s
+        if not self.contact_armed and time_armed and (not v3 or self.contact_learned_s >= cs.arm_learn_s):
+            self.contact_armed, self.contact_armed_at = True, round(float(now-self.contact_first), 3)
         samples = self.contact_samples
         span = float(now-samples[0][0])
         valid = span >= .8*cs.window_s and all(np.isfinite(s[4]) and cs.drive_min <= s[4] <= cs.drive_max
                                                for s in samples)
+        if valid and v3:
+            # manoeuvre windows are not used: a hard pitch/roll (the thrust of the mean drive underestimates a split
+            # motor set) or a hard horizontal brake
+            rates = [s[7] for s in samples if np.isfinite(s[7])]
+            h0 = np.array([samples[0][5], samples[0][6]])
+            n0 = float(np.linalg.norm(h0))
+            braking = (-float((np.array([samples[-1][5], samples[-1][6]])-h0) @ h0)/n0/max(span, 1e-3)
+                       if n0 > .5 else 0.)
+            if (rates and max(rates) > cs.max_body_rate) or braking > cs.max_braking:
+                self.contact_excluded, valid = True, False
+                self.contact_time['excluded'] += dt
         if not valid:
             self.contact_unexplained = float('nan')
             self.contact_since = None
@@ -2705,46 +2840,72 @@ class FastRaceCue:
         observed = ((samples[-1][1]-samples[0][1])/span+g+drag)/max(thrust, 1e-3)
         unexplained = (observed-self.contact_gain)*thrust
         self.contact_unexplained = float(unexplained)
-        armed = not self.launching and now-self.contact_first >= cs.arm_after_s
+        armed = self.contact_armed if v3 else time_armed
         command = float(issued[2]) if issued is not None else float('nan')
         vz = float(velocity[2])
-        climbing = self.climb_until is not None and now < self.climb_until
+        climbing = ((self.climb_until is not None and now < self.climb_until)
+                    or (self.contact_shadow_until is not None and now < self.contact_shadow_until))
         suspect = (armed and not climbing and command <= -cs.sink_min and vz >= command+cs.shortfall
                    and vz <= cs.rest_vz and unexplained >= cs.unexplained_on)
+        quiet_or_rising = unexplained <= cs.gain_quiet or min(s[1] for s in samples) >= cs.gain_rising
         if armed and not climbing and not suspect and self.contact_since is None:
             # thrust gain in free air: quiet windows, or a rising drone (nothing below holds up a drone moving away)
-            if unexplained <= cs.gain_quiet or min(s[1] for s in samples) >= cs.gain_rising:
+            if quiet_or_rising:
                 step = float(np.clip(observed-self.contact_gain, -cs.gain_step, cs.gain_step))
                 self.contact_gain = float(np.clip(
                     self.contact_gain+(1-np.exp(-dt/cs.gain_time_constant))*step, cs.gain_min, cs.gain_max))
                 self.contact_time['gain_updates'] += dt
+        elif (v3 and not armed and not self.launching and not climbing and quiet_or_rising
+              and samples[0][0] >= self.contact_first+cs.learn_after_s):
+            # version 3: the gain learnt before arming, the median of the quiet or rising windows' observed gains
+            self.contact_prearm.append(float(observed))
+            del self.contact_prearm[:-CONTACT_PREARM_WINDOWS]
+            self.contact_gain = float(np.clip(np.median(self.contact_prearm), cs.gain_min, cs.gain_max))
+            self.contact_learned_s += dt
+            self.contact_time['prearm_learning'] += dt
         if not suspect:
             self.contact_since = None
             return
         self.contact_time['suspected'] += dt
         self.contact_since = now if self.contact_since is None else self.contact_since
         if now-self.contact_since >= cs.hold_s:
-            self.climb_until, self.contact_since = now+c.support_climb_s, None
-            self.support_since = self.slope_support_since = None
+            self.contact_since = None
             self.contact_fired = True
             self.contact_onsets += 1
+            if self.contact_apply:
+                self.climb_until = now+c.support_climb_s
+                self.support_since = self.slope_support_since = None
+                self.climb_source = 'contact'
+            else:
+                # shadow: the climb it would start, remembered for the rule's own state only
+                self.contact_shadow_until = now+c.support_climb_s
 
     def contact_log(self):
         """Per-tick contact-support values for logs (NaN when the rule is not declared): the window's unexplained
-        upward specific force (NaN when the window is not valid), the thrust gain, and 1 on a tick the rule fired."""
+        upward specific force (NaN when the window is not valid), the thrust gain, and 1 on a tick the rule fired (in
+        shadow: would have fired). Version 3 adds contact_armed (1 once armed) and contact_excluded (1 on a manoeuvre
+        window)."""
         if self.contact_support is None:
             nan = float('nan')
             return dict(contact_unexplained=nan, contact_gain=nan, contact_fire=nan)
-        return dict(contact_unexplained=float(self.contact_unexplained), contact_gain=float(self.contact_gain),
-                    contact_fire=float(self.contact_fired))
+        out = dict(contact_unexplained=float(self.contact_unexplained), contact_gain=float(self.contact_gain),
+                   contact_fire=float(self.contact_fired))
+        if self.contact_support.version >= 3:
+            out.update(contact_armed=float(self.contact_armed), contact_excluded=float(self.contact_excluded))
+        return out
 
     def contact_summary(self):
         """Support-climb onsets of the contact rule, seconds valid / suspected / learning the gain and the final gain
-        (None when the rule is not declared)."""
+        (None when the rule is not declared); version 3 adds whether it is applied, when it armed (seconds after the
+        first tick; None: never) and the gain learnt before arming."""
         if self.contact_support is None:
             return None
-        return dict(onsets=self.contact_onsets, seconds={k: round(v, 3) for k, v in self.contact_time.items()},
-                    gain=round(self.contact_gain, 4))
+        out = dict(onsets=self.contact_onsets, seconds={k: round(v, 3) for k, v in self.contact_time.items()},
+                   gain=round(self.contact_gain, 4))
+        if self.contact_support.version >= 3:
+            out.update(applied=self.contact_apply, armed_at_s=self.contact_armed_at,
+                       prearm_gain=None if not self.contact_prearm else round(float(np.median(self.contact_prearm)), 4))
+        return out
 
     def descent_view_log(self):
         """Per-tick view-keeping values for logs (NaN when the rule is not declared): the sink bound, the sink withheld
@@ -2827,7 +2988,7 @@ class FastRaceCue:
         if self.descent_view is None:
             return None
         return dict(
-            version=1 if self.contact_support is None else 2,
+            version=1 if self.contact_support is None else self.contact_support.version,
             rule='view bound: the pilot\'s own requested sink is bounded so that the flight path (measured horizontal '
                  'velocity, requested vertical speed) points margin_deg (cue_margin_deg with the ring in view) inside '
                  'the camera\'s lower image edge at the measured attitude (exact projection, roll included; the lowest '
@@ -2971,8 +3132,9 @@ class FastRaceCue:
                 parameters=asdict(self.clearance_brake), applied=self.wall_apply,
                 seconds={k: round(v, 3) for k, v in self.brake_sink_time.items()},
                 max_sink={k: round(v, 3) for k, v in self.brake_sink_max.items()})
+        any_climb = self.ceiling_guard is not None and self.ceiling_guard.any_climb
         return dict(
-            version=WALL_PILOT_VERSION if self.clearance_brake is not None else 4, applied=self.wall_apply,
+            version=6 if any_climb else 5 if self.clearance_brake is not None else 4, applied=self.wall_apply,
             **extra,
             turn_first=None if self.turn_first is None else dict(
                 rule='near a wall (a clearance stand-off, or a wall brake within brake_recent_s at a horizontal speed '
@@ -2999,7 +3161,10 @@ class FastRaceCue:
                      'the path (below_fraction <= overhead_fraction) or is unexplained, at least overhead_positive of '
                      'them positive (expansion above the path, or a lower-surface TTC longer than lower_ratio x the '
                      'alarm), cut the climb and start an overhead hold of hold_s (no climb, below-path samples brake, '
-                     'vertical request <= vertical_cap, brought down at vertical_slew)',
+                     'vertical request <= vertical_cap, brought down at vertical_slew)'
+                     + ('; any_climb (version 6): the overhead cut acts on any climb, whatever its source, while the '
+                        'measured vertical speed exceeds overhead_min_rise (outside a governor climb a sample without '
+                        'vertical evidence counts only when the lower window does not explain it)' if any_climb else ''),
                 parameters=asdict(self.ceiling_guard),
                 governor='flown' if self.wall_apply else 'shadow copy fed the same samples',
                 counts=None if guard is None else {k: guard.counts.get(k, 0) for k in keys}))
@@ -3125,7 +3290,13 @@ class FastRaceCue:
                      'launching; gain (from 1) follows the observed thrust gain with gain_time_constant within '
                      '[gain_min, gain_max], each step clipped to +-gain_step, on armed quiet windows (unexplained <= '
                      'gain_quiet) or rising ones (lowest vz >= gain_rising), never during a contact episode or a support '
-                     'climb',
+                     'climb'+('' if self.contact_support.version < 3 else
+                              '; version 3: windows whose highest pitch/roll body rate exceeds max_body_rate or whose '
+                              'horizontal speed along its first horizontal velocity falls faster than max_braking are '
+                              'not used; from learn_after_s after the first tick (not launching, no climb) the gain is '
+                              'the median observed gain of the quiet or rising windows, and the rule arms after '
+                              'arm_after_s once arm_learn_s of them were collected; with turn_first_handoff false its '
+                              'climb never ends a turn-first episode; not applied (shadow): logged, no climb'),
                 input='measured velocity and attitude, the issued throttle and the pad calibration; no height above '
                       'ground, no course geometry',
                 parameters=asdict(self.contact_support), **self.contact_summary())

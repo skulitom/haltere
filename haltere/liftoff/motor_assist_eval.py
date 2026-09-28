@@ -399,7 +399,9 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
                              arch_pass_speed=None if not np.isfinite(arch_pass[i]) else round(float(arch_pass[i]), 3))),
                          states={s: round(v, 2) for s, v in p.state_time.items()},
                          turn_first=None if p.turn_first is None else dict(p.turn_first_counts),
-                         motor_assist=p.motor_assist_summary() if hasattr(p, 'motor_assist_summary') else None))
+                         motor_assist=p.motor_assist_summary() if hasattr(p, 'motor_assist_summary') else None,
+                         **({} if getattr(p, 'contact_support', None) is None
+                            else dict(contact_support=p.contact_summary()))))
     return rows, trace
 
 

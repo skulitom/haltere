@@ -10,13 +10,14 @@ declarations of the rule versions this code implements), plus a record of every 
 - the wall-pilot rules: turn first at a wall with the contract's stopping model, ceiling guard and, from
   wall-pilot version 5, the clearance brake's sink floor (configs/obstacles/wall_pilot.json);
 - the vertical guard (configs/obstacles/vertical_guard.json);
-- the view-keeping descent (configs/pilot/descent_view.json) and, from its version 2, its contact support;
+- the view-keeping descent (configs/pilot/descent_view.json) and, from its version 2, its contact support
+  (``contact_support='off'|'shadow'`` as the runner's --contact-support; version 3);
 - with ``motor_assist=True`` (``--motor-assist on``, off by default), the motor-assist entry of the contract
   (configs/pilot/motor_assist.json; none for the fast PD);
 - with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
-  cap follows the ray of its evidence). The runner's stack includes it from round 5 on (``--stale-evidence off`` removes
-  it); it is off here by default so that the brain-11 records built on this module stay reproducible. The surrogate
-  has no looming samples, so it is idle there.
+  cap follows the ray of its evidence). As in the runner (``--stale-evidence on`` inside the obstacle stack; version 2
+  is opt-in), it is off here by default, so the brain-11 and brain-12 records built on this module stay reproducible.
+  The surrogate has no looming samples, so it is idle there.
 
 The surrogate has no looming or gap samples, so the gap aim, the ceiling guard and the vertical guard stay idle
 there; the lag-aware turns and the view-keeping descent act, and turn-first acts on a governor cap (for example a
@@ -30,12 +31,14 @@ CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 
 def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
-                          stale_evidence=False):
+                          stale_evidence=False, contact_support='on'):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
     if contract not in CONTRACTS:
         raise ValueError(f'Unknown fast motor contract {contract!r}')
+    if contact_support not in frc.CONTACT_SUPPORT_MODES:
+        raise ValueError(f'Unknown contact-support mode {contact_support!r}')
     kwargs, record = {}, {}
 
     def note(name, path, declaration, digest):
@@ -63,10 +66,13 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         note('descent_view', vb.DESCENT_VIEW_DECLARATION, view, digest)
         kwargs['descent_view'] = frc.descent_view_config(view)
         contact = frc.contact_support_config(view)
-        if contact is not None:
+        if contact is not None and contact_support != 'off':
             # descent view version 2: contact support, as the runner adds it (it reads the pad calibration, which the
-            # surrogate's pilots receive from the checkpoint)
+            # surrogate's pilots receive from the checkpoint); version 3 in shadow: computed, no climb
             kwargs['contact_support'] = contact
+            if contact_support == 'shadow':
+                kwargs['contact_apply'] = False
+        record['descent_view']['contact_support'] = None if contact is None else contact_support
     if stack and stale_evidence:
         stale, digest = vb.load_stale_evidence()
         note('stale_evidence', vb.STALE_EVIDENCE_DECLARATION, stale, digest)
