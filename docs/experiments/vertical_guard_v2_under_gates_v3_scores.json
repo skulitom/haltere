@@ -2,10 +2,11 @@
  "gates_sha256": "689635881467a34a7ba84471ee55b3154602206af4aa5dac754fcf26c7182bf7",
  "gates_version": 3,
  "vertical_guard": {
-  "file": "configs/obstacles/vertical_guard.json",
-  "version": 3,
-  "sha256": "b70e263ccdc549844490ca3e60381cecd781f6c2e040b32519805e4624727518"
+  "file": "configs/obstacles/vertical_guard.json of the m2-vertical tree (kept as configs/obstacles/vertical_guard_v2.json)",
+  "version": 2,
+  "sha256": "e06b690d0d4f1a416695cffbf5900e0942df70138db57f7b9f7a8c113fee417f"
  },
+ "header_corrected": "2026-09-28 (round 4b integration): this header named guard v3 (b70e263c..., copied from the gates file) although the data are guard v2's replays (e.g. V_Straw_uphill 3.393 escalated s/min); only the vertical_guard entry and this note changed",
  "baseline_tree": {
   "branch": "m2-vertical",
   "commit": "935cfdb4b6d712dc2b239838ce943a8c9ee596b9",

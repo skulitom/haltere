@@ -3,7 +3,7 @@
 Branch `m4b-brain11` (from `m4`). Offline only: no Liftoff, no pad, CPU at 2 threads. Everything new is off
 by default.
 
-## Round-4b pilot branches: not merged
+## Round-4b pilot branches: not merged here (merged later on `m4b`)
 
 The task was to merge `m4b-contact` (contact support in descent view v2, wall pilot v5) and `m4b-assist`
 (motor assist v1) only if they were flight ready. Neither is:
@@ -11,9 +11,14 @@ The task was to merge `m4b-contact` (contact support in descent view v2, wall pi
 - `m4b-contact` fails its frozen gates B-Quiet (wall pilot v5) and the contact audit's video false-positive check.
 - `m4b-assist` fails 4 of its 16 frozen gates.
 
-So neither branch is merged. The DAgger rollouts use the **m4 deployed pilot**: `--obstacle-stack on --descent-view on`
-for the brain contract, which is lag turn v2, gap pilot v5, wall pilot v4 (brain stopping model), vertical guard v3 and
-descent view v1. The motor assist is not used.
+So neither branch was merged on this branch. The DAgger rollouts and every gate use the **m4 deployed pilot**:
+`--obstacle-stack on --descent-view on` for the brain contract, which is lag turn v2, gap pilot v5, wall pilot v4 (brain
+stopping model), vertical guard v3 and descent view v1. The motor assist is not used.
+
+The integration branch `m4b` later merged this branch with `m4b-guard`, `m4b-contact` and `m4b-assist`. There
+`haltere.train.deployed_pilot` follows the merged runner (wall pilot v5's clearance-brake floor, descent view v2's contact
+support, and `motor_assist=True` for `--motor-assist on`), so re-running G13 on `m4b` flies the round-4b stack. The
+scores in this document are the m4-stack scores and stay as committed.
 
 ## What the round-4 live flights showed, replayed (development cases)
 
@@ -193,7 +198,9 @@ For fast-brain-11-b-cw13 the largest weight changes per row are throttle 0.276, 
   - it brakes at the Minus hairpin and keeps height out of turn-first;
   - it may be slow in left capped turns, where the yaw lags the request.
 
-  Use the m4 stack with `--descent-view on`; the round-4b pilot branches are not merged.
+  Its gates were scored with the m4 stack (`--descent-view on`, descent view v1). On `m4b` the runner flies the
+  round-4b stack (vertical guard v4, wall pilot v5, descent view v2 with contact support); see the flight card's
+  Round 4b section for the replays and surrogate runs of this candidate under it.
 - **G9 is not held-out.** The two r4 windows were looked at before the freeze and screened during development. G10-G13
   are held-out in parameters and seeds, but were designed from the same diagnosis.
 - **Post-freeze code.** Three training options were added after the freeze and after scoring fast-brain-11-a:

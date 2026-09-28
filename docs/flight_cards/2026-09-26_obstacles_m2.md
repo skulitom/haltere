@@ -163,8 +163,9 @@ Bale with `--descent-view on` as a disclosed development test.
 
 ## Round 4: brain-10, a smoother braking brain (branch m4-brain10, not flown)
 
-[brain-10](../fast_brain_10_candidate.md) was distilled under the current pilot. The descent branch
-was not flight ready and was not merged.
+[brain-10](../fast_brain_10_candidate.md) was distilled under the current pilot, without the descent
+view: the descent branch was not flight ready and was not merged on brain-10's branch. `m4` now merges
+it, off by default (`--descent-view on`).
 
 Why brain-09b chatters:
 
@@ -241,6 +242,16 @@ development evidence, not flight evidence.
 **Vertical guard v3** (`vertical_guard.json` v3 `b70e263c`, gates v3 `68963588`, commit
 `79895b7`; v1/v2 kept and refused). Gates v3 loosened V-Straw uphill from "0 ticks above
 1 m/s" to "at most 0.2 s/min escalated" (disclosed; v3 also meets the old rule on 04/06).
+Gates v3 also redefined the V-Pine climb criterion in a more lenient direction and added the
+mound gate (both disclosed in the gates file and in `docs/vertical_guard.md`): the denominator
+narrowed from every second the logged governor climbed to the seconds it asked for at least
+1 m/s, which moves the flown log itself from 72.4% to 91.4%. V-Pine fails under both definitions
+(v3: 77.7% new, 71.8% old; v2: 77.7% new, 73.8% old), so no verdict changes. v3's binding
+threshold of 0.5 m/s lies between the Pine mound's 0.44 m/s and the lowest Straw escalation's
+0.61 m/s, measured on the same logs that score V-Straw uphill and the V-Pine mound: those two
+passes are in-sample, with small margins. The score file of v2 under gates v3
+(`vertical_guard_v2_under_gates_v3_scores.json`) named guard v3 in its header; round 4b corrected
+the header to the guard actually replayed (v2, `e06b690d`).
 
 | Gate | Threshold | v2 | v3 | Pass |
 |---|---|---|---|---|
@@ -256,7 +267,11 @@ development evidence, not flight evidence.
 | V-Pine mound height request vs flown | >= 90% | 106% | 106% | yes |
 
 **Wall pilot v4, turn-first at stopping distance** (`wall_pilot.json` v4 `92f842a5`, gates v1
-`6418aea5`, commit `b36bab4`; v3 kept and refused).
+`6418aea5`, commit `b36bab4`; v3 kept and refused). The scorer's key fix
+(`wall_pilot_gates.py`: `gates['flights']['logged_looming']` -> `['logged']`, the only key the
+frozen gates have) went into the results commit `0d1010a` after the scores were produced; the
+scorer committed at the freeze would have stopped with a KeyError. Thresholds and definitions are
+unchanged, and the audit's re-score with m4's code reproduced every verdict and value.
 
 | Gate | Threshold | Result | Pass |
 |---|---|---|---|
@@ -273,9 +288,14 @@ braking it still grazes, at 1.27 m/s instead of 2.73. A lagged-motor surrogate r
 wall with every variant (v4 0.3-1.0 m less deep than v3).
 
 **Gap pilot v5, side commitment** (`gap_pilot.json` v5 `43c30420`, gates v3 `e520b64e`, commit
-`e51d3cf`; v2-v4 kept and refused). v3 was replaced unscored; v4 was frozen, scored and failed
+`e51d3cf`; v2-v4 kept and refused). v3 was replaced unscored: a unit test found a flaw before
+any gate was scored, but its candidate replay files had already been generated (about
+01:45-01:47) and were deleted, by the pillar branch's account unread (this cannot be verified;
+v3 and its gates v1 were first committed together with v4). v4 was frozen, scored and failed
 A, B and S; v5 changes two v4 values after reading those results. v5 is therefore not held-out
-evidence.
+evidence. The notes of gates v2 and v3 still say they were frozen "together with the version 3
+declaration" (a copy slip in frozen files; their `candidate_version` fields, 4 and 5, are
+right).
 
 | Gate | Threshold | v2 | v5 | Pass |
 |---|---|---|---|---|
@@ -388,7 +408,13 @@ What changes per log:
     - `fast6-gapon-01`: 2.2 s -> 1.4 s.
 
     It keeps the 1 m/s climb at `wall-01`'s floor sink.
-  - **Descent view** acts for at most 0.28 s per log and never boosts speed on Minus Two.
+  - **Descent view.** Its bound limits sink for at most 0.28 s per log and its speed boost never
+    acts on Minus Two, but it changes the request for longer: by more than 0.05 m/s for 0.85 s
+    on `vg-02` (17.85-18.64 s in `below`, up to 0.72 m/s horizontal and 0.58 m/s vertical),
+    0.79 s on `brain09b-vg-01` (7.02-7.63 s in `cue` near x 19, up to 0.46 m/s, with both flags
+    at 0) and 0.60 s on `gapon-02` (up to 0.56 m/s), through its gentler sink onset and the
+    keep-speed floor of the descent-path governor. Inside turn-first episodes the differences
+    stay below 0.005 m/s.
 - **Pine Valley.**
   - On `pine-fast6-ttc-01` the mound escalation is unchanged: 3.97 s against 4.02 s, up to
     3.5 m/s. The guard's total climb falls from 7.8 s to 5.7 s. The descent view reshapes the
@@ -446,7 +472,8 @@ measured in the full-stack arrays):
   On the downhill, the lowest descent-governor scale is 0.75-1.0 with the view rule (its floor
   is 0.75) and 0.35-1.0 without it.
 - **Descent view, governor caps and turn-first on Minus Two.**
-  - The view rule acts at most 0.28 s per Minus log, and its speed boost never acts there.
+  - The view bound limits sink at most 0.28 s per Minus log and its speed boost never acts
+    there; the request itself changes by more than 0.05 m/s for up to 0.85 s per log (above).
   - It never acts inside a turn-first episode.
   - Where a looming cap was active, it asked for up to 0.55-0.68 m/s more horizontal speed
     (`gapon-02`, `vg-02`, x 71-78 before the hairpin). That is keep-speed: no half-speed brake
@@ -454,8 +481,9 @@ measured in the full-stack arrays):
   - The cap itself and turn-first act after it in the pilot, so they still bound the request.
 - **Descent view on Pine Valley.** This is the largest change outside Straw. On the mound's
   backside (`pine-fast6-ttc-01`, 6.3-7.4 s) the stack without the view rule asks for up to
-  2.1 m/s of sink at about 2.5 m/s; the full stack asks for 0.3 m/s at 5.2-5.7 m/s. The mound
-  climb, the hillside at 15.2 s and the end are unchanged.
+  2.1 m/s of sink at about 2.6 m/s; the full stack asks for 0.3 m/s at 5.1-5.7 m/s until 7.17 s,
+  then steepens to 0.54 m/s at 5.1 m/s by 7.37 s (0.3-0.54 m/s of sink at 4.9-5.7 m/s over the
+  window). The mound climb, the hillside at 15.2 s and the end are unchanged.
 
 ### Surrogate (development evidence)
 
@@ -539,7 +567,7 @@ gates' own scoring.
 | fast PD | full vs stack | 21->11 (-48%) **no** | 0->0 yes | 28->28 yes | 33.5% **no** | 5.2% **no** | 6->14 **no** | -3.9% yes | -2.8% **no** | **no** |
 | brain-08 | dv vs baseline | 26->8 (-69%) **no** | 0->0 yes | 28->28 yes | 53.3% **no** | 20.0% **no** | 1->24 **no** | +3.5% **no** | +0.1% yes | **no** |
 | brain-08 | full vs baseline | 26->8 (-69%) **no** | 0->1 **no** | 28->27 **no** | 53.9% **no** | 23.3% **no** | 1->26 **no** | +5.2% **no** | +0.8% yes | **no** |
-| brain-09b | dv vs baseline | 26->16 (-38%) **no** | 0->0 yes | 28->28 yes | 45.8% **no** | 28.6% **no** | 3->17 **no** | +0.7% yes | -0.5% yes | **no** |
+| brain-09b | dv vs baseline | 26->16 (-38%) **no** | 0->0 yes | 28->28 yes | 45.8% **no** | 28.7% **no** | 3->17 **no** | +0.7% yes | -0.5% yes | **no** |
 | brain-09b | full vs baseline | 26->14 (-46%) **no** | 0->0 yes | 28->28 yes | 45.7% **no** | 29.0% **no** | 3->18 **no** | +0.4% yes | -0.4% yes | **no** |
 | fast-brain-10b | dv vs baseline | 23->9 (-61%) **no** | 0->0 yes | 28->28 yes | 50.0% **no** | 18.3% **no** | 1->26 **no** | -2.5% yes | -0.2% yes | **no** |
 | fast-brain-10b | stack vs baseline | 23->25 (+9%) **no** | 0->0 yes | 28->28 yes | 62.9% **no** | 28.2% **no** | 1->1 yes | -0.6% yes | -0.0% yes | **no** |
@@ -585,7 +613,10 @@ alternative if the user accepts it as a deviation. Its surrogate chatter is abou
 brain-09b's, but its brake onset is about 0.3 s later.
 
 The matched control for any run is the same command with `--obstacle-stack shadow`, keeping
-`--descent-view on`. It is not required for this development round.
+`--descent-view on`, so that it isolates the obstacle stack. It is not required for this
+development round. (The round-4 wiring check ran this control without `--descent-view`:
+`round4_integration.json` `plan_wiring.shadow_control_minus_pd` has `descent_view` null. The
+text above is the intended control; round 4b's wiring check covers it with the view rule on.)
 
 Run the four flights in this order. Each command is one line; run it from `C:\DEV\Haltere`. The
 limits are the ones earlier fast-stack flights recorded, and the video uses NVENC as before.
@@ -672,8 +703,8 @@ What to look for:
 - **Mound climb:** must still happen, with the guard escalating near 4.5 s and climbing up to
   3.5 m/s.
 - **Mound backside:** the descent view changes this most on Pine. At 6.3-7.4 s the default stack
-  asked for up to 2.1 m/s of sink at about 2.5 m/s; the full stack asks for 0.3 m/s at 5.2-5.7
-  m/s and steepens only after 0.75 s of bottom clip. Watch for a ring below being overflown and a
+  asked for up to 2.1 m/s of sink at about 2.6 m/s; the full stack asks for 0.3-0.54 m/s at
+  4.9-5.7 m/s, steepening after 7.2 s (0.75 s of bottom clip). Watch for a ring below being overflown and a
   turn-back.
 - **Hillside at 15.2 s:** v3 answers with only 1 m/s, where the flight climbed at 3.5 m/s.
   Hillside contact is possible.
@@ -706,7 +737,7 @@ What to look for:
 | Blocker | State after round 4 | What would clear it |
 |---|---|---|
 | A selected brain | None: brain-10 candidates all fail G3; brain-09b fails G3/G6 | A G3 v2 justified from the latency evidence and frozen before any scoring, or a candidate that passes G3; then flights |
-| Straw downhill ground contact | Descent view v1 fails its gates (contacts -38..-69% vs -75%, high passes up); replay puts requests in view before every logged contact; brains do not fly its 6 m/s descents | A brain distilled with the view rule in its DAgger rollouts (scored on the frozen descent gates), then Straw 3/3 with no support climb on the downhill |
+| Straw downhill ground contact | Descent view v1 fails its gates (contacts -38..-69% vs -75%, high passes up); in replay the requests point below the image 0-15% of the 3 s before the logged contacts (default pilot 58-83%); brains do not fly its 6 m/s descents | A brain distilled with the view rule in its DAgger rollouts (scored on the frozen descent gates), then Straw 3/3 with no support climb on the downhill |
 | Minus pillar C | Gap v5 holds the right side 0.99 s early in replay (development data); pillar B fails at pilot level (0.95 vs 1.0 s) | Live passes of (a) and (b); a held-out obstacle set for the next gap-pilot version |
 | Minus hairpin for braking brains | Turn-first v4 engages 0.61 s before brain-09b's graze; the lagged surrogate still reaches the wall | Approach speed: a governor cap that accounts for motor delay, or a brain that follows caps within about 0.3 s |
 | Vertical guard on Straw and Pine | Straw escalations 0 s (fixed); V-Pine fails (hillside 1 m/s vs 3.5 flown; boulder descent not arrested) | Closed-loop evidence or a new causal signal (vertical speed at each sample's capture) |
@@ -723,7 +754,7 @@ round-4 rule passed all of its gates, and no brain is selected.
 | Run | Motor | Outcome |
 |---|---|---|
 | `minus-fast6-r4-01` | fast PD | Runtime stop, 0 ticks: "No fresh live image/telemetry". The ground-check script pauses the game when it ends and the run was started without resuming (operator error; the camera delivered 213 frames). Retried unchanged |
-| `minus-fast6-r4-02` | fast PD | **Pillar A** (y 5.48), **hairpin** (exit at 20.4 s), **pillar C** (y 31.5 at 22.6 s, where round 3 ended) and on to (79, 58): the furthest any 6 m/s run has flown on Minus Two. From 26.5 s the pilot followed rings standing on the garage floor down to z 0.01-0.3 m (floor contact at 27.4-28.9 s: z < 0.1 m for 1.5 s; the support climb never fired because the descent view held the sink request above -0.8 m/s, the review's major finding). At (75.9, 64.3), 0.5 m above the floor, the looming lower window read the nearby floor as rising ground (ttc_lower 0.44-1.0 s, below fraction 0.85-1.0): the guard's gentle climb (1 m/s) was escalated at 33.0 s to 3.5 m/s, the overhead cut came at 33.4 s at 2.1 m/s of climb, and the drone struck the ~2.2 m garage ceiling at (73.5, 69.4, 2.13), 34.1 s |
+| `minus-fast6-r4-02` | fast PD | **Pillar A** (y 5.48), **hairpin** (exit at 20.4 s), **pillar C** (y 31.5 at 22.6 s, where round 3 ended) and on to (79, 58): the furthest any 6 m/s run has flown on Minus Two. From 26.5 s the pilot followed rings standing on the garage floor down to z 0.01-0.3 m (floor contact at 27.4-28.9 s: z < 0.1 m for 1.5 s; the support climb never fired because the sink request stayed above -0.8 m/s; round 4b traced that sink to the clearance brake, not the descent view, see below). At (75.9, 64.3), 0.5 m above the floor, the looming lower window read the nearby floor as rising ground (ttc_lower 0.44-1.0 s, below fraction 0.85-1.0): the guard's gentle climb (1 m/s) was escalated at 33.0 s to 3.5 m/s, the overhead cut came at 33.4 s at 2.1 m/s of climb, and the drone struck the ~2.2 m garage ceiling at (73.5, 69.4, 2.13), 34.1 s |
 | `minus-brain10b-r4-01` | fast-brain-10b | Runtime stop, 0 ticks: same paused-game operator error. Retried unchanged |
 | `minus-brain10b-r4-02` | fast-brain-10b (`0ccf1161…`) | Pillar A (y 5.84). Stick change 0.0031 per tick (brain-08's live value). It braked to 2.8-2.9 m/s under 2.7-2.9 m/s caps at both arches. At the hairpin, while a false vertical-guard terrain climb (vertical_stage 1, 20.15-21.4 s, set off by the floor below the path: below fraction 0.84, ttc_lower 0.48-0.62 s at 0.85 m) overrode the pilot's descent and lifted it from 0.85 to 1.9 m over the ring, it held 4.9-5.3 m/s under 3.6-4.0 m/s caps; above turn-first's 3.5 m/s limit, so no episode; hairpin wall at (81.9, 19.0), 21.6 s, ~4.9 m/s. Its cap miss is therefore confounded with the guard climb |
 | `minus-brain09b-r4-01` | fast-brain-09b (round-3 candidate) | Pillar A (y 5.66). **Turn-first v4 engaged live** (coast + stopping triggers) at 22.8 s and stopped the drone at (81.1, 20.0), 0.5 m/s, short of the wall where brain-09b grazed in round 3; released aligned after 0.41 s. Accelerating out of the turn toward a 4.9 m/s request, the brain sank from 0.78 to 0.06 m at up to 1.9 m/s while the vertical request was +0.06..+0.16 m/s, and hit the floor at (80.4, 20.9), 23.7 s. Stick change 0.0063 per tick |
@@ -737,10 +768,14 @@ What this shows:
   own gentle climb satisfies the "climbing" condition). Escalated climbs need a test that the floor
   keeps approaching as the drone rises, or a bound under an overhead.
 - The descent view's suppression of the support climb (review finding) showed up live on the Minus
-  floor, not only on Straw.
+  floor, not only on Straw. **Corrected in round 4b:** the replay shows the pilot asked for +0.1 to
+  +0.23 m/s there and the descent view withheld nothing. The sink (-0.3 to -0.5 m/s) came from the
+  clearance brake along a stand-off ray tilted 11 deg up. With a sink that small, no support rule could
+  fire. See `docs/clearance_brake.md` and Round 4b below.
 - fast-brain-10b braked for the caps at both arches but missed them at the hairpin (+1.0 to +1.7 m/s)
   during a false guard climb, so whether it misses caps in general is untested; fast-brain-09b brakes but
   loses height when it accelerates hard from low speed. Neither is a release brain.
 
 Procedure note: the ground-check script pauses the game at exit; reset (Réinitialiser) or resume, and
 confirm telemetry is streaming, before launching a run.
+

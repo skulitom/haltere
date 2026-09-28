@@ -411,7 +411,11 @@ In this model a noisy reading of 1.2 s or more delays the escalation on gentle a
 better. It does not stop a floor misread that stays steady. Version 4 fixes r4-02 because its
 readings flickered, not because it recognises a floor.
 
-### Note: the floor skim of `minus-fast6-r4-02` at 26.5-29.5 s (not the guard; not implemented)
+### Note: the floor skim of `minus-fast6-r4-02` at 26.5-29.5 s (not the guard; not implemented here)
+
+On the integration branch `m4b` this is addressed by wall pilot version 5 from the contact branch: the
+clearance brake never adds sink ([clearance_brake.md](clearance_brake.md); its gates pass except
+B-Quiet). The analysis below is the guard branch's, written before that merge.
 
 The flight card attributes this skim to the view-keeping descent: it held the sink request above
 -0.8 m/s, so the support climb could not fire. A replay of the flight (m4, as flown) that records
@@ -578,7 +582,8 @@ their alignment reports are named, with sha256, in the gates' `inputs`. Like rou
 streams, the files stay in the session scratchpad, not in the repository.
 
 Scores: `docs/experiments/vertical_guard_v3_scores.json`, and version 2 on the same replays
-under the same gates: `docs/experiments/vertical_guard_v2_under_gates_v3_scores.json`.
+under the same gates: `docs/experiments/vertical_guard_v2_under_gates_v3_scores.json` (its header named
+guard v3 until round 4b corrected it to v2, `e06b690d`, the guard actually replayed; the data are unchanged).
 
 | Gate (v3) | Threshold | **v3** | v2 (same replays) | Control (m2-hairpin stack) |
 |---|---|---|---|---|

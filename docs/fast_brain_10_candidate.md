@@ -209,4 +209,4 @@ Every report is in [experiments/brain10_gate_results.json](experiments/brain10_g
 - **Worth checking live:**
   - Whether brain-10b's chatter reduction holds in Liftoff. brain-09b's surrogate-to-live chatter ratio matched: 1.7 vs 1.8 times brain-08.
   - Whether its slower brake onset (about 0.3 s later than brain-09b's) still stops it before the Minus Two hairpin wall.
-- **Not in this brain.** The descent pilot was not merged, so brain-10 was not distilled with the view-keeping descent. Its Straw Bale downhill contacts are unaddressed here.
+- **Not in this brain.** The descent pilot was not merged on brain-10's branch, so brain-10 was not distilled with the view-keeping descent (`m4` merges it now, off by default). Its Straw Bale downhill contacts are unaddressed here.

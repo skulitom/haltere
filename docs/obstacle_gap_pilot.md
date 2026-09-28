@@ -49,7 +49,7 @@ had been read before version 5 was chosen. See
 | `--obstacle-stack on\|shadow` | off | Needs `--pilot-profile fast` and `--looming-brake`. Runs the gap cue and the lag-aware turns. `shadow` runs the same processes and computations and logs them, but applies no aim shift and no lag-turn lead or heading change. It is the matched control. |
 | `--gap-cue on\|off` | on inside the stack | Component override. `on` is refused without `--obstacle-stack`. The pilot's gap aim follows `configs/obstacles/gap_pilot.json` version 5: [side commitment and the terrain-vote rules](#the-rules-gap_aim-version-5), not flown. |
 | `--wall-pilot on\|off` | on inside the stack | Component override for the [wall-pilot rules](#wall-pilot-rules-round-2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs them without applying them. |
-| `--vertical-guard on\|off` | on inside the stack | Component override for the [vertical guard](vertical_guard.md) (round 3: a time margin to the ground below the path, descent first, terrain climbs above 1 m/s only for rising ground; `configs/obstacles/vertical_guard.json` version 2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs it without applying it. Not flown. |
+| `--vertical-guard on\|off` | on inside the stack | Component override for the [vertical guard](vertical_guard.md) (a time margin to the ground below the path, descent first, terrain climbs above 1 m/s only for rising ground; `configs/obstacles/vertical_guard.json` version 4 on `m4b`: rising ground also needs the surface below to keep looming; version 3 flew in round 4). `on` is refused without `--obstacle-stack`; `shadow` computes and logs it without applying it. |
 | `--lag-turn [on\|off\|DECLARATION]` | on inside the stack, off outside | Component override. Outside the stack it keeps its earlier meaning (a bare flag means on). |
 
 There is no speed cap: the live runs showed that brain-08 ignores slow requests
@@ -1075,7 +1075,10 @@ this code is version 2, bit for bit (gate O).
   found a problem: opposite votes did not refresh the commitment, so sustained weak opposite
   evidence released it and, after the latch, let the other side take over. That is a switch on
   weaker evidence. Version 3 was never scored. Its candidate replay files were generated and
-  deleted unread.
+  deleted unread (by this branch's account; it cannot be verified), and version 3 and its gates
+  version 1 were first committed together with version 4. The frozen notes of gates versions 2
+  and 3 still say "together with the version 3 declaration": a copy slip; their
+  `candidate_version` (4, 5) is right.
 - **Version 4** (`a50d85b19566...`) refreshes the hold on any obstacle vote. It was scored on
   `gap_commit_gates.json` version 2 and failed A and S (below), because it held shifts:
   - into Straw Bale gates, where the inflatable arch's top crosses the band at the ring 1-1.5 s

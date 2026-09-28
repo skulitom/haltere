@@ -160,8 +160,9 @@ cut ground contacts by only 50% (fast PD), 69% (fast-brain-08) and 38% (brain-09
 75% gate, although contact time fell 65-84%. It kept the flight path below the image for
 36-53% of the descent time against the 5% gate. Checkpoint passes more than 1.5 m above the
 centre rose from 1-3 to 13-24. Crashes and finishes were unchanged. On Straw Bale the
-open-loop replay moves the requested path into the image before all 10 logged contacts, but
-that is not flight evidence. The rule is not ready to fly as a fix; see
+open-loop replay keeps the requested path mostly in the image before the 10 logged contacts: in
+the 3 s before each, it points below the image 0-15% of the time, against the default pilot's
+58-83%. That is not flight evidence. The rule is not ready to fly as a fix; see
 [Risks](#risks-for-live-flight).
 
 It answers the user's request of 2026-09-26: on the Straw Bale downhill the drone drops and
@@ -434,7 +435,8 @@ is needed.
   - The expected fix is a brain distilled under this pilot (the fast-brain-08 recipe with the
     rule in the DAgger rollouts), scored on these frozen gates, not another pilot value.
 - **Straw Bale downhill.**
-  - The replay puts the requests in view before every logged contact.
+  - In the replay the requests point below the image 0-15% of the 3 s before each logged
+    contact (default pilot 58-83%): mostly in view, not always.
   - The drone now enters the downhill at 6 m/s instead of braking to 3. Contacts that remain
     come at higher ground speed.
   - The slope-support rule needs a requested sink below -0.8 m/s, which the bound allows only
