@@ -1378,6 +1378,10 @@ and descent view 3 with contact support on. The sidecar must declare:
 | `configs/pilot/descent_view.json` (contact support: on / off / shadow as flown) | 3 | `2bdb17fc2479...` |
 
 The other declarations are the round-4b ones. The CSV gains `contact_armed` and `contact_excluded`.
+A wiring check parsed the plan's command lines with the runner's own parser and built its controller on
+the CPU (no camera, pad or flight) for the fast PD (`on`, `shadow`) and fast-brain-11-b-cw13 (`on`,
+`off`). Every case declared wall pilot 6 and descent view 3 with the mode given, and the eight view and
+contact columns (three with `off`).
 
 - **Recommended order.**
   1. A Minus Two run with the fast PD and `--contact-support shadow`. It measures live arming,
