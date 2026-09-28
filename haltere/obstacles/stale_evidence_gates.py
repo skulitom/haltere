@@ -655,7 +655,7 @@ def score(out, gates, digest):
     hr = g['HR_reader']
     tol = gates['reader']['tolerance_px']
     per, pooled = {}, dict(differ=0, old_agree=0, new_agree=0)
-    for f in hr['flights']:
+    for f in gates['reader']['flights']:
         fr = dict(np.load(out/'frames'/f'{f}.npz'))
         old, new, ov = fr['old'], fr['new'], fr['overlay']
         has_old, has_new, has_ov = np.isfinite(old[:, 0]), np.isfinite(new[:, 0]), np.isfinite(ov[:, 0])
