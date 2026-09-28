@@ -1297,3 +1297,114 @@ What this shows:
   and with fewer downhill contacts in this one lap; one lap is not a repeatability result.
 - New failures: arch legs beside rings (Minus at 44.8 s, Straw start arch in lap 2 while coasting), and
   the brain hairpin still needs earlier braking (the looming warning comes ~0.5 s before the wall).
+
+## Round 5 (offline): safety fixes of the round-4b review (branch `m5-safety`)
+
+**Nothing in this section has flown.** Branch `m5-safety` is `m4b` (`2a5bccb`) with two rule changes
+from the round-4b review. Both were frozen with their gates before any gate run (commit `68446ee`):
+
+- **Wall pilot version 6** (`configs/obstacles/wall_pilot.json`, `fe65951d3d68...`).
+  - The ceiling guard's overhead cut now bounds every climb while the measured vz exceeds 0.3 m/s:
+    support, contact-support, search, motor-assist sag, top-edge and coast climbs. Before, it acted
+    only on the governor's own terrain climb.
+  - The pilot's own climb toward the ring in view is exempt: a literal draft cut the Straw uphill
+    climbs on 5 of the 10 Straw development logs.
+  - Details: [obstacle_gap_pilot.md](../obstacle_gap_pilot.md#ceiling-guard-any_climb-wall-pilot-version-6-round-5).
+- **Descent view version 3** (`configs/pilot/descent_view.json`, `2bdb17fc2479...`): contact support
+  version 3.
+  - Windows with a pitch/roll body rate above 2.5 rad/s or a horizontal brake above 4 m/s² are not
+    used.
+  - The thrust gain is learnt before arming: the median of quiet or rising windows from 3 s, arming
+    after 0.5 s of them.
+  - Its climb never ends turn-first.
+  - `--contact-support on|off|shadow` isolates it.
+  - Details: [descent_view.md](../descent_view.md#version-3-round-5-contact-support-version-3).
+
+Versions 5 and 2 are kept verbatim (`wall_pilot_v5.json`, `descent_view_v2.json`), and the runner
+refuses them. With the new rules off the pilot is `m4b`'s bit for bit: 162 of 162 replay pairs, and
+the golden digests of the default, view-rule and version-2 pilots.
+
+### Gates (`configs/pilot/safety_gates.json` v1 `c6dfc88cae88...`; open-loop, synthetic and surrogate evidence)
+
+Held out: the three round-4b live logs, harness sim seeds 101 and 102, and surrogate course seeds
+3100-3103 and 6200-6207. Scores: `docs/experiments/round5_safety_scores.json`. Full table and the
+post-scoring diagnoses: [descent_view.md](../descent_view.md#round-5-gates-configspilotsafety_gatesjson-version-1).
+
+| Gate | Result | Pass |
+|---|---|---|
+| Identity (new rules off, and shadow = off), 27 logs | 162 of 162 pairs bit-identical | yes |
+| Ceiling cut without a governor climb (review's case) | version 6 bounds the request after 0.05 s; version 5 never; a surface below: never | yes |
+| Pilot climbing under the garage-ceiling pattern | support / contact / search levelled after 0.11 / 0.11 / 0.08 s (version 5: not cut) | yes |
+| Turn-first during a contact-support climb | kept, 0.0 m/s toward the wall (version 2: handed off, 0.969 m/s) | yes |
+| Pine mound climb | identical | yes |
+| Ceiling quiet on Straw/Pine (13 logs, held-out lap included) | 0.0 s/min lowered | yes |
+| Contact rest (review scenario), 5 motors x 0-6 m/s | fast PD 0.28 s, brain-09b 0.41-0.48 s, fast-brain-10b 0.39-0.41 s; **brain-08 (0-2 m/s) and fast-brain-11 (0-2 m/s) never armed** in the scripted prologue | **no** |
+| `minus-fast6-r4-02` floor (round-4 stack + version 3) | onset 27.718 s; shadow marks it | yes |
+| Detection where version 2 fires (46 audited contacts) | 45 of 45 development contacts; **the one held-out contact (Straw downhill touch, 79.35 s) missed** | **no** |
+| Clean: onsets outside audited contacts, 61 logs, 90.38 min | 0 | yes |
+| Held-out false reads, command-agnostic | the fast-PD flare of `minus-fast6-r4b-01` removed; **a commanded climb at the Straw hilltop crest (62.43 s) remains, as with version 2** | **no** |
+| Arming false fires, harness, fresh seeds, 5 motors | 0 (round-4b stack: 3-5 per motor); ceiling contacts equal to contact support off | yes |
+| Descent surrogate, fresh seeds, 3 motors | 0 onsets, 48 of 48 courses identical to off | yes |
+
+**What the failures mean.**
+- **Version 3 missed the only held-out real contact that version 2 caught.**
+  - It was an impact-style touchdown on the Straw downhill at 5.2 m/s. The knock pitched the body at
+    up to 3.9 rad/s for 0.05 s and friction braked the drone.
+  - Version 3 excluded the windows around it for 0.33 s. After that the drone sank faster than asked,
+    so the rule no longer suspected contact.
+  - The manoeuvre exclusion cannot tell a commanded flare, where the rate comes before the residual,
+    from a knock, where both come at once.
+- **Version 3 is blind in 6.7% of the logged time** (361 s of 90.4 logged minutes). For the fast PD in the Minus
+  garage it is up to 21.9 s per minute.
+- **The rest scenario holds the motion level whatever the motor issues.**
+  - brain-08 and fast-brain-11 at 0-2 m/s issue less thrust than the curve's hover there, so version 3
+    never arms.
+  - On the 61 live logs it armed at 3.82-4.83 s every time.
+
+**Can the brain release graduate now? No.** This round changes two safety rules and nothing that
+flies. No brain is selected, and none of this is flight evidence. Contact support version 3 fails 3
+of its gates. The ceiling guard version 6 passes its gates, but on the 27 recorded flights it changes
+no request: its effect shows only in the synthetic scenarios.
+
+### Live plan changes (for the main session; development flights)
+
+The procedure, the commands and the stop criteria of the round-4b plan are unchanged. A checkout of
+`m5-safety` loads the round-5 declarations by default, so the same command line flies wall pilot 6
+and descent view 3 with contact support on. The sidecar must declare:
+
+| Declaration | Version | Content sha256 |
+|---|---|---|
+| `configs/obstacles/wall_pilot.json` | 6 | `fe65951d3d68...` |
+| `configs/pilot/descent_view.json` (contact support: on / off / shadow as flown) | 3 | `2bdb17fc2479...` |
+
+The other declarations are the round-4b ones. The CSV gains `contact_armed` and `contact_excluded`.
+
+- **Recommended order.**
+  1. A Minus Two run with the fast PD and `--contact-support shadow`. It measures live arming,
+     excluded time and would-be fires without acting.
+  2. Then the brain runs with `on`.
+  3. On Straw Bale, compare `contact_fire` against the contact audit. Version 3 may miss a hard
+     downhill touch that version 2 caught.
+- **Watch:**
+  - `ceiling_status` `overhead` outside a governor climb, with the vertical request cut under the
+    garage ceiling;
+  - `contact_armed` turning 1 at about 3.8-4.8 s. If it stays 0, the rule never armed;
+  - `contact_excluded` during hard brakes and turns.
+- **Stop the series** if an overhead hold engages on the Straw uphill and the drone loses height into
+  the hill. A pilot's own ring climb is exempt, but the hold also brakes on below-path samples.
+
+### Risks
+
+- Contact support version 3 can miss a hard touchdown (held-out case). A contact inside 3.8-5 s
+  after the first tick is not detected by it at all. Before arming, a drone resting on something
+  after the launch could be learnt as thrust gain, but only in quiet or rising windows.
+- The manoeuvre exclusion uses the runner's smoothed quaternion-derived body rate. A different
+  drone, rate filter or frame rate changes what 2.5 rad/s excludes.
+- The ceiling cut's exemption trusts the pilot's in-view ring climb. A ring close under the garage
+  ceiling approached with lag could still overshoot. Top-edge (above) climbs are cut, so a ring above
+  the image under a ceiling is climbed toward only after the hold.
+- The overhead hold also brakes on below-path samples for 1 s. On a hill, a support or search climb
+  with overhead evidence brakes on the rising ground instead of climbing.
+- The harness and surrogate have no ceiling looming samples or ground reaction. The ceiling cut was
+  shown only in synthetic scenarios and has never acted in closed loop.
+- Every live log except the three round-4b ones was development evidence for version 3's values.

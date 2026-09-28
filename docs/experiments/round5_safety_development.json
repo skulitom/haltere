@@ -1,0 +1,5016 @@
+{
+ "scope": "Round 5 development evidence, looked at before the freeze (commit 68446ee); scripts in the session scratchpad m5/safety. Never flight evidence. The three round-4b live logs were excluded from all of it.",
+ "exclusion_sweep": {
+  "script": "sweep_exclusion.py (contact support v2 residual on the 58 earlier logs; window-max pitch/roll body rate and horizontal braking bounds)",
+  "rows": [
+   {
+    "rate_max": Infinity,
+    "decel_max": Infinity,
+    "false_runs": 13,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "minus-fast6-01",
+      23.19
+     ],
+     [
+      "pine-fast6-01",
+      12.71
+     ],
+     [
+      "pine-fast6-loom-01",
+      12.74
+     ],
+     [
+      "pine-fast6-ttc-01",
+      14.21
+     ],
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-01",
+      54.03
+     ],
+     [
+      "straw-fast6-02",
+      256.85
+     ],
+     [
+      "straw-fast6-03",
+      53.96
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ],
+     [
+      "straw-fast6-arc-01",
+      53.78
+     ],
+     [
+      "straw-fast6-arc-01",
+      113.92
+     ],
+     [
+      "straw-fast6-arc-01",
+      254.23
+     ]
+    ]
+   },
+   {
+    "rate_max": Infinity,
+    "decel_max": 6.0,
+    "false_runs": 13,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "minus-fast6-01",
+      23.19
+     ],
+     [
+      "pine-fast6-01",
+      12.71
+     ],
+     [
+      "pine-fast6-loom-01",
+      12.74
+     ],
+     [
+      "pine-fast6-ttc-01",
+      14.21
+     ],
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-01",
+      54.03
+     ],
+     [
+      "straw-fast6-02",
+      256.85
+     ],
+     [
+      "straw-fast6-03",
+      53.96
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ],
+     [
+      "straw-fast6-arc-01",
+      53.78
+     ],
+     [
+      "straw-fast6-arc-01",
+      113.92
+     ],
+     [
+      "straw-fast6-arc-01",
+      254.23
+     ]
+    ]
+   },
+   {
+    "rate_max": Infinity,
+    "decel_max": 4.0,
+    "false_runs": 13,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "minus-fast6-01",
+      23.19
+     ],
+     [
+      "pine-fast6-01",
+      12.71
+     ],
+     [
+      "pine-fast6-loom-01",
+      12.74
+     ],
+     [
+      "pine-fast6-ttc-01",
+      14.21
+     ],
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-01",
+      54.03
+     ],
+     [
+      "straw-fast6-02",
+      256.85
+     ],
+     [
+      "straw-fast6-03",
+      53.96
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ],
+     [
+      "straw-fast6-arc-01",
+      53.78
+     ],
+     [
+      "straw-fast6-arc-01",
+      113.92
+     ],
+     [
+      "straw-fast6-arc-01",
+      254.23
+     ]
+    ]
+   },
+   {
+    "rate_max": Infinity,
+    "decel_max": 3.0,
+    "false_runs": 10,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "minus-fast6-01",
+      23.19
+     ],
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-01",
+      54.03
+     ],
+     [
+      "straw-fast6-02",
+      256.85
+     ],
+     [
+      "straw-fast6-03",
+      53.96
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ],
+     [
+      "straw-fast6-arc-01",
+      53.78
+     ],
+     [
+      "straw-fast6-arc-01",
+      113.92
+     ],
+     [
+      "straw-fast6-arc-01",
+      254.23
+     ]
+    ]
+   },
+   {
+    "rate_max": 4.0,
+    "decel_max": Infinity,
+    "false_runs": 3,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ]
+    ]
+   },
+   {
+    "rate_max": 4.0,
+    "decel_max": 6.0,
+    "false_runs": 3,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ]
+    ]
+   },
+   {
+    "rate_max": 4.0,
+    "decel_max": 4.0,
+    "false_runs": 3,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ]
+    ]
+   },
+   {
+    "rate_max": 4.0,
+    "decel_max": 3.0,
+    "false_runs": 3,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ],
+     [
+      "straw-fast6-03",
+      210.91
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.5,
+    "decel_max": Infinity,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.5,
+    "decel_max": 6.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.5,
+    "decel_max": 4.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.5,
+    "decel_max": 3.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.0,
+    "decel_max": Infinity,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.0,
+    "decel_max": 6.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.0,
+    "decel_max": 4.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 3.0,
+    "decel_max": 3.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.5,
+    "decel_max": Infinity,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.5,
+    "decel_max": 6.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.5,
+    "decel_max": 4.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.5,
+    "decel_max": 3.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.27,
+    "delay_max": 0.52,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.0,
+    "decel_max": Infinity,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.29,
+    "delay_max": 0.68,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.0,
+    "decel_max": 6.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.29,
+    "delay_max": 0.68,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.0,
+    "decel_max": 4.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.29,
+    "delay_max": 0.68,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   },
+   {
+    "rate_max": 2.0,
+    "decel_max": 3.0,
+    "false_runs": 2,
+    "detected": 45,
+    "missed": [
+     [
+      "minus-fast6-r4-02",
+      30.68
+     ],
+     [
+      "pine-brain03-01",
+      17.25
+     ],
+     [
+      "pine-brain05-02",
+      18.95
+     ],
+     [
+      "pine-brain05-02",
+      20.47
+     ],
+     [
+      "pine-brain06-01",
+      17.73
+     ],
+     [
+      "pine-brain07-01",
+      19.32
+     ],
+     [
+      "pine-brain07-01",
+      20.39
+     ],
+     [
+      "pine-brain08-01",
+      16.72
+     ],
+     [
+      "pine-fast6-loom-01",
+      15.84
+     ],
+     [
+      "straw-brain06-01",
+      45.08
+     ],
+     [
+      "straw-brain06-01",
+      50.95
+     ],
+     [
+      "straw-brain06-01",
+      79.76
+     ],
+     [
+      "straw-brain06-02",
+      162.26
+     ],
+     [
+      "straw-brain06-02",
+      279.56
+     ],
+     [
+      "straw-brain06-03",
+      162.55
+     ],
+     [
+      "straw-brain07-02",
+      298.8
+     ],
+     [
+      "straw-brain07-nosweep-01",
+      183.12
+     ],
+     [
+      "straw-brain6-02",
+      38.45
+     ],
+     [
+      "straw-brain6-02",
+      41.46
+     ]
+    ],
+    "delay_p50": 0.29,
+    "delay_max": 0.68,
+    "false_runs_at": [
+     [
+      "straw-brain06-03",
+      279.44
+     ],
+     [
+      "straw-brain07-03",
+      67.64
+     ]
+    ]
+   }
+  ]
+ },
+ "draft_detector": {
+  "script": "dev_detector.py (v2 against the v3 draft on the 58 earlier logs)",
+  "params": {
+   "thrust_twr": 3.1378033647887618,
+   "thrust_exponent": 1.9728633605611887,
+   "body_drag_s_inv": [
+    0.02745813096840542,
+    0.0,
+    0.3490431637001165
+   ],
+   "throttle_delay_s": 0.03,
+   "window_s": 0.3,
+   "drive_min": 0.4,
+   "drive_max": 0.8,
+   "unexplained_on": 0.8,
+   "sink_min": 0.1,
+   "shortfall": 0.1,
+   "rest_vz": 0.5,
+   "hold_s": 0.15,
+   "arm_after_s": 3.2,
+   "gain_time_constant": 1.0,
+   "gain_quiet": 0.4,
+   "gain_rising": 0.05,
+   "gain_step": 0.15,
+   "gain_min": 0.75,
+   "gain_max": 1.3,
+   "version": 3,
+   "max_body_rate": 2.5,
+   "max_braking": 4.0,
+   "learn_after_s": 3.0,
+   "arm_learn_s": 0.5,
+   "turn_first_handoff": false
+  },
+  "per_log": {
+   "loop-fast5-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.2,
+     "gain": [
+      0.981,
+      1.005
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.18,
+     "gain": [
+      0.968,
+      1.0
+     ],
+     "excluded_s": 5.58
+    }
+   },
+   "minus-brain03-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.62,
+     "gain": [
+      0.993,
+      1.002
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.12,
+     "gain": [
+      0.992,
+      1.002
+     ],
+     "excluded_s": 0.39
+    }
+   },
+   "minus-brain04-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.59,
+     "gain": [
+      0.993,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.09,
+     "gain": [
+      0.985,
+      1.0
+     ],
+     "excluded_s": 0.31
+    }
+   },
+   "minus-brain05-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.49,
+     "gain": [
+      0.995,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.99,
+     "gain": [
+      0.989,
+      1.0
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "minus-brain06-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.54,
+     "gain": [
+      0.995,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.04,
+     "gain": [
+      0.991,
+      1.0
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "minus-brain07-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.41,
+     "gain": [
+      0.995,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.92,
+     "gain": [
+      0.992,
+      1.0
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "minus-brain08-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.68,
+     "gain": [
+      0.993,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.2,
+     "gain": [
+      0.991,
+      1.0
+     ],
+     "excluded_s": 0.37
+    }
+   },
+   "minus-brain08-gapon-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.69,
+     "gain": [
+      0.992,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.2,
+     "gain": [
+      0.991,
+      1.0
+     ],
+     "excluded_s": 0.59
+    }
+   },
+   "minus-brain08-gapon-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.68,
+     "gain": [
+      0.989,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.19,
+     "gain": [
+      0.989,
+      1.0
+     ],
+     "excluded_s": 0.27
+    }
+   },
+   "minus-brain08-gapshadow-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.68,
+     "gain": [
+      0.994,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.18,
+     "gain": [
+      0.993,
+      1.0
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "minus-brain08-loom-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.67,
+     "gain": [
+      0.992,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.16,
+     "gain": [
+      0.992,
+      1.0
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "minus-brain08-slow35-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.68,
+     "gain": [
+      0.994,
+      1.013
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.19,
+     "gain": [
+      0.992,
+      1.013
+     ],
+     "excluded_s": 0.75
+    }
+   },
+   "minus-brain08-vg-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.68,
+     "gain": [
+      0.99,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.19,
+     "gain": [
+      0.99,
+      1.0
+     ],
+     "excluded_s": 0.22
+    }
+   },
+   "minus-brain09b-r4-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.4,
+     "gain": [
+      0.995,
+      1.011
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.35,
+     "gain": [
+      0.995,
+      1.003
+     ],
+     "excluded_s": 2.84
+    }
+   },
+   "minus-brain09b-vg-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.38,
+     "gain": [
+      0.995,
+      1.001
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.31,
+     "gain": [
+      0.995,
+      1.0
+     ],
+     "excluded_s": 1.38
+    }
+   },
+   "minus-brain10b-r4-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.28,
+     "gain": [
+      0.993,
+      1.002
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.82,
+     "gain": [
+      0.992,
+      1.002
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "minus-fast6-01": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      23.19
+     ],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.41,
+     "gain": [
+      0.994,
+      1.022
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.39,
+     "gain": [
+      0.977,
+      1.002
+     ],
+     "excluded_s": 5.23
+    }
+   },
+   "minus-fast6-cur-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.42,
+     "gain": [
+      0.992,
+      1.011
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.81,
+     "gain": [
+      0.992,
+      1.001
+     ],
+     "excluded_s": 0.89
+    }
+   },
+   "minus-fast6-gapon-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.41,
+     "gain": [
+      0.987,
+      1.012
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.39,
+     "gain": [
+      0.974,
+      1.0
+     ],
+     "excluded_s": 4.93
+    }
+   },
+   "minus-fast6-r4-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 2,
+     "contacts": [
+      0.34,
+      0.3,
+      null,
+      null
+     ],
+     "armed_at": 3.41,
+     "gain": [
+      0.994,
+      1.026
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 2,
+     "contacts": [
+      0.34,
+      0.29,
+      null,
+      null
+     ],
+     "armed_at": 4.39,
+     "gain": [
+      0.973,
+      1.015
+     ],
+     "excluded_s": 12.43
+    }
+   },
+   "minus-fast6-vg-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.42,
+     "gain": [
+      0.994,
+      1.009
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.75,
+     "gain": [
+      0.992,
+      1.0
+     ],
+     "excluded_s": 5.09
+    }
+   },
+   "minus-fast6-wall-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.42,
+     "gain": [
+      0.994,
+      1.01
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.4,
+     "gain": [
+      0.982,
+      1.0
+     ],
+     "excluded_s": 1.95
+    }
+   },
+   "pine-brain03-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.57,
+     "gain": [
+      0.993,
+      1.062
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.07,
+     "gain": [
+      0.991,
+      1.061
+     ],
+     "excluded_s": 0.69
+    }
+   },
+   "pine-brain04-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.54,
+     "gain": [
+      0.993,
+      1.002
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.05,
+     "gain": [
+      0.988,
+      1.0
+     ],
+     "excluded_s": 0.73
+    }
+   },
+   "pine-brain05-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null,
+      null
+     ],
+     "armed_at": 3.48,
+     "gain": [
+      0.993,
+      1.076
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null,
+      null
+     ],
+     "armed_at": 3.98,
+     "gain": [
+      0.988,
+      1.076
+     ],
+     "excluded_s": 1.15
+    }
+   },
+   "pine-brain06-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.56,
+     "gain": [
+      0.993,
+      1.079
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.07,
+     "gain": [
+      0.989,
+      1.079
+     ],
+     "excluded_s": 1.35
+    }
+   },
+   "pine-brain06-ttc-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.56,
+     "gain": [
+      0.988,
+      1.007
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.06,
+     "gain": [
+      0.988,
+      1.005
+     ],
+     "excluded_s": 0.21
+    }
+   },
+   "pine-brain07-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null,
+      null,
+      null
+     ],
+     "armed_at": 3.41,
+     "gain": [
+      0.995,
+      1.055
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null,
+      null,
+      null
+     ],
+     "armed_at": 3.91,
+     "gain": [
+      0.993,
+      1.055
+     ],
+     "excluded_s": 0.57
+    }
+   },
+   "pine-brain08-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.73,
+     "gain": [
+      0.994,
+      1.103
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.23,
+     "gain": [
+      0.992,
+      1.103
+     ],
+     "excluded_s": 0.65
+    }
+   },
+   "pine-brain08-loom-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.72,
+     "gain": [
+      0.994,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.22,
+     "gain": [
+      0.993,
+      1.0
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "pine-fast6-01": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      12.71
+     ],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.44,
+     "gain": [
+      0.994,
+      1.035
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.41,
+     "gain": [
+      0.973,
+      1.001
+     ],
+     "excluded_s": 1.37
+    }
+   },
+   "pine-fast6-loom-01": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      12.74
+     ],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.43,
+     "gain": [
+      0.992,
+      1.038
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.83,
+     "gain": [
+      0.992,
+      1.004
+     ],
+     "excluded_s": 2.41
+    }
+   },
+   "pine-fast6-ttc-01": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      14.21
+     ],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.43,
+     "gain": [
+      0.953,
+      1.034
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.42,
+     "gain": [
+      0.955,
+      1.002
+     ],
+     "excluded_s": 3.32
+    }
+   },
+   "straw-brain03-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.65,
+     "gain": [
+      0.985,
+      1.008
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.16,
+     "gain": [
+      0.985,
+      1.003
+     ],
+     "excluded_s": 7.67
+    }
+   },
+   "straw-brain04-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.59,
+     "gain": [
+      0.984,
+      1.008
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.1,
+     "gain": [
+      0.984,
+      1.004
+     ],
+     "excluded_s": 7.41
+    }
+   },
+   "straw-brain05-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.51,
+     "gain": [
+      0.986,
+      1.012
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.01,
+     "gain": [
+      0.985,
+      1.011
+     ],
+     "excluded_s": 7.61
+    }
+   },
+   "straw-brain05-gov-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.53,
+     "gain": [
+      0.985,
+      1.016
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.02,
+     "gain": [
+      0.985,
+      1.014
+     ],
+     "excluded_s": 8.39
+    }
+   },
+   "straw-brain05-trim-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.53,
+     "gain": [
+      0.987,
+      1.004
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.04,
+     "gain": [
+      0.983,
+      1.004
+     ],
+     "excluded_s": 6.7
+    }
+   },
+   "straw-brain05-trim-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 3.52,
+     "gain": [
+      0.985,
+      1.005
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null
+     ],
+     "armed_at": 4.02,
+     "gain": [
+      0.983,
+      1.005
+     ],
+     "excluded_s": 5.98
+    }
+   },
+   "straw-brain06-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 3,
+     "contacts": [
+      null,
+      null,
+      0.5,
+      0.34,
+      null
+     ],
+     "armed_at": 3.57,
+     "gain": [
+      0.986,
+      1.056
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 3,
+     "contacts": [
+      null,
+      null,
+      0.5,
+      0.34,
+      null
+     ],
+     "armed_at": 4.07,
+     "gain": [
+      0.986,
+      1.055
+     ],
+     "excluded_s": 10.26
+    }
+   },
+   "straw-brain06-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 14,
+     "contacts": [
+      0.53,
+      0.341,
+      0.27,
+      null,
+      0.52,
+      0.359,
+      0.3,
+      null,
+      0.29,
+      0.331
+     ],
+     "armed_at": 3.57,
+     "gain": [
+      0.985,
+      1.066
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 14,
+     "contacts": [
+      0.53,
+      0.341,
+      0.27,
+      null,
+      0.52,
+      0.359,
+      0.3,
+      null,
+      0.29,
+      0.331
+     ],
+     "armed_at": 4.08,
+     "gain": [
+      0.985,
+      1.065
+     ],
+     "excluded_s": 20.33
+    }
+   },
+   "straw-brain06-03": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      279.44
+     ],
+     "onsets": 11,
+     "contacts": [
+      0.18,
+      0.31,
+      null,
+      0.48,
+      0.33,
+      0.36,
+      0.3
+     ],
+     "armed_at": 3.56,
+     "gain": [
+      0.986,
+      1.05
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [
+      279.44
+     ],
+     "onsets": 11,
+     "contacts": [
+      0.18,
+      0.31,
+      null,
+      0.48,
+      0.33,
+      0.36,
+      0.3
+     ],
+     "armed_at": 4.06,
+     "gain": [
+      0.986,
+      1.05
+     ],
+     "excluded_s": 22.58
+    }
+   },
+   "straw-brain07-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 7,
+     "contacts": [
+      0.25,
+      0.25,
+      null,
+      0.24
+     ],
+     "armed_at": 3.4,
+     "gain": [
+      0.986,
+      1.03
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 7,
+     "contacts": [
+      0.25,
+      0.25,
+      null,
+      0.24
+     ],
+     "armed_at": 3.91,
+     "gain": [
+      0.986,
+      1.03
+     ],
+     "excluded_s": 8.67
+    }
+   },
+   "straw-brain07-03": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      67.64
+     ],
+     "onsets": 7,
+     "contacts": [
+      0.23,
+      0.23,
+      0.25
+     ],
+     "armed_at": 3.41,
+     "gain": [
+      0.986,
+      1.031
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [
+      67.62
+     ],
+     "onsets": 7,
+     "contacts": [
+      0.23,
+      0.23,
+      0.26
+     ],
+     "armed_at": 3.92,
+     "gain": [
+      0.986,
+      1.031
+     ],
+     "excluded_s": 7.08
+    }
+   },
+   "straw-brain07-nosweep-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 4,
+     "contacts": [
+      0.24,
+      null,
+      0.25
+     ],
+     "armed_at": 3.41,
+     "gain": [
+      0.986,
+      1.014
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 4,
+     "contacts": [
+      0.24,
+      null,
+      0.25
+     ],
+     "armed_at": 3.92,
+     "gain": [
+      0.986,
+      1.014
+     ],
+     "excluded_s": 7.02
+    }
+   },
+   "straw-brain07-steep-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.4,
+     "gain": [
+      0.995,
+      1.0
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.91,
+     "gain": [
+      0.992,
+      1.0
+     ],
+     "excluded_s": 0.0
+    }
+   },
+   "straw-brain07-steep-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 3,
+     "contacts": [
+      0.25
+     ],
+     "armed_at": 3.4,
+     "gain": [
+      0.986,
+      1.014
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 3,
+     "contacts": [
+      0.25
+     ],
+     "armed_at": 3.9,
+     "gain": [
+      0.986,
+      1.014
+     ],
+     "excluded_s": 2.78
+    }
+   },
+   "straw-brain08-01": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 10,
+     "contacts": [
+      0.411
+     ],
+     "armed_at": 3.71,
+     "gain": [
+      0.988,
+      1.011
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 10,
+     "contacts": [
+      0.411
+     ],
+     "armed_at": 4.21,
+     "gain": [
+      0.988,
+      1.0
+     ],
+     "excluded_s": 3.75
+    }
+   },
+   "straw-brain08-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 3,
+     "contacts": [
+      0.3,
+      0.26,
+      null
+     ],
+     "armed_at": 3.72,
+     "gain": [
+      0.988,
+      1.009
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 3,
+     "contacts": [
+      0.3,
+      0.26,
+      null
+     ],
+     "armed_at": 4.22,
+     "gain": [
+      0.988,
+      1.009
+     ],
+     "excluded_s": 5.81
+    }
+   },
+   "straw-brain08-03": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.71,
+     "gain": [
+      0.988,
+      1.004
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.21,
+     "gain": [
+      0.988,
+      1.0
+     ],
+     "excluded_s": 2.95
+    }
+   },
+   "straw-brain08-04": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 16,
+     "contacts": [
+      0.29,
+      0.28,
+      0.21,
+      0.45,
+      0.29,
+      0.29,
+      0.28
+     ],
+     "armed_at": 3.7,
+     "gain": [
+      0.986,
+      1.007
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 16,
+     "contacts": [
+      0.29,
+      0.28,
+      0.21,
+      0.45,
+      0.29,
+      0.29,
+      0.28
+     ],
+     "armed_at": 4.2,
+     "gain": [
+      0.988,
+      1.007
+     ],
+     "excluded_s": 10.41
+    }
+   },
+   "straw-brain08-05": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 2,
+     "contacts": [
+      0.27,
+      0.27
+     ],
+     "armed_at": 3.71,
+     "gain": [
+      0.988,
+      1.007
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 2,
+     "contacts": [
+      0.27,
+      0.27
+     ],
+     "armed_at": 4.22,
+     "gain": [
+      0.988,
+      1.007
+     ],
+     "excluded_s": 5.61
+    }
+   },
+   "straw-brain08-06": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 8,
+     "contacts": [
+      0.26,
+      0.27,
+      0.299,
+      0.27,
+      0.35,
+      0.29
+     ],
+     "armed_at": 3.7,
+     "gain": [
+      0.988,
+      1.011
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 8,
+     "contacts": [
+      0.26,
+      0.27,
+      0.299,
+      0.27,
+      0.35,
+      0.29
+     ],
+     "armed_at": 4.2,
+     "gain": [
+      0.988,
+      1.011
+     ],
+     "excluded_s": 9.78
+    }
+   },
+   "straw-brain6-02": {
+    "v2": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null,
+      null
+     ],
+     "armed_at": 3.79,
+     "gain": [
+      0.991,
+      1.195
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [
+      null,
+      null
+     ],
+     "armed_at": 4.29,
+     "gain": [
+      0.99,
+      1.195
+     ],
+     "excluded_s": 2.05
+    }
+   },
+   "straw-fast6-01": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      54.03
+     ],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.44,
+     "gain": [
+      0.981,
+      1.039
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.38,
+     "gain": [
+      0.983,
+      1.006
+     ],
+     "excluded_s": 6.19
+    }
+   },
+   "straw-fast6-02": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      256.85
+     ],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.43,
+     "gain": [
+      0.981,
+      1.038
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.4,
+     "gain": [
+      0.978,
+      1.003
+     ],
+     "excluded_s": 42.85
+    }
+   },
+   "straw-fast6-03": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      53.96,
+      210.91
+     ],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.42,
+     "gain": [
+      0.983,
+      1.037
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.39,
+     "gain": [
+      0.981,
+      1.002
+     ],
+     "excluded_s": 38.99
+    }
+   },
+   "straw-fast6-arc-01": {
+    "v2": {
+     "outside": [],
+     "potential": [
+      53.78,
+      113.92,
+      254.23
+     ],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 3.41,
+     "gain": [
+      0.982,
+      1.033
+     ],
+     "excluded_s": 0.0
+    },
+    "v3": {
+     "outside": [],
+     "potential": [],
+     "onsets": 0,
+     "contacts": [],
+     "armed_at": 4.39,
+     "gain": [
+      0.976,
+      1.003
+     ],
+     "excluded_s": 40.32
+    }
+   }
+  }
+ },
+ "ceiling_replays": {
+  "script": "dev_ceiling_replays.py (24 round-4 gate logs, --stack on --near-on-path, descent view 3 draft, command_thr; wall pilot 5 against 6)",
+  "literal_any_climb": {
+   "minus-fast6-wall-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-gapon-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     1
+    ]
+   },
+   "minus-brain08-gapon-02": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     1,
+     1
+    ]
+   },
+   "minus-fast6-gapon-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-loom-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-fast6-vg-02": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-vg-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain09b-vg-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-gapshadow-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-fast6-r4-02": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     1,
+     1
+    ]
+   },
+   "minus-brain10b-r4-02": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain09b-r4-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "pine-fast6-ttc-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "pine-brain08-loom-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "pine-brain08-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-brain08-04": {
+    "changed_s": 1.3,
+    "lowered_s": 1.3,
+    "max_lowered": 1.603,
+    "segments": [
+     [
+      148.66,
+      149.95
+     ]
+    ],
+    "engagements": [
+     0,
+     1
+    ]
+   },
+   "straw-brain08-06": {
+    "changed_s": 1.29,
+    "lowered_s": 1.29,
+    "max_lowered": 1.592,
+    "segments": [
+     [
+      37.49,
+      38.77
+     ]
+    ],
+    "engagements": [
+     1,
+     2
+    ]
+   },
+   "straw-brain08-01": {
+    "changed_s": 1.3,
+    "lowered_s": 1.3,
+    "max_lowered": 1.554,
+    "segments": [
+     [
+      41.56,
+      42.85
+     ]
+    ],
+    "engagements": [
+     0,
+     1
+    ]
+   },
+   "straw-brain08-02": {
+    "changed_s": 6.27,
+    "lowered_s": 2.46,
+    "max_lowered": 1.322,
+    "segments": [
+     [
+      51.31,
+      52.45
+     ],
+     [
+      148.53,
+      153.64
+     ]
+    ],
+    "engagements": [
+     0,
+     2
+    ]
+   },
+   "straw-brain08-03": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-fast6-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-fast6-02": {
+    "changed_s": 1.43,
+    "lowered_s": 1.43,
+    "max_lowered": 1.976,
+    "segments": [
+     [
+      53.81,
+      54.49
+     ],
+     [
+      156.0,
+      156.73
+     ]
+    ],
+    "engagements": [
+     1,
+     3
+    ]
+   },
+   "straw-fast6-03": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-fast6-arc-01": {
+    "changed_s": 0.0,
+    "lowered_s": 0.0,
+    "max_lowered": 0.0,
+    "segments": [],
+    "engagements": [
+     0,
+     0
+    ]
+   }
+  },
+  "final_with_ring_climb_exempt": {
+   "minus-fast6-wall-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-gapon-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-gapon-02": {
+    "changed_s": 0.0,
+    "engagements": [
+     1,
+     1
+    ]
+   },
+   "minus-fast6-gapon-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-loom-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-fast6-vg-02": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-vg-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain09b-vg-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain08-gapshadow-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-fast6-r4-02": {
+    "changed_s": 0.0,
+    "engagements": [
+     1,
+     1
+    ]
+   },
+   "minus-brain10b-r4-02": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "minus-brain09b-r4-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "pine-fast6-ttc-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "pine-brain08-loom-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "pine-brain08-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-brain08-04": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-brain08-06": {
+    "changed_s": 0.0,
+    "engagements": [
+     1,
+     1
+    ]
+   },
+   "straw-brain08-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-brain08-02": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-brain08-03": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-fast6-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-fast6-02": {
+    "changed_s": 0.0,
+    "engagements": [
+     1,
+     1
+    ]
+   },
+   "straw-fast6-03": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   },
+   "straw-fast6-arc-01": {
+    "changed_s": 0.0,
+    "engagements": [
+     0,
+     0
+    ]
+   }
+  }
+ },
+ "harness_seed23_pd": {
+  "script": "dev_harness.py pd 23 (motor-assist harness sets, sim seed 23)",
+  "summary": {
+   "hairpin_m4b": {
+    "onsets": [
+     0,
+     0,
+     0,
+     0,
+     3,
+     0,
+     0,
+     3,
+     0,
+     0,
+     0,
+     0
+    ],
+    "armed_at": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "gain": [
+     0.9266,
+     0.9449,
+     0.9921,
+     1.0302,
+     1.1644,
+     0.9542,
+     0.9676,
+     1.132,
+     0.9868,
+     0.9974,
+     1.0797,
+     0.9822
+    ],
+    "ceiling": 2,
+    "wall": 2,
+    "floor": 0,
+    "finished": 10,
+    "support_climb_s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     1.8,
+     0.0,
+     0.0,
+     1.8,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "elapsed": 27.7
+   },
+   "hairpin_v6_cs3": {
+    "onsets": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "armed_at": [
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8,
+     3.8
+    ],
+    "gain": [
+     0.9265,
+     0.9455,
+     0.9921,
+     1.0308,
+     1.1688,
+     0.9545,
+     0.9676,
+     1.1534,
+     0.987,
+     0.9991,
+     1.0799,
+     0.9827
+    ],
+    "ceiling": 1,
+    "wall": 0,
+    "floor": 0,
+    "finished": 12,
+    "support_climb_s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "elapsed": 28.2
+   },
+   "hairpin_v6_csoff": {
+    "onsets": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "armed_at": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "gain": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "ceiling": 1,
+    "wall": 0,
+    "floor": 0,
+    "finished": 12,
+    "support_climb_s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "elapsed": 25.3
+   },
+   "accelerate_m4b": {
+    "onsets": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "armed_at": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "gain": [
+     1.0316,
+     0.8792,
+     0.9654,
+     1.0564,
+     1.0489,
+     1.0089
+    ],
+    "ceiling": 2,
+    "wall": 0,
+    "floor": 0,
+    "finished": 6,
+    "support_climb_s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "elapsed": 12.4
+   },
+   "accelerate_v6_cs3": {
+    "onsets": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "armed_at": [
+     3.85,
+     3.8,
+     3.8,
+     4.28,
+     5.13,
+     4.97
+    ],
+    "gain": [
+     1.0315,
+     0.8828,
+     0.9654,
+     1.056,
+     1.049,
+     1.0089
+    ],
+    "ceiling": 2,
+    "wall": 0,
+    "floor": 0,
+    "finished": 6,
+    "support_climb_s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "elapsed": 12.4
+   },
+   "accelerate_v6_csoff": {
+    "onsets": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "armed_at": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "gain": [
+     null,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    "ceiling": 2,
+    "wall": 0,
+    "floor": 0,
+    "finished": 6,
+    "support_climb_s": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0
+    ],
+    "elapsed": 11.7
+   }
+  }
+ }
+}

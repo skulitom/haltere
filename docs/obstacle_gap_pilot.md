@@ -992,6 +992,49 @@ Neither is in this round.
   - the kinematic motor rollout;
   - the harness building each contract's stopping model.
 
+## Ceiling guard any_climb: wall pilot version 6 (round 5)
+
+**Status: not flown.** `configs/obstacles/wall_pilot.json` version 6 (`fe65951d3d68...`, frozen in
+commit `68446ee` with `configs/pilot/safety_gates.json` version 1) changes one thing: the ceiling
+guard's `any_climb` (`CeilingGuardConfig`, "ceiling-guard version 4"). Turn-first, its stopping
+models, the other ceiling-guard values and the clearance brake's sink floor are version 5's. Version 5
+is kept verbatim as `wall_pilot_v5.json`; the runner refuses it.
+
+**Why (round-4b review).** Up to version 5 the overhead cut engaged only during the TTC governor's own
+terrain climb (or its hold). Every other climb rose under the ~2.2 m Minus Two garage ceiling with no
+cut: the older support climbs (1 m/s for 0.6 s), contact-support climbs, the search climb (0.5 m/s),
+the motor assist's sag climb. In the round-4b integration harness, 2 of 12 hairpin drones rose into
+the ceiling after false contact-support climbs.
+
+**The rule.** The overhead condition is version 5's: the measured vz above `overhead_min_rise`
+(0.3 m/s), 2 samples within 0.25 s with alarm TTC under 1.2 s, above the path or unexplained, at least
+one of them positive. The effect is the same too: the overhead hold (1 s), no terrain climb, below-path
+samples brake, and the whole vertical request is bounded to 0 m/s at 15 m/s². What changes:
+- The condition now applies whatever makes the drone climb, not only during a governor climb.
+- **One exemption: the pilot's own climb toward the ring in view** (pilot state `cue`, no motor-assist
+  sag climb; the pilot passes `extra_climb` to the governor each tick). It aims at a ring, which lies
+  below any ceiling the drone flies under.
+  - In the development replays, a literal draft that cut every climb lowered the pilot's own climb up
+    the Straw Bale uphill on 5 of the 10 Straw gate logs: 1.29-2.46 s per log (1-2 cuts), by up to
+    1.98 m/s.
+  - There, something above an uphill ring read as overhead evidence (on `straw-brain08-04` at
+    148.66 s: below_fraction 0.27, lower-surface TTC 1.30 s against a 1.02 s alarm).
+  - Top-edge (`above`) climbs, coasts on an earlier climb request, search, support, contact-support
+    and sag climbs are all cut.
+- Outside a governor climb, a sample without vertical evidence counts only when the lower window
+  does not explain it, so the surface below a climbing path is not a ceiling. Inside a governor climb
+  version 5 already applied this test.
+
+**Development evidence (disclosed in the declaration).**
+- The review's synthetic governor case, re-run: version 5 does not engage without a governor climb;
+  version 6 bounds the request 0.06 s after the first sample, as version 5 does during a governor
+  climb. A sample the lower window explains engages neither.
+- Open-loop replays of the 24 round-4 gate logs (the round-4b stack, descent view 3, the issued
+  throttle) with versions 5 and 6. With the exemption, version 6 changed no request on any of them.
+- The three round-4b live logs were not replayed with version 6 before the freeze. They are held out.
+
+Gates and scores: [configs/pilot/safety_gates.json](descent_view.md#round-5-gates-configspilotsafety_gatesjson-version-1).
+
 ## Round 4: pillar C and side commitment
 
 **Status: not flown.** Round 4 changes only the pilot's gap aim, in `haltere/liftoff/gap_aim.py`

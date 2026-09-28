@@ -1,17 +1,135 @@
-# View-keeping descent (round 4) and contact support (round 4b)
+# View-keeping descent (round 4) and contact support (rounds 4b and 5)
 
 **Status.** Off by default (`--descent-view on|off|DECLARATION`). The declaration is
-`configs/pilot/descent_view.json` **version 2** (round 4b). It keeps version 1's view rule unchanged
-and adds contact support; see [Version 2](#version-2-round-4b-contact-support). Version 1
-(`descent_view_v1.json`, kept) flew on Minus Two in round 4 as a disclosed development deviation. The
-runner now flies only version 2. Version 1's frozen surrogate gates are
-`configs/pilot/descent_view_gates.json` version 1; version 2's are
-`configs/pilot/contact_support_gates.json` version 1.
+`configs/pilot/descent_view.json` **version 3** (round 5). It keeps version 1's view rule unchanged
+and carries contact support version 3; see [Version 3](#version-3-round-5-contact-support-version-3).
+`--contact-support on|off|shadow` (default `on`) isolates the contact rule. Versions 1 and 2
+(`descent_view_v1.json`, `descent_view_v2.json`, kept) are refused by the runner. Version 1 flew on
+Minus Two in round 4 and version 2 in round 4b, both as disclosed development deviations. Frozen gates:
+version 1's are `configs/pilot/descent_view_gates.json` version 1, version 2's
+`configs/pilot/contact_support_gates.json` version 1, version 3's `configs/pilot/safety_gates.json`
+version 1 (with the ceiling guard of wall pilot version 6).
+
+## Version 3 (round 5): contact support version 3
+
+**Not flown.** Version 3 (`2bdb17fc2479...`, frozen with the safety gates in commit `68446ee`) keeps
+version 1's view rule and version 2's contact-rule values, and changes three things the round-4b review
+found. With the new fields unset (version 2's declaration), the rule is version 2's bit for bit: the unit
+test's golden digest of the version-2 pilot equals the one computed in a git archive of `m4b`
+(`bd8ec886...`).
+
+1. **Manoeuvre windows are not used.** A window whose highest pitch/roll body rate exceeds
+   `max_body_rate` (2.5 rad/s) or whose horizontal speed along its first horizontal velocity falls
+   faster than `max_braking` (4 m/s²) is treated like a window outside the drive range: no suspicion
+   and no gain learning.
+   - Why: the fast PD's airborne hard brakes read 1.0-1.8 m/s² of unexplained upward force for
+     0.15-0.29 s (13 command-agnostic runs on the 58 earlier logs, 11 of them fast-PD brake flares).
+     They start as the nose pitches up at 3.2-5.5 rad/s, before the horizontal speed falls: the
+     thrust of the mean drive underestimates a motor set split hard for the pitch. No support climb
+     came only because the pilot was not asking to sink there.
+   - The rate is the pilot's input `omega` (the runner's quaternion-derived body rates; the logged
+     `omega_x`/`omega_y`), so the replays and the runner see the same value.
+2. **The gain is learnt before arming.** From `learn_after_s` (3.0 s after the first tick, when the
+   runner's throttle ramp ends; every sample of the window at or after it), never while launching or in
+   a support climb, every valid window that is quiet (at most 0.4 m/s² at the current gain) or rising
+   (lowest vz at least 0.05 m/s) adds its observed gain. The gain is the median of those. The rule arms
+   at 3.2 s as before, but only once `arm_learn_s` (0.5 s) of such windows were collected; then version
+   2's slow learning continues.
+   - Why: in the round-4b integration harness 2 of 12 hairpin drones whose thrust was about 15%
+     above the curve read 1.2-1.5 m/s² at arming (gain still 1), fired, and rose into the 2.2 m
+     ceiling.
+   - A drone that never gives such a window never arms (the older support rules still act).
+3. **Its climb never ends turn-first** (`turn_first_handoff` false). An older support climb still
+   hands off as before.
+
+**Switch.** `--contact-support on` (default) flies the rule; `off` leaves it out (the view rule alone,
+version 1's pilot); `shadow` computes and logs it (`contact_fire` marks where it would start a climb,
+then it waits `support_climb_s` as if climbing) and changes nothing: no climb, no reset of the older
+rules' timers, no turn-first effect. Its commands equal `off` bit for bit. The deployed pilot
+(`haltere.train.deployed_pilot`, `contact_support=`) and the replay harness (`--contact-support`, tags
+`-csoff`/`-csshadow`) follow it.
+
+**Logs.** With `on` or `shadow` the CSV adds `contact_unexplained`, `contact_gain`, `contact_fire`,
+`contact_armed` and `contact_excluded` after the view columns. The sidecar's
+`pilot_assistance.contact_support` adds `applied`, `armed_at_s` (seconds after the first tick) and
+`prearm_gain`; `descent_view_declaration` records the `contact_support` mode.
+
+**Development evidence (before the freeze, disclosed in the declaration).**
+- The window features and a threshold sweep on the 58 earlier logs (the three round-4b live logs held
+  out; session scratchpad `m5/safety/features.py`, `sweep_exclusion.py`). A window-max rate bound of
+  2.5-3.5 rad/s removed 11 of the 13 false-read runs and changed no detection of an audited contact
+  (45 detected, first fire 0.27 s median, 0.52 s at most, as without it); 2.0 rad/s delayed one to
+  0.68 s. The braking bound alone removed 3 of the 13 and none beyond the rate bound.
+- The draft rule on those logs (`dev_detector.py`): every audited contact version 2 fires in, version 3
+  fires in too, at the same time within 0.01 s; no onset outside a contact; arming at 3.8-4.8 s; the
+  two command-agnostic runs left are a brain-06 climb at +1.9 m/s (279.4 s) and a brain-07 hilltop
+  (67.6 s, 0.97 m/s²).
+- The motor-assist harness on sim seed 23 with the fast PD (where round 4b found the arming fires):
+  version 2 fired 3 times on each of the same 2 of 12 hairpin drones and 2 drones touched the ceiling;
+  the draft fired on none, armed at 3.8 s, and flew the same as `--contact-support off`.
+
+Scores: see [Gates](#round-5-gates-configspilotsafety_gatesjson-version-1) below.
+
+### Round 5 gates (configs/pilot/safety_gates.json version 1)
+
+Frozen with both declarations (`c6dfc88cae88...`, commit `68446ee`) before any gate run;
+`haltere.liftoff.safety_gates` runs and scores them. Scores: `docs/experiments/round5_safety_scores.json`.
+Held out: the three round-4b live logs (`minus-fast6-r4b-01`, `minus-brain11cw13-r4b-noassist-01`,
+`straw-brain11cw13-r4b-noassist-02`), harness sim seeds 101 and 102, and surrogate course seeds flat and
+steep 3100-3103 and hill 6200-6207. Nothing here is flight evidence. **10 of 13 gates pass; the three
+failures are all contact support version 3's.**
+
+| Gate | Evidence | Threshold | Result | Pass |
+|---|---|---|---|---|
+| SG_Identity | deterministic replays; the 3 held-out logs included | 6 replay pairs x 27 logs bit-identical: default, shadow stack, stack with wall 5, with wall 5 + descent view 2, with wall 5 + descent view 3 `--contact-support off` (all against a git archive of `m4b`), and shadow against off | 162 of 162 | yes |
+| SG_Ceiling_Governor | synthetic, development | version 6 bounds the request within 0.1 s with no governor climb; never for an explained sample; with a governor climb as version 5 | version 6: 0.05 s (above-path and live-garage samples), explained: none, case B equal to version 5 (0.05 s); version 5 without a governor climb: never | yes |
+| SG_Ceiling_Pilot | synthetic, development | support, contact and search climbs levelled (<= 0.05 m/s) within 0.3 s, with an overhead engagement | version 6: 0.11 / 0.11 / 0.08 s; version 5: no engagement (level only when the climb ended, 0.49 / 0.49 / 1.13 s) | yes |
+| SG_TurnFirst | synthetic, development | a contact-support climb keeps turn-first (toward the wall <= 0.05 m/s); older climbs and version 2 hand off | version 3: episode kept, 0.0 m/s toward the wall; older climb and version 2: handoff, 0.969 m/s toward the wall | yes |
+| SG_Ceiling_Pine_Mound | development | `pine-fast6-ttc-01` vertical request 3.5-6.5 s identical with wall 6 and wall 5 | identical (up to 3.5 m/s) | yes |
+| SG_Ceiling_Quiet | development; held out for the round-4b Straw lap | <= 0.2 s/min of vertical request lowered by version 6 on Straw and Pine | 0.0 s/min on all 13 logs | yes |
+| SG_Ceiling_Minus_Report | report | - | version 6 changes no request on the 14 Minus logs (both held-out ones included) | - |
+| SG_Contact_Rest | the review's scenario (development for the fast PD) | first support climb within 0.8 s of the rest at 0-6 m/s, none before, armed by 4.5 s | fast PD 0.28 s (armed 3.8 s); brain-09b 0.41-0.48 s; fast-brain-10b 0.39-0.41 s; brain-08 0.44 s at 3-5 m/s but **never armed at 0-2 m/s** and not by 4.5 s at 6 m/s (an older rule at 0.74 s); fast-brain-11-b-cw13 0.37 s at 4-6 m/s but **never armed at 0-2 m/s**, an older rule at 2.95 s at 3 m/s | **no** |
+| SG_Contact_R402 | development | an onset and a shadow mark in 27.4-28.9 s | onsets 27.718 and 29.378 s; shadow marks the same | yes |
+| SG_Contact_Detection | development (45 contacts); held out (1) | wherever version 2 fires in an audited contact, version 3 fires at most 0.1 s later | 45 of 45 development contacts, same times within 0.01 s; **the held-out Straw downhill touch (`straw-brain11cw13-r4b-noassist-02`, 79.35 s): version 2 at +0.30 s, version 3 none** | **no** |
+| SG_Contact_Clean | development + held out | no onset outside the audit's contacts | 0 on 61 logs (90.38 min) | yes |
+| SG_Contact_Flare | held out | no command-agnostic false-read run outside contacts | `minus-fast6-r4b-01`: version 2 one run (42.62-42.90 s), version 3 none; **`straw-brain11cw13-r4b-noassist-02`: one run for both (62.43-62.80 s)**; `minus-brain11cw13-r4b-noassist-01`: none | **no** |
+| SG_Contact_Arming | held out (fresh seeds) | round-5 stack: no contact onset in the harness (no ground reaction there); ceiling contacts <= contact support off | 0 onsets for all 5 motors (180 drone runs; the round-4b stack: fast PD 3, brain-08 5, brain-09b 3, fast-brain-10b 5, fast-brain-11 5); ceiling contacts equal to off for every motor (fast PD 11, brain-08 8, brain-09b 6, fast-brain-10b 8, fast-brain-11 1; round-4b stack 11, 10, 8, 9, 2) | yes |
+| SG_Contact_Surrogate | held out (fresh course seeds) | no onset; every course identical to contact support off | 0 onsets; 48 of 48 identical (fast PD, fast-brain-11-b-cw13, fast-brain-10b; armed at 3.8 s everywhere) | yes |
+
+**Post-scoring diagnosis of the failures (not tuning; nothing was changed after the scores).**
+- **SG_Contact_Detection.** The held-out downhill touch is an impact-style touchdown at 5.2 m/s: at
+  79.50 s the vertical speed jumps from -2.6 to -1.3 m/s, the knock pitches the body at up to
+  3.9 rad/s for 0.05 s, and friction brakes the horizontal speed from 5.2 to 4.6 m/s.
+  - Version 3 excludes every window that contains that spike or the brake: 79.51-79.84 s, 0.33 s.
+  - Afterwards the drone sank faster than the logged command (-1.02 m/s against -0.82), so the rule
+    was no longer suspicious.
+  - Version 2 fired at 79.654 s.
+  - The exclusion cannot tell a commanded pitch (the flare: the rate comes first, then the residual)
+    from a knock (both at once). A version 4 would need that ordering, or a rate spike shorter than
+    the window, before it excludes.
+- **SG_Contact_Flare.** The held-out run is a commanded climb (+1.05 m/s, vz up to +1.41 m/s) at the
+  Straw Bale hilltop crest (x about 0-2, y 196, z 26.9-27.4) at a body rate of 0.13 rad/s: 3.15 m/s²
+  of unexplained force, the same for versions 2 and 3.
+  - It cannot start a climb (the command is not a sink request).
+  - It is either a crest scrape the audit does not count, or a thrust-model error in a climb.
+  - The development logs had the same kind at the crest (`straw-brain07-03` 67.6 s) and in a climb
+    (`straw-brain06-03` 279.4 s); the rule was not designed to remove those.
+- **SG_Contact_Rest.** The scenario holds the measured motion level whatever the motor issues.
+  - At 0-2(3) m/s brain-08 and fast-brain-11 issue less thrust than the curve's hover. The held
+    motion then reads as an upward residual in every window: no window is quiet or rising, and
+    version 3 never arms. Version 2 armed on time alone.
+  - In the live logs every flight armed, at 3.82-4.83 s (all 61 logs). In the harness it armed at
+    3.8-8.26 s, and at 3.8 s in the surrogate.
+  - It is also a real property: a vehicle whose free flight never matches the curve never arms.
+- **Blind time.** Version 3 does not use 361 s of the 90.4 logged minutes (6.7%). For the fast PD in
+  the Minus garage it is up to 21.9 s/min (`minus-fast6-r4-02`): the rule is blind in much of the
+  garage flight, where brakes and turns are hard.
 
 ## Version 2 (round 4b): contact support
 
-**Not flown.** Version 2 keeps version 1's view rule, value for value (the `descent_view` block is
-identical), and adds `contact_support` (`haltere.liftoff.fast_race_cue.ContactSupportConfig`). Its
+**Flown in round 4b** (a disclosed development deviation; superseded by version 3). Version 2 keeps
+version 1's view rule, value for value (the `descent_view` block is identical), and adds
+`contact_support` (`haltere.liftoff.fast_race_cue.ContactSupportConfig`). Its
 frozen gates are `configs/pilot/contact_support_gates.json` version 1
 (`haltere/liftoff/contact_support_eval.py`).
 
@@ -498,3 +616,18 @@ is needed.
   - the runner's contact columns and metadata;
   - the clearance brake's sink floor (wall pilot version 5).
 - `tests/test_contact_audit.py`: the audit on synthetic telemetry and its validation scoring.
+- `tests/test_round5_safety.py` (round 5, 18 tests):
+  - wall pilot 6, descent view 3 and the safety gates are frozen; versions 5 and 2 are kept and refused
+    by the runner; contact support versions 2 and 3 are validated field by field;
+  - the default, view-rule and version-2 pilots keep `m4b`'s golden digests (a git archive of
+    `2a5bccb`);
+  - the ceiling cut of a climb that is not the governor's, none for a sample the lower window explains,
+    and the pilot's levelling for support, contact and search climbs, but not for its own ring climb;
+  - version 3 arms after its gain learning (3.8-4.0 s) and detects a rest within 0.8 s; a rest that
+    starts during the learning is not learnt;
+  - a hard pitch (3 and 5 rad/s) or a 6 m/s² horizontal brake starts no support climb (version 2 fires),
+    while a rest at 1 rad/s is still detected;
+  - a drone whose motion implies a gain of 1.16 fires with version 2 after arming and not with version 3;
+  - shadow commands equal off bit for bit and mark the tick where on fires;
+  - a contact-support climb never ends turn-first; an older support climb and version 2 still hand off;
+  - the runner switch, columns and metadata, the deployed pilot and the replay harness modes.
