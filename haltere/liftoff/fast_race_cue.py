@@ -925,7 +925,7 @@ def contact_support_config(declaration):
     return ContactSupportConfig(**declaration['contact_support'])
 # The motor-assist declaration version whose rule this code implements (MotorAssistConfig); runners fly only this one.
 # MOTOR_ASSIST_VERSIONS are the versions this code can rebuild for replays: versions 1 and 2 are kept for provenance
-# (configs/pilot/motor_assist_v1.json, motor_assist_v2.json) and refused by the runner; version-1 entries get
+# (the kept version-1 and version-2 declarations in configs/pilot) and refused by the runner; version-1 entries get
 # MOTOR_ASSIST_V1_FIELDS. Version 3 is version 2's rule with the approach's climb exclusion declared out
 # (approach_climb_max = vertical_up: the pilot never asks for more).
 MOTOR_ASSIST_VERSION = 3
