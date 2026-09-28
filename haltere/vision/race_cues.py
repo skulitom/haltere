@@ -49,10 +49,10 @@ def checkpoint_ring(rgb, annulus=None):
     ``annulus`` (off by default: None keeps this reader bit for bit): the ring-marker declaration's reader rule, a dict
     with min_white, offsets_px and samples. A candidate is kept only if the white mask covers at least min_white of the
     in-image points of each circle of radius (w + h)/4 + offset (offset in offsets_px) about its hole centre: the HUD
-    marker's white annulus is continuous around its hole. A dark square of a checkered structure (the legs of the
-    Straw Bale start arches) inside a white region passes the hole tests but its surround alternates white and dark:
-    on straw-brain11cw13-r4b-noassist-02 at 111.3-111.4 s such a check on the right leg of the second start arch was
-    read as the marker, 16.6 deg right of the ring, and turned the pilot into that leg.
+    marker's white annulus is continuous around its hole. A dark patch inside a white region (a logo on a white
+    banner, a check of a checkered structure) can pass the hole tests while its surround is not a continuous ring: on
+    straw-brain11cw13-r4b-noassist-02 at 111.3-111.4 s a dark logo on a white fence banner just right of the second
+    start arch's right leg was read as the marker, 16.6 deg right of the ring, and turned the pilot into that leg.
     """
     frame = _ring_frame(rgb)
     hits = ring_candidates(frame, annulus)
@@ -113,7 +113,7 @@ def ring_candidates(rgb, annulus=None):
         yy = np.clip(np.rint(v+10*np.sin(angles)).astype(int), 0, 719)
         if np.mean(mask[yy, xx] > 0) > .5:  # a hole in a white cloud or wall
             continue
-        # annulus rule: a continuous white annulus around the hole (a dark check of a checkered structure is not)
+        # annulus rule: a continuous white annulus around the hole (a dark patch inside a white region is not)
         ok = annulus is None or all(
             annulus_white(mask, u, v, (w+h)/4+float(offset), annulus['samples']) >= annulus['min_white']
             for offset in annulus['offsets_px'])

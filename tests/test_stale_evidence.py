@@ -2,7 +2,7 @@
 `ClearanceRayConfig`) and the ring-marker reader rule (configs/pilot/ring_marker.json, `checkpoint_ring(annulus=...)`).
 
 The governor tests replay the shape of minus-fast6-r4b-01 (a stand-off at a first wall, then short-TTC samples along a
-ray 180 deg away, the wall behind the next arch); the reader tests paste a recorded patch of a checkered leg whose dark check passes
+ray 180 deg away, the wall behind the next arch); the reader tests paste a recorded patch of a white banner whose dark logo passes
 the earlier reader's hole tests (the right leg of the second Straw Bale start arch on straw-brain11cw13-r4b-noassist-02).
 Development cases only; none of this is flight evidence.
 """
@@ -285,20 +285,21 @@ def marker(rgb, centre, outer=7.5, inner=3.6):
     return rgb
 
 
-LEG_CHECK = ROOT/'tests'/'data'/'straw_start_arch_leg_check.png'
+BANNER_LOGO = ROOT/'tests'/'data'/'straw_start_banner_logo.png'
 
 
-def leg_check(rgb, x0=700, y0=500):
+def banner_logo(rgb, x0=700, y0=500):
     """The 48 x 48 px patch of the recorded frame of straw-brain11cw13-r4b-noassist-02 at 111.39 s (video time) centred
-    on the dark check of the second start arch's right leg that the earlier reader takes for the marker (the live reader
+    on the dark logo of a white fence banner just right of the second start arch's right leg, which the earlier reader
+    takes for the marker (the live reader
     logged it at u 0.605, v 0.78 at 111.34-111.41 s), pasted into a frame."""
-    patch = cv2.cvtColor(cv2.imread(str(LEG_CHECK)), cv2.COLOR_BGR2RGB)
+    patch = cv2.cvtColor(cv2.imread(str(BANNER_LOGO)), cv2.COLOR_BGR2RGB)
     rgb[y0:y0+patch.shape[0], x0:x0+patch.shape[1]] = patch
     return rgb
 
 
-def test_a_dark_check_of_a_checkered_leg_is_read_as_the_marker_only_without_the_rule():
-    rgb = leg_check(np.zeros((720, 1280, 3), np.uint8))
+def test_a_dark_banner_logo_is_read_as_the_marker_only_without_the_rule():
+    rgb = banner_logo(np.zeros((720, 1280, 3), np.uint8))
     found = checkpoint_ring(rgb)
     assert found is not None and found['u'] == pytest.approx(725/1280, abs=.003)   # the earlier reader's false marker
     assert checkpoint_ring(rgb, annulus=RULE) is None
@@ -337,8 +338,8 @@ def test_without_the_rule_the_reader_is_the_m4b_reader_bit_for_bit(tmp_path):
     old = namespace['checkpoint_ring']
     rng = np.random.default_rng(5)
     pictures = [marker(np.zeros((720, 1280, 3), np.uint8), (640, 634)),
-                leg_check(np.zeros((720, 1280, 3), np.uint8)),
-                leg_check(marker(np.zeros((720, 1280, 3), np.uint8), (300, 300)), 900, 100),
+                banner_logo(np.zeros((720, 1280, 3), np.uint8)),
+                banner_logo(marker(np.zeros((720, 1280, 3), np.uint8), (300, 300)), 900, 100),
                 marker(np.zeros((720, 1280, 3), np.uint8), (640, 634), 7., 4.)]
     for _ in range(4):
         noise = (rng.random((720, 1280, 3)) > .6).astype(np.uint8)*255

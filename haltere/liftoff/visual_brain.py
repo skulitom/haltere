@@ -1741,7 +1741,7 @@ def main():
     p.add_argument('--ring-marker',default=None,metavar='on|off|DECLARATION',
                    help='EXPERIMENTAL reader rule for the visible checkpoint ring marker (off by default; needs '
                         '--pilot-assistance race-cue): a candidate counts only if its white annulus is continuous '
-                        'around its hole, so a dark check of a checkered structure is not read as the marker (on: '
+                        'around its hole, so a dark patch inside a white region (a banner logo) is not read as the marker (on: '
                         'configs/pilot/ring_marker.json; recorded in the flight-log metadata)')
     p.add_argument('--descent-view',default=None,metavar='on|off|DECLARATION',
                    help='EXPERIMENTAL view-keeping descent of the fast pilot (off by default): bound the sink so the '

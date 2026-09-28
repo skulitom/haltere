@@ -1,7 +1,7 @@
 {
  "schema": "haltere.obstacles.stale_evidence_gates.v1",
  "version": 1,
- "note": "Offline gates of round 5 (arches), scored by haltere.obstacles.stale_evidence_gates: the stale-evidence rule (configs/obstacles/stale_evidence.json v1: the looming governor's cap follows the ray of its evidence) and the ring-marker reader rule (configs/pilot/ring_marker.json v1: a marker candidate needs a continuous white annulus). Frozen with both declarations before any gate was scored. Seen before the freeze: the two round-4b live logs the rules address (minus-fast6-r4b-01 and straw-brain11cw13-r4b-noassist-02: logs, videos, depth replays of their clips; development cases, not held-out), their recorded frames at 111.0-112.4 s and 43.5-44.8 s, and, as data inspection without any rule, coast and marker-reacquisition statistics of straw-brain08-04/-06, minus-fast6-r4-02 and the round-4b logs and the start-arch pass list of the older Straw logs. No rule was run on any held-out log before the freeze. A coast-on-course rule was prototyped on the Straw clip (development, open loop and one surrogate window) and dropped before the freeze. Every replay is open loop (the recorded motion does not respond); windows are semi-closed loop in the IdentifiedSim surrogate (logged state, replayed requests and yaw); the reader runs on recorded h264 frames, not the live captures; the hairpins are the synthetic motor-assist harness. Hindsight quantities (impact times and points, the start-arch box, the Minus Two arch points, overlay-detector markers) select and score only. Nothing here is flight evidence. The hash covers everything except frozen/frozen_at/sha256; each gate is scored once per rule version and every version is reported.",
+ "note": "Offline gates of round 5 (arches), scored by haltere.obstacles.stale_evidence_gates: the stale-evidence rule (configs/obstacles/stale_evidence.json v1: the looming governor's cap follows the ray of its evidence) and the ring-marker reader rule (configs/pilot/ring_marker.json v1: a marker candidate needs a continuous white annulus). Frozen with both declarations before any gate was scored. Seen before the freeze: the two round-4b live logs the rules address (minus-fast6-r4b-01 and straw-brain11cw13-r4b-noassist-02: logs, videos, depth replays of their clips; development cases, not held-out), their recorded frames at 111.0-112.4 s and 43.5-44.8 s, and, as data inspection without any rule, coast and marker-reacquisition statistics of straw-brain08-04/-06, minus-fast6-r4-02 and the round-4b logs and the start-arch pass list of the older Straw logs. No rule was run on any held-out log before the freeze. A coast-on-course rule was prototyped on the Straw clip (development, open loop and one surrogate window) and dropped before the freeze. Every replay is open loop (the recorded motion does not respond); windows are semi-closed loop in the IdentifiedSim surrogate (logged state, replayed requests and yaw); the reader runs on recorded h264 frames, not the live captures; the hairpins are the synthetic motor-assist harness. Hindsight quantities (impact times and points, the start-arch box, the Minus Two arch points, overlay-detector markers) select and score only. Nothing here is flight evidence. The hash covers everything except frozen/frozen_at/sha256; each gate is scored once per rule version and every version is reported. Version 1 of these gates was first frozen with a ring-marker note that described the Straw false marker as a dark check of the arch leg; the note (not the rule values) was corrected and both files re-frozen before any gate was scored.",
  "declarations": {
   "stale_evidence": {
    "file": "configs/obstacles/stale_evidence.json",
@@ -11,7 +11,7 @@
   "ring_marker": {
    "file": "configs/pilot/ring_marker.json",
    "version": 1,
-   "sha256": "29d0e83fa3ab58ca9f7d681504654d53b2e842fe9d067d29f81782fec01462bd"
+   "sha256": "09824e473659b7117c6e653c60e3e968015f521b3c6e2b7fb85c863247574f68"
   }
  },
  "baseline_tree": {
@@ -462,6 +462,6 @@
   }
  },
  "frozen": true,
- "frozen_at": "2026-09-28T05:27:33+00:00",
- "sha256": "5bfc3ebea353adb7b8bce5ee7c61bb1257cd8df9f8e04585e2a83c1145d6cab2"
+ "frozen_at": "2026-09-28T05:31:31+00:00",
+ "sha256": "81c36bf64403f64e71705e456006d479d1b6f92f49b24a3a75551cab562a1506"
 }
