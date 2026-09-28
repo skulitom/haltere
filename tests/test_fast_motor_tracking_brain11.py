@@ -158,7 +158,9 @@ def test_deployed_pilot_is_the_runners_stack_and_descent_view_for_the_motor_cont
                                               load_wall_pilot, LAG_TURN_DECLARATION)
     from haltere.train.deployed_pilot import deployed_pilot_kwargs
     kwargs, record = deployed_pilot_kwargs('fast_velocity_brain_v1')
-    assert set(kwargs) == {'lag_turn', 'gap_aim', 'vertical_guard', 'turn_first', 'ceiling_guard', 'descent_view'}
+    # round 4b merge: wall pilot version 5 adds the clearance brake's sink floor, descent view version 2 its contact support
+    assert set(kwargs) == {'lag_turn', 'gap_aim', 'vertical_guard', 'turn_first', 'ceiling_guard', 'descent_view',
+                           'clearance_brake', 'contact_support'}
     lag = load_lag_turn_declaration(LAG_TURN_DECLARATION)
     assert kwargs['lag_turn'] == frc.lag_turn_for_contract(lag[0], 'fast_velocity_brain_v1')
     assert record['lag_turn']['sha256'] == lag[1]
@@ -166,9 +168,18 @@ def test_deployed_pilot_is_the_runners_stack_and_descent_view_for_the_motor_cont
     assert kwargs['turn_first'] == frc.wall_pilot_configs(wall[0], 'fast_velocity_brain_v1')['turn_first']
     assert record['wall_pilot']['sha256'] == wall[1] and record['vertical_guard']['sha256'] == load_vertical_guard()[1]
     assert kwargs['descent_view'] == frc.descent_view_config(load_descent_view()[0])
+    assert kwargs['contact_support'] == frc.contact_support_config(load_descent_view()[0])
+    assert kwargs['clearance_brake'] == frc.wall_pilot_configs(wall[0], 'fast_velocity_brain_v1')['clearance_brake']
     assert record['motor_contract'] == 'fast_velocity_brain_v1'
     view_only, record = deployed_pilot_kwargs('fast_velocity_brain_v1', stack=False)
-    assert set(view_only) == {'descent_view'} and set(record) == {'descent_view'}
+    assert set(view_only) == {'descent_view', 'contact_support'} and set(record) == {'descent_view'}
+    # --motor-assist on: the contract's entry (none for the fast PD)
+    from haltere.liftoff.visual_brain import load_motor_assist
+    assisted, record = deployed_pilot_kwargs('fast_velocity_brain_v1', motor_assist=True)
+    assert assisted['motor_assist'] == frc.motor_assist_for_contract(load_motor_assist()[0], 'fast_velocity_brain_v1')
+    assert record['motor_assist']['sha256'] == load_motor_assist()[1]
+    pd, _ = deployed_pilot_kwargs('fast_velocity_pd_v1', motor_assist=True)
+    assert 'motor_assist' not in pd
     with pytest.raises(ValueError):
         deployed_pilot_kwargs('unknown')
     json.dumps(record)
@@ -180,9 +191,11 @@ def test_a_climbing_synthetic_cap_raises_the_deployed_pilots_vertical_request_wh
     from haltere.liftoff.camera_pose import CameraPoseHistory
     from haltere.liftoff.fast_race_cue import FastRaceCue
     from haltere.train.deployed_pilot import deployed_pilot_kwargs
+    from haltere.obstacles.vertical_replay import CALIBRATION
     kwargs, _ = deployed_pilot_kwargs('fast_velocity_brain_v1')
     history = CameraPoseHistory()
-    pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., **kwargs)
+    # the pad calibration: descent view version 2's contact support reads the issued throttle's thrust (round 4b)
+    pilot = FastRaceCue(SENSOR, history, 6., reference_speed=6., calibration=CALIBRATION, **kwargs)
     ahead = cue_toward([10., 0., 0.])
     drive(pilot, history, ahead, 150, velocity=(6., 0., 0.), height=5.)
     assert pilot.state == 'cue' and pilot.velocity_command[0] > 5.5
