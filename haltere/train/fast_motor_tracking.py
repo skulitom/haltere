@@ -35,6 +35,16 @@ turns (`capped_turn_relief`): F x the along-track braking that comes only from t
 the lagging student is not taught to brake below the requested speed while it turns. ``--caps-config JSON``
 overrides SyntheticCapsConfig fields (e.g. longer holds like the live governor's). ``--smooth-rows T R P``
 scales the smoothness penalty per readout row. Labels and caps are training data only.
+
+brain-12 options (all off by default; with them off a collection and a refit are unchanged). ``--side-balance G``
+(refit, every round): requests left and right of the velocity weigh alike per speed and angle bin
+(`side_balance_weights`; fast-brain-11-b's first brain-flown DAgger round held 5.5 x more fast lateral requests on the
+right than on the left, while its teacher-flown round was balanced). ``--mirror-courses``: every
+collection round also flies the mirror image (y -> -y) of each of its courses (left and right turns in equal measure
+by construction). ``--motor-assist``: the deployed pilot of the
+rollouts carries the contract's motor assist (the round-5 pilot). ``--descent-weight W`` (refit only): up-weights
+aligned fast descents at speed (`descent_mask`). The caps config may declare ``brake_rate_max`` and ``release_max``
+(faster governor-like cap drops and releases).
 """
 from __future__ import annotations
 
@@ -113,7 +123,13 @@ class SyntheticCapsConfig:
     Climbing caps (brain-11; off at climb_share 0): with probability `climb_share` an event also requests a climb of
     U(climb) m/s from its onset for U(climb_s) s (at most until its release starts), as the looming governor's terrain
     climb (or the vertical guard's) does beside its cap: the pilot raises its vertical request to it. The extra draws
-    are made only when climb_share > 0, so the default event stream is unchanged."""
+    are made only when climb_share > 0, so the default event stream is unchanged.
+
+    Rate ranges (brain-12; off at 0): with `brake_rate_max` > brake_rate each event's cap falls at U(brake_rate,
+    brake_rate_max) m/s^2 (the motor assist's request slew and the clearance brake reach 15 m/s^2, faster than the TTC
+    governor's 8); with `release_max` > release it rises at U(release, release_max) m/s^2 after its hold (a quick
+    release: the pilot's own 10 m/s^2 slew then shapes a hard re-acceleration from low speed). These draws follow every
+    other draw of the event and are made only when the field is on, so the other streams are unchanged."""
     rate_per_min: float = 8.
     min_speed: float = 3.
     states: tuple = ('cue', 'side', 'coast')
@@ -128,11 +144,13 @@ class SyntheticCapsConfig:
     climb_share: float = 0.
     climb: tuple = (.5, 1.5)
     climb_s: tuple = (.5, 2.)
+    brake_rate_max: float = 0.
+    release_max: float = 0.
 
     def __post_init__(self):
         values = [self.rate_per_min, self.min_speed, self.absolute_share, *self.absolute, *self.relative,
                   *self.hold_s, self.ray_jitter_deg, self.brake_rate, self.release, self.end_margin,
-                  self.climb_share, *self.climb, *self.climb_s]
+                  self.climb_share, *self.climb, *self.climb_s, self.brake_rate_max, self.release_max]
         if not np.isfinite(values).all() or min(values) < 0 or self.rate_per_min <= 0 or self.brake_rate <= 0 \
                 or self.release <= 0:
             raise ValueError('Use finite non-negative synthetic cap parameters (positive rate, brake rate, release)')
@@ -144,6 +162,9 @@ class SyntheticCapsConfig:
             raise ValueError('absolute_share and relative are fractions; ray_jitter_deg < 90')
         if not self.climb_share <= 1 or not self.climb[1] <= 3.5:
             raise ValueError('climb_share is a fraction and climbs are at most the pilot vertical_up (3.5 m/s)')
+        if (self.brake_rate_max and self.brake_rate_max < self.brake_rate) or (self.release_max
+                                                                                and self.release_max < self.release):
+            raise ValueError('brake_rate_max and release_max are upper ends of ranges starting at brake_rate, release')
         if not set(self.states):
             raise ValueError('Name the pilot states in which caps may start')
 
@@ -156,6 +177,9 @@ def caps_record(caps):
     record = json.loads(json.dumps(asdict(caps)))
     if caps.climb_share == 0:
         for key in ('climb_share', 'climb', 'climb_s'):
+            record.pop(key)
+    for key in ('brake_rate_max', 'release_max'):   # brain-12 rate ranges: recorded only when on
+        if not record[key]:
             record.pop(key)
     return record
 
@@ -200,6 +224,10 @@ class SyntheticCaps:
             climbing = bool(self.rng.random() < c.climb_share)
             rate, duration = float(self.rng.uniform(*c.climb)), float(self.rng.uniform(*c.climb_s))
             self.event.update(climb=rate if climbing else 0., climb_until=float(now)+duration)
+        if c.brake_rate_max > c.brake_rate:
+            self.event['brake_rate'] = float(self.rng.uniform(c.brake_rate, c.brake_rate_max))
+        if c.release_max > c.release:
+            self.event['release_rate'] = float(self.rng.uniform(c.release, c.release_max))
         self.events.append(self.event)
         self.counts['synthetic_events'] += 1
         self.cap, self.cap_ray = max(closing, target), ray
@@ -218,13 +246,13 @@ class SyntheticCaps:
         e = self.event
         if e is not None:
             if e['reached'] is None:
-                self.cap = max(e['target'], self.cap-c.brake_rate*dt)
+                self.cap = max(e['target'], self.cap-e.get('brake_rate', c.brake_rate)*dt)
                 if self.cap <= e['target']:
                     e['reached'] = float(now)
             elif e['release'] is None and now-e['reached'] >= e['hold']:
                 e['release'] = float(now)
             if e['release'] is not None:
-                self.cap += c.release*dt
+                self.cap += e.get('release_rate', c.release)*dt
                 if self.cap > self.pilot.speed+c.end_margin:
                     e['end'] = float(now)
                     self.event = self.cap = self.cap_ray = None
@@ -676,6 +704,60 @@ def cruise_mask(request, velocity, nominal, *, aligned_deg=20., level=.5, min_sp
             & (speed-along < min_excess))
 
 
+def descent_mask(request, velocity, nominal, *, aligned_deg=20., min_sink=1., min_speed=3., fraction=.8):
+    """Samples of a fast descent at speed (brain-12: keep the speed and the nose forward on descents instead of sinking
+    into the hill): the vertical request sinks at `min_sink` m/s or faster, the horizontal request is at least
+    `fraction` x `nominal` and within `aligned_deg` of the horizontal velocity, and |v_h| >= `min_speed`."""
+    rh, vh = request[:, :2], velocity[:, :2]
+    speed, magnitude = vh.norm(dim=-1), rh.norm(dim=-1)
+    along = (rh*vh).sum(-1)/speed.clamp_min(1e-6)
+    aligned = (magnitude > 1e-6) & (along >= np.cos(np.radians(aligned_deg))*magnitude)
+    return aligned & (magnitude >= fraction*nominal) & (request[:, 2] <= -min_sink) & (speed >= min_speed)
+
+
+def descent_weights(request, velocity, nominal, weight, **selection):
+    """Up-weight `descent_mask` samples by `weight` (mean weight one)."""
+    weights = torch.where(descent_mask(request, velocity, nominal, **selection), float(weight), 1.)
+    return weights*len(weights)/weights.sum()
+
+
+SIDE_SPEED_BINS = (2., 3.5, 4.5, 5.5)
+SIDE_ANGLE_BINS = (5., 15., 30., 60., 120., 180.)
+
+
+def side_balance_weights(request, velocity, *, max_gain=4., min_speed=2., min_request=1.,
+                         speed_bins=SIDE_SPEED_BINS, angle_bins=SIDE_ANGLE_BINS):
+    """Weights that give requests left and right of the velocity equal total weight (brain-12, refit only).
+
+    The braking brains' DAgger data are lopsided: fast-brain-11-b's first brain-flown round held 5.5 x more fast
+    (>= 4.5 m/s) requests >= 30 deg right of the velocity than left of it, and 3.7 x more over-speed samples on the right,
+    while the teacher-flown round was balanced; the fit then under-serves left requests at speed. Samples with
+    |v_h| >= min_speed and |request_h| >= min_request are binned by speed (edges `speed_bins`, the last open) and by the
+    angle between request and velocity (edges `angle_bins`, deg); in each bin the side with n samples of the bin's N is
+    weighted N / (2 n), at most `max_gain` (and at least 1 / max_gain), so that both sides count alike. A bin with
+    samples on one side only, and samples outside the bins (near-aligned, slow), keep weight one. Mean weight one."""
+    rh, vh = request[:, :2].double(), velocity[:, :2].double()
+    speed, magnitude = vh.norm(dim=-1), rh.norm(dim=-1)
+    angle = torch.rad2deg(torch.atan2(vh[:, 0]*rh[:, 1]-vh[:, 1]*rh[:, 0], (vh*rh).sum(-1)))
+    ok = (speed >= min_speed) & (magnitude >= min_request)
+    sb = torch.bucketize(speed, torch.tensor(speed_bins[1:], dtype=speed.dtype), right=True)
+    ab = torch.bucketize(angle.abs(), torch.tensor(angle_bins, dtype=angle.dtype), right=True)-1
+    inside = ok & (ab >= 0) & (ab < len(angle_bins)-1)
+    left = angle > 0
+    weights = torch.ones(len(request), dtype=torch.float64)
+    for s in range(len(speed_bins)):
+        for a in range(len(angle_bins)-1):
+            cell = inside & (sb == s) & (ab == a)
+            n_left, n_right = int((cell & left).sum()), int((cell & ~left).sum())
+            if not n_left or not n_right:
+                continue
+            total = n_left+n_right
+            for mask, n in ((cell & left, n_left), (cell & ~left, n_right)):
+                weights[mask] = float(np.clip(total/(2.*n), 1./max_gain, max_gain))
+    weights = weights*len(weights)/weights.sum()
+    return weights.float()
+
+
 def cruise_weights(request, velocity, nominal, weight, **selection):
     """Up-weight `cruise_mask` samples by `weight` (mean weight one)."""
     weights = torch.where(cruise_mask(request, velocity, nominal, **selection), float(weight), 1.)
@@ -755,19 +837,30 @@ def slow_leg_speeds(courses, share, low, high, nominal, seed):
 
 # collection settings a --resolve must repeat, with their value for runs made before they existed
 COLLECTION_DEFAULTS = dict(synthetic_caps=0., slow_legs=0., slow_leg_speed=[2.5, 4.5], teacher_gains=[], turn_relief=0.,
-                           label_lead=0., pilot='default', hill_share=0., yaw_holds=0., pilot_share=1.)
+                           label_lead=0., pilot='default', hill_share=0., yaw_holds=0., pilot_share=1.,
+                           mirror_courses=False, motor_assist=False)
 
 
-def collection_courses(round_index, courses, steep, hill_share):
+def mirror_course(course):
+    """The mirror image of a course across the x-z plane (y -> -y): every left turn becomes a right turn."""
+    return np.asarray(course, float)*np.array([1., -1., 1.])
+
+
+def collection_courses(round_index, courses, steep, hill_share, mirror=False):
     """The seeded collection courses of a DAgger round: synthetic_course(1000 x round + i, steep); with `hill_share` > 0 a
     seeded share of them (drawn with seed [round, 4]) are hill_course(1000 x round + i) instead (long descents off a
-    crest; seeds below 5000, disjoint from the descent gates' hill seeds 6000-6011). Returns (courses, hill indices)."""
+    crest; seeds below 5000, disjoint from the descent gates' hill seeds 6000-6011). With `mirror` (brain-12) the mirror
+    images of those courses follow them (2 x courses drones: left and right turns in equal measure). Returns (courses,
+    hill indices)."""
     seeds = [1000*round_index+s for s in range(courses)]
     hills = set()
     if hill_share > 0:
         order = np.random.default_rng([round_index, 4]).permutation(courses)
         hills = {int(i) for i in order[:int(round(hill_share*courses))]}
-    return [hill_course(s) if i in hills else synthetic_course(s, steep=steep) for i, s in enumerate(seeds)], sorted(hills)
+    out = [hill_course(s) if i in hills else synthetic_course(s, steep=steep) for i, s in enumerate(seeds)]
+    if mirror:
+        return out+[mirror_course(c) for c in out], sorted(hills)+sorted(courses+i for i in hills)
+    return out, sorted(hills)
 
 
 def main():
@@ -834,9 +927,22 @@ def main():
     parser.add_argument('--brake-turn-deg', type=float, default=0.,
                         help='also up-weight capped turns with the request within this angle of the velocity and its '
                              'magnitude over-speed (refit only; 0: off)')
+    parser.add_argument('--mirror-courses', action='store_true',
+                        help='brain-12: every collection round also flies the mirror images (y -> -y) of its courses, '
+                             'so left and right turns are equally represented (2 x --courses drones per round)')
+    parser.add_argument('--motor-assist', action='store_true',
+                        help="brain-12: with --pilot deployed, the deployed pilot carries the contract's motor assist "
+                             "(the runner's --motor-assist on; configs/pilot/motor_assist.json)")
+    parser.add_argument('--descent-weight', type=float, default=1.,
+                        help='brain-12: weight of aligned samples descending at >= 1 m/s with a horizontal request of '
+                             '>= 0.8 x the nominal speed (refit only; keep the speed on descents)')
+    parser.add_argument('--side-balance', type=float, default=0., metavar='MAX_GAIN',
+                        help='brain-12: weight requests left and right of the velocity alike per speed and angle bin, '
+                             'each side scaled by at most this gain (refit only, every round; 0: off)')
     args = parser.parse_args()
     if (args.ridge <= 0 or args.rounds < 1 or args.sink_weight <= 0 or args.smooth < 0 or args.brake_weight <= 0
-            or args.sag_weight <= 0 or args.cruise_weight <= 0):
+            or args.sag_weight <= 0 or args.cruise_weight <= 0 or args.descent_weight <= 0
+            or not (args.side_balance == 0 or args.side_balance >= 1)):
         raise ValueError('Use positive ridge, sink and brake weights, non-negative smoothing and at least one round')
     if not 0 < args.vertical_goal_seconds <= 2:
         raise ValueError('Use a vertical goal time in (0, 2] s')
@@ -859,6 +965,8 @@ def main():
         raise ValueError('--pilot-share is a share in (0, 1] of the drones flying --pilot deployed')
     if not 0 <= args.hill_share <= 1 or not 0 < args.brake_level <= 3.5 or not 0 <= args.brake_turn_deg < 180:
         raise ValueError('--hill-share is a share, --brake-level in (0, 3.5] m/s, --brake-turn-deg in [0, 180)')
+    if args.motor_assist and args.pilot != 'deployed':
+        raise ValueError('--motor-assist is part of the deployed pilot: use it with --pilot deployed')
     if not args.retina_data and args.validation_retina_data:
         raise ValueError('A readout fitted without scene currents is blanked at runtime; '
                          'evaluate it that way too (--validation-retina-data "")')
@@ -882,12 +990,16 @@ def main():
     pilot_kwargs, pilot_record = None, None
     if args.pilot == 'deployed':
         from .deployed_pilot import deployed_pilot_kwargs
-        pilot_kwargs, pilot_record = deployed_pilot_kwargs('fast_velocity_brain_v1')
+        pilot_kwargs, pilot_record = deployed_pilot_kwargs('fast_velocity_brain_v1',
+                                                           **(dict(motor_assist=True) if args.motor_assist else {}))
+        if args.motor_assist and 'motor_assist' not in pilot_kwargs:
+            raise ValueError('The motor-assist declaration has no entry for the brain contract')
     source = None
     if args.resolve:
         source = torch.load(Path(args.resolve)/'training.pt', map_location='cpu', weights_only=False)
         if (args.smooth > 0 and 'step_gram' not in source or args.sink_weight != 1 and 'request' not in source
-                or (args.brake_weight != 1 or args.sag_weight != 1 or args.cruise_weight != 1)
+                or (args.brake_weight != 1 or args.sag_weight != 1 or args.cruise_weight != 1
+                    or args.descent_weight != 1 or args.side_balance)
                 and ('request' not in source or 'velocity' not in source)):
             raise ValueError('That run did not save feature steps / 3D requests / velocities')
         for key in ('checkpoint', 'profile', 'speed', 'scaled_speed', 'vertical_goal_seconds', 'steep', 'seconds',
@@ -952,6 +1064,12 @@ def main():
         if args.cruise_weight != 1:
             cruise = cruise_weights(torch.cat(requests_3d), torch.cat(velocities), args.speed, args.cruise_weight)
             weights = cruise if weights is None else weights*cruise/(weights*cruise).mean()
+        if args.descent_weight != 1:
+            descent = descent_weights(torch.cat(requests_3d), torch.cat(velocities), args.speed, args.descent_weight)
+            weights = descent if weights is None else weights*descent/(weights*descent).mean()
+        if args.side_balance:
+            side = side_balance_weights(torch.cat(requests_3d), torch.cat(velocities), max_gain=args.side_balance)
+            weights = side if weights is None else weights*side/(weights*side).mean()
         return fit_readout(brain, torch.cat(rows), torch.cat(targets), args.ridge, weights, args.smooth,
                            steps, step_count, smooth_rows=args.smooth_rows)
 
@@ -968,8 +1086,11 @@ def main():
         history.append(dict(round=args.rounds-1, evaluation=row, changed=changed))
     for round_index in range(0 if source is None else args.rounds, args.rounds):
         controller = 'pd' if round_index == 0 else 'brain'
-        courses, hills = collection_courses(round_index, args.courses, args.steep, args.hill_share)
+        courses, hills = collection_courses(round_index, args.courses, args.steep, args.hill_share,
+                                            **(dict(mirror=True) if args.mirror_courses else {}))
         legs = slow_leg_speeds(args.courses, args.slow_legs, *args.slow_leg_speed, args.speed, 100+round_index)
+        if args.mirror_courses and legs is not None:
+            legs = legs+legs   # a mirrored course flies at the pilot speed of its original
         time.sleep(args.rest)
         row, data = rollout(brain, cfg, meta, profile, contract, courses,
                             controller=controller, seconds=args.seconds, seed=100+round_index, collect=True,
@@ -1017,13 +1138,17 @@ def main():
         **({'sag_weight': args.sag_weight} if args.sag_weight != 1 else {}),
         **({'collection_pilot': dict(kind='deployed', declarations=pilot_record, share=args.pilot_share,
                                      note='DAgger rollouts and evaluations flew the deployed pilot (--obstacle-stack on '
-                                          '--descent-view on for the brain contract); training data only')}
+                                          '--descent-view on'+(' --motor-assist on' if args.motor_assist else '')
+                                          +' for the brain contract); training data only')}
            if pilot_record is not None else {}),
         **({'hill_share': args.hill_share} if args.hill_share > 0 else {}),
         **({'yaw_holds': asdict(YawHoldConfig(rate_per_min=args.yaw_holds))} if args.yaw_holds > 0 else {}),
         **({'brake_selection': dict(level=args.brake_level, turn_deg=args.brake_turn_deg or None)}
            if args.brake_level != .5 or args.brake_turn_deg else {}),
         **({'cruise_weight': args.cruise_weight} if args.cruise_weight != 1 else {}),
+        **({'descent_weight': args.descent_weight} if args.descent_weight != 1 else {}),
+        **({'side_balance_max_gain': args.side_balance} if args.side_balance else {}),
+        **({'mirror_courses': True} if args.mirror_courses else {}),
         resolved_training_sha256=config['resolved_training_sha256'],
         resolved_from=None if source is None else dict(
             run=args.resolve, source_sha256=source['config']['source_sha256'],

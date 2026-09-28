@@ -1,0 +1,12 @@
+{
+ "_note": "brain-12 training data only (haltere.train.fast_motor_tracking --caps-config): SyntheticCapsConfig overrides. brain-11's caps (6 per minute, held 1-5 s, rays up to 45 deg off the travel direction, absolute targets down to 0.3 m/s, a 0.5-1.5 m/s climb for 0.5-2 s on 40% of the caps) plus faster drops and releases: each cap falls at U(8, 15) m/s^2 (the TTC governor's 8 up to the motor assist's request slew and the clearance brake's 15: the live Minus Two hairpin cap fell 5.9 -> 3.5 m/s within 0.15 s, 0.7 s before the wall) and rises after its hold at U(3, 10) m/s^2 (a quick release: the pilot's own 10 m/s^2 slew then shapes a hard re-acceleration from low speed, G11's case). Nothing at runtime reads this file.",
+ "rate_per_min": 6.0,
+ "hold_s": [1.0, 5.0],
+ "absolute": [0.3, 4.0],
+ "ray_jitter_deg": 45.0,
+ "climb_share": 0.4,
+ "climb": [0.5, 1.5],
+ "climb_s": [0.5, 2.0],
+ "brake_rate_max": 15.0,
+ "release_max": 10.0
+}
