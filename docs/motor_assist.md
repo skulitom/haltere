@@ -121,7 +121,7 @@ Development findings behind the design (scratchpad `m5/brake`):
 
 ### Frozen gates and results (version 3)
 
-The held-out sets are new:
+The held-out sets are new. Disclosure: the v3 hairpin set (seed 41: turns 50/80/110 deg, arches 10/14 m, walls 2.5/2.9 m) was chosen after version 2 failed its held-out hairpins, and it is more lenient than v2's set (seed 31: 35/85/115 deg, 9/12 m, 2.4/2.8 m) on every axis. The round-5 integration's independent seed-67 set is harder (55/85/120 deg, 9.5/13.5 m, 2.2/2.65 m); there fast-brain-11-b-cw13 is clean in 10 of 12 with the assist.
 
 - hairpins: turn 50/80/110 deg x arch 10/14 m x wall 2.5/2.9 m, sim seed 41;
 - hill courses: 6400-6411.

@@ -1646,7 +1646,7 @@ model's lowest bound before x 73 m (the Minus hairpin); on Straw and Pine x 73 m
     6.0 m/s until 42.5 s.
   - From 43.76 s (the first sample of the wall behind the arch, TTC 0.86 s; 1.04 s before the impact at 44.797 s) the
     cap on the travel ray falls. The request falls from 5.9 to 4.25 m/s by 43.90 s and stays at 4.00-4.25 m/s to the
-    impact. Over 43.90 s to the impact `m4b` asks 4.74-5.95 m/s. At the last tick the request along the travel
+    impact. Over 43.90 s to the impact `m4b` asks 4.74-5.99 m/s. At the last tick the request along the travel
     direction is 3.75 m/s (`m4b` 4.52).
     The recorded drone flew 5.3-6.1 m/s over that interval and does not slow in a replay.
   - It changes nothing on the other 26 logs, the PD's first garage wall included.
@@ -1914,7 +1914,7 @@ What to look for (replay figures are open-loop requests at the recorded states o
   the drone flies at 6 m/s.
 - **The arch at about (52.6, 94.1) and the garage wall 1.5 m behind it:** in the replay the cap on the travel ray falls
   from 43.76 s, 1.04 s before the r4b impact. The request is 4.25 m/s by 43.90 s and 4.00-4.25 m/s to the impact, where
-  `m4b` asks 4.74-5.95 m/s. Live, each new sample should lower it further as the drone slows, so the PD should stop
+  `m4b` asks 4.74-5.99 m/s. Live, each new sample should lower it further as the drone slows, so the PD should stop
   short of the wall or turn left along it, as at the first wall.
 - **Contact support v3:** `contact_armed` should turn 1 at about 3.8-4.8 s (4.39 s in the replay). For the fast PD in
   the garage the rule is blind (`contact_excluded`) up to 18-22 s per minute.
@@ -2032,10 +2032,26 @@ stack). It shows whether brain-12's surrogate hairpin gain holds live. Its gates
 |---|---|---|
 | A selected brain | None. brain-12's best candidate ties brain-11 at 6 of 15; every candidate keeps the left/right fault (weak roll toward lateral requests without a yaw rate), and none has fewer surrogate terrain contacts | A brain whose training reaches the fault (more than the readout rows, or yaw-coupled requests), scored once on fresh frozen gates; then flights |
 | Minus hairpin (brains) | Motor assist v3: held-out harness 7-10 of 12 with the assist, 0 without; replay warning 1.20 s; not flown. Crawls behind the governor's stand-off at arches remain | Live (b); a wall-pilot version whose stand-off acts only under wall-ahead conditions, frozen and scored with the pass-through scenarios |
-| Minus garage wall behind an arch (fast PD) | Stale evidence v2 lowers the cap on the travel ray from 1.04 s before the r4b impact; the request is 4.00-4.25 m/s from 43.90 s where `m4b` asks 4.74-5.95 m/s (open loop, development); not flown | Live (a) |
+| Minus garage wall behind an arch (fast PD) | Stale evidence v2 lowers the cap on the travel ray from 1.04 s before the r4b impact; the request is 4.00-4.25 m/s from 43.90 s where `m4b` asks 4.74-5.99 m/s (open loop, development); not flown | Live (a) |
 | Straw start-arch false marker | Not addressed: the ring-marker rule kept 95.1% of held-out overlay-confirmed markers (bound 99.5% per flight) | Log the reader's candidates from the live capture; a rule scored on live frames |
 | Straw downhill ground contact | Contact support reacts after a touch (v3 fires 0.73 s after the held-out touch began, 0.04 s after it ended, with or without the assist); nothing prevents touches; brain-11 had 1 touch in its lap; brain-12 has no fewer surrogate contacts | A pilot-side lever (less sink requested near terrain: the brains follow the sink request within 0.004 m/s); a contact audit v2 validated on video, frozen before scoring; then Straw 3/3 with no audited contact |
 | Contact support v3 | Fails 3 of 13 safety gates; blind in 6.7% of 90.4 logged minutes (safety branch) and in 8.8% of the 27 replayed logs inside the m5 stack (210 of 2,387 s); brain-08 and fast-brain-11 never armed in the scripted rest | A v4 that orders body rate before the residual (flare) against both together (knock), frozen and scored |
 | Ceiling cut x assist sag (new, merge interaction) | On one Straw uphill window of 27 logs (`straw-brain08-06`, 37.49-38.77 s), the pilot's own ring climb lost its exemption: 0 m/s for 0.89 s where wall pilot v5 asks 1.47-1.76 m/s (open loop) | A wall-pilot version that cuts only the assist's share of a climb, frozen and scored with the assist on |
 | Straw lap time under the assist | Quiet gate fails on brain-08 laps (3.30-4.18% removed); 0.52% on brain-11's lap | Live (c) lap times against 1:42.988 |
 | Vertical guard on Pine, the view rule, the contact audit | Unchanged from round 4b | As round 4b |
+
+### Round 5 live plan: amendments after the combined review (2026-09-29)
+
+The combined review (fly-with-fixes, no blocker) found that wall pilot v6's exemption of the pilot's own
+in-view ring climb from the ceiling cut is lost whenever motor assist v3 adds a sag climb, and the cut then
+zeroes the whole climb request: open loop on straw-brain08-06 the climb was held at 0 m/s for 0.89 s on the
+uphill (0.238 s per scored minute against the safety gates' 0.2 s/min quiet limit), and on fast-brain-11's
+r4b Straw lap the exemption is off for 10.2 of 28.9 s of its own ring climbs. Therefore:
+
+- **(c) Straw Bale flies without `--motor-assist`** (Straw has no hairpin; the assist also fails its Straw
+  quiet gate; the r4b lap flew without it). Log stem `straw-brain11cw13-r5-noassist-01`.
+- **(a) flies `--contact-support shadow`**, following the safety section's recommended order (measure live
+  arming, excluded time and would-be fires with the fast PD first); (b) and (c) fly `on`.
+- A fix that bounds only the assist's share of a climb with the ceiling cap needs a new frozen
+  wall-pilot/motor-assist version before any Straw run with the assist.
+
