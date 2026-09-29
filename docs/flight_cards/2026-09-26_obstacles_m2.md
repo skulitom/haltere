@@ -2560,13 +2560,17 @@ its declarations from the checkout it runs from and refuses other versions. Keep
   commands are bit-identical with and without the flag and its sidecar records `applied: false`.
 - **Contact support v3 runs in shadow** (`contact_fire` logs where it would climb; it starts no climb). Round 5 flew it
   `on` for the brain. Why the change:
-  - in both fast-brain-11 downhill touches it fired at 80.08 s, after the touch had ended (79.968 s and 80.044 s), and
-    in `r5-noassist-04` that late climb left the drone 0.5-0.7 m high onto the next arch's top bar (video-verified by
-    the gates branch; surrogate: 13.48 m at the bar with the climb, 12.65 m without, the lap run about 12.8 m);
-  - both touches ended without any support climb;
+  - corrected after the round-6 review: live, the two downhill touches differ. In `r4b-noassist-02` (descent view v2,
+    contact support v2) contact support fired INSIDE the touch (79.654 s; audited touch 79.354-80.044 s) and the drone
+    flew a support climb 79.654-80.254 s; that lap passed. In `r5-noassist-04` (contact support v3) the manoeuvre
+    exclusion blinded v3 during the touch (79.61-79.90 s), it fired only at 80.078 s, after the touch had ended
+    (79.968 s), and that late climb left the drone 0.5-0.7 m high onto the next arch's top bar (video-verified by the
+    gates branch; surrogate: 13.48 m at the bar with the climb, 12.65 m without, the lap run about 12.8 m). The 80.08 s
+    figure previously given for r4b-02 was an open-loop replay artifact;
+  - the r5-04 touch itself ended without any support climb;
   - it fails 3 of its 13 safety gates, held-out detection of this touch among them;
-  - no live run and no closed-loop set shows a v3 climb that helped (no onset in any set above; no onset in any Minus
-    replay; the round-5 fast-PD run in shadow logged none).
+  - no live run shows a v3 climb that helped (the only live v3 fire was the late one; the round-5 fast-PD run in shadow
+    logged none). The surrogate's ground is scoring-only, so its 'no onset' is not evidence either way.
 
   The pilot's older support rule (a descent the drone cannot achieve while the issued throttle stays below hover) stays
   active. A contact-support version that climbs only while the contact lasts is the fix (a blocker below).
@@ -2696,7 +2700,7 @@ with `minus-brain11cw13-r4b-noassist-01` (hairpin wall) and `minus-brain11cw13-r
 What to look for (open-loop figures from the two development logs):
 
 - **First arch (x 15-19):** `early_brake` 1 from about x 16; the request settles at 2.5 m/s while the ring is in view
-  (v3 asked 1.02 -> 0.23 m/s there and the brain crawled into the arch). No request below 2.5 m/s with the ring in
+  (v3 asked 1.02 -> 0.23 m/s there and the brain crawled into the arch). No rule-caused request (early-brake floor or `assist_source`) below 2.5 m/s with the ring in
   view.
 - **Pillar A and the 90-degree arch:** slower than round 4b (2.5-4 m/s); around pillar A the replay went to 1.78 m/s.
 - **Hairpin (wall near (81.9, 20.0)):** the cap should bind about 1.2 s before the wall (r4b: 0.76 s), the request fall
@@ -2757,3 +2761,22 @@ at 15.2 s, the end hillside escalation near 19.05 s; no rule arrests a descent i
 | Fast PD hairpin exit | The stand-off cap along the old wall ray deflects the exit (diagnosed, not fixed) | A wall-pilot version, frozen and scored with PD hairpin sets and the Minus PD logs |
 | Quiet gates (early brake, assist v4) | Failed on the fast-brain-08 laps (offline stream without vertical evidence); 1.31-1.32% on the live brain-11 laps | Straw live lap times; a version that also leaves out samples without vertical evidence while the pilot climbs toward its ring |
 | Contact audit | Its video false-positive check still fails | An audit v2 validated on video, frozen before scoring |
+
+### Round 6 live plan: amendments after the combined review (2026-09-29)
+
+- **Run (c), Minus brain, and run (b), Minus PD: watch the hairpin exit.** Once the looming governor holds a stand-off on
+  one wall it keeps that wall's cap direction for `standoff_s` (2 s); a new obstacle in another direction cannot take
+  over the cap meanwhile, and stale-evidence v2's keep_standoff blocks the re-seat (synthetic check in the review; the
+  live precedent is `minus-fast6-r5-01`, whose cap stayed on the old ray while it flew into the pillar at (78.3, 23.2)).
+  Stop criterion: `clearance_status` standoff/brake with `cap_ray_deg` on the old wall while the drone accelerates in
+  another direction toward the pillar area. The blocker "hairpin exit deflected by a stale stand-off cap" covers the
+  brain too.
+- **Wall behind a ring in view** (m6-brake blocker, restored): the early brake's floor holds 2.5 m/s while the ring is
+  ahead, even at an urgent TTC; the brain needs about 2.1 m to stop from 2.5 m/s (e.g. the Minus garage wall 1.5 m
+  behind the arch at (52.6, 94.1)).
+- The m6-brake branch's own live-plan command above (`--contact-support on`, without sighted descent and marker jump,
+  log stem `minus-brain11cw13-r6-01`) is **superseded** by the merged plan's run (c).
+- Watch-item wording: at the first Minus arch the pilot's own acceleration-limited request may dip below 2.5 m/s after
+  the drone slowed (replay: 1.75 m/s at 8.06 s, state below); only a rule-caused dip (early-brake floor or
+  `assist_source`) is a flag.
+

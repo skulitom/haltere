@@ -921,7 +921,15 @@ def r4b_window_tests(ctl, profile, spec, reference_contract):
             from ..liftoff import motor_assist_eval as mae
             from ..liftoff import visual_brain as vb
             from ..liftoff.fast_race_cue import motor_assist_for_contract
-            declaration, digest = vb.load_motor_assist()
+            # the brain-12 gates were frozen with motor assist v3: load the kept, hash-checked v3 declaration (as
+            # deployed_pilot_kwargs(motor_assist=3) does), not the runner's current version
+            import json as _json
+            from ..liftoff.gap_stack import config_sha256
+            _path = vb.MOTOR_ASSIST_DECLARATION.with_name('motor_assist_v3.json')
+            declaration = _json.loads(_path.read_text(encoding='utf-8'))
+            digest = config_sha256(declaration)
+            if declaration.get('frozen') is not True or declaration.get('sha256') != digest or declaration.get('version') != 3:
+                raise ValueError(f'{_path} is not the frozen motor-assist declaration version 3')
             assist = motor_assist_for_contract(declaration, spec['contract_brain'])
             arrays, sources, _ = mae.window_sources(name, str(Path(__file__).resolve().parents[2]), declaration,
                                                     spec['flights_dir'])

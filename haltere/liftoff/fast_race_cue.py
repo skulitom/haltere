@@ -1508,7 +1508,7 @@ class TtcClearanceGovernor:
     its stale_deg from the cap's ray (stale-evidence declarations versions 1 and 2; see ClearanceRayConfig).
     `early` (an `EarlyBrakeConfig`, off by default) lets wall samples within the motor contract's stopping distance vote
     for engagement, with the early episode's targets floored at its floor_speed while the floor holds (floor_until:
-    while the pilot sees its checkpoint ahead, `ring_ahead`, or until the governor's own engagement condition holds;
+    while the pilot sees its checkpoint ahead (`ring_ahead`, the flown declaration's floor_until='wall_ahead'), or, with floor_until='engagement', until the governor's own engagement condition holds;
     early-brake declaration version 1; see EarlyBrakeConfig).
     With the ceiling guard's any_climb, `share_climb` (set by a pilot whose motor assist declares ceiling_share) marks a
     climb that is only the motor assist's share on top of the pilot's own climb toward the ring in view: overhead
@@ -3728,9 +3728,10 @@ class FastRaceCue:
                  'for engagement when its remaining distance along its looming ray (capture-time reach minus the '
                  'odometry along the ray) is at most v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m at '
                  'the closing speed v along the ray (the motor contract\'s stopping model); confirm votes within '
-                 'confirm_window_s engage a governor that is not braking; until the governor\'s own engagement '
-                 'condition holds (confirm samples with TTC < ttc_on, or one below urgent_ttc_s) the episode\'s targets '
-                 'are at least floor_speed; then the governor brakes as without the rule',
+                 'confirm_window_s engage a governor that is not braking; the episode\'s targets are at least '
+                 'floor_speed while floor_until holds: wall_ahead (the frozen v1) = while the pilot sees its ring '
+                 'ahead (no side, lost or >= 50 deg-off marker, no turn-first), even at an urgent TTC; engagement = '
+                 'until the governor\'s own engagement condition holds; then the governor brakes as without the rule',
             input='causal looming samples and odometry; the motor contract\'s declared stopping model; no course geometry',
             parameters=asdict(self.early_brake),
             governor='flown' if self.early_apply else 'shadow copy fed the same samples',

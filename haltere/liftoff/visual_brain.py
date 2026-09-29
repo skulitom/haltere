@@ -1958,7 +1958,7 @@ def main():
     p.add_argument('--early-brake',choices=['on','off'],default=None,
                    help='EXPERIMENTAL component of --obstacle-stack, off by default (on adds it): the looming governor '
                         'engages as early as the motor contract\'s stopping model needs (a wall sample within the '
-                        'contract\'s stopping distance votes for engagement; floored at floor_speed until the '
+                        'contract\'s stopping distance votes for engagement; floored at floor_speed while the ring is ahead (floor_until=wall_ahead, frozen v1) or until the '
                         'governor\'s own engagement condition holds; configs/obstacles/early_brake.json, declared per '
                         'motor contract; the fast PD has no entry and flies unchanged)')
     p.add_argument('--ring-marker',default=None,metavar='on|off|DECLARATION',
