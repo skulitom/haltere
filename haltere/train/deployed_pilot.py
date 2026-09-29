@@ -15,6 +15,8 @@ declarations of the rule versions this code implements), plus a record of every 
 - with ``motor_assist=True`` (``--motor-assist on``, off by default), the motor-assist entry of the contract
   (configs/pilot/motor_assist.json, version 4 from round 6; none for the fast PD); ``motor_assist=3`` takes the kept
   round-5 declaration (motor_assist_v3.json), with which the brain-12 training rollouts and gates were made;
+- with ``sighted_descent='on'|'shadow'`` (``--sighted-descent``; off by default), the sighted descent
+  (configs/pilot/sighted_descent.json; it limits the view rule's steep late to the ring's sighted line of sight);
 - with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
   cap follows the ray of its evidence). The runner adds it only with ``--stale-evidence on`` inside the obstacle stack
   (version 2; off by default); it is off here by default too, so the brain-11 and brain-12 records built on this
@@ -38,7 +40,8 @@ CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 
 def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
-                          stale_evidence=False, contact_support='on', marker_jump=None, early_brake=False):
+                          stale_evidence=False, contact_support='on', marker_jump=None, early_brake=False,
+                          sighted_descent='off'):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
@@ -46,6 +49,8 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         raise ValueError(f'Unknown fast motor contract {contract!r}')
     if contact_support not in frc.CONTACT_SUPPORT_MODES:
         raise ValueError(f'Unknown contact-support mode {contact_support!r}')
+    if sighted_descent not in frc.SIGHTED_DESCENT_MODES or (sighted_descent != 'off' and not descent_view):
+        raise ValueError(f'Unknown sighted-descent mode {sighted_descent!r}, or on/shadow without the descent view')
     kwargs, record = {}, {}
 
     def note(name, path, declaration, digest):
@@ -80,6 +85,14 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
             if contact_support == 'shadow':
                 kwargs['contact_apply'] = False
         record['descent_view']['contact_support'] = None if contact is None else contact_support
+        if sighted_descent != 'off':
+            # --sighted-descent on|shadow (off by default: not passed, the pilot exactly as before)
+            sighted, digest = vb.load_sighted_descent()
+            note('sighted_descent', vb.SIGHTED_DESCENT_DECLARATION, sighted, digest)
+            record['sighted_descent']['mode'] = sighted_descent
+            kwargs['sighted_descent'] = frc.sighted_descent_config(sighted)
+            if sighted_descent == 'shadow':
+                kwargs['sighted_apply'] = False
     if stack and stale_evidence:
         stale, digest = vb.load_stale_evidence()
         note('stale_evidence', vb.STALE_EVIDENCE_DECLARATION, stale, digest)

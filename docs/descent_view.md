@@ -3,6 +3,9 @@
 **Status.** Off by default (`--descent-view on|off|DECLARATION`). The declaration is
 `configs/pilot/descent_view.json` **version 3** (round 5). It keeps version 1's view rule unchanged
 and carries contact support version 3; see [Version 3](#version-3-round-5-contact-support-version-3).
+Round 6 adds an optional companion rule, the sighted descent (`--sighted-descent on|off|shadow`, off by default;
+[sighted_descent.md](sighted_descent.md)): while the ring is clipped at the bottom edge, it lowers this rule's sink
+bound (steep late included) to the ring's sighted line of sight; this declaration and its values are unchanged.
 `--contact-support on|off|shadow` (default `on`) isolates the contact rule. Versions 1 and 2
 (`descent_view_v1.json`, `descent_view_v2.json`, kept) are refused by the runner. Version 1 flew on
 Minus Two in round 4 and version 2 in round 4b, both as disclosed development deviations. Frozen gates:

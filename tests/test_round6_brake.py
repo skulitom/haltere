@@ -346,11 +346,13 @@ def test_runner_csv_tail_puts_the_early_brake_column_last():
     import re
     from haltere.liftoff import visual_brain
     source = re.sub(r'\s+', '', inspect.getsource(visual_brain.run))
-    # m6 integration: the marker-jump columns (round 6, gates) come between the stale-evidence and early-brake columns
-    assert '*view_columns,*assist_columns,*stale_columns,*marker_columns,*early_columns])' in source
+    # m6 integration: the marker-jump columns (round 6, gates) come between the stale-evidence and early-brake columns,
+    # and the sighted-descent columns (round 6, ground) after the early-brake column
+    assert '*view_columns,*assist_columns,*stale_columns,*marker_columns,*early_columns,*sighted_columns])' in source
     assert ('*(stale_row(controller.assistance)ifstale_columnselse()),'
             '*(marker_jump_row(controller.assistance)ifmarker_columnselse()),'
-            '*(early_row(controller.assistance)ifearly_columnselse())])') in source
+            '*(early_row(controller.assistance)ifearly_columnselse()),'
+            '*(sighted_row(controller.assistance)ifsighted_columnselse())])') in source
 
 
 def test_the_replay_harness_adds_the_rule_for_the_brain_contract_only():

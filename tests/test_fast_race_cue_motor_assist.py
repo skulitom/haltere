@@ -627,15 +627,17 @@ def test_runner_csv_tail_puts_the_assist_columns_after_the_view_columns():
     import re
     from haltere.liftoff import visual_brain
     source = re.sub(r'\s+', '', inspect.getsource(visual_brain.run))
-    # round 5 (arches) appends the stale-evidence columns after them; round 6 appends the marker-jump columns (gates)
-    # and then the early-brake column (brake), each only when its rule is declared
+    # round 5 (arches) appends the stale-evidence columns after them; round 6 appends the marker-jump columns (gates),
+    # the early-brake column (brake) and the sighted-descent columns (ground, tests/test_sighted_descent.py), each only
+    # when its rule is declared
     assert ('*VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,*stale_columns,*marker_columns,'
-            '*early_columns])') in source
+            '*early_columns,*sighted_columns])') in source
     assert ('*(descent_view_row(controller.assistance)ifview_columnselse()),'
             '*(motor_assist_row(controller.assistance)ifassist_columnselse()),'
             '*(stale_row(controller.assistance)ifstale_columnselse()),'
             '*(marker_jump_row(controller.assistance)ifmarker_columnselse()),'
-            '*(early_row(controller.assistance)ifearly_columnselse())])') in source
+            '*(early_row(controller.assistance)ifearly_columnselse()),'
+            '*(sighted_row(controller.assistance)ifsighted_columnselse())])') in source
 
 
 def test_scenario_wall_geometry():

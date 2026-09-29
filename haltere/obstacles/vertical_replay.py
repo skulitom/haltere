@@ -100,7 +100,7 @@ def variant_tag(stack, wall, vertical, stream):
 
 def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None, contact_support=None,
           wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True, lag_turn=True, gap_aim=True,
-          marker_jump=None, marker_jump_apply=True, early_brake=None):
+          marker_jump=None, marker_jump_apply=True, early_brake=None, sighted_descent=None, sighted_apply=True):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
     whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
     optional DescentViewConfig added to any variant; ``contact_support``: an optional ContactSupportConfig (descent
@@ -115,7 +115,8 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     variant (applied unless the variant is --stack shadow or ``marker_jump_apply`` is False: computed and logged).
     ``early_brake``: an optional early-brake declaration (parsed and hash-checked) whose entry for the flight's motor
     contract is added to a stack variant as ``stale_evidence`` is (nothing for a contract without an entry, the fast
-    PD)."""
+    PD). ``sighted_descent``: an optional SightedDescentConfig added with ``descent_view`` (``sighted_apply`` False:
+    computed and logged only)."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -162,6 +163,10 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         kw['contact_support'] = contact_support
         if not contact_apply:
             kw['contact_apply'] = False
+    if sighted_descent is not None:
+        kw['sighted_descent'] = sighted_descent
+        if not sighted_apply:
+            kw['sighted_apply'] = False
     assist = None
     if motor_assist is not None:
         assist = frc.motor_assist_for_contract(motor_assist, contract)
@@ -176,7 +181,8 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     info = dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
                 descent_view=descent_view is not None, contact_support=contact_support is not None,
                 wall_pilot=None if wall_pilot is None else str(wall_pilot), motor_assist=assist is not None,
-                stale_evidence='stale_apply' in kw, early_brake='early_apply' in kw)
+                stale_evidence='stale_apply' in kw, early_brake='early_apply' in kw,
+                **({} if sighted_descent is None else dict(sighted_descent='on' if sighted_apply else 'shadow')))
     if not lag_turn or not gap_aim:
         info.update(lag_turn=bool(lag_turn), gap_aim=bool(gap_aim))
     if marker_jump is not None:
@@ -196,7 +202,8 @@ def _near_on_path(value):
 def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
            wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True,
-           lag_turn=True, gap_aim=True, marker_jump=None, marker_jump_apply=True, probe=None, early_brake=None):
+           lag_turn=True, gap_aim=True, marker_jump=None, marker_jump_apply=True, probe=None, early_brake=None,
+           sighted_descent=None, sighted_apply=True):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -215,8 +222,10 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     capture times (the CSV's capture_time values) whose ring cue is replaced by no detection (a frame the reader read no
     marker in; e.g. the logged detections a reader rule rejects on the aligned recorded frame). ``lag_turn`` /
     ``gap_aim`` / ``marker_jump`` / ``marker_jump_apply``: see build; with a marker-jump declaration the arrays also
-    carry the rule's log (FastRaceCue.marker_jump_log). ``probe``: an optional callable (pilot, row) -> dict of extra per-tick values, saved as
-    arrays of the same names (analysis only; changes nothing)."""
+    carry the rule's log (FastRaceCue.marker_jump_log). ``probe``: an optional callable (pilot, row) -> dict of extra
+    per-tick values, saved as arrays of the same names (analysis only; changes nothing). ``sighted_descent``: an
+    optional SightedDescentConfig (with ``descent_view``; see build); with it the arrays also carry sighted_los,
+    sighted_bound and sighted_withheld (FastRaceCue.sighted_log)."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
@@ -229,7 +238,9 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                         **({} if lag_turn else dict(lag_turn=False)), **({} if gap_aim else dict(gap_aim=False)),
                         **({} if marker_jump is None else dict(marker_jump=marker_jump,
                                                                 marker_jump_apply=marker_jump_apply)),
-                        **({} if early_brake is None else dict(early_brake=early_brake)))
+                        **({} if early_brake is None else dict(early_brake=early_brake)),
+                        **({} if sighted_descent is None else dict(sighted_descent=sighted_descent,
+                                                                   sighted_apply=sighted_apply)))
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['throttle_column'] = throttle_column
     info['near_on_path'] = bool(near_on_path)
@@ -274,6 +285,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
         keys += ('early_brake',)
     if motor_assist is not None and getattr(getattr(pilot, 'motor_assist', None), 'ceiling_share', False):
         keys += ('assist_share_cap',)
+    if sighted_descent is not None:
+        keys += ('sighted_los', 'sighted_bound', 'sighted_withheld')
     rows = {k: [] for k in keys}
     probed = {}
     drop = None if cue_drop is None else {round(float(c), 6) for c in cue_drop}
@@ -378,6 +391,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
         if 'assist_share_cap' in rows:
             share = getattr(pilot.clearance, 'share_cap', None) if pilot.clearance is not None else None
             values['assist_share_cap'] = nan if share is None else float(share)
+        if sighted_descent is not None:
+            values.update(pilot.sighted_log())
         for k in keys:
             rows[k].append(values.get(k, nan))
         if probe is not None:
@@ -747,6 +762,11 @@ def main(argv=None):
     parser.add_argument('--marker-jump-mode', default='on', choices=['on', 'shadow'],
                         help='with --marker-jump: shadow computes and logs the rule without holding any marker (tag '
                              'suffix -mjshadow)')
+    parser.add_argument('--sighted-descent', default=None, metavar='DECLARATION',
+                        help='with --descent-view: add the sighted descent of a frozen declaration '
+                             '(configs/pilot/sighted_descent.json); the file tag gains -sd<version>')
+    parser.add_argument('--sighted-mode', default='on', choices=['on', 'shadow'],
+                        help='with --sighted-descent: shadow computes and logs it only (the file tag gains -sdshadow)')
     args = parser.parse_args(argv)
     os.environ.setdefault('OMP_NUM_THREADS', '2')
     here = str(Path(__file__).resolve().parent)
@@ -818,6 +838,21 @@ def main(argv=None):
             raise SystemExit(f'{args.early_brake} is not a frozen early-brake declaration, or it changed after the freeze')
         tag += f'-eb{declaration["version"]}'
         extra['early_brake'] = declaration
+    if args.sighted_descent:
+        if descent_view is None:
+            raise SystemExit('--sighted-descent needs --descent-view')
+        from haltere.liftoff.gap_stack import config_sha256
+        declaration = json.loads(Path(args.sighted_descent).read_text(encoding='utf-8'))
+        if declaration.get('frozen') is not True or declaration.get('sha256') != config_sha256(declaration):
+            raise SystemExit(f'{args.sighted_descent} is not a frozen sighted-descent declaration, or it changed after '
+                             'the freeze')
+        extra['sighted_descent'] = frc.sighted_descent_config(declaration)
+        tag += f'-sd{declaration["version"]}'
+        if args.sighted_mode == 'shadow':
+            extra['sighted_apply'] = False
+            tag += '-sdshadow'
+    elif args.sighted_mode != 'on':
+        raise SystemExit('--sighted-mode shadow needs --sighted-descent')
     if args.cue_drop:
         tag += '-cd'
     if args.lag_turn == 'off':
@@ -864,6 +899,8 @@ def main(argv=None):
             results[flight]['marker_jump_metadata'] = meta.get('marker_jump')
         if args.early_brake:
             results[flight]['early_brake_metadata'] = meta.get('early_brake')
+        if args.sighted_descent:
+            results[flight]['sighted_descent_metadata'] = meta.get('sighted_descent')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')

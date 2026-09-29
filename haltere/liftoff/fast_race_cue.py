@@ -1061,6 +1061,82 @@ def descent_view_config(declaration):
     return DescentViewConfig(**declaration['descent_view'])
 
 
+# The sighted-descent declaration version runners fly (SightedDescentConfig); runners refuse others.
+SIGHTED_DESCENT_VERSION = 1
+# Sighted-descent modes of the runner (--sighted-descent): applied, not built (the default), or computed and logged only.
+SIGHTED_DESCENT_MODES = ('on', 'off', 'shadow')
+
+
+@dataclass(frozen=True)
+class SightedDescentConfig:
+    """Sighted descent: while the ring is clipped at the bottom edge, the pilot never requests a flight path steeper than
+    the ring's sighted line of sight (off unless a runner passes it; it needs the view-keeping descent,
+    DescentViewConfig, whose sink bound it lowers).
+
+    Why (Straw Bale downhill, straw-brain11cw13-r4b-noassist-02 and -r5-noassist-04, the rule's development logs): the
+    next ring lay 13.6-15.1 degrees below the drone for 7 s, just below the marker's clamp line (the camera's lower
+    image edge is 12 degrees below the body x axis; the nose wobbled 0-5 degrees down). The marker was read in view at
+    the bottom of the image at 13.4-14.6 degrees, within 0.5 degrees of the ring's line of sight as the logged in-view
+    rays triangulate it offline, and then stayed clipped for 4.2-4.8 s. The view rule's steep late (after late_after_s
+    of unbroken bottom clip its margin falls at late_rate_deg_s to late_max_deg below the lower edge) took the requested
+    path to 20-24 degrees and the flown path to 24-27 degrees, about 10 degrees steeper than the ring, and the drone
+    touched the straw. The camera never sees that hillside: a slope of 9-15 degrees below a lower image edge at 12-17
+    degrees is met, if at all, tens of metres ahead at grazing incidence, so no looming or depth cue measures the
+    clearance there. The ring's line of sight does bound the descent: a ring stays on the line along which it was seen
+    as long as the drone flies along that line (pure pursuit keeps the line of sight fixed), it turns down only while
+    the flight path stays above it, and each later bottom clip says only that it lies at least as low as the clamped
+    marker's ray.
+
+    The rule:
+    1. Sighting: two fresh in-view ring-centre rays (marker u, v; not the flag-clearance aim) with the marker at
+       v >= edge_v (near the bottom edge), captured at most agree_s apart and whose depressions agree within agree_deg,
+       set the ring's line of sight to the later one's depression (world, the pose at capture). A single or disagreeing
+       reading sets nothing.
+    2. Update: every tick the line of sight turns down by V sin(los - path)/growth_range_m (V the measured speed, path
+       the measured flight path's depression) while the flight path is shallower than it: as fast as it would for a ring
+       growth_range_m away, faster than for any ring farther away. Every bottom-clipped marker raises it to the clamped
+       marker ray's depression if that is lower.
+    3. Limit: while the ring is clipped at the bottom edge (pilot state below) and the line of sight is set, the view
+       rule's sink bound is lowered to the sink at which the flight path (measured horizontal speed, requested vertical
+       speed) points margin_deg below the line of sight, never below the in-view bound at the current attitude and never
+       above the view rule's own bound (steep late included): the rule only withholds sink the view rule would give.
+    4. Reset: a fresh in-view ring cue above edge_v (the ring well inside the view), a side- or top-clamped marker, a
+       bottom-clamped marker whose u moves by more than switch_u (another ring), the pilot's own checkpoint switch (a
+       bearing jump of new_target_deg), search (the marker lost) and launch clear it; the view rule then acts as before.
+    It reads the ring cue, the measured attitude and velocity and the camera calibration: no height above ground, no
+    terrain memory, no course geometry. The keep-speed parts of the view rule (no brake for a clipped ring, the speed
+    rise while sink is withheld, the descent-path governor not fed) stay as they are. Declaration version 1 (the
+    sighted-descent declaration in configs/pilot, read by the runner).
+    """
+    margin_deg: float = 1.
+    edge_v: float = .85
+    agree_deg: float = 1.5
+    agree_s: float = .5
+    switch_u: float = .1
+    growth_range_m: float = 20.
+    version: int = SIGHTED_DESCENT_VERSION
+
+    def __post_init__(self):
+        values = [self.margin_deg, self.edge_v, self.agree_deg, self.agree_s, self.switch_u, self.growth_range_m]
+        if not np.isfinite(values).all() or min(values) < 0:
+            raise ValueError('Use finite non-negative sighted-descent parameters')
+        if not 0 < self.edge_v < 1 or not self.margin_deg < 30 or not 0 < self.agree_s <= 2 or not self.switch_u < 1:
+            raise ValueError('Use edge_v in (0, 1), margin_deg below 30, agree_s in (0, 2] and switch_u below 1')
+        if not self.growth_range_m > 0:
+            raise ValueError('Use a positive growth_range_m')
+        if self.version != SIGHTED_DESCENT_VERSION:
+            raise ValueError(f'The fast pilot implements sighted-descent version {SIGHTED_DESCENT_VERSION}')
+
+
+def sighted_descent_config(declaration):
+    """The SightedDescentConfig of a sighted-descent declaration already parsed (and hash-checked) by the runner; refuses
+    another rule version. This module reads no files."""
+    if (declaration or {}).get('version') != SIGHTED_DESCENT_VERSION:
+        raise ValueError(f'The sighted-descent declaration is version {(declaration or {}).get("version")}; the fast '
+                         f'pilot implements version {SIGHTED_DESCENT_VERSION}')
+    return SightedDescentConfig(**declaration['sighted_descent'], version=declaration['version'])
+
+
 # Gravity of the contact rule's thrust model (the fast PD's value).
 CONTACT_GRAVITY = 9.81
 # Version 3: the most recent observed gains kept for the gain learnt before arming (5 s of 100 Hz windows).
@@ -1864,7 +1940,8 @@ class FastRaceCue:
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
                  ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None,
                  contact_support=None, clearance_brake=None, motor_assist=None, clearance_ray=None, stale_apply=True,
-                 contact_apply=True, marker_jump=None, marker_jump_apply=True, early_brake=None, early_apply=True):
+                 contact_apply=True, marker_jump=None, marker_jump_apply=True, early_brake=None, early_apply=True,
+                 sighted_descent=None, sighted_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -1996,6 +2073,21 @@ class FastRaceCue:
         self.view_time = dict(limiting=0., boost=0.)
         self.view_withheld_integral = 0.       # metres of sink withheld (integral of view_withheld)
         self.view_slope = None                 # low-passed lowest vertical speed per 1 m/s of horizontal speed in view
+        # Sighted descent (off unless declared; needs the view-keeping descent): see SightedDescentConfig. sighted_apply
+        # False (--sighted-descent shadow) computes and logs it without changing the view bound.
+        if sighted_descent is not None and not isinstance(sighted_descent, SightedDescentConfig):
+            raise ValueError('Pass a SightedDescentConfig (or None) for the sighted descent')
+        if sighted_descent is not None and descent_view is None:
+            raise ValueError('The sighted descent lowers the view-keeping descent sink bound: declare both')
+        self.sighted_descent, self.sighted_apply = sighted_descent, bool(sighted_apply)
+        self.sighted_los = None                # the ring's line of sight (depression, degrees) or None
+        self.sighted_last = None               # (capture time, depression) of the latest near-edge in-view sighting
+        self.sighted_clip_u = None             # u of the latest bottom-clamped marker while the sighting is set
+        self.sighted_bound = float('nan')      # the sink bound of the sighted line of sight this tick (NaN: not acting)
+        self.sighted_withheld = 0.             # sink the rule withheld from the view bound this tick (would, in shadow)
+        self.sighted_time = dict(set=0., limiting=0.)
+        self.sighted_withheld_integral = 0.
+        self.sighted_counts = dict(sightings=0, raised=0, resets=0)
         # Contact support (off unless declared; descent-view declaration version 2): see ContactSupportConfig.
         if contact_support is not None and not isinstance(contact_support, ContactSupportConfig):
             raise ValueError('Pass a ContactSupportConfig (or None) for the contact support')
@@ -2185,6 +2277,8 @@ class FastRaceCue:
             self.sweep_side = None
         elif self.vertical_clip_since is None:
             self.vertical_clip_since = capture_time
+        if self.sighted_descent is not None:
+            self._sighted_ingest(cue, q, switched, capture_time)
         self.frames += 1
 
     def _marker_jump_end(self):
@@ -2242,6 +2336,43 @@ class FastRaceCue:
                           'edge-clamped markers are taken as before'),
                     version=MARKER_JUMP_VERSION, parameters=asdict(mj), applied=self.marker_jump_apply,
                     counts=dict(self.marker_counts, pending=len(self.marker_candidates)))
+
+    def _sighted_reset(self):
+        if self.sighted_los is not None:
+            self.sighted_counts['resets'] += 1
+        self.sighted_los = self.sighted_last = self.sighted_clip_u = None
+
+    def _sighted_ingest(self, cue, quaternion, switched, capture_time):
+        """The ring's sighted line of sight from one fresh ring cue (SightedDescentConfig, parts 1, 2 and 4)."""
+        sd = self.sighted_descent
+        if switched:
+            self._sighted_reset()
+        if not cue['edge']:
+            centre = quat_wxyz_to_mat(quaternion) @ self.camera.unproject_body(
+                np.array([[cue['u']*320, cue['v']*180]]))[0]
+            depression = -float(np.degrees(np.arcsin(np.clip(centre[2]/max(np.linalg.norm(centre), 1e-9), -1, 1))))
+            if cue['v'] < sd.edge_v:
+                self._sighted_reset()        # the ring is well inside the view: the view rule alone
+                return
+            last = self.sighted_last
+            if last is not None and 0 < capture_time-last[0] <= sd.agree_s and abs(depression-last[1]) <= sd.agree_deg:
+                self.sighted_los = depression
+                self.sighted_clip_u = None
+                self.sighted_counts['sightings'] += 1
+            self.sighted_last = (capture_time, depression)
+            return
+        if not self.below:
+            self._sighted_reset()            # clamped at a side or the top: no line of sight below
+            return
+        if self.sighted_los is None:
+            return
+        if self.sighted_clip_u is not None and abs(cue['u']-self.sighted_clip_u) > sd.switch_u:
+            self._sighted_reset()            # the clamped marker jumped along the edge: another ring
+            return
+        self.sighted_clip_u = float(cue['u'])
+        if self.edge_depression > self.sighted_los:
+            self.sighted_los = float(self.edge_depression)
+            self.sighted_counts['raised'] += 1
 
     def _blend(self, previous, ray):
         """(filtered bearing after one more cue ray, whether it was a new target): a ray more than new_target_deg
@@ -2838,10 +2969,16 @@ class FastRaceCue:
             # View-keeping descent (DescentViewConfig): bound the pilot's own sink so that the flight path stays inside
             # the camera's lower field of view, given the measured attitude and horizontal velocity.
             margin = dv.cue_margin_deg if state == 'cue' else dv.margin_deg
+            in_view_margin = margin
             if dv.late_max_deg > 0 and state == 'below' and self.below_since is not None:
                 late = dv.late_rate_deg_s*max(0., now-self.below_since-dv.late_after_s)
                 margin = max(-dv.late_max_deg, margin-late)
             self.view_bound = self._view_sink_bound(velocity, rotation, margin, yaw, dt)
+            if self.sighted_descent is not None:
+                if state in ('search', 'launch'):
+                    self._sighted_reset()
+                self.view_bound = self._sighted_limit(self.view_bound, float(-desired[2]), state, in_view_margin,
+                                                      velocity, rotation, yaw, dt)
             self.view_withheld = max(0., float(-desired[2])-self.view_bound)
             if self.view_withheld > 0:
                 desired[2] = -self.view_bound
@@ -3126,6 +3263,16 @@ class FastRaceCue:
         scaled by the measured horizontal speed. Below 0.5 m/s the heading replaces the velocity direction."""
         dv = self.descent_view
         margin = dv.margin_deg if margin_deg is None else margin_deg
+        speed, lowest = self._view_lowest(velocity, rotation, margin, yaw)
+        if self.view_slope is None or dv.attitude_time_constant <= 0:
+            self.view_slope = lowest
+        else:
+            self.view_slope += (1-np.exp(-dt/dv.attitude_time_constant))*(lowest-self.view_slope)
+        return float(max(dv.free_sink, -speed*self.view_slope))
+
+    def _view_lowest(self, velocity, rotation, margin, yaw):
+        """(measured horizontal speed, the lowest vertical speed per 1 m/s of horizontal speed at which the flight path
+        points margin degrees inside the camera's lower image edge at this attitude; 0 when the camera cannot help)."""
         speed = float(np.hypot(velocity[0], velocity[1]))
         direction = (np.array([velocity[0], velocity[1], 0.])/speed if speed > .5
                      else np.array([np.cos(yaw), np.sin(yaw), 0.]))
@@ -3135,11 +3282,36 @@ class FastRaceCue:
         den = kappa*float(b[2])-float(b[1])
         # the lowest vertical speed per 1 m/s of horizontal speed with the path in view (0 when the camera cannot help)
         lowest = (float(a[1])-kappa*float(a[2]))/den if den > 1e-6 else 0.
-        if self.view_slope is None or dv.attitude_time_constant <= 0:
-            self.view_slope = lowest
-        else:
-            self.view_slope += (1-np.exp(-dt/dv.attitude_time_constant))*(lowest-self.view_slope)
-        return float(max(dv.free_sink, -speed*self.view_slope))
+        return speed, lowest
+
+    def _sighted_limit(self, bound, sink, state, in_view_margin, velocity, rotation, yaw, dt):
+        """The view bound under the sighted descent (SightedDescentConfig, parts 3 and 4): while the ring is clipped at
+        the bottom edge (state below) and its line of sight is sighted, at most the sink that points the path margin_deg
+        below that line of sight, at least the in-view bound at this attitude (unfiltered) and never more than the view
+        rule's own bound (steep late included). `sink` is the pilot's own requested sink this tick. The line of sight
+        first turns down for the measured path's shortfall below it (part 2). Applied unless in shadow; logs the sink it
+        withholds from the request (would withhold, in shadow) either way."""
+        sd = self.sighted_descent
+        self.sighted_bound, self.sighted_withheld = float('nan'), 0.
+        if self.sighted_los is not None:
+            self.sighted_time['set'] += dt
+            # a ring below the flight path turns down in view as the drone passes above it, at V sin(los - path)/range:
+            # at most as fast as for a ring growth_range_m away
+            path = -float(np.degrees(np.arctan2(velocity[2], np.hypot(velocity[0], velocity[1]))))
+            shortfall = np.radians(max(0., self.sighted_los-path))
+            self.sighted_los += dt*float(np.degrees(np.linalg.norm(velocity)*np.sin(shortfall)/sd.growth_range_m))
+        if state != 'below' or self.sighted_los is None:
+            return bound
+        speed, lowest = self._view_lowest(velocity, rotation, in_view_margin, yaw)
+        in_view = max(self.descent_view.free_sink, -speed*lowest)
+        sighted = speed*float(np.tan(np.radians(min(self.sighted_los+sd.margin_deg, 80.))))
+        self.sighted_bound = sighted
+        limited = min(bound, max(in_view, sighted))
+        self.sighted_withheld = float(max(0., min(sink, bound)-limited))
+        if self.sighted_withheld > 0:
+            self.sighted_time['limiting'] += dt
+            self.sighted_withheld_integral += dt*self.sighted_withheld
+        return limited if self.sighted_apply else bound
 
     def _contact_step(self, now, issued_at, velocity, rotation, dt, issued=None, omega=None):
         """One tick of contact support (ContactSupportConfig): the window's unexplained upward specific force, the
@@ -3288,6 +3460,41 @@ class FastRaceCue:
             return None
         return dict(seconds={k: round(v, 3) for k, v in self.view_time.items()},
                     withheld_m=round(self.view_withheld_integral, 3))
+
+    def sighted_log(self):
+        """Per-tick sighted-descent values for logs (NaN when the rule is not declared): the ring's sighted line of sight
+        (depression, degrees; NaN while none is set), the sink bound it gives while steep late acts (NaN otherwise) and
+        the sink it withheld from the pilot's request (would withhold, in shadow)."""
+        nan = float('nan')
+        if self.sighted_descent is None:
+            return dict(sighted_los=nan, sighted_bound=nan, sighted_withheld=nan)
+        return dict(sighted_los=nan if self.sighted_los is None else float(self.sighted_los),
+                    sighted_bound=float(self.sighted_bound), sighted_withheld=float(self.sighted_withheld))
+
+    def sighted_summary(self):
+        """Seconds set and limiting, metres of sink withheld and counts (None when the rule is not declared)."""
+        if self.sighted_descent is None:
+            return None
+        return dict(applied=self.sighted_apply, seconds={k: round(v, 3) for k, v in self.sighted_time.items()},
+                    withheld_m=round(self.sighted_withheld_integral, 3), counts=dict(self.sighted_counts))
+
+    def _sighted_metadata(self):
+        if self.sighted_descent is None:
+            return None
+        return dict(
+            version=self.sighted_descent.version,
+            rule='two fresh in-view ring-centre rays with the marker at v >= edge_v, at most agree_s apart and agreeing '
+                 'within agree_deg, set the ring\'s line of sight (depression at capture); it turns down by V sin(los - '
+                 'path)/growth_range_m per second while the measured flight path is shallower, and each bottom-clamped '
+                 'marker raises it to the clamped ray\'s depression; while the ring is clipped at the bottom edge (state '
+                 'below) the view rule\'s sink bound is lowered to the sink that points the path (measured horizontal '
+                 'speed) margin_deg below it, never below the in-view bound at this attitude nor above the view rule\'s '
+                 'bound; cleared by an in-view cue above edge_v, a side/top clamp, a bottom-clamped u jump beyond '
+                 'switch_u, the pilot\'s checkpoint switch, search and launch',
+            input='the ring cue, measured attitude and velocity, the camera calibration; no height above ground, no '
+                  'terrain memory, no course geometry',
+            parameters={k: v for k, v in asdict(self.sighted_descent).items() if k != 'version'},
+            **self.sighted_summary())
 
     def motor_assist_log(self):
         """Per-tick motor-assist values for logs (NaN / '' when the rule is not declared): the pilot's own request, the
@@ -3704,6 +3911,8 @@ class FastRaceCue:
                     limitations='Race guidance only; no freestyle objective, obstacle model or completed-lap inference')
         if self.descent_view is not None:
             out['descent_view'] = self._descent_view_metadata()     # absent when the rule is off (default unchanged)
+        if self.sighted_descent is not None:
+            out['sighted_descent'] = self._sighted_metadata()       # absent when the rule is off (default unchanged)
         if self.contact_support is not None:
             out['contact_support'] = dict(
                 rule='over the last window_s: unexplained = dvz/dt - (gain * mean(g*thrust_twr*drive^thrust_exponent*up_z) '
