@@ -28,6 +28,13 @@ before the FAT SHARK arch.
 
 ### FAT SHARK arch (`straw-brain11cw13-r5-noassist-01`, 19.4 s)
 
+**Correction (round 7, [ring_lead.md](ring_lead.md)):** the marker did not slide to the next ring before the impact.
+All in-view marker rays of 17.3-19.01 s meet at one point, the FAT SHARK ring centre (78.99, 15.34, 1.34), with an RMS
+residual of 0.031 m (hindsight). The three captures of 18.997-19.137 s, taken 1.11-0.57 m from it at bearings of
+60-87 deg, pass within 0.10-0.18 m of a fit to the earlier rays. The fast leftward sweep was the parallax of this ring,
+passed about 1.2 m right of its centre. The "switch events" of the measurement below include such parallax sweeps: the
+lag-aware turn's trigger fires on them. The cause found here, the gap aim's line before the pass, stands.
+
 Video (recording time equals log time within 0.1 s here):
 
 - 18.44-18.94 s: the arch, a tall curved banner, is seen obliquely. Its left leg is near and large; the right leg is far

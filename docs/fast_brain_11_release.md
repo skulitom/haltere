@@ -65,6 +65,18 @@ These are development runs, and several round-6 rules fail some of their frozen 
   (0.71 core on Straw, 6.22 cores at the end of the Minus run). No controller-deadline, camera or telemetry failure was
   recorded.
 
+**Correction (round 7, branch `m7-ingate`, [ring_lead.md](ring_lead.md)).** This was checked on the video and in the
+logs. In neither brain crash at an arch did the marker switch to the next ring before the impact: every in-view marker
+ray of the last 1.5 s meets at the arch's own ring (hindsight triangulation).
+- Minus Two, 29.6 s: the drone passed 0.73 m left of the low arch's ring centre and met its **left** leg. Its right turn
+  went toward the centre, away from that leg. The line had been set about 2 s earlier: after the previous checkpoint,
+  the early brake's cap along the old travel direction turned the request 10-17 deg left of the new ring, and the
+  lagging course fell further behind the ring's swinging bearing.
+- The FAT SHARK crash of `r5-noassist-01` (the table below) is the same kind of off-centre pass. The quick leftward
+  sweep of the marker was the ring's own parallax, and the gap aim's right shift before the arch set the line.
+
+The shared cause is passing a near gate off its centre, not turning toward the next ring inside a gate.
+
 To fly this stack, check out `m6` at `9269a62`, extract `fast-brain11-inference.zip`, and run the command below with
 `--looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow
 --sighted-descent on --motor-assist on --marker-jump shadow`. The round-6 flight records are in
