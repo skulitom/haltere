@@ -1,0 +1,2322 @@
+{
+ "gates_sha256": "4eb99684589314e14323e5141b87e40a8532843488653436fa872d236d907f15",
+ "gates_version": 1,
+ "declaration": {
+  "file": "configs/pilot/marker_jump.json",
+  "version": 1,
+  "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9"
+ },
+ "table": {
+  "I1_default_off": {
+   "identical": "126/126",
+   "different": {},
+   "passed": true,
+   "held_out": true
+  },
+  "I2_shadow": {
+   "identical": "126/126",
+   "different": {},
+   "passed": true,
+   "held_out": true
+  },
+  "D1_start_arch": {
+   "held_captures": {
+    "218018.163": true,
+    "218018.238": true
+   },
+   "surrogate_min_distance_m": {
+    "base": 0.129,
+    "rule": 1.034,
+    "logged": 0.129
+   },
+   "side": {
+    "base": "point on the left (path right of it)",
+    "rule": "point on the right (path left of it)",
+    "logged": "point on the left (path right of it)"
+   },
+   "passed": true,
+   "held_out": false
+  },
+  "D2_other_crashes": {
+   "changed_development_windows": {
+    "straw-brain11cw13-r5-noassist-01": [],
+    "straw-brain11cw13-r5-noassist-04": []
+   },
+   "passed": null,
+   "held_out": false,
+   "report": true
+  },
+  "H1_no_new_stop": {
+   "held_out_windows": {
+    "stack": 62,
+    "default": 62
+   },
+   "new_stops": [
+    {
+     "base": "stack",
+     "flight": "minus-fast6-r4b-01",
+     "window": [
+      39.15,
+      42.28
+     ],
+     "ticks": 7,
+     "lowest_rule": 0.0,
+     "lowest_base": 0.458
+    },
+    {
+     "base": "stack",
+     "flight": "minus-fast6-r5-01",
+     "window": [
+      22.7,
+      25.46
+     ],
+     "ticks": 33,
+     "lowest_rule": 0.0,
+     "lowest_base": 0.697
+    },
+    {
+     "base": "stack",
+     "flight": "minus-fast6-vg-02",
+     "window": [
+      20.19,
+      23.44
+     ],
+     "ticks": 2,
+     "lowest_rule": 0.0,
+     "lowest_base": 0.31
+    },
+    {
+     "base": "default",
+     "flight": "minus-fast6-r5-01",
+     "window": [
+      22.72,
+      26.31
+     ],
+     "ticks": 1,
+     "lowest_rule": 0.922,
+     "lowest_base": 0.923
+    },
+    {
+     "base": "default",
+     "flight": "straw-brain05-01",
+     "window": [
+      94.37,
+      99.62
+     ],
+     "ticks": 19,
+     "lowest_rule": 0.091,
+     "lowest_base": 0.269
+    },
+    {
+     "base": "default",
+     "flight": "straw-brain05-gov-01",
+     "window": [
+      95.08,
+      98.18
+     ],
+     "ticks": 38,
+     "lowest_rule": 0.288,
+     "lowest_base": 0.564
+    }
+   ],
+   "passed": false,
+   "held_out": true
+  },
+  "H2_clearance": {
+   "windows": 40,
+   "worst_lateral_m": 5.405,
+   "over": [
+    {
+     "flight": "minus-fast6-r4b-01",
+     "window": [
+      39.15,
+      42.28
+     ],
+     "motor": "pd",
+     "lateral_max_m": 1.009,
+     "progress_lost_s": 0.164,
+     "read": false
+    },
+    {
+     "flight": "minus-fast6-r5-01",
+     "window": [
+      22.7,
+      25.46
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.395,
+     "progress_lost_s": -0.191,
+     "read": false
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "window": [
+      20.19,
+      23.44
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.67,
+     "progress_lost_s": 0.062,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-01",
+     "window": [
+      54.97,
+      58.19
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.571,
+     "progress_lost_s": 0.158,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-02",
+     "window": [
+      55.12,
+      58.76
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.679,
+     "progress_lost_s": 0.092,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-02",
+     "window": [
+      66.13,
+      69.01
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.962,
+     "progress_lost_s": 0.143,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-02",
+     "window": [
+      88.41,
+      91.77
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.201,
+     "progress_lost_s": -0.184,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-03",
+     "window": [
+      54.99,
+      57.94
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.382,
+     "progress_lost_s": -0.056,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      66.06,
+      69.48
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.401,
+     "progress_lost_s": 0.073,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      89.42,
+      92.43
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.002,
+     "progress_lost_s": -0.09,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      114.22,
+      118.84
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.234,
+     "progress_lost_s": 0.706,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      301.17,
+      304.56
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.963,
+     "progress_lost_s": -0.198,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-05",
+     "window": [
+      89.14,
+      91.81
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.588,
+     "progress_lost_s": -0.191,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      89.24,
+      92.6
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.589,
+     "progress_lost_s": -0.184,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      114.21,
+      117.03
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.769,
+     "progress_lost_s": -0.044,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      161.96,
+      165.05
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.8,
+     "progress_lost_s": 0.288,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      195.13,
+      198.33
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.783,
+     "progress_lost_s": -0.264,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      221.12,
+      224.74
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 5.405,
+     "progress_lost_s": 0.436,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      268.09,
+      271.66
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.482,
+     "progress_lost_s": 0.136,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      294.2,
+      296.98
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.472,
+     "progress_lost_s": -0.092,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "window": [
+      64.11,
+      67.26
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 0.706,
+     "progress_lost_s": -0.116,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "window": [
+      70.1,
+      74.05
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 1.096,
+     "progress_lost_s": 0.012,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "window": [
+      86.64,
+      89.52
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 1.204,
+     "progress_lost_s": -0.031,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r5-noassist-04",
+     "window": [
+      14.35,
+      17.65
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 1.147,
+     "progress_lost_s": 0.201,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r5-noassist-04",
+     "window": [
+      58.47,
+      62.0
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 0.803,
+     "progress_lost_s": -0.161,
+     "read": true
+    },
+    {
+     "flight": "straw-fast6-02",
+     "window": [
+      51.75,
+      55.02
+     ],
+     "motor": "pd",
+     "lateral_max_m": 1.819,
+     "progress_lost_s": -0.38,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-02",
+     "window": [
+      109.68,
+      112.95
+     ],
+     "motor": "pd",
+     "lateral_max_m": 2.043,
+     "progress_lost_s": 0.21,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-02",
+     "window": [
+      199.28,
+      202.39
+     ],
+     "motor": "pd",
+     "lateral_max_m": 3.171,
+     "progress_lost_s": 0.006,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-03",
+     "window": [
+      50.79,
+      53.65
+     ],
+     "motor": "pd",
+     "lateral_max_m": 1.361,
+     "progress_lost_s": 0.187,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-03",
+     "window": [
+      287.34,
+      290.5
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.857,
+     "progress_lost_s": -0.258,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      107.4,
+      110.3
+     ],
+     "motor": "pd",
+     "lateral_max_m": 2.431,
+     "progress_lost_s": 0.941,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      150.9,
+      154.2
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.358,
+     "progress_lost_s": -0.061,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      176.84,
+      179.96
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.864,
+     "progress_lost_s": -0.016,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      251.2,
+      253.74
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.939,
+     "progress_lost_s": 0.12,
+     "read": false
+    }
+   ],
+   "missing": [],
+   "open_loop_only": [
+    "straw-brain04-01",
+    "straw-brain05-01",
+    "straw-brain05-gov-01",
+    "straw-brain05-trim-02",
+    "straw-brain06-01",
+    "straw-brain06-02",
+    "straw-brain06-03",
+    "straw-brain07-02",
+    "straw-brain07-03",
+    "straw-brain07-nosweep-01",
+    "straw-brain6-02"
+   ],
+   "passed": false,
+   "held_out": true,
+   "rows": [
+    {
+     "flight": "minus-fast6-r4b-01",
+     "window": [
+      39.15,
+      42.28
+     ],
+     "motor": "pd",
+     "lateral_max_m": 1.009,
+     "progress_lost_s": 0.164,
+     "read": false
+    },
+    {
+     "flight": "minus-fast6-r5-01",
+     "window": [
+      22.7,
+      25.46
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.395,
+     "progress_lost_s": -0.191,
+     "read": false
+    },
+    {
+     "flight": "minus-fast6-vg-02",
+     "window": [
+      20.19,
+      23.44
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.67,
+     "progress_lost_s": 0.062,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-01",
+     "window": [
+      54.97,
+      58.19
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.571,
+     "progress_lost_s": 0.158,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-02",
+     "window": [
+      55.12,
+      58.76
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.679,
+     "progress_lost_s": 0.092,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-02",
+     "window": [
+      66.13,
+      69.01
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.962,
+     "progress_lost_s": 0.143,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-02",
+     "window": [
+      88.41,
+      91.77
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.201,
+     "progress_lost_s": -0.184,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-02",
+     "window": [
+      114.14,
+      117.05
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.181,
+     "progress_lost_s": -0.111,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-03",
+     "window": [
+      54.99,
+      57.94
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.382,
+     "progress_lost_s": -0.056,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      54.94,
+      57.68
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.091,
+     "progress_lost_s": 0.027,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      66.06,
+      69.48
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.401,
+     "progress_lost_s": 0.073,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      89.42,
+      92.43
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.002,
+     "progress_lost_s": -0.09,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      114.22,
+      118.84
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.234,
+     "progress_lost_s": 0.706,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      219.5,
+      222.36
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.137,
+     "progress_lost_s": 0.082,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-04",
+     "window": [
+      301.17,
+      304.56
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.963,
+     "progress_lost_s": -0.198,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-05",
+     "window": [
+      71.67,
+      74.93
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.003,
+     "progress_lost_s": 0.003,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-05",
+     "window": [
+      89.14,
+      91.81
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.588,
+     "progress_lost_s": -0.191,
+     "read": false
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      55.56,
+      58.99
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.228,
+     "progress_lost_s": -0.047,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      89.24,
+      92.6
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 1.589,
+     "progress_lost_s": -0.184,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      114.21,
+      117.03
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.769,
+     "progress_lost_s": -0.044,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      161.96,
+      165.05
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.8,
+     "progress_lost_s": 0.288,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      195.13,
+      198.33
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.783,
+     "progress_lost_s": -0.264,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      221.12,
+      224.74
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 5.405,
+     "progress_lost_s": 0.436,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      268.09,
+      271.66
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.482,
+     "progress_lost_s": 0.136,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      294.2,
+      296.98
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.472,
+     "progress_lost_s": -0.092,
+     "read": true
+    },
+    {
+     "flight": "straw-brain08-06",
+     "window": [
+      301.15,
+      305.0
+     ],
+     "motor": "brain08",
+     "lateral_max_m": 0.162,
+     "progress_lost_s": 0.108,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "window": [
+      64.11,
+      67.26
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 0.706,
+     "progress_lost_s": -0.116,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "window": [
+      70.1,
+      74.05
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 1.096,
+     "progress_lost_s": 0.012,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r4b-noassist-02",
+     "window": [
+      86.64,
+      89.52
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 1.204,
+     "progress_lost_s": -0.031,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r5-noassist-04",
+     "window": [
+      14.35,
+      17.65
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 1.147,
+     "progress_lost_s": 0.201,
+     "read": true
+    },
+    {
+     "flight": "straw-brain11cw13-r5-noassist-04",
+     "window": [
+      58.47,
+      62.0
+     ],
+     "motor": "brain11cw13",
+     "lateral_max_m": 0.803,
+     "progress_lost_s": -0.161,
+     "read": true
+    },
+    {
+     "flight": "straw-fast6-02",
+     "window": [
+      51.75,
+      55.02
+     ],
+     "motor": "pd",
+     "lateral_max_m": 1.819,
+     "progress_lost_s": -0.38,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-02",
+     "window": [
+      109.68,
+      112.95
+     ],
+     "motor": "pd",
+     "lateral_max_m": 2.043,
+     "progress_lost_s": 0.21,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-02",
+     "window": [
+      199.28,
+      202.39
+     ],
+     "motor": "pd",
+     "lateral_max_m": 3.171,
+     "progress_lost_s": 0.006,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-03",
+     "window": [
+      50.79,
+      53.65
+     ],
+     "motor": "pd",
+     "lateral_max_m": 1.361,
+     "progress_lost_s": 0.187,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-03",
+     "window": [
+      287.34,
+      290.5
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.857,
+     "progress_lost_s": -0.258,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      107.4,
+      110.3
+     ],
+     "motor": "pd",
+     "lateral_max_m": 2.431,
+     "progress_lost_s": 0.941,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      150.9,
+      154.2
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.358,
+     "progress_lost_s": -0.061,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      176.84,
+      179.96
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.864,
+     "progress_lost_s": -0.016,
+     "read": false
+    },
+    {
+     "flight": "straw-fast6-arc-01",
+     "window": [
+      251.2,
+      253.74
+     ],
+     "motor": "pd",
+     "lateral_max_m": 0.939,
+     "progress_lost_s": 0.12,
+     "read": false
+    }
+   ]
+  },
+  "H3_course_time": {
+   "flights": {
+    "minus-fast6-r4b-01": {
+     "kind": "surrogate",
+     "progress_lost_s": 0.164,
+     "fraction": 0.00366
+    },
+    "minus-fast6-r5-01": {
+     "kind": "surrogate",
+     "progress_lost_s": -0.191,
+     "fraction": -0.00726
+    },
+    "minus-fast6-vg-02": {
+     "kind": "surrogate",
+     "progress_lost_s": 0.062,
+     "fraction": 0.00265
+    },
+    "straw-brain04-01": {
+     "kind": "open loop",
+     "removed_m": 0.284,
+     "fraction": 0.00056
+    },
+    "straw-brain05-01": {
+     "kind": "open loop",
+     "removed_m": 0.705,
+     "fraction": 0.00123
+    },
+    "straw-brain05-gov-01": {
+     "kind": "open loop",
+     "removed_m": 0.0,
+     "fraction": 0.0
+    },
+    "straw-brain05-trim-02": {
+     "kind": "open loop",
+     "removed_m": 0.004,
+     "fraction": 1e-05
+    },
+    "straw-brain06-01": {
+     "kind": "open loop",
+     "removed_m": 0.202,
+     "fraction": 0.00027
+    },
+    "straw-brain06-02": {
+     "kind": "open loop",
+     "removed_m": 0.169,
+     "fraction": 8e-05
+    },
+    "straw-brain06-03": {
+     "kind": "open loop",
+     "removed_m": 0.336,
+     "fraction": 0.00016
+    },
+    "straw-brain07-02": {
+     "kind": "open loop",
+     "removed_m": 1.171,
+     "fraction": 0.00056
+    },
+    "straw-brain07-03": {
+     "kind": "open loop",
+     "removed_m": 0.083,
+     "fraction": 4e-05
+    },
+    "straw-brain07-nosweep-01": {
+     "kind": "open loop",
+     "removed_m": 0.0,
+     "fraction": 0.0
+    },
+    "straw-brain08-01": {
+     "kind": "surrogate",
+     "progress_lost_s": 0.158,
+     "fraction": 0.00208
+    },
+    "straw-brain08-02": {
+     "kind": "surrogate",
+     "progress_lost_s": -0.06,
+     "fraction": -0.00036
+    },
+    "straw-brain08-03": {
+     "kind": "surrogate",
+     "progress_lost_s": -0.056,
+     "fraction": -0.00094
+    },
+    "straw-brain08-04": {
+     "kind": "surrogate",
+     "progress_lost_s": 0.6,
+     "fraction": 0.00184
+    },
+    "straw-brain08-05": {
+     "kind": "surrogate",
+     "progress_lost_s": -0.188,
+     "fraction": -0.0012
+    },
+    "straw-brain08-06": {
+     "kind": "surrogate",
+     "progress_lost_s": 0.337,
+     "fraction": 0.00103
+    },
+    "straw-brain11cw13-r4b-noassist-02": {
+     "kind": "surrogate",
+     "progress_lost_s": -0.135,
+     "fraction": -0.0012
+    },
+    "straw-brain11cw13-r5-noassist-04": {
+     "kind": "surrogate",
+     "progress_lost_s": 0.04,
+     "fraction": 0.00049
+    },
+    "straw-brain6-02": {
+     "kind": "open loop",
+     "removed_m": 0.026,
+     "fraction": 0.00011
+    },
+    "straw-fast6-02": {
+     "kind": "surrogate",
+     "progress_lost_s": -0.164,
+     "fraction": -0.00053
+    },
+    "straw-fast6-03": {
+     "kind": "surrogate",
+     "progress_lost_s": -0.071,
+     "fraction": -0.00023
+    },
+    "straw-fast6-arc-01": {
+     "kind": "surrogate",
+     "progress_lost_s": 0.984,
+     "fraction": 0.00357
+    }
+   },
+   "over": {},
+   "passed": true,
+   "held_out": true
+  },
+  "HG1_gate_posts": {
+   "pd": {
+    "base": 7,
+    "rule": 0,
+    "passed": true,
+    "false_marker": {
+     "base": 7,
+     "rule": 0
+    }
+   },
+   "brain11cw13": {
+    "base": 0,
+    "rule": 0,
+    "passed": true,
+    "false_marker": {
+     "base": 0,
+     "rule": 0
+    }
+   },
+   "brain08": {
+    "base": 0,
+    "rule": 0,
+    "passed": true,
+    "false_marker": {
+     "base": 0,
+     "rule": 0
+    }
+   },
+   "passed": true,
+   "held_out": true
+  },
+  "HG2_gate_finishes": {
+   "pd": {
+    "base": 21,
+    "rule": 28,
+    "passed": true
+   },
+   "brain11cw13": {
+    "base": 30,
+    "rule": 30,
+    "passed": true
+   },
+   "brain08": {
+    "base": 28,
+    "rule": 27,
+    "passed": false
+   },
+   "passed": false,
+   "held_out": true
+  },
+  "HG3_gate_quiet": {
+   "pd": {
+    "both_finished": 9,
+    "mean_finish_base": 11.991,
+    "mean_finish_rule": 11.987,
+    "slower_fraction": -0.00037,
+    "new_stops": [],
+    "passed": true
+   },
+   "brain11cw13": {
+    "both_finished": 10,
+    "mean_finish_base": 13.105,
+    "mean_finish_rule": 13.105,
+    "slower_fraction": 0.0,
+    "new_stops": [],
+    "passed": true
+   },
+   "brain08": {
+    "both_finished": 10,
+    "mean_finish_base": 12.975,
+    "mean_finish_rule": 12.981,
+    "slower_fraction": 0.00046,
+    "new_stops": [],
+    "passed": true
+   },
+   "passed": true,
+   "held_out": true
+  },
+  "HG4_hairpin": {
+   "pd": {
+    "wall_base": 0,
+    "wall_rule": 0,
+    "clean_base": 5,
+    "clean_rule": 5,
+    "passed": true
+   },
+   "brain11cw13": {
+    "wall_base": 8,
+    "wall_rule": 8,
+    "clean_base": 0,
+    "clean_rule": 0,
+    "passed": true
+   },
+   "brain08": {
+    "wall_base": 6,
+    "wall_rule": 6,
+    "clean_base": 0,
+    "clean_rule": 0,
+    "passed": true
+   },
+   "passed": true,
+   "held_out": true
+  }
+ },
+ "flights": {
+  "scored": 63,
+  "skipped": {
+   "minus-brain10b-r4-01": "no replayable tick",
+   "minus-fast6-r4-01": "no replayable tick",
+   "pine-fast6-loom-01": "the m5 harness cannot replay it: AttributeError: 'Pandas' object has no attribute 'looming_below_fraction'"
+  }
+ },
+ "activity": {
+  "stack": {
+   "minus-fast6-r4b-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      39.15,
+      42.28
+     ]
+    ],
+    "development_windows": []
+   },
+   "minus-fast6-r5-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      22.7,
+      25.46
+     ]
+    ],
+    "development_windows": []
+   },
+   "minus-fast6-vg-02": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      20.19,
+      23.44
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain04-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      86.44,
+      89.84
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain05-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      94.38,
+      98.57
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain05-gov-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      95.08,
+      98.67
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain05-trim-02": {
+    "counts": {
+     "held": 4,
+     "candidates": 2,
+     "confirmed": 2,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      74.46,
+      76.87
+     ],
+     [
+      98.43,
+      99.22
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain06-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      87.32,
+      90.52
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain06-02": {
+    "counts": {
+     "held": 10,
+     "candidates": 8,
+     "confirmed": 1,
+     "rejected": 7,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      42.87,
+      46.25
+     ],
+     [
+      96.5,
+      98.72
+     ],
+     [
+      213.43,
+      216.71
+     ],
+     [
+      241.77,
+      245.3
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain06-03": {
+    "counts": {
+     "held": 13,
+     "candidates": 10,
+     "confirmed": 2,
+     "rejected": 8,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      37.46,
+      40.41
+     ],
+     [
+      154.72,
+      157.51
+     ],
+     [
+      160.34,
+      162.96
+     ],
+     [
+      242.05,
+      244.96
+     ],
+     [
+      276.95,
+      279.51
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain07-02": {
+    "counts": {
+     "held": 5,
+     "candidates": 4,
+     "confirmed": 0,
+     "rejected": 3,
+     "pending": 1
+    },
+    "held_out_windows": [
+     [
+      123.57,
+      127.37
+     ],
+     [
+      239.02,
+      242.37
+     ],
+     [
+      355.3,
+      356.37
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain07-03": {
+    "counts": {
+     "held": 5,
+     "candidates": 3,
+     "confirmed": 2,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      238.99,
+      242.73
+     ],
+     [
+      328.22,
+      330.71
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain07-nosweep-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      88.21,
+      90.62
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      54.97,
+      58.19
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-02": {
+    "counts": {
+     "held": 8,
+     "candidates": 7,
+     "confirmed": 1,
+     "rejected": 6,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      55.12,
+      58.76
+     ],
+     [
+      66.13,
+      69.01
+     ],
+     [
+      88.41,
+      91.77
+     ],
+     [
+      114.14,
+      117.05
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-03": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      54.99,
+      57.94
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-04": {
+    "counts": {
+     "held": 13,
+     "candidates": 11,
+     "confirmed": 0,
+     "rejected": 11,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      54.94,
+      57.68
+     ],
+     [
+      66.06,
+      69.48
+     ],
+     [
+      89.42,
+      92.43
+     ],
+     [
+      114.22,
+      118.84
+     ],
+     [
+      219.5,
+      222.36
+     ],
+     [
+      301.17,
+      304.56
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-05": {
+    "counts": {
+     "held": 6,
+     "candidates": 4,
+     "confirmed": 1,
+     "rejected": 3,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      71.67,
+      74.93
+     ],
+     [
+      89.14,
+      91.81
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-06": {
+    "counts": {
+     "held": 23,
+     "candidates": 17,
+     "confirmed": 4,
+     "rejected": 13,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      55.56,
+      58.99
+     ],
+     [
+      89.24,
+      92.6
+     ],
+     [
+      114.21,
+      117.03
+     ],
+     [
+      161.96,
+      165.05
+     ],
+     [
+      195.13,
+      198.33
+     ],
+     [
+      221.12,
+      224.74
+     ],
+     [
+      268.09,
+      271.66
+     ],
+     [
+      294.2,
+      296.98
+     ],
+     [
+      301.15,
+      305.0
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain11cw13-r4b-noassist-02": {
+    "counts": {
+     "held": 9,
+     "candidates": 6,
+     "confirmed": 2,
+     "rejected": 4,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      64.11,
+      67.26
+     ],
+     [
+      70.1,
+      74.05
+     ],
+     [
+      86.64,
+      89.52
+     ]
+    ],
+    "development_windows": [
+     [
+      110.9,
+      112.37
+     ]
+    ]
+   },
+   "straw-brain11cw13-r5-noassist-04": {
+    "counts": {
+     "held": 3,
+     "candidates": 2,
+     "confirmed": 1,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      14.35,
+      17.65
+     ],
+     [
+      58.47,
+      62.0
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain6-02": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      7.56,
+      10.1
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-fast6-02": {
+    "counts": {
+     "held": 9,
+     "candidates": 7,
+     "confirmed": 1,
+     "rejected": 6,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      51.75,
+      55.02
+     ],
+     [
+      109.68,
+      112.95
+     ],
+     [
+      199.28,
+      202.39
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-fast6-03": {
+    "counts": {
+     "held": 3,
+     "candidates": 2,
+     "confirmed": 1,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      50.79,
+      53.65
+     ],
+     [
+      287.34,
+      290.5
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-fast6-arc-01": {
+    "counts": {
+     "held": 5,
+     "candidates": 4,
+     "confirmed": 0,
+     "rejected": 4,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      107.4,
+      110.3
+     ],
+     [
+      150.9,
+      154.2
+     ],
+     [
+      176.84,
+      179.96
+     ],
+     [
+      251.2,
+      253.74
+     ]
+    ],
+    "development_windows": []
+   }
+  },
+  "default": {
+   "minus-fast6-r4b-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      39.15,
+      41.73
+     ]
+    ],
+    "development_windows": []
+   },
+   "minus-fast6-r5-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      22.72,
+      26.31
+     ]
+    ],
+    "development_windows": []
+   },
+   "minus-fast6-vg-02": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      20.19,
+      23.2
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain04-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      86.44,
+      91.44
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain05-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      94.37,
+      99.62
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain05-gov-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      95.08,
+      98.18
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain05-trim-02": {
+    "counts": {
+     "held": 4,
+     "candidates": 2,
+     "confirmed": 2,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      74.46,
+      77.44
+     ],
+     [
+      98.43,
+      99.22
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain06-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      87.32,
+      92.51
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain06-02": {
+    "counts": {
+     "held": 10,
+     "candidates": 8,
+     "confirmed": 1,
+     "rejected": 7,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      42.87,
+      45.92
+     ],
+     [
+      96.49,
+      99.03
+     ],
+     [
+      213.43,
+      216.18
+     ],
+     [
+      241.77,
+      244.5
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain06-03": {
+    "counts": {
+     "held": 13,
+     "candidates": 10,
+     "confirmed": 2,
+     "rejected": 8,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      37.46,
+      40.15
+     ],
+     [
+      154.72,
+      157.34
+     ],
+     [
+      160.32,
+      163.23
+     ],
+     [
+      242.05,
+      244.96
+     ],
+     [
+      276.95,
+      279.8
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain07-02": {
+    "counts": {
+     "held": 5,
+     "candidates": 4,
+     "confirmed": 0,
+     "rejected": 3,
+     "pending": 1
+    },
+    "held_out_windows": [
+     [
+      123.57,
+      127.34
+     ],
+     [
+      239.02,
+      242.12
+     ],
+     [
+      355.31,
+      356.37
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain07-03": {
+    "counts": {
+     "held": 5,
+     "candidates": 3,
+     "confirmed": 2,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      239.0,
+      242.17
+     ],
+     [
+      328.22,
+      331.64
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain07-nosweep-01": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      88.21,
+      90.68
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-01": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      54.97,
+      58.34
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-02": {
+    "counts": {
+     "held": 8,
+     "candidates": 7,
+     "confirmed": 1,
+     "rejected": 6,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      55.12,
+      58.31
+     ],
+     [
+      66.13,
+      69.49
+     ],
+     [
+      88.41,
+      91.33
+     ],
+     [
+      114.14,
+      117.05
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-03": {
+    "counts": {
+     "held": 1,
+     "candidates": 1,
+     "confirmed": 0,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      54.99,
+      58.1
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-04": {
+    "counts": {
+     "held": 13,
+     "candidates": 11,
+     "confirmed": 0,
+     "rejected": 11,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      54.94,
+      57.86
+     ],
+     [
+      66.06,
+      69.58
+     ],
+     [
+      89.43,
+      92.81
+     ],
+     [
+      114.22,
+      118.4
+     ],
+     [
+      219.5,
+      222.75
+     ],
+     [
+      301.17,
+      304.27
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-05": {
+    "counts": {
+     "held": 6,
+     "candidates": 4,
+     "confirmed": 1,
+     "rejected": 3,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      68.28,
+      71.07
+     ],
+     [
+      89.14,
+      92.35
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain08-06": {
+    "counts": {
+     "held": 23,
+     "candidates": 17,
+     "confirmed": 4,
+     "rejected": 13,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      55.56,
+      58.71
+     ],
+     [
+      89.24,
+      92.17
+     ],
+     [
+      114.21,
+      117.26
+     ],
+     [
+      161.96,
+      165.22
+     ],
+     [
+      195.13,
+      198.0
+     ],
+     [
+      221.12,
+      224.74
+     ],
+     [
+      268.09,
+      271.59
+     ],
+     [
+      294.21,
+      296.72
+     ],
+     [
+      301.15,
+      304.46
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain11cw13-r4b-noassist-02": {
+    "counts": {
+     "held": 9,
+     "candidates": 6,
+     "confirmed": 2,
+     "rejected": 4,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      64.11,
+      67.1
+     ],
+     [
+      70.11,
+      75.67
+     ],
+     [
+      86.64,
+      89.77
+     ]
+    ],
+    "development_windows": [
+     [
+      110.92,
+      112.37
+     ]
+    ]
+   },
+   "straw-brain11cw13-r5-noassist-04": {
+    "counts": {
+     "held": 3,
+     "candidates": 2,
+     "confirmed": 1,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      14.35,
+      17.41
+     ],
+     [
+      58.47,
+      61.63
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-brain6-02": {
+    "counts": {
+     "held": 2,
+     "candidates": 1,
+     "confirmed": 1,
+     "rejected": 0,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      7.57,
+      10.24
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-fast6-02": {
+    "counts": {
+     "held": 9,
+     "candidates": 7,
+     "confirmed": 1,
+     "rejected": 6,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      51.75,
+      55.11
+     ],
+     [
+      109.68,
+      113.06
+     ],
+     [
+      199.28,
+      202.29
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-fast6-03": {
+    "counts": {
+     "held": 3,
+     "candidates": 2,
+     "confirmed": 1,
+     "rejected": 1,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      50.79,
+      53.82
+     ],
+     [
+      287.35,
+      290.49
+     ]
+    ],
+    "development_windows": []
+   },
+   "straw-fast6-arc-01": {
+    "counts": {
+     "held": 5,
+     "candidates": 4,
+     "confirmed": 0,
+     "rejected": 4,
+     "pending": 0
+    },
+    "held_out_windows": [
+     [
+      107.4,
+      110.52
+     ],
+     [
+      150.9,
+      153.7
+     ],
+     [
+      176.84,
+      180.41
+     ],
+     [
+      251.2,
+      253.91
+     ]
+    ],
+    "development_windows": []
+   }
+  }
+ },
+ "passed": false,
+ "held_out_passed": false,
+ "development_passed": true
+}
