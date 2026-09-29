@@ -1,10 +1,23 @@
-# Motor assist for lagging brains (round 4b: version 1; round 5: versions 2 and 3)
+# Motor assist for lagging brains (round 4b: version 1; round 5: versions 2 and 3; round 6: version 4)
 
-**Status: not flown.** Off by default (`--motor-assist on|off|DECLARATION`).
+**Round 6: version 4** (`configs/pilot/motor_assist.json`, `8954a798...`; branch `m6-brake`; not flown). It is
+version 3 with three changes:
 
-- **Versions.** The runner flies only `configs/pilot/motor_assist.json` **version 3** (sha256 `7c3b49e7...`). It
-  refuses the kept versions 1 (`motor_assist_v1.json`, `eefb4a42...`) and 2 (`motor_assist_v2.json`,
-  `f3f35022...`), which replays rebuild bit for bit.
+- no approach source;
+- cap tracking floored at 2.5 m/s unless a wall is confirmed ahead under a wall-ahead condition;
+- the ceiling cut bounds only the assist's share of a climb.
+
+Version 3 flew once, on `minus-brain11cw13-r5-02`. There its approach source cut the request in front of the first
+Minus Two arch with the ring in view, and the brain crawled into the arch. The runner now flies version 4 only and
+refuses versions 1-3 (version 3 kept as `motor_assist_v3.json`). Version 4 is meant to fly with the looming governor's
+early brake (`--early-brake on`). The design, gates and scores are in [early_brake.md](early_brake.md); the sections
+below describe versions 1-3.
+
+**Status of versions 1-3: version 3 flew once (crashed, above).** Off by default (`--motor-assist on|off|DECLARATION`).
+
+- **Versions (round 5).** The runner flew only `configs/pilot/motor_assist.json` **version 3** (sha256 `7c3b49e7...`,
+  now `motor_assist_v3.json`). It refused the kept versions 1 (`motor_assist_v1.json`, `eefb4a42...`) and 2
+  (`motor_assist_v2.json`, `f3f35022...`), which replays rebuild bit for bit.
 - **Motor contracts.** The declaration is per contract. The brain contract (`fast_velocity_brain_v1`: fast-brain-08,
   brain-09b, fast-brain-10b, fast-brain-11-b-cw13) has an entry. The fast PD has none, so it flies bit-identically
   with the flag on.

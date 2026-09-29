@@ -646,15 +646,16 @@ def test_obstacle_stack_flags_resolve_to_off_by_default_components():
     default, wall = str(LAG_TURN_DECLARATION), str(WALL_PILOT_DECLARATION)
     vertical, stale = str(VERTICAL_GUARD_DECLARATION), str(STALE_EVIDENCE_DECLARATION)
     assert resolve_obstacle_stack(args()) == dict(mode=None, gap=False, lag_turn=None, apply=True, wall_pilot=None,
-                                                  vertical_guard=None, stale_evidence=None)
+                                                  vertical_guard=None, stale_evidence=None, early_brake=None)
     assert resolve_obstacle_stack(args(lag_turn='on'))['lag_turn'] == default
     assert resolve_obstacle_stack(args(lag_turn='x.json'))['lag_turn'] == 'x.json'
     assert resolve_obstacle_stack(args(obstacle_stack='on')) == dict(mode='on', gap=True, lag_turn=default, apply=True,
                                                                      wall_pilot=wall, vertical_guard=vertical,
-                                                                     stale_evidence=None)
+                                                                     stale_evidence=None, early_brake=None)
     assert resolve_obstacle_stack(args(obstacle_stack='shadow')) == dict(mode='shadow', gap=True, lag_turn=default,
                                                                          apply=False, wall_pilot=wall,
-                                                                         vertical_guard=vertical, stale_evidence=None)
+                                                                         vertical_guard=vertical, stale_evidence=None,
+                                                                         early_brake=None)
     # the stale-evidence rule is opt-in inside the stack (version 1 failed its held-out gates)
     assert resolve_obstacle_stack(args(obstacle_stack='on', stale_evidence='on'))['stale_evidence'] == stale
     assert resolve_obstacle_stack(args(obstacle_stack='shadow', stale_evidence='on'))['stale_evidence'] == stale

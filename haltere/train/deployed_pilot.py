@@ -13,7 +13,8 @@ declarations of the rule versions this code implements), plus a record of every 
 - the view-keeping descent (configs/pilot/descent_view.json) and, from its version 2, its contact support
   (``contact_support='off'|'shadow'`` as the runner's --contact-support; version 3);
 - with ``motor_assist=True`` (``--motor-assist on``, off by default), the motor-assist entry of the contract
-  (configs/pilot/motor_assist.json; none for the fast PD);
+  (configs/pilot/motor_assist.json, version 4 from round 6; none for the fast PD); ``motor_assist=3`` takes the kept
+  round-5 declaration (motor_assist_v3.json), with which the brain-12 training rollouts and gates were made;
 - with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
   cap follows the ray of its evidence). The runner adds it only with ``--stale-evidence on`` inside the obstacle stack
   (version 2; off by default); it is off here by default too, so the brain-11 and brain-12 records built on this
@@ -87,8 +88,21 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         if config is not None:
             kwargs['early_brake'] = config
     if motor_assist:
-        assist, digest = vb.load_motor_assist()
-        note('motor_assist', vb.MOTOR_ASSIST_DECLARATION, assist, digest)
+        # True: the declaration the runner flies (version 4 from round 6); an int: that kept version (3: the round-5
+        # declaration motor_assist_v3.json, with which the brain-12 records were made), hash-checked like the runner's
+        path = vb.MOTOR_ASSIST_DECLARATION
+        if motor_assist is not True:
+            import json
+            from ..liftoff.gap_stack import config_sha256
+            if int(motor_assist) != frc.MOTOR_ASSIST_VERSION:
+                path = path.with_name(f'motor_assist_v{int(motor_assist)}.json')
+            assist = json.loads(path.read_text(encoding='utf-8'))
+            digest = config_sha256(assist)
+            if assist.get('frozen') is not True or assist.get('sha256') != digest or assist['version'] != int(motor_assist):
+                raise ValueError(f'{path} is not the frozen motor-assist declaration version {motor_assist}')
+        else:
+            assist, digest = vb.load_motor_assist()
+        note('motor_assist', path, assist, digest)
         config = frc.motor_assist_for_contract(assist, contract)
         if config is not None:
             kwargs['motor_assist'] = config

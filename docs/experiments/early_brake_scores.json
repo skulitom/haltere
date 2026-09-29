@@ -1,0 +1,1422 @@
+{
+ "gates_sha256": "3b029e32b3171eb75020b8e6091f9e9dd8511789b244cdac3ec1cc05697f7a80",
+ "declarations": {
+  "early_brake": {
+   "file": "configs/obstacles/early_brake.json",
+   "version": 1,
+   "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e"
+  },
+  "motor_assist": {
+   "file": "configs/pilot/motor_assist.json",
+   "version": 4,
+   "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6"
+  },
+  "motor_assist_v3": {
+   "file": "configs/pilot/motor_assist_v3.json",
+   "version": 3,
+   "sha256": "7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772"
+  }
+ },
+ "gates": {
+  "I1_default": {
+   "threshold": "every command array (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit-identical on every log",
+   "result": "31/31",
+   "differ": [],
+   "pass": true
+  },
+  "I2_stack": {
+   "threshold": "every command array (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit-identical on every log",
+   "result": "31/31",
+   "differ": [],
+   "pass": true
+  },
+  "I3_assist_v3": {
+   "threshold": "every command array (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit-identical on every log",
+   "result": "31/31",
+   "differ": [],
+   "pass": true
+  },
+  "I4_shadow": {
+   "threshold": "every command array (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit-identical on every log",
+   "result": "31/31",
+   "differ": [],
+   "pass": true
+  },
+  "I5_fast_pd": {
+   "threshold": "every command array (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit-identical on every log",
+   "result": "11/11",
+   "differ": [],
+   "pass": true
+  },
+  "D1_hairpin_warning": {
+   "threshold": "DEVELOPMENT, open loop: with the early brake the governor's cap first binds the request >= 1.0 s before the impact (within the last 3 s)",
+   "result": 1.18,
+   "base": 0.76,
+   "pass": true
+  },
+  "D2_hairpin_cut": {
+   "threshold": "DEVELOPMENT, open loop: with the early brake and motor assist v4 the final continuous cut of >= 1 m/s below the round-5 stack's request starts >= 1.0 s before the impact",
+   "result": 1.15,
+   "assist_v3": 1.2,
+   "pass": true
+  },
+  "D3_hairpin_window": {
+   "threshold": "DEVELOPMENT, surrogate from the logged state: speed 0.05 s before the logged impact with the early brake and assist v4 <= the round-5 stack's - 1.5 m/s",
+   "result": 1.0,
+   "stack": 3.883,
+   "logged": 3.886,
+   "assist_v3": 0.554,
+   "pass": true
+  },
+  "D4_first_arch": {
+   "threshold": "DEVELOPMENT, open loop: before the first arch (x < 19 m) no tick without a wall-ahead condition (and none in the preceding 0.3 s) where the assisted request lies below min(the pilot's own, 2.5 m/s) - 0.01",
+   "result": 0.0,
+   "min_request_before_arch": 0.06,
+   "assist_v3_min_request": 0.06,
+   "pass": true
+  },
+  "D5_ceiling_share": {
+   "threshold": "DEVELOPMENT, open loop: 37.49-38.77 s, no tick in state cue with an assist climb where the pilot's own vertical request under motor assist v4 lies more than 0.05 m/s below the unassisted stack's",
+   "result": 0.0,
+   "assist_v3": 0.0,
+   "pass": true
+  },
+  "H1_hairpin_brain11cw13": {
+   "threshold": "HELD OUT (16 fresh hairpins, live-like samples), per gated brain, the early brake with assist v4 against the round-5 stack without an assist: clean >= base + 6; walls <= floor(25% of base); floor, ceiling <= base + 1; and walls <= assist v3's + 4",
+   "result": {
+    "clean": 10,
+    "finished": 11,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 0
+   },
+   "base": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 16,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0
+   },
+   "assist_v3": {
+    "clean": 11,
+    "finished": 12,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 3,
+    "crashed": 0
+   },
+   "n": 16,
+   "pass": false
+  },
+  "H1_hairpin_brain10b": {
+   "threshold": "HELD OUT (16 fresh hairpins, live-like samples), per gated brain, the early brake with assist v4 against the round-5 stack without an assist: clean >= base + 6; walls <= floor(25% of base); floor, ceiling <= base + 1; and walls <= assist v3's + 4",
+   "result": {
+    "clean": 14,
+    "finished": 14,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0
+   },
+   "base": {
+    "clean": 0,
+    "finished": 1,
+    "wall": 13,
+    "floor": 1,
+    "ceiling": 1,
+    "crashed": 1
+   },
+   "assist_v3": {
+    "clean": 14,
+    "finished": 14,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0
+   },
+   "n": 16,
+   "pass": true
+  },
+  "H2_passthrough_brain11cw13": {
+   "threshold": "HELD OUT (12 fresh pass-through arches, live-like samples), per gated brain, the early brake alone and with assist v4: finished >= base; contacts <= base; the lowest speed from 1.5 s before to 0.5 s after the arch pass >= 0.75 m/s in every scenario and >= 1.5 m/s median",
+   "result": {
+    "base": {
+     "finished": 12,
+     "contacts": 0,
+     "lowest": [
+      4.21,
+      4.15,
+      4.27,
+      4.55,
+      3.9,
+      4.3,
+      3.65,
+      4.2,
+      4.39,
+      4.54,
+      4.23,
+      4.21
+     ]
+    },
+    "ma3": {
+     "finished": 11,
+     "contacts": 1,
+     "lowest": [
+      0.57,
+      0.33,
+      0.14,
+      0.74,
+      0.37,
+      0.1,
+      0.78,
+      0.28,
+      0.22,
+      0.82,
+      0.49,
+      0.09
+     ]
+    },
+    "eb": {
+     "finished": 12,
+     "contacts": 0,
+     "lowest": [
+      2.77,
+      1.75,
+      2.21,
+      2.86,
+      2.8,
+      2.48,
+      2.66,
+      1.87,
+      2.04,
+      2.75,
+      2.49,
+      2.36
+     ]
+    },
+    "eb_ma4": {
+     "finished": 12,
+     "contacts": 0,
+     "lowest": [
+      2.22,
+      2.38,
+      1.29,
+      2.25,
+      1.35,
+      0.66,
+      2.27,
+      2.33,
+      0.81,
+      2.35,
+      1.35,
+      1.13
+     ]
+    }
+   },
+   "pass": false
+  },
+  "H2_passthrough_brain10b": {
+   "threshold": "HELD OUT (12 fresh pass-through arches, live-like samples), per gated brain, the early brake alone and with assist v4: finished >= base; contacts <= base; the lowest speed from 1.5 s before to 0.5 s after the arch pass >= 0.75 m/s in every scenario and >= 1.5 m/s median",
+   "result": {
+    "base": {
+     "finished": 12,
+     "contacts": 0,
+     "lowest": [
+      2.39,
+      4.2,
+      4.35,
+      4.66,
+      3.69,
+      3.83,
+      3.63,
+      4.16,
+      4.42,
+      4.58,
+      3.52,
+      4.5
+     ]
+    },
+    "ma3": {
+     "finished": 11,
+     "contacts": 0,
+     "lowest": [
+      0.32,
+      0.65,
+      0.58,
+      0.77,
+      1.03,
+      0.21,
+      0.84,
+      0.64,
+      0.39,
+      0.96,
+      0.66,
+      0.29
+     ]
+    },
+    "eb": {
+     "finished": 12,
+     "contacts": 0,
+     "lowest": [
+      2.04,
+      2.23,
+      3.0,
+      2.98,
+      2.02,
+      1.5,
+      2.44,
+      1.6,
+      2.77,
+      2.92,
+      1.85,
+      2.74
+     ]
+    },
+    "eb_ma4": {
+     "finished": 12,
+     "contacts": 0,
+     "lowest": [
+      1.91,
+      2.28,
+      1.11,
+      2.2,
+      2.0,
+      1.03,
+      2.22,
+      2.23,
+      1.25,
+      2.28,
+      1.16,
+      1.24
+     ]
+    }
+   },
+   "pass": true
+  },
+  "H3_hill_brain11cw13": {
+   "threshold": "HELD OUT (hill courses 6500-6511), per gated brain, early brake + assist v4 against the base: finishes >= base; crashes <= base; chatter <= 1.15 x; paired finish time <= +2%; terrain contacts <= base + 1; high passes <= base + 2",
+   "result": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 7,
+    "contact_s": 13.17,
+    "high_passes": 9,
+    "support_climbs": 4,
+    "chatter": 0.001971,
+    "below_view_fraction": 0.505
+   },
+   "base": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 8,
+    "contact_s": 13.75,
+    "high_passes": 9,
+    "support_climbs": 4,
+    "chatter": 0.001993,
+    "below_view_fraction": 0.5132
+   },
+   "assist_v3": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 7,
+    "contact_s": 13.17,
+    "high_passes": 9,
+    "support_climbs": 4,
+    "chatter": 0.001971,
+    "below_view_fraction": 0.505
+   },
+   "paired": 12,
+   "ratio": 1.0005,
+   "pass": true
+  },
+  "H3_hill_brain10b": {
+   "threshold": "HELD OUT (hill courses 6500-6511), per gated brain, early brake + assist v4 against the base: finishes >= base; crashes <= base; chatter <= 1.15 x; paired finish time <= +2%; terrain contacts <= base + 1; high passes <= base + 2",
+   "result": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 5,
+    "contact_s": 9.56,
+    "high_passes": 20,
+    "support_climbs": 1,
+    "chatter": 0.002883,
+    "below_view_fraction": 0.5293
+   },
+   "base": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 5,
+    "contact_s": 10.73,
+    "high_passes": 23,
+    "support_climbs": 1,
+    "chatter": 0.002854,
+    "below_view_fraction": 0.5315
+   },
+   "assist_v3": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 5,
+    "contact_s": 9.76,
+    "high_passes": 20,
+    "support_climbs": 1,
+    "chatter": 0.002881,
+    "below_view_fraction": 0.5297
+   },
+   "paired": 12,
+   "ratio": 1.0152,
+   "pass": true
+  },
+  "H4a_no_new_crawl": {
+   "threshold": "HELD OUT brain logs, open loop: seconds with the ring ahead (states cue, below, below_weak, above) where the request is below 2 m/s while the round-5 stack asks >= 3 m/s: <= 0.1 s per log, early brake alone and with assist v4",
+   "result": {
+    "eb": {
+     "minus-brain08-gapon-01": 0.0,
+     "minus-brain08-gapon-02": 0.0,
+     "minus-brain08-loom-01": 0.0,
+     "minus-brain08-vg-01": 0.0,
+     "minus-brain09b-vg-01": 0.0,
+     "minus-brain08-gapshadow-01": 0.0,
+     "pine-brain08-loom-01": 0.0,
+     "pine-brain08-01": 0.0,
+     "straw-brain08-04": 0.0,
+     "straw-brain08-01": 0.0,
+     "straw-brain08-02": 0.0,
+     "straw-brain08-03": 0.0
+    },
+    "eb_ma4": {
+     "minus-brain08-gapon-01": 0.0,
+     "minus-brain08-gapon-02": 0.0,
+     "minus-brain08-loom-01": 0.0,
+     "minus-brain08-vg-01": 0.0,
+     "minus-brain09b-vg-01": 0.0,
+     "minus-brain08-gapshadow-01": 0.0,
+     "pine-brain08-loom-01": 0.0,
+     "pine-brain08-01": 0.0,
+     "straw-brain08-04": 0.0,
+     "straw-brain08-01": 0.0,
+     "straw-brain08-02": 0.0,
+     "straw-brain08-03": 0.0
+    }
+   },
+   "pass": true
+  },
+  "H4b_quiet_early_brake": {
+   "threshold": "HELD OUT Straw Bale and Pine Valley brain laps: the early brake removes <= 1.5% of the round-5 stack's horizontal request travel per lap",
+   "result": {
+    "pine-brain08-loom-01": 0.0,
+    "pine-brain08-01": 3.952,
+    "straw-brain08-04": 2.588,
+    "straw-brain08-01": 1.968,
+    "straw-brain08-02": 1.884,
+    "straw-brain08-03": 2.593
+   },
+   "pass": false
+  },
+  "H4c_ring_in_view_floor": {
+   "threshold": "ALL brain logs: no tick without a wall-ahead condition (and none in the preceding 0.3 s) where assist v4's request lies below min(own, 2.5) - 0.01",
+   "result": {
+    "minus-brain11cw13-r4b-noassist-01": 0.0,
+    "minus-brain11cw13-r5-02": 0.0,
+    "minus-brain10b-r4-02": 0.0,
+    "minus-brain09b-r4-01": 0.0,
+    "straw-brain11cw13-r4b-noassist-02": 0.0,
+    "straw-brain11cw13-r5-noassist-01": 0.0,
+    "straw-brain11cw13-r5-noassist-04": 0.0,
+    "straw-brain08-06": 0.0,
+    "minus-brain08-gapon-01": 0.0,
+    "minus-brain08-gapon-02": 0.0,
+    "minus-brain08-loom-01": 0.0,
+    "minus-brain08-vg-01": 0.0,
+    "minus-brain09b-vg-01": 0.0,
+    "minus-brain08-gapshadow-01": 0.0,
+    "pine-brain08-loom-01": 0.0,
+    "pine-brain08-01": 0.0,
+    "straw-brain08-04": 0.0,
+    "straw-brain08-01": 0.0,
+    "straw-brain08-02": 0.0,
+    "straw-brain08-03": 0.0
+   },
+   "pass": true
+  },
+  "H4d_quiet_assist": {
+   "threshold": "HELD OUT Straw Bale and Pine Valley brain laps: early brake + assist v4 remove <= 3% of the request travel per lap (assist v3's quiet bound)",
+   "result": {
+    "pine-brain08-loom-01": 0.097,
+    "pine-brain08-01": 7.681,
+    "straw-brain08-04": 4.57,
+    "straw-brain08-01": 4.207,
+    "straw-brain08-02": 4.684,
+    "straw-brain08-03": 5.24
+   },
+   "assist_v3": {
+    "pine-brain08-loom-01": 0.28,
+    "pine-brain08-01": 1.598,
+    "straw-brain08-04": 1.975,
+    "straw-brain08-01": 3.298,
+    "straw-brain08-02": 3.556,
+    "straw-brain08-03": 4.182
+   },
+   "pass": false
+  },
+  "H5_ceiling_share": {
+   "threshold": "HELD OUT brain logs: seconds in state cue with an assist climb where the pilot's own vertical request under assist v4 lies > 0.05 m/s below the unassisted stack's: <= 0.1 s per log",
+   "result": {
+    "minus-brain08-gapon-01": 0.0,
+    "minus-brain08-gapon-02": 0.0,
+    "minus-brain08-loom-01": 0.0,
+    "minus-brain08-vg-01": 0.0,
+    "minus-brain09b-vg-01": 0.0,
+    "minus-brain08-gapshadow-01": 0.0,
+    "pine-brain08-loom-01": 0.0,
+    "pine-brain08-01": 0.0,
+    "straw-brain08-04": 0.0,
+    "straw-brain08-01": 0.38,
+    "straw-brain08-02": 0.0,
+    "straw-brain08-03": 0.0
+   },
+   "assist_v3": {
+    "minus-brain08-gapon-01": 0.0,
+    "minus-brain08-gapon-02": 0.0,
+    "minus-brain08-loom-01": 0.0,
+    "minus-brain08-vg-01": 0.0,
+    "minus-brain09b-vg-01": 0.0,
+    "minus-brain08-gapshadow-01": 0.0,
+    "pine-brain08-loom-01": 0.0,
+    "pine-brain08-01": 0.0,
+    "straw-brain08-04": 0.0,
+    "straw-brain08-01": 0.38,
+    "straw-brain08-02": 0.0,
+    "straw-brain08-03": 0.0
+   },
+   "pass": false
+  }
+ },
+ "reports": {
+  "hairpin_gate_samples_brain11cw13": {
+   "base": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 16,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0
+   },
+   "ma3": {
+    "clean": 11,
+    "finished": 12,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 0
+   },
+   "eb_ma4": {
+    "clean": 1,
+    "finished": 2,
+    "wall": 14,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0
+   }
+  },
+  "hairpin_gate_samples_brain10b": {
+   "base": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 15,
+    "floor": 1,
+    "ceiling": 1,
+    "crashed": 1
+   },
+   "ma3": {
+    "clean": 14,
+    "finished": 14,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0
+   },
+   "eb_ma4": {
+    "clean": 1,
+    "finished": 1,
+    "wall": 15,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0
+   }
+  },
+  "H1_hairpin_brain09b": {
+   "threshold": "HELD OUT (16 fresh hairpins, live-like samples), per gated brain, the early brake with assist v4 against the round-5 stack without an assist: clean >= base + 6; walls <= floor(25% of base); floor, ceiling <= base + 1; and walls <= assist v3's + 4",
+   "result": {
+    "clean": 12,
+    "finished": 13,
+    "wall": 0,
+    "floor": 4,
+    "ceiling": 0,
+    "crashed": 3
+   },
+   "base": {
+    "clean": 2,
+    "finished": 2,
+    "wall": 13,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 9
+   },
+   "assist_v3": {
+    "clean": 11,
+    "finished": 13,
+    "wall": 0,
+    "floor": 5,
+    "ceiling": 0,
+    "crashed": 3
+   },
+   "n": 16,
+   "pass": false
+  },
+  "hairpin_gate_samples_brain09b": {
+   "base": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 15,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 1
+   },
+   "ma3": {
+    "clean": 10,
+    "finished": 12,
+    "wall": 1,
+    "floor": 5,
+    "ceiling": 0,
+    "crashed": 3
+   },
+   "eb_ma4": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 4,
+    "floor": 5,
+    "ceiling": 0,
+    "crashed": 6
+   }
+  },
+  "H2_passthrough_brain09b": {
+   "threshold": "HELD OUT (12 fresh pass-through arches, live-like samples), per gated brain, the early brake alone and with assist v4: finished >= base; contacts <= base; the lowest speed from 1.5 s before to 0.5 s after the arch pass >= 0.75 m/s in every scenario and >= 1.5 m/s median",
+   "result": {
+    "base": {
+     "finished": 9,
+     "contacts": 3,
+     "lowest": [
+      3.15,
+      3.47,
+      3.8,
+      3.98,
+      3.58,
+      3.46,
+      3.67,
+      3.36,
+      3.69,
+      3.75,
+      3.28,
+      3.59
+     ]
+    },
+    "ma3": {
+     "finished": 10,
+     "contacts": 4,
+     "lowest": [
+      0.76,
+      0.96,
+      0.27,
+      1.69,
+      1.27,
+      0.56,
+      0.69,
+      1.58,
+      0.23,
+      1.25,
+      1.68,
+      0.69
+     ]
+    },
+    "eb": {
+     "finished": 9,
+     "contacts": 5,
+     "lowest": [
+      1.92,
+      1.78,
+      0.89,
+      2.32,
+      2.05,
+      0.62,
+      1.92,
+      1.91,
+      0.76,
+      2.4,
+      1.38,
+      0.66
+     ]
+    },
+    "eb_ma4": {
+     "finished": 9,
+     "contacts": 3,
+     "lowest": [
+      1.81,
+      2.21,
+      0.39,
+      2.22,
+      2.25,
+      0.33,
+      1.91,
+      2.16,
+      0.52,
+      2.21,
+      1.99,
+      0.59
+     ]
+    }
+   },
+   "pass": false
+  },
+  "H3_hill_brain09b": {
+   "threshold": "HELD OUT (hill courses 6500-6511), per gated brain, early brake + assist v4 against the base: finishes >= base; crashes <= base; chatter <= 1.15 x; paired finish time <= +2%; terrain contacts <= base + 1; high passes <= base + 2",
+   "result": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 4,
+    "contact_s": 6.07,
+    "high_passes": 17,
+    "support_climbs": 2,
+    "chatter": 0.005883,
+    "below_view_fraction": 0.49
+   },
+   "base": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 4,
+    "contact_s": 6.58,
+    "high_passes": 17,
+    "support_climbs": 3,
+    "chatter": 0.005657,
+    "below_view_fraction": 0.4982
+   },
+   "assist_v3": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 4,
+    "contact_s": 6.07,
+    "high_passes": 17,
+    "support_climbs": 3,
+    "chatter": 0.005952,
+    "below_view_fraction": 0.4955
+   },
+   "paired": 12,
+   "ratio": 1.0069,
+   "pass": true
+  },
+  "replays": {
+   "minus-brain11cw13-r4b-noassist-01": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 7.44,
+     "removed_pct": 3.142,
+     "min_request": 0.06,
+     "early_s": 8.5
+    },
+    "eb_ma4": {
+     "changed_s": 9.78,
+     "removed_pct": 8.606,
+     "min_request": 0.06,
+     "early_s": 8.5
+    },
+    "ma3": {
+     "changed_s": 5.71,
+     "removed_pct": 13.657,
+     "min_request": 0.052,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain11cw13-r5-02": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 1.57,
+     "removed_pct": 2.929,
+     "min_request": 0.06,
+     "early_s": 1.58
+    },
+    "eb_ma4": {
+     "changed_s": 1.58,
+     "removed_pct": 4.791,
+     "min_request": 0.06,
+     "early_s": 1.58
+    },
+    "ma3": {
+     "changed_s": 0.93,
+     "removed_pct": 8.28,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain10b-r4-02": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 1.46,
+     "removed_pct": 1.959,
+     "min_request": 0.06,
+     "early_s": 6.97
+    },
+    "eb_ma4": {
+     "changed_s": 5.01,
+     "removed_pct": 7.551,
+     "min_request": 0.06,
+     "early_s": 6.97
+    },
+    "ma3": {
+     "changed_s": 5.12,
+     "removed_pct": 11.292,
+     "min_request": 0.025,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain09b-r4-01": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 6.71,
+     "removed_pct": 3.627,
+     "min_request": 0.06,
+     "early_s": 10.25
+    },
+    "eb_ma4": {
+     "changed_s": 8.94,
+     "removed_pct": 7.514,
+     "min_request": 0.06,
+     "early_s": 10.25
+    },
+    "ma3": {
+     "changed_s": 5.29,
+     "removed_pct": 12.526,
+     "min_request": 0.033,
+     "early_s": 0.0
+    }
+   },
+   "minus-fast6-r5-01": {
+    "development": true,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    }
+   },
+   "minus-fast6-r4b-01": {
+    "development": true,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    }
+   },
+   "minus-fast6-r4-02": {
+    "development": true,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain11cw13-r4b-noassist-02": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 4.72,
+     "removed_pct": 0.786,
+     "min_request": 0.06,
+     "early_s": 3.83
+    },
+    "eb_ma4": {
+     "changed_s": 4.92,
+     "removed_pct": 1.313,
+     "min_request": 0.06,
+     "early_s": 3.83
+    },
+    "ma3": {
+     "changed_s": 2.98,
+     "removed_pct": 0.521,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain11cw13-r5-noassist-01": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.01,
+     "removed_pct": 0.001,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.32,
+     "removed_pct": 0.169,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain11cw13-r5-noassist-04": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 3.15,
+     "removed_pct": 0.76,
+     "min_request": 0.06,
+     "early_s": 2.44
+    },
+    "eb_ma4": {
+     "changed_s": 3.49,
+     "removed_pct": 1.318,
+     "min_request": 0.06,
+     "early_s": 2.44
+    },
+    "ma3": {
+     "changed_s": 2.99,
+     "removed_pct": 0.664,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain08-06": {
+    "development": true,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 26.06,
+     "removed_pct": 1.4,
+     "min_request": 0.001,
+     "early_s": 23.43
+    },
+    "eb_ma4": {
+     "changed_s": 40.25,
+     "removed_pct": 2.99,
+     "min_request": 0.001,
+     "early_s": 23.43
+    },
+    "ma3": {
+     "changed_s": 32.1,
+     "removed_pct": 2.433,
+     "min_request": 0.001,
+     "early_s": 0.0
+    }
+   },
+   "minus-fast6-wall-01": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain08-gapon-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 3.61,
+     "removed_pct": 4.935,
+     "min_request": 0.06,
+     "early_s": 8.19
+    },
+    "eb_ma4": {
+     "changed_s": 8.29,
+     "removed_pct": 15.815,
+     "min_request": 0.06,
+     "early_s": 8.19
+    },
+    "ma3": {
+     "changed_s": 6.81,
+     "removed_pct": 15.41,
+     "min_request": 0.015,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain08-gapon-02": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 3.5,
+     "removed_pct": 2.853,
+     "min_request": 0.06,
+     "early_s": 9.52
+    },
+    "eb_ma4": {
+     "changed_s": 8.37,
+     "removed_pct": 15.355,
+     "min_request": 0.06,
+     "early_s": 9.52
+    },
+    "ma3": {
+     "changed_s": 8.57,
+     "removed_pct": 23.274,
+     "min_request": 0.046,
+     "early_s": 0.0
+    }
+   },
+   "minus-fast6-gapon-01": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.0,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain08-loom-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 3.35,
+     "removed_pct": 7.134,
+     "min_request": 0.06,
+     "early_s": 3.89
+    },
+    "eb_ma4": {
+     "changed_s": 4.4,
+     "removed_pct": 16.681,
+     "min_request": 0.06,
+     "early_s": 3.89
+    },
+    "ma3": {
+     "changed_s": 2.85,
+     "removed_pct": 12.075,
+     "min_request": 0.016,
+     "early_s": 0.0
+    }
+   },
+   "minus-fast6-vg-02": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain08-vg-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 4.53,
+     "removed_pct": 5.666,
+     "min_request": 0.06,
+     "early_s": 6.92
+    },
+    "eb_ma4": {
+     "changed_s": 7.77,
+     "removed_pct": 15.812,
+     "min_request": 0.06,
+     "early_s": 6.92
+    },
+    "ma3": {
+     "changed_s": 5.92,
+     "removed_pct": 15.543,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain09b-vg-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 6.31,
+     "removed_pct": 5.242,
+     "min_request": 0.0,
+     "early_s": 8.07
+    },
+    "eb_ma4": {
+     "changed_s": 8.38,
+     "removed_pct": 10.081,
+     "min_request": 0.06,
+     "early_s": 8.07
+    },
+    "ma3": {
+     "changed_s": 4.92,
+     "removed_pct": 11.311,
+     "min_request": 0.004,
+     "early_s": 0.0
+    }
+   },
+   "minus-brain08-gapshadow-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 1.75,
+     "removed_pct": 2.847,
+     "min_request": 0.06,
+     "early_s": 3.64
+    },
+    "eb_ma4": {
+     "changed_s": 3.58,
+     "removed_pct": 10.839,
+     "min_request": 0.06,
+     "early_s": 3.64
+    },
+    "ma3": {
+     "changed_s": 3.73,
+     "removed_pct": 15.35,
+     "min_request": 0.029,
+     "early_s": 0.0
+    }
+   },
+   "pine-fast6-ttc-01": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.059,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.059,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.059,
+     "early_s": 0.0
+    }
+   },
+   "pine-brain08-loom-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.061,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.13,
+     "removed_pct": 0.097,
+     "min_request": 0.061,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.21,
+     "removed_pct": 0.28,
+     "min_request": 0.061,
+     "early_s": 0.0
+    }
+   },
+   "pine-brain08-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 3.46,
+     "removed_pct": 3.952,
+     "min_request": 0.059,
+     "early_s": 2.0
+    },
+    "eb_ma4": {
+     "changed_s": 4.41,
+     "removed_pct": 7.681,
+     "min_request": 0.059,
+     "early_s": 2.0
+    },
+    "ma3": {
+     "changed_s": 1.65,
+     "removed_pct": 1.598,
+     "min_request": 0.059,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain08-04": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 41.67,
+     "removed_pct": 2.588,
+     "min_request": 0.06,
+     "early_s": 30.47
+    },
+    "eb_ma4": {
+     "changed_s": 51.59,
+     "removed_pct": 4.57,
+     "min_request": 0.06,
+     "early_s": 30.47
+    },
+    "ma3": {
+     "changed_s": 25.73,
+     "removed_pct": 1.975,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain08-01": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 7.77,
+     "removed_pct": 1.968,
+     "min_request": 0.06,
+     "early_s": 6.73
+    },
+    "eb_ma4": {
+     "changed_s": 11.64,
+     "removed_pct": 4.207,
+     "min_request": 0.06,
+     "early_s": 6.73
+    },
+    "ma3": {
+     "changed_s": 8.26,
+     "removed_pct": 3.298,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain08-02": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 16.77,
+     "removed_pct": 1.884,
+     "min_request": 0.06,
+     "early_s": 13.26
+    },
+    "eb_ma4": {
+     "changed_s": 31.71,
+     "removed_pct": 4.684,
+     "min_request": 0.06,
+     "early_s": 13.26
+    },
+    "ma3": {
+     "changed_s": 21.05,
+     "removed_pct": 3.556,
+     "min_request": 0.0,
+     "early_s": 0.0
+    }
+   },
+   "straw-brain08-03": {
+    "development": false,
+    "motor": "brain",
+    "eb": {
+     "changed_s": 7.71,
+     "removed_pct": 2.593,
+     "min_request": 0.06,
+     "early_s": 7.97
+    },
+    "eb_ma4": {
+     "changed_s": 10.11,
+     "removed_pct": 5.24,
+     "min_request": 0.06,
+     "early_s": 7.97
+    },
+    "ma3": {
+     "changed_s": 7.72,
+     "removed_pct": 4.182,
+     "min_request": 0.0,
+     "early_s": 0.0
+    }
+   },
+   "straw-fast6-01": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-fast6-02": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-fast6-03": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   },
+   "straw-fast6-arc-01": {
+    "development": false,
+    "motor": "pd",
+    "eb": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "eb_ma4": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    },
+    "ma3": {
+     "changed_s": 0.0,
+     "removed_pct": 0.0,
+     "min_request": 0.06,
+     "early_s": 0.0
+    }
+   }
+  }
+ },
+ "summary": {
+  "passed": 16,
+  "total": 21,
+  "failed": [
+   "H1_hairpin_brain11cw13",
+   "H2_passthrough_brain11cw13",
+   "H4b_quiet_early_brake",
+   "H4d_quiet_assist",
+   "H5_ceiling_share"
+  ]
+ }
+}
