@@ -89,16 +89,19 @@ def main_replays(args, gates):
     env = dict(os.environ, OMP_NUM_THREADS='2', MKL_NUM_THREADS='2', OPENBLAS_NUM_THREADS='2')
     flights = args.flights.split(',') if args.flights else gates['flights']
     streamed = set(gates['replays']['streamed'])
-    skipped = {}
-    for tree_name, base, variant in variant_jobs(gates):
+    skipped_path = out/'replays'/'skipped.json'
+    skipped = json.loads(skipped_path.read_text(encoding='utf-8')) if skipped_path.exists() else {}
+    jobs = variant_jobs(gates)
+    for tree_name, base, variant in jobs:
         tree = gates['baseline_tree_path'] if tree_name == 'm5' else str(REPO)
         extra = [a.replace('{tree}', tree) for a in gates['replays']['bases'][base]+gates['replays']['variants'][variant]]
         for flight in flights:
             target = replay_path(out, tree_name, base, variant, flight)
-            if target.exists():
+            if target.exists() or flight in skipped:
                 continue
             if replayable_ticks(gates['runs'], flight) == 0:
                 skipped[flight] = 'no replayable tick'
+                skipped_path.write_text(json.dumps(skipped, indent=1), encoding='utf-8')
                 continue
             tmp = out/'replays'/'tmp'/f'{tree_name}_{base}_{variant}'
             tmp.mkdir(parents=True, exist_ok=True)
@@ -109,6 +112,13 @@ def main_replays(args, gates):
             cmd.append(flight)
             begin = time.time()
             r = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            if r.returncode and (tree_name, base, variant) == jobs[0]:
+                # the m5 tree's own harness cannot replay this log (e.g. a log without a column it reads): reported,
+                # scores nothing, like a log without replayable ticks
+                skipped[flight] = 'the m5 harness cannot replay it: '+r.stderr.strip().splitlines()[-1][:300]
+                skipped_path.write_text(json.dumps(skipped, indent=1), encoding='utf-8')
+                print(json.dumps(dict(skipped=flight, reason=skipped[flight])), flush=True)
+                continue
             if r.returncode:
                 raise RuntimeError(f'{tree_name} {base} {variant} {flight} failed: {r.stderr[-3000:]}')
             made = [p for p in tmp.glob(f'r_*_{flight}.npz')]
