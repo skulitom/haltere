@@ -1141,7 +1141,7 @@ def contact_support_config(declaration):
 # (the kept version-1 and version-2 declarations in configs/pilot) and refused by the runner; version-1 entries get
 # MOTOR_ASSIST_V1_FIELDS. Version 3 is version 2's rule with the approach's climb exclusion declared out
 # (approach_climb_max = vertical_up: the pilot never asks for more). Version 4 (round 6) has no approach source, keeps
-# cap tracking of the request and governor caps at or above track_floor outside wall-ahead conditions, and bounds only
+# cap tracking of the request and governor caps at or above track_floor unless the stopping source binds, and bounds only
 # the assist's own share of a climb with the ceiling cut (ceiling_share); versions 1-3 are kept (refused by the runner)
 # and their entries get MOTOR_ASSIST_V3_FIELDS.
 MOTOR_ASSIST_VERSION = 4
@@ -1241,9 +1241,10 @@ class MotorAssistConfig:
        cutting the request 6 -> 1.3 -> -0.2 m/s in front of the first Minus Two arch, with the ring in view and centred
        (its cap-tracking extra took the bound below its floor), and the brain crawled into the arch. Early braking toward
        a wall is the looming governor's own (the early-brake declaration), on the pilot's own request.
-    8. track_floor: outside a wall-ahead condition, cap tracking of the 'request' and 'governor' sources never lowers a
-       bound below min(the bound, track_floor): a brain that overshoots a governor cap at a gate arch it flies through
-       is not asked for a crawl there; under a wall-ahead condition tracking acts as before (0: no floor, versions 1-3).
+    8. track_floor: unless the stopping source binds (a wall confirmed under a wall-ahead condition), cap tracking of the
+       'request' and 'governor' sources never lowers a bound below min(the bound, track_floor): a brain that overshoots
+       a governor cap at a gate arch it flies through is not asked for a crawl there; with a wall confirmed ahead
+       tracking acts as before (0: no floor, versions 1-3).
     9. ceiling_share: while the pilot climbs toward the ring in view (state cue) and the assist adds a sag climb, the
        ceiling guard's overhead cut (wall pilot v6 any_climb) bounds only the assist's share of the climb: the pilot's
        own climb keeps its exemption (the governor sees the pilot's climb as in view, as without the assist) and a
@@ -1372,8 +1373,9 @@ class TtcClearanceGovernor:
     `ray` (a `ClearanceRayConfig`, off by default) re-seats the cap on the ray of a confirmed sample that lies more than
     its stale_deg from the cap's ray (stale-evidence declarations versions 1 and 2; see ClearanceRayConfig).
     `early` (an `EarlyBrakeConfig`, off by default) lets wall samples within the motor contract's stopping distance vote
-    for engagement, with the early episode's targets floored at its floor_speed until the governor's own engagement
-    condition holds (early-brake declaration version 1; see EarlyBrakeConfig).
+    for engagement, with the early episode's targets floored at its floor_speed while the floor holds (floor_until:
+    while the pilot sees its checkpoint ahead, `ring_ahead`, or until the governor's own engagement condition holds;
+    early-brake declaration version 1; see EarlyBrakeConfig).
     With the ceiling guard's any_climb, `share_climb` (set by a pilot whose motor assist declares ceiling_share) marks a
     climb that is only the motor assist's share on top of the pilot's own climb toward the ring in view: overhead
     evidence then starts a separate hold whose bound (`share_cap`) the assist applies to its own share only.

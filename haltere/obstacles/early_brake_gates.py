@@ -236,10 +236,14 @@ def identical(a, b):
 
 
 def brake_warning_s(a, window_s=3.):
-    """Seconds before the log's last tick (the impact) at which the governor's cap first bound the request within the
-    last window_s (braking == 1), or None."""
+    """Seconds before the log's last tick (the impact) at which the governor's cap first began to bind the request
+    within the last window_s: the first onset of braking (braking turning 1) in that window, or None. (Scorer fix before
+    scoring: the first version took the first braking tick of the window, which an episode running from before the
+    window, e.g. an earlier arch, fills at the window start.)"""
     t = np.asarray(a['t'], float)
-    idx = np.flatnonzero((t >= t[-1]-window_s) & (np.asarray(a['braking'], float) > 0))
+    braking = np.asarray(a['braking'], float) > 0
+    onset = braking & ~np.r_[False, braking[:-1]]
+    idx = np.flatnonzero((t >= t[-1]-window_s) & onset)
     return None if not len(idx) else float(t[-1]-t[idx[0]])
 
 
