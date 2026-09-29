@@ -279,12 +279,14 @@ def test_runner_csv_tail_appends_the_sighted_columns_last():
     from haltere.liftoff import visual_brain
     source = re.sub(r'\s+', '', inspect.getsource(visual_brain.run))
     # m6 integration: the marker-jump and early-brake columns (round 6) come between the stale-evidence and
-    # sighted-descent columns
-    assert '*view_columns,*assist_columns,*stale_columns,*marker_columns,*early_columns,*sighted_columns])' in source
+    # sighted-descent columns; round 7 appends the ring-lead columns after them
+    assert ('*view_columns,*assist_columns,*stale_columns,*marker_columns,*early_columns,*sighted_columns,'
+            '*ring_lead_columns])') in source
     assert ('*(stale_row(controller.assistance)ifstale_columnselse()),'
             '*(marker_jump_row(controller.assistance)ifmarker_columnselse()),'
             '*(early_row(controller.assistance)ifearly_columnselse()),'
-            '*(sighted_row(controller.assistance)ifsighted_columnselse())])') in source
+            '*(sighted_row(controller.assistance)ifsighted_columnselse()),'
+            '*(ring_lead_row(controller.assistance)ifring_lead_columnselse())])') in source
     assert "**({}ifsighted_mode=='off'elsedict(sighted_descent=sighted_mode))" in source
 
 

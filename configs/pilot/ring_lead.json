@@ -1,0 +1,42 @@
+{
+ "schema": "haltere.liftoff.ring_lead.v1",
+ "version": 1,
+ "note": "Near-ring lead of the fast race-cue pilot (visual_brain --ring-lead on|shadow inside --obstacle-stack; off by default; shadow computes and logs it and changes no request). haltere.liftoff.fast_race_cue.RingLeadConfig, declared per motor contract, never per course or per brain: the brain contract (fast_velocity_brain_v1) has an entry; the fast PD contract has none and flies bit-identically with the flag on. It applies the lag-aware turn's own declared lead and heading time constant (configs/obstacles/lag_turn.json version 2, unchanged), so it needs the stack's lag-aware turn. Causal and course-agnostic: it reads the in-view ring cue (marker u, v), the pose at the cue's capture (telemetry), the measured velocity and the capture times; no range, course geometry, route, gate map, logged position or per-course value. Round 7 (branch m7-ingate), after the round-6 live crash minus-brain11cw13-r6-01 (development case) and the round-5 FAT SHARK crash straw-brain11cw13-r5-noassist-01 (development case): in both the ring marker never switched before the impact (all in-view marker rays of the last 1.5 s triangulate to one ring, hindsight); the drone approached the gate off its centre and crossed toward the near leg while the pursuit of the swinging bearing fell behind.",
+ "rule": "The line-of-sight rate is the rate of change of the world azimuth of the fresh in-view (not edge-clamped) ring-centre ray (marker u, v; not the flag-clearance aim; the pose at capture), from the first to the last reading of the last span_s, once there are at least min_readings readings spanning at least min_span_s; a reading more than jump_deg from the previous in-view reading starts the measurement again. On every tick where (1) the latest measurement is at most fresh_s old and its rate is at least rate_deg_s, (2) the pursuit is falling behind: the angle between the flown course and the ring-centre bearing, at the measurement's first reading (the course when that reading arrived) and now (the latest reading's bearing, the present course), is on the same side both times and not smaller now, with a horizontal speed of at least 1 m/s both times, and (3) with yield_to_gap, no gap-aim shift is applied, the lag-aware turn acts as in its switch window (weight 1): while the pilot sees the ring in view (state cue) the request aims beyond the ring bearing by course_lead times the angle from the flown course to it (clipped to course_lead_max_deg; the lag-turn declaration's values) and its heading tapers with the lag turn's heading_time_constant. Nothing else changes: the speed schedule, the gap aim, the wall rules, the governor and the motor assist are as without the rule.",
+ "contracts": {
+  "fast_velocity_brain_v1": {
+   "rate_deg_s": 8.0,
+   "span_s": 0.3,
+   "min_readings": 3,
+   "min_span_s": 0.1,
+   "jump_deg": 15.0,
+   "fresh_s": 0.25,
+   "yield_to_gap": true
+  },
+  "fast_velocity_pd_v1": null
+ },
+ "parameter_notes": {
+  "rate_deg_s": "8 deg/s, selected on the development cases before the pursuit test was added (tested 8, 10, 15 and 20 deg/s: surrogate clearance of the Minus floor-arch contact point 0.69 / 0.69 / 0.53 / 0.45 m, FAT SHARK 0.29 / 0.26 / 0.21 / 0.21 m, without yield_to_gap); with the pursuit test 5, 8 and 12 deg/s all give 0.553 m at the floor arch, and 5 deg/s moves the hairpin-approach arch crossing 0.25 m off its centre (8 and 12: unchanged). A near ring's line of sight turns at V m / R^2 for a lateral miss m at range R and speed V: at 5 m/s, 8 deg/s is a 0.3 m miss at 3.3 m or a 1 m miss at 6 m; a far ring's line of sight hardly moves (0.5 deg of bearing noise over 0.3 s is below 2 deg/s)",
+  "span_s": "0.3 s: five or six captures at the 14.6-18 Hz camera; the marker-jump rule's confirmation window",
+  "min_readings": "3 readings (two intervals) spanning at least min_span_s 0.1 s",
+  "jump_deg": "15 deg: the round-6 switch definition's jump (a checkpoint switch or a false reading restarts the measurement; the parallax of a ring 1 m away moves its bearing by up to about 15 deg per capture only in the last few tenths of a second)",
+  "fresh_s": "0.25 s: the pilot's own coast threshold and the lag turn's trigger span; the condition ends a quarter second after the last in-view reading that measured the rate",
+  "pursuit_test": "not a parameter: a course that is catching up with the bearing converges on the ring by itself; a lead then moves the crossing off the centre (development, below)",
+  "yield_to_gap": "true: near an obstacle beside the ring the gap aim owns the aim; the lead is computed on the ring's own bearing (lag turn version 2) and would pull the course back toward that obstacle (the Minus Two pillars). Development cost (before the pursuit test): the Minus floor-arch surrogate clearance 0.62 m against 0.69 m without it; FAT SHARK 0.21 m against 0.29 m (the gap aim's right shift, the cause there, is not changed)",
+  "fast_pd": "no entry: the fast PD follows a request within 0.11-0.14 s (the lag-turn declaration's response models), so its pursuit of a swinging bearing lags little; its development case (minus-fast6-r6-01, the arch bump at 41.4 s) is a sideways creep at a ring clamped below the image after a brake stop, not a pursuit lag"
+ },
+ "development": {
+  "logs": [
+   "minus-brain11cw13-r6-01",
+   "straw-brain11cw13-r5-noassist-01",
+   "minus-fast6-r6-01"
+  ],
+  "read_for_geometry": "minus-fast6-01, minus-fast6-r4-02, minus-fast6-r4b-01, minus-fast6-r6-01: their paths through the Minus floor arch (positions only); minus-fast6-r6-01 also around pillar A and at the arch bump (fast-PD logs: the rule has no PD entry)",
+  "measurements": "semi-closed loop in the identified surrogate from the logged state (development evidence), the m6 stack's requests (base) and with this rule: minus-brain11cw13-r6-01 from 27.3 s to the impact: 0.158 m from the contact point and 0.692 m from the ring centre (hindsight triangulation (76.686, 46.693)); with the rule 0.553 m and 0.163 m (the logged requests: 0.159 m). straw-brain11cw13-r5-noassist-01 from 17.2 s: 0.163 m and 0.559 m; with the rule 0.209 m and 0.535 m. minus-brain11cw13-r6-01 from 20.0 s (the arch before the hairpin): 0.055 m from that ring's centre and 1.958 m from the round-4b hairpin wall point (81.9, 20.0); with the rule unchanged (0.055 m, 1.958 m)",
+  "revision_before_freeze": "a draft without the pursuit test (the lead whenever the rate was at least 8 deg/s) was run on the development logs through the gate scorer's dry run: it moved the hairpin-approach arch crossing to 0.62 m from the ring centre (base 0.055 m) because the rate there came from a course still converging on the bearing after the early brake; the pursuit test was added. Also tried on the development logs, not chosen: a lead of the line-of-sight rate times 0.55 s (the brain's response delay plus time constant plus the heading taper: 0.594 m at the floor arch, 0.536 m off the hairpin arch's centre), and a parallax time-to-go gate of 1.0-1.5 s (0.24-0.47 m at the floor arch, 0.20-0.37 m off the hairpin arch's centre); with the pursuit test every lead form left the hairpin arch unchanged",
+  "diagnostics_not_chosen": "the lag turn's lead in every in-view tick (development: 1.019 m / 0.550 m) changes every approach; a direction-preserving governor cap (development: no effect at the Minus floor arch); a gap-aim release timed by hindsight (FAT SHARK 0.571 m from 17.5 s, 0.482 m from 17.9 s, 0.225 m from 18.3 s) has no causal range cue before 18.4 s on that head-on approach (the in-view rays triangulate the ring only from 18.40 s)"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-29T11:53:38+00:00",
+ "sha256": "b34286f39427fb17262b01b0df6fde37d1db31caf508467e008281d6544c2a7b"
+}

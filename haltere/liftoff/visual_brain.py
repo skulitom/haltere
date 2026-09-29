@@ -294,6 +294,38 @@ def resolve_marker_jump(args):
     return str(MARKER_JUMP_DECLARATION), flag
 
 
+# Declared near-ring lead of the fast pilot (--ring-lead on|shadow; off by default; inside the obstacle stack).
+RING_LEAD_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'ring_lead.json'
+
+
+def load_ring_lead(path=RING_LEAD_DECLARATION):
+    """A frozen ring-lead declaration and its content hash (the lag-turn declaration's canonical hash); refuses an
+    unfrozen or edited file and another rule version than FastRaceCue implements (fast_race_cue.RING_LEAD_VERSION)."""
+    from .fast_race_cue import RING_LEAD_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen ring-lead declaration, or it changed after the freeze')
+    if declaration.get('version') != RING_LEAD_VERSION:
+        raise ValueError(f'{path} declares ring-lead rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {RING_LEAD_VERSION}')
+    return declaration, digest
+
+
+def resolve_ring_lead(args):
+    """(declaration path, mode) of --ring-lead (on: applied; shadow: computed and logged, no request changed; off/absent:
+    (None, None)). It leads with the lag-aware turn, so it needs the obstacle stack."""
+    flag = getattr(args,'ring_lead',None)
+    if flag in (None,'off'):
+        return None, None
+    if flag not in ('on','shadow'):
+        raise ValueError('--ring-lead is on, off or shadow')
+    if getattr(args,'obstacle_stack',None) is None or getattr(args,'lag_turn',None) == 'off':
+        raise ValueError('The ring lead applies the lag-aware turn\'s lead: use --obstacle-stack on|shadow (with its '
+                         'lag-aware turn)')
+    return str(RING_LEAD_DECLARATION), flag
+
+
 CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
 
 
@@ -476,7 +508,7 @@ class VisualController:
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
                  vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None, stale_evidence=None,
                  stale_apply=True, contact_support='on', marker_jump=None, marker_jump_apply=True, early_brake=None,
-                 early_apply=True, sighted_descent='off'):
+                 early_apply=True, sighted_descent='off', ring_lead=None, ring_lead_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -503,6 +535,8 @@ class VisualController:
             raise ValueError('The motor assist is part of the fast pilot profile')
         if marker_jump and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The marker-jump rule is part of the fast pilot profile')
+        if ring_lead and (pilot_profile != 'fast' or pilot_assistance != 'race-cue' or not lag_turn):
+            raise ValueError('The ring lead is part of the fast pilot profile and needs the lag-aware turn')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -583,6 +617,7 @@ class VisualController:
         self.marker_jump_declaration = None
         self.early_brake_declaration = None
         self.sighted_descent_declaration = None
+        self.ring_lead_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -721,6 +756,21 @@ class VisualController:
                                                     file_sha256=sha256(early_brake), schema=declaration.get('schema'),
                                                     version=declaration.get('version'), motor_contract=contract,
                                                     applied=early_config is not None and bool(early_apply))
+            if ring_lead:
+                # Declared per motor contract (the brain's lag), never per course; a contract without an entry (the fast
+                # PD) flies unchanged and the sidecar records that nothing was applied. It needs the lag-aware turn.
+                from .fast_race_cue import ring_lead_for_contract
+                declaration, digest = load_ring_lead(ring_lead)
+                contract = ('fast_velocity_brain_v1' if fast_brain else
+                            'fast_velocity_pd_v1' if pd_profile == 'fast' and motor_controller == 'pd' else None)
+                ring_config = ring_lead_for_contract(declaration, contract)
+                if ring_config is not None:
+                    descent_kw.update(ring_lead=ring_config, ring_lead_apply=bool(ring_lead_apply))
+                self.ring_lead_declaration = dict(path=str(ring_lead), sha256=digest, file_sha256=sha256(ring_lead),
+                                                  schema=declaration.get('schema'), version=declaration.get('version'),
+                                                  motor_contract=contract,
+                                                  applied=ring_config is not None and bool(ring_lead_apply),
+                                                  mode='on' if ring_lead_apply else 'shadow')
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -1223,6 +1273,23 @@ def sighted_row(assistance):
     return tuple(values[k] for k in SIGHTED_COLUMNS)
 
 
+# Near-ring lead (configs/pilot/ring_lead.json, --ring-lead on|shadow): appended last (after the sighted-descent columns),
+# only when declared.
+RING_LEAD_COLUMNS = ('ring_lead','ring_los_rate')
+
+
+def ring_lead_row(assistance):
+    """CSV values for RING_LEAD_COLUMNS (written only with --ring-lead on|shadow): 1 while the ring lead's condition holds
+    with the ring in view (applied, or in shadow would be) and the latest line-of-sight rate while fresh (deg/s, positive:
+    the ring's bearing moves left); NaN when no entry applies to the motor contract. The lead it applies is logged in the
+    lag-turn lead column."""
+    log = getattr(assistance,'ring_lead_log',None)
+    if log is None or getattr(assistance,'ring_lead',None) is None:
+        return (float('nan'),)*len(RING_LEAD_COLUMNS)
+    values = log()
+    return tuple(values[k] for k in RING_LEAD_COLUMNS)
+
+
 def stale_row(assistance):
     """CSV values for STALE_COLUMNS (written only when the stale-evidence rule is declared): the azimuth of the looming
     governor's cap ray and the re-seats of the cap-ray rule so far (applied, or its shadow copy's)."""
@@ -1412,6 +1479,7 @@ def run(args):
     sighted_mode = resolve_sighted_descent(args)
     motor_assist = resolve_motor_assist(args)
     marker_jump, marker_jump_mode = resolve_marker_jump(args)
+    ring_lead, ring_lead_mode = resolve_ring_lead(args)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
         from .gap_aim import GapAimConfig
@@ -1442,13 +1510,16 @@ def run(args):
                                   early_apply=stack['apply'],
                                   **({} if marker_jump is None else dict(marker_jump=marker_jump,
                                                                          marker_jump_apply=marker_jump_mode == 'on')),
-                                  **({} if sighted_mode == 'off' else dict(sighted_descent=sighted_mode)))
+                                  **({} if sighted_mode == 'off' else dict(sighted_descent=sighted_mode)),
+                                  **({} if ring_lead is None else dict(ring_lead=ring_lead,
+                                                                       ring_lead_apply=ring_lead_mode == 'on')))
     view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
     assist_columns = MOTOR_ASSIST_COLUMNS if controller.motor_assist_declaration is not None else ()
     stale_columns = STALE_COLUMNS if controller.stale_evidence_declaration is not None else ()
     marker_columns = MARKER_JUMP_COLUMNS if controller.marker_jump_declaration is not None else ()
     early_columns = EARLY_COLUMNS if controller.early_brake_declaration is not None else ()
     sighted_columns = SIGHTED_COLUMNS if controller.sighted_descent_declaration is not None else ()
+    ring_lead_columns = RING_LEAD_COLUMNS if controller.ring_lead_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1581,7 +1652,8 @@ def run(args):
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
                                  *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,
-                                 *stale_columns,*marker_columns,*early_columns,*sighted_columns])
+                                 *stale_columns,*marker_columns,*early_columns,*sighted_columns,
+                                 *ring_lead_columns])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1701,7 +1773,8 @@ def run(args):
                                  *(stale_row(controller.assistance) if stale_columns else ()),
                                  *(marker_jump_row(controller.assistance) if marker_columns else ()),
                                  *(early_row(controller.assistance) if early_columns else ()),
-                                 *(sighted_row(controller.assistance) if sighted_columns else ())])
+                                 *(sighted_row(controller.assistance) if sighted_columns else ()),
+                                 *(ring_lead_row(controller.assistance) if ring_lead_columns else ())])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1785,6 +1858,8 @@ def run(args):
             pilot_meta['early_brake_declaration'] = controller.early_brake_declaration
         if controller.sighted_descent_declaration is not None:
             pilot_meta['sighted_descent_declaration'] = controller.sighted_descent_declaration
+        if controller.ring_lead_declaration is not None:
+            pilot_meta['ring_lead_declaration'] = controller.ring_lead_declaration
         if ring_marker_record is not None:
             pilot_meta['ring_marker_declaration'] = ring_marker_record
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
@@ -1994,6 +2069,13 @@ def main():
                         'readings is taken only once 3 consecutive captures agree (a banner logo read for two captures '
                         'no longer turns the pilot); shadow computes and logs it and holds nothing '
                         '(configs/pilot/marker_jump.json; recorded in the flight-log metadata)')
+    p.add_argument('--ring-lead',choices=['on','off','shadow'],default=None,
+                   help='EXPERIMENTAL near-ring lead of the fast race-cue pilot (off by default; needs --obstacle-stack '
+                        'and its lag-aware turn): while the in-view ring\'s line of sight swings at 8 deg/s or more (a '
+                        'ring passed off its centre, close), the course falls further behind the ring bearing and no gap '
+                        'shift is applied, the lag-aware turn leads the ring bearing; shadow computes and logs it and '
+                        'changes nothing (configs/pilot/ring_lead.json, declared per motor contract; the fast PD has no '
+                        'entry and flies unchanged; recorded in the flight-log metadata)')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

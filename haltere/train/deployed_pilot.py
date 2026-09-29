@@ -26,7 +26,11 @@ declarations of the rule versions this code implements), plus a record of every 
   contract's stopping model needs. Off by default here too; idle in the surrogate (no looming samples);
 - with ``marker_jump='on'|'shadow'`` (``--marker-jump on|shadow``, off by default), the marker-jump rule
   (configs/pilot/marker_jump.json: a checkpoint marker that jumps after a gap in the readings is held until confirmed;
-  shadow computes it without holding). Off here by default too.
+  shadow computes it without holding). Off here by default too;
+- with ``ring_lead='on'|'shadow'`` (``--ring-lead on|shadow``, off by default, inside the obstacle stack), the ring-lead
+  entry of the contract (configs/pilot/ring_lead.json; none for the fast PD): while the in-view ring's line of sight
+  swings, the lag-aware turn leads the ring bearing; shadow computes it without changing any request. Off here by
+  default too.
 
 The surrogate has no looming or gap samples, so the gap aim, the ceiling guard and the vertical guard stay idle
 there; the lag-aware turns and the view-keeping descent act, and turn-first acts on a governor cap (for example a
@@ -41,7 +45,7 @@ CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
                           stale_evidence=False, contact_support='on', marker_jump=None, early_brake=False,
-                          sighted_descent='off'):
+                          sighted_descent='off', ring_lead=None):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
@@ -128,4 +132,13 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         declaration, digest = vb.load_marker_jump()
         note('marker_jump', vb.MARKER_JUMP_DECLARATION, declaration, digest)
         kwargs.update(marker_jump=frc.marker_jump_config(declaration), marker_jump_apply=marker_jump == 'on')
+    if ring_lead is not None:
+        if ring_lead not in frc.RING_LEAD_MODES or not stack:
+            raise ValueError(f'Unknown ring-lead mode {ring_lead!r}, or the ring lead without the stack lag-aware turn')
+        declaration, digest = vb.load_ring_lead()
+        note('ring_lead', vb.RING_LEAD_DECLARATION, declaration, digest)
+        record['ring_lead']['mode'] = ring_lead
+        config = frc.ring_lead_for_contract(declaration, contract)
+        if config is not None:
+            kwargs.update(ring_lead=config, ring_lead_apply=ring_lead == 'on')
     return kwargs, record

@@ -108,11 +108,13 @@ def passthrough_scenario(turn_deg=0., surface_m=0., next_m=15., leg_m=24., heigh
 
 
 def gate_scenario(turn_deg=0., half_w=1.5, leg_m=24., next_m=15., height_m=1.2, false_deg=0., false_before_m=8.,
-                  false_gap_s=.55, false_captures=2, false_after_s=.5, post_radius=.25):
+                  false_gap_s=.55, false_captures=2, false_after_s=.5, post_radius=.25, oblique_deg=0.):
     """Two gate arches flown through (the marker-jump rule's harness; report of clearance to the arch legs): from the
     ground, north `leg_m` to ring R1, an arch whose legs are vertical posts `half_w` to each side of the ring (radius
     `post_radius`, across the leg); R2 `next_m` beyond R1 after a turn of `turn_deg` (positive: right), an arch with its
-    legs across the R1-R2 leg; R3 20 m further. With `false_deg` != 0 (positive: right of the ring), a false marker on
+    legs across the R1-R2 leg, or with `oblique_deg` != 0 (round 7, the near-ring lead's harness) its leg axis rotated by
+    that angle about the ring (positive: clockwise from above), so that the R1-R2 leg meets it obliquely; R3 20 m further
+    (along the R1-R2 leg). With `false_deg` != 0 (positive: right of the ring), a false marker on
     the approach to R1: once the drone is within `false_before_m` of R1 the marker is unread for `false_gap_s`, then
     `false_captures` captures read a marker `false_deg` beside the true ring bearing (about the drone's vertical), then
     the marker is unread for `false_after_s` (the start-arch false reading of straw-brain11cw13-r4b-noassist-02: 0.55 s
@@ -126,6 +128,9 @@ def gate_scenario(turn_deg=0., half_w=1.5, leg_m=24., next_m=15., height_m=1.2, 
     d2 = np.array([np.sin(a), np.cos(a), 0.])
     r2 = r1+d2*next_m
     across2 = np.array([d2[1], -d2[0], 0.])
+    if oblique_deg:
+        o = np.radians(oblique_deg)
+        across2 = np.array([np.cos(o)*across2[0]+np.sin(o)*across2[1], -np.sin(o)*across2[0]+np.cos(o)*across2[1], 0.])
     posts = [r1+east*half_w, r1-east*half_w, r2+across2*half_w, r2-across2*half_w]
     false = None
     if false_deg:
@@ -137,7 +142,8 @@ def gate_scenario(turn_deg=0., half_w=1.5, leg_m=24., next_m=15., height_m=1.2, 
                 false_marker=false,
                 params=dict(turn_deg=turn_deg, half_w=half_w, leg_m=leg_m, next_m=next_m, height_m=height_m,
                             false_deg=false_deg, false_before_m=false_before_m, false_gap_s=false_gap_s,
-                            false_captures=false_captures, false_after_s=false_after_s, post_radius=post_radius))
+                            false_captures=false_captures, false_after_s=false_after_s, post_radius=post_radius,
+                            **({'oblique_deg': oblique_deg} if oblique_deg else {})))
 
 
 def gate_set(spec):

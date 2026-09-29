@@ -41,7 +41,10 @@ would have fired); version 3's arrays add contact_armed and contact_excluded. ``
 marker-jump rule of a frozen declaration to any variant (tag -mj<version>; with ``--marker-jump-mode shadow`` computed and
 logged, nothing held: tag -mj<version>-mjshadow); the arrays gain marker_held and marker_candidates. ``--lag-turn off`` and
 ``--gap-aim off`` leave the lag-aware turn or the gap aim out of a stack variant (tags -ltoff, -gaoff; report-only
-diagnostics of their share, round 6).
+diagnostics of their share, round 6). ``--ring-lead DECLARATION`` adds the near-ring lead of a frozen ring-lead declaration
+for the flight's motor contract to a stack variant (tag -rl<version>; with ``--ring-lead-mode shadow`` computed and logged
+only: tag -rl<version>-rlshadow; nothing for a contract without an entry, the fast PD); the arrays gain ring_lead and
+ring_los_rate (round 7).
 
 usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [--stack ...] flight ...
 """
@@ -100,7 +103,8 @@ def variant_tag(stack, wall, vertical, stream):
 
 def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None, contact_support=None,
           wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True, lag_turn=True, gap_aim=True,
-          marker_jump=None, marker_jump_apply=True, early_brake=None, sighted_descent=None, sighted_apply=True):
+          marker_jump=None, marker_jump_apply=True, early_brake=None, sighted_descent=None, sighted_apply=True,
+          ring_lead=None, ring_lead_apply=True):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
     whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
     optional DescentViewConfig added to any variant; ``contact_support``: an optional ContactSupportConfig (descent
@@ -116,7 +120,9 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     ``early_brake``: an optional early-brake declaration (parsed and hash-checked) whose entry for the flight's motor
     contract is added to a stack variant as ``stale_evidence`` is (nothing for a contract without an entry, the fast
     PD). ``sighted_descent``: an optional SightedDescentConfig added with ``descent_view`` (``sighted_apply`` False:
-    computed and logged only)."""
+    computed and logged only). ``ring_lead``: an optional ring-lead declaration (parsed and hash-checked) whose entry for
+    the flight's motor contract is added to a stack variant with the lag-aware turn (applied unless the variant is --stack
+    shadow or ``ring_lead_apply`` is False: computed and logged; nothing for a contract without an entry)."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -155,6 +161,10 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         config = frc.early_brake_for_contract(early_brake, contract)
         if config is not None:
             kw.update(early_brake=config, early_apply=applied)
+    if ring_lead is not None and kw.get('lag_turn') is not None:
+        config = frc.ring_lead_for_contract(ring_lead, contract)
+        if config is not None:
+            kw.update(ring_lead=config, ring_lead_apply=applied and ring_lead_apply)
     if not applied:
         kw.update(lag_turn_apply=False, gap_apply=False)
     if descent_view is not None:
@@ -187,6 +197,8 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         info.update(lag_turn=bool(lag_turn), gap_aim=bool(gap_aim))
     if marker_jump is not None:
         info['marker_jump'] = 'applied' if kw['marker_jump_apply'] else 'shadow'
+    if ring_lead is not None:
+        info['ring_lead'] = ('none' if 'ring_lead' not in kw else 'applied' if kw['ring_lead_apply'] else 'shadow')
     return pilot, info
 
 
@@ -203,7 +215,7 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
            wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True,
            lag_turn=True, gap_aim=True, marker_jump=None, marker_jump_apply=True, probe=None, early_brake=None,
-           sighted_descent=None, sighted_apply=True):
+           sighted_descent=None, sighted_apply=True, ring_lead=None, ring_lead_apply=True):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -225,7 +237,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     carry the rule's log (FastRaceCue.marker_jump_log). ``probe``: an optional callable (pilot, row) -> dict of extra
     per-tick values, saved as arrays of the same names (analysis only; changes nothing). ``sighted_descent``: an
     optional SightedDescentConfig (with ``descent_view``; see build); with it the arrays also carry sighted_los,
-    sighted_bound and sighted_withheld (FastRaceCue.sighted_log)."""
+    sighted_bound and sighted_withheld (FastRaceCue.sighted_log). ``ring_lead`` / ``ring_lead_apply``: see build; with a
+    ring-lead entry the arrays also carry ring_lead and ring_los_rate (FastRaceCue.ring_lead_log)."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
@@ -240,7 +253,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                                                                 marker_jump_apply=marker_jump_apply)),
                         **({} if early_brake is None else dict(early_brake=early_brake)),
                         **({} if sighted_descent is None else dict(sighted_descent=sighted_descent,
-                                                                   sighted_apply=sighted_apply)))
+                                                                   sighted_apply=sighted_apply)),
+                        **({} if ring_lead is None else dict(ring_lead=ring_lead, ring_lead_apply=ring_lead_apply)))
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['throttle_column'] = throttle_column
     info['near_on_path'] = bool(near_on_path)
@@ -287,6 +301,9 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
         keys += ('assist_share_cap',)
     if sighted_descent is not None:
         keys += ('sighted_los', 'sighted_bound', 'sighted_withheld')
+    has_ring_lead = getattr(pilot, 'ring_lead', None) is not None
+    if has_ring_lead:
+        keys += ('ring_lead', 'ring_los_rate')
     rows = {k: [] for k in keys}
     probed = {}
     drop = None if cue_drop is None else {round(float(c), 6) for c in cue_drop}
@@ -393,6 +410,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
             values['assist_share_cap'] = nan if share is None else float(share)
         if sighted_descent is not None:
             values.update(pilot.sighted_log())
+        if has_ring_lead:
+            values.update(pilot.ring_lead_log())
         for k in keys:
             rows[k].append(values.get(k, nan))
         if probe is not None:
@@ -767,6 +786,12 @@ def main(argv=None):
                              '(configs/pilot/sighted_descent.json); the file tag gains -sd<version>')
     parser.add_argument('--sighted-mode', default='on', choices=['on', 'shadow'],
                         help='with --sighted-descent: shadow computes and logs it only (the file tag gains -sdshadow)')
+    parser.add_argument('--ring-lead', default=None, metavar='DECLARATION',
+                        help='add the near-ring lead of a frozen ring-lead declaration (configs/pilot/ring_lead.json) for '
+                             'the motor contract of each flight to a stack variant; the file tag gains -rl<version>')
+    parser.add_argument('--ring-lead-mode', default='on', choices=['on', 'shadow'],
+                        help='with --ring-lead: shadow computes and logs it without changing any request (tag suffix '
+                             '-rlshadow)')
     args = parser.parse_args(argv)
     os.environ.setdefault('OMP_NUM_THREADS', '2')
     here = str(Path(__file__).resolve().parent)
@@ -874,6 +899,18 @@ def main(argv=None):
             extra['marker_jump_apply'] = False
     elif args.marker_jump_mode != 'on':
         raise SystemExit('--marker-jump-mode shadow needs --marker-jump')
+    if args.ring_lead:
+        from haltere.liftoff.gap_stack import config_sha256
+        declaration = json.loads(Path(args.ring_lead).read_text(encoding='utf-8'))
+        if declaration.get('frozen') is not True or declaration.get('sha256') != config_sha256(declaration):
+            raise SystemExit(f'{args.ring_lead} is not a frozen ring-lead declaration, or it changed after the freeze')
+        tag += f'-rl{declaration["version"]}'
+        extra['ring_lead'] = declaration
+        if args.ring_lead_mode == 'shadow':
+            tag += '-rlshadow'
+            extra['ring_lead_apply'] = False
+    elif args.ring_lead_mode != 'on':
+        raise SystemExit('--ring-lead-mode shadow needs --ring-lead')
     results = {}
     for flight in args.flights:
         if args.cue_drop:
@@ -901,6 +938,8 @@ def main(argv=None):
             results[flight]['early_brake_metadata'] = meta.get('early_brake')
         if args.sighted_descent:
             results[flight]['sighted_descent_metadata'] = meta.get('sighted_descent')
+        if args.ring_lead:
+            results[flight]['ring_lead_metadata'] = meta.get('ring_lead')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')

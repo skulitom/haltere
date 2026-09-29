@@ -61,6 +61,12 @@ only the assist's share of a climb.
 Optionally (``early_brake=EarlyBrakeConfig``, off by default; declared per motor contract in configs/obstacles, for the
 brain contract only), the looming governor engages as early as the motor contract's stopping model needs, floored while
 the pilot sees its checkpoint ahead. ``early_apply`` False computes and logs it in the shadow governor copy.
+
+Optionally (``ring_lead=RingLeadConfig``, off by default; declared per motor contract in configs/pilot, for the brain
+contract only; needs the lag-aware turn), while the in-view ring's line of sight swings (a ring passed off its centre,
+close), the flown course falls further behind the ring bearing and no gap shift is applied, the lag-aware turn leads the
+ring bearing as in its switch window (its active seconds then include these ticks). ``ring_lead_apply`` False computes and
+logs it without changing any request.
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -1137,6 +1143,86 @@ def sighted_descent_config(declaration):
     return SightedDescentConfig(**declaration['sighted_descent'], version=declaration['version'])
 
 
+# The ring-lead declaration version whose rule this code implements (RingLeadConfig; the ring-lead declaration in
+# configs/pilot); runners refuse others.
+RING_LEAD_VERSION = 1
+# Runner modes of the ring lead (--ring-lead): applied, or computed and logged without changing any request.
+RING_LEAD_MODES = ('on', 'shadow')
+
+
+@dataclass(frozen=True)
+class RingLeadConfig:
+    """Near-ring lead: while the ring's line of sight swings, the lag-aware turn leads it (ring-lead declaration version
+    1, per motor contract; off unless a runner passes it; it needs the lag-aware turn, LagTurnConfig, whose declared lead
+    and heading time constant it applies).
+
+    Why (round 7, the development cases minus-brain11cw13-r6-01 at 29.6 s and straw-brain11cw13-r5-noassist-01 at
+    19.4 s): the fast pilot pursues the ring's bearing, and a brain follows its request about 0.3 s late. Approaching a
+    gate off its centre, the ring's bearing swings more and more as the gate comes close; the pursuit lags the swing, the
+    course lags the request, and the drone crosses the gate plane on its original side, where the near leg is. In both
+    development crashes the ring marker did not switch before the impact: every in-view marker ray of the last 1.5 s
+    triangulates to one point, the ring centre 0.9 m (FAT SHARK) and 0.6 m (Minus floor arch) beside the impact
+    (hindsight, offline). The lag-aware turn's own trigger (a ring-centre jump of trigger_deg within trigger_span_s, meant
+    for a checkpoint switch) fired on that swing only 0.38-0.40 s before the impact and led the request toward the ring
+    centre, away from the leg that was hit: the right direction, too late for a lagging brain.
+
+    The rule: the line-of-sight rate is the rate of change of the world azimuth of the fresh in-view (not edge-clamped)
+    ring-centre ray (marker u, v; not the flag-clearance aim; the pose at capture), measured from the first to the last
+    reading of the last span_s, once there are at least min_readings readings spanning at least min_span_s; a reading more
+    than jump_deg from the previous in-view reading starts the measurement again (a checkpoint switch or a false
+    reading). The lag-aware turn acts as in its switch window (weight 1: the request aims beyond the ring bearing by
+    course_lead times the angle from the flown course to it, clipped to course_lead_max_deg, and its heading tapers with
+    heading_time_constant, while the pilot sees the ring in view, state cue) on every tick where all of these hold:
+    - the latest measurement is at most fresh_s old and its rate is at least rate_deg_s. A far ring's line of sight hardly
+      moves; a near ring's moves by V m / R^2 for a lateral miss m at range R and speed V (at 5 m/s, 8 deg/s is a 0.3 m
+      miss at 3.3 m or a 1 m miss at 6 m);
+    - the pursuit is falling behind: the angle between the flown course and the ring-centre bearing, at the measurement's
+      first reading (the course when that reading arrived) and now (the latest reading's bearing, the present course), is
+      on the same side both times and not smaller now, with a horizontal speed of at least 1 m/s both times. A course that
+      is catching up with the bearing converges on the ring by itself (development: the arch before the Minus Two hairpin,
+      where a lead without this test moved the crossing 0.2-0.7 m off the ring centre that the pursuit alone hit within
+      0.06 m);
+    - with yield_to_gap, no gap-aim shift is applied: near an obstacle beside the ring the gap aim owns the aim, and the
+      lead, computed on the ring's own bearing (lag turn version 2), would pull the course back toward that obstacle.
+    It reads the ring cue, the pose at capture, the measured velocity and the capture times only: no range, course
+    geometry or gate map.
+    """
+    rate_deg_s: float = 8.
+    span_s: float = .3
+    min_readings: int = 3
+    min_span_s: float = .1
+    jump_deg: float = 15.
+    fresh_s: float = .25
+    yield_to_gap: bool = True
+
+    def __post_init__(self):
+        values = [self.rate_deg_s, self.span_s, self.min_span_s, self.jump_deg, self.fresh_s]
+        if not np.isfinite(values).all() or min(values) <= 0:
+            raise ValueError('Use finite positive ring-lead parameters')
+        if not self.min_span_s <= self.span_s <= 2 or not self.jump_deg < 90 or not self.fresh_s <= 1:
+            raise ValueError('Use min_span_s <= span_s <= 2 s, jump_deg below 90 and fresh_s <= 1 s')
+        if (not isinstance(self.min_readings, int) or isinstance(self.min_readings, bool)
+                or not 2 <= self.min_readings <= 20):
+            raise ValueError('min_readings is a whole number of readings in [2, 20]')
+        if not isinstance(self.yield_to_gap, bool):
+            raise ValueError('yield_to_gap is true or false')
+
+
+def ring_lead_for_contract(declaration, contract):
+    """The `RingLeadConfig` that a ring-lead declaration already parsed (and hash-checked) by the runner assigns to a
+    motor contract ('contracts': {contract: parameters or None}), or None when the contract has none (the fast PD);
+    refuses another rule version (RING_LEAD_VERSION). This module reads no files."""
+    version = (declaration or {}).get('version')
+    if version != RING_LEAD_VERSION:
+        raise ValueError(f'The ring-lead declaration is version {version}; the fast pilot implements version '
+                         f'{RING_LEAD_VERSION}')
+    contracts = declaration.get('contracts')
+    if not isinstance(contracts, dict):
+        raise ValueError('A ring-lead declaration lists its motor contracts')
+    entry = contracts.get(contract)
+    return None if entry is None else RingLeadConfig(**entry)
+
+
 # Gravity of the contact rule's thrust model (the fast PD's value).
 CONTACT_GRAVITY = 9.81
 # Version 3: the most recent observed gains kept for the gain learnt before arming (5 s of 100 Hz windows).
@@ -1941,7 +2027,7 @@ class FastRaceCue:
                  ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None,
                  contact_support=None, clearance_brake=None, motor_assist=None, clearance_ray=None, stale_apply=True,
                  contact_apply=True, marker_jump=None, marker_jump_apply=True, early_brake=None, early_apply=True,
-                 sighted_descent=None, sighted_apply=True):
+                 sighted_descent=None, sighted_apply=True, ring_lead=None, ring_lead_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -2169,6 +2255,23 @@ class FastRaceCue:
             raise ValueError('The early brake is part of the TTC clearance policy')
         self.early_brake, self.early_apply = early_brake, bool(early_apply)
         self.assist_share_time = 0.            # motor assist v4: seconds the ceiling share bounded the assist's climb
+        # Near-ring lead (off unless declared for the motor contract): see RingLeadConfig. ring_lead_apply False
+        # (--ring-lead shadow) computes and logs it without changing the lag-aware turn's weight.
+        if ring_lead is not None and not isinstance(ring_lead, RingLeadConfig):
+            raise ValueError('Pass a RingLeadConfig (or None) for the ring lead')
+        if ring_lead is not None and lag_turn is None:
+            raise ValueError('The ring lead applies the lag-aware turn\'s lead: declare both')
+        self.ring_lead, self.ring_lead_apply = ring_lead, bool(ring_lead_apply)
+        self.ring_lead_readings = []           # [capture time, world azimuth rad, flown course rad] of the recent in-view
+                                               # ring-centre rays (the course when the reading arrived; NaN below 1 m/s)
+        self.ring_los_rate = float('nan')      # the latest line-of-sight rate (deg/s, magnitude)
+        self.ring_los_signed = 0.              # ... signed (deg/s, positive: the ring's bearing moves left)
+        self.ring_los_az = 0.                  # world azimuth (rad) of the reading that measured it
+        self.ring_los_at = None                # capture time of the reading that measured it
+        self.ring_lead_active = False          # the rule's condition holds this tick (applied, or in shadow would be)
+        self.ring_lead_in_view = False         # ... while the pilot sees the ring in view (state cue): where it acts
+        self.ring_lead_time = 0.
+        self.ring_lead_counts = dict(episodes=0, readings=0, restarts=0)
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -2244,6 +2347,8 @@ class FastRaceCue:
             centre = centre/max(np.linalg.norm(centre), 1e-9)
             self._lag_turn_trigger(centre, bool(cue['edge']), capture_time)
             self.lag_turn_centre, _ = self._blend(self.lag_turn_centre, centre)
+            if self.ring_lead is not None:
+                self._ring_lead_reading(centre, bool(cue['edge']), capture_time)
         if self.gap_aim is not None:
             ray = self._gap_ray(ray, cue, q, now)
         self.direction, switched = self._blend(self.direction, ray)
@@ -2494,6 +2599,64 @@ class FastRaceCue:
             self.lag_turn_triggers += 1
             recent = []                # later frames compare with the new bearing
         self.lag_turn_recent = recent+[(capture_time, azimuth)]
+
+    def _ring_lead_reading(self, centre, edge, capture_time):
+        """One fresh ring cue for the ring lead's line-of-sight rate (RingLeadConfig): in-view readings only; a jump of
+        more than jump_deg from the previous in-view reading starts the measurement again."""
+        rl = self.ring_lead
+        if edge or np.linalg.norm(centre[:2]) < 1e-6:
+            return
+        azimuth = float(np.arctan2(centre[1], centre[0]))
+        readings = [r for r in self.ring_lead_readings if capture_time-r[0] <= rl.span_s]
+        if readings and abs((azimuth-readings[-1][1]+np.pi) % (2*np.pi)-np.pi) > np.radians(rl.jump_deg):
+            readings = []
+            self.ring_lead_counts['restarts'] += 1
+        readings.append([float(capture_time), azimuth, None])   # the flown course is filled in by update()
+        self.ring_lead_readings = readings
+        self.ring_lead_counts['readings'] += 1
+        span = readings[-1][0]-readings[0][0]
+        if len(readings) >= rl.min_readings and span >= rl.min_span_s:
+            change = (readings[-1][1]-readings[0][1]+np.pi) % (2*np.pi)-np.pi
+            self.ring_los_rate = float(np.degrees(abs(change))/span)
+            self.ring_los_signed = float(np.degrees(change)/span)
+            self.ring_los_az = float(readings[-1][1])
+            self.ring_los_at = float(capture_time)
+
+    def _ring_lead_condition(self, now, velocity):
+        """Whether the ring lead acts this tick (RingLeadConfig): a fresh line-of-sight rate of at least rate_deg_s; the
+        pursuit falling behind (the angle between the flown course and the ring-centre bearing, at the first reading of
+        the measurement and now, on the same side and not smaller now; a horizontal speed of at least 1 m/s both times);
+        with yield_to_gap, no applied gap shift."""
+        rl = self.ring_lead
+        if self.launching or self.ring_los_at is None or not 0 <= now-self.ring_los_at <= rl.fresh_s:
+            return False
+        if not self.ring_los_rate >= rl.rate_deg_s:
+            return False
+        first = self.ring_lead_readings[0] if self.ring_lead_readings else None
+        v = np.asarray(velocity[:2], float)
+        if first is None or first[2] is None or not np.isfinite(first[2]) or float(np.linalg.norm(v)) < 1.:
+            return False
+        before = (first[1]-first[2]+np.pi) % (2*np.pi)-np.pi
+        error = (self.ring_los_az-float(np.arctan2(v[1], v[0]))+np.pi) % (2*np.pi)-np.pi
+        if not (error*before > 0 and abs(error) >= abs(before)):
+            return False                    # the course is catching up with the bearing: the pursuit converges
+        return not (rl.yield_to_gap and abs(self.gap_offset_deg) > 1e-9)
+
+    def ring_lead_log(self):
+        """Per-tick log of the ring lead: ring_lead (1 while its condition holds with the ring in view: applied, or in
+        shadow would be) and ring_los_rate (the latest line-of-sight rate while fresh, deg/s, positive: the ring's
+        bearing moves left; NaN otherwise)."""
+        fresh = (self.ring_lead is not None and self.ring_los_at is not None and self.last_time is not None
+                 and 0 <= self.last_time-self.ring_los_at <= self.ring_lead.fresh_s)
+        return dict(ring_lead=float(self.ring_lead_in_view), ring_los_rate=self.ring_los_signed if fresh else float('nan'))
+
+    def _ring_lead_metadata(self):
+        return dict(rule=('while the in-view ring-centre line-of-sight rate (first to last reading of span_s) is at least '
+                          'rate_deg_s, the angle between the flown course and the ring bearing does not shrink over that '
+                          'span and no gap shift is applied, the lag-aware turn leads the ring bearing as in its switch '
+                          'window (weight 1: course_lead, course_lead_max_deg, heading_time_constant)'),
+                    version=RING_LEAD_VERSION, parameters=asdict(self.ring_lead), applied=self.ring_lead_apply,
+                    seconds=round(self.ring_lead_time, 3), counts=dict(self.ring_lead_counts))
 
     def _lag_turn_weight_at(self, now):
         """1 during a lag-turn window, falling linearly to 0 over its last fade_s; 0 when off."""
@@ -2944,11 +3107,25 @@ class FastRaceCue:
             self.gap_aim.step(now, dt)
             self._set_gap_offset()
         self._ingest(detection, capture_time, now)
+        if self.ring_lead is not None and self.ring_lead_readings and self.ring_lead_readings[-1][2] is None:
+            # the flown course when the ring lead's latest reading arrived (NaN below 1 m/s)
+            self.ring_lead_readings[-1][2] = (float(np.arctan2(velocity[1], velocity[0]))
+                                              if float(np.linalg.norm(velocity[:2])) >= 1. else float('nan'))
         yaw = float(np.arctan2(rotation[1, 0], rotation[0, 0]))
         self.lag_turn_weight = 0. if self.launching else self._lag_turn_weight_at(now)
+        if self.ring_lead is not None:
+            # near-ring lead (RingLeadConfig): the lag-aware turn acts as in its switch window
+            self.ring_lead_active = self._ring_lead_condition(now, velocity)
+            if self.ring_lead_active and self.ring_lead_apply:
+                self.lag_turn_weight = max(self.lag_turn_weight, 1.)
         self.lag_turn_lead_deg = 0.
         desired, state = self._desired(position, velocity, yaw, now)
         in_view_goal = state in LAG_TURN_STATES
+        if self.ring_lead is not None:
+            active = self.ring_lead_active and in_view_goal
+            self.ring_lead_counts['episodes'] += int(active and not self.ring_lead_in_view)
+            self.ring_lead_in_view = active
+            self.ring_lead_time += dt*active
         if state == 'search':
             self.search_since = now if self.search_since is None else self.search_since
             if now-self.search_since < c.search_climb_s:
@@ -3944,4 +4121,6 @@ class FastRaceCue:
         early = self._early_metadata()
         if early is not None:
             out['early_brake'] = early                              # absent when the rule is off (default unchanged)
+        if self.ring_lead is not None:
+            out['ring_lead'] = self._ring_lead_metadata()          # absent when the rule is off (default unchanged)
         return out
