@@ -2087,3 +2087,61 @@ What this shows:
   harness crawl finding); the brain hairpin remains unsolved live.
 - The PD's hairpin now ends in a stand-off stop, after which its new line met a pillar: stop-and-turn exits need
   the same obstacle care as through-flight.
+
+## Round 6 (offline): ground clearance on descents, the sighted descent (branch `m6-ground`, not flown)
+
+**Nothing here has flown.** Details, figures and every number: [sighted_descent.md](../sighted_descent.md). Branch
+`m6-ground` from `m5` (`bc7c71c`).
+
+**The Straw downhill touch.** Both fast-brain-11 runs that reached the downhill (`straw-brain11cw13-r4b-noassist-02`,
+`-r5-noassist-04`; development logs of this rule) touched the straw at (-36.5, 133-134) after a 24-27 degree descent.
+Checked on the recorded frames and telemetry:
+- the next ring (ImmersionRC arch) lay 13.6-15.1 degrees below the drone from the hilltop on (offline triangulation of
+  the in-view marker rays, residuals 0.08-0.13 m), and the marker was read in view at 13.4-14.6 degrees before it
+  stayed clipped for 4.2-4.8 s;
+- the view rule's steep late then asked for 20-24 degrees (flown 24-27), about 10 degrees below the ring;
+- the camera never sees that hillside: a 9-15 degree slope under a lower image edge at 12-17 degrees is met, if at all,
+  43-57 m ahead at grazing incidence (flow about 0.005 rad/s). The looming sampler read no evidence on the whole
+  downhill, and the video shows no straw in front of the drone until the knock. No depth, flow or ring-size cue can
+  measure the clearance there, so none was built.
+
+**The rule** (`configs/pilot/sighted_descent.json` v1 `49b8d7a79f32...`; `--sighted-descent on|off|shadow`, off by
+default, needs `--descent-view`): two agreeing in-view readings of the ring near the bottom edge set its line of sight;
+it turns down while the flight path stays above it (as for a ring 20 m away) and is raised by later bottom clips; while
+the ring is clipped at the bottom edge the pilot never requests a path more than 1 degree below it (never below the
+in-view bound, never more sink than the view rule). Causal and course-agnostic: the ring cue, attitude, velocity and
+camera calibration only. It keeps the view rule's speed parts (6 m/s kept on the downhill in the replays).
+
+**Frozen gates** (`configs/pilot/sighted_descent_gates.json` v1 `46deedeeea36...`, frozen in `98c4609` before any gate
+run; scored on `afd6277`): **10 of 12 pass.**
+
+| Gate | Result | Pass |
+|---|---|---|
+| Identity: `m5` archive = this tree (default pilot, round-5 Straw stack), off = shadow, 31 logs | 93 of 93 bit-identical | yes |
+| Replays: the first changed request of each log is a withheld tick (29 held-out logs + 2 development) | 11 logs changed, all causal | yes |
+| Replays: horizontal request not lower by > 0.05 m/s where it withholds | fast-brain-08 laps `-04` 0.111 and `-06` 0.173 m/s (<= 0.25 s, via the descent-path governor's floor) | **no** |
+| Development: steepest request before the two touches | 15.29 / 16.11 deg against 22.10 / 23.34 (ring 14.4 / 15.1) | yes |
+| Straw variations 1001-1032 (held out), fast PD / fast-brain-11 | contacts 16 -> 11 / 15 -> 8, contact s 58.51 -> 42.97 / 36.86 -> 20.50, high passes 8 -> 5 / 4 -> 4, time -0.36 / -0.31% | yes / yes |
+| Logged Straw geometry, fresh randomisation (held out) | 16 -> 12 / 6 -> 5 (63.67 -> 55.21 / 13.99 -> 11.04 s), high passes 7 -> 2 / 5 -> 4, time -2.36 / -0.06% | yes / yes |
+| Synthetic hills 8500-8515 + steep 8600-8607 (held out) | contacts 17 -> 16 / 16 -> 16, **fast PD high passes 8 -> 9** / brain 9 -> 8, time +0.46 / +0.29% | **no** / yes |
+| Flat 8700-8707 (held out) | unchanged counts, time 0.00 / +0.002% | yes / yes |
+
+Post-scoring diagnosis: of the fast PD's three changed high passes on the synthetic hills, one course (8504) changed
+although the rule never acted there: the surrogate draws all drones' HUD dropouts from one random stream, so a drone
+that finishes at another time changes the others. The keep-speed failure and a shifted support-climb timing (up to
+0.33 m/s more sink for up to 1 s after a round-5 support climb the rule's variant lacks) occur only in counterfactual
+replays of fast-brain-08 laps flown with the default pilot.
+
+**What it does not fix** (seen in the Straw rebuild and on the synthetic hills): the brain flies 2-4 degrees steeper
+than it is asked while the ring is in view; the line from the hilltop checkpoint to the ring grazes the convex Straw
+crest (0.4-0.6 m); a dive right after the hilltop turn (the fast PD); the chord through the shoulder of an S-shaped hill.
+The residual Straw-rebuild touches are these.
+
+**Live plan (development flight, for the main session):** the round-5 amended run (c) with `--sighted-descent on`
+added (command and what to watch in [sighted_descent.md](../sighted_descent.md#live-plan-for-the-main-session-development-flights)).
+It is a disclosed deviation: the rule fails 2 of 12 gates and no brain is selected. Watch the downhill (request held
+near 15-16 degrees from about 77.5 s, 6 m/s kept, no touch at y 133) and the ImmersionRC arch's top bar.
+
+**Blockers, updated:** the Straw downhill row of round 5 now has a pilot-side lever that holds the requested descent to
+the ring's line of sight (offline evidence only); a live Straw lap with it, and a fix for the brain's sink overshoot
+in view, remain. The contact audit's video validation is unchanged.

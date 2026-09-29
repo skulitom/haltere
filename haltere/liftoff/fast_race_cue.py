@@ -968,8 +968,8 @@ class SightedDescentConfig:
        bearing jump of new_target_deg), search (the marker lost) and launch clear it; the view rule then acts as before.
     It reads the ring cue, the measured attitude and velocity and the camera calibration: no height above ground, no
     terrain memory, no course geometry. The keep-speed parts of the view rule (no brake for a clipped ring, the speed
-    rise while sink is withheld, the descent-path governor not fed) stay as they are. Declaration version 1
-    (configs/pilot/sighted_descent.json).
+    rise while sink is withheld, the descent-path governor not fed) stay as they are. Declaration version 1 (the
+    sighted-descent declaration in configs/pilot, read by the runner).
     """
     margin_deg: float = 1.
     edge_v: float = .85
