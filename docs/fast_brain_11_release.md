@@ -26,6 +26,51 @@ development courses; there is no unseen-race or freestyle result.
 \*Stick change: the mean of |Δroll| and |Δpitch| of the roll/pitch commands per 10 ms tick after the
 first 3 s of the log.
 
+## Update 2026-09-29: round-6 flights (same weights, newer pilot stack)
+
+![fast-brain-11 through the Minus Two hairpin and past pillar C, 1.5x speed](https://raw.githubusercontent.com/skulitom/haltere/main/docs/liftoff_fast_brain11_minus_hairpin.gif)
+
+*Minus Two, 1.5x speed: connectome activity (left) beside gameplay (right). The early brake slows fast-brain-11
+before the hairpin wall, turn-first turns it, and it continues past pillar C.*
+
+Same checkpoint (`44cca3c4…`), flown with the round-6 pilot stack on branch
+[`m6`](https://github.com/skulitom/haltere/tree/m6) at `9269a62`. The round-6 additions are:
+
+- an earlier governor brake for lagging motors (`--early-brake on`);
+- a sighted descent that holds the descent to the ring's line of sight (`--sighted-descent on`);
+- motor assist v4, without the approach rule that stopped the round-5 run at the first arch;
+- contact support and a marker-jump check in shadow (logged, not acting).
+
+These are development runs, and several round-6 rules fail some of their frozen gates
+([flight card](https://github.com/skulitom/haltere/blob/m6/docs/flight_cards/2026-09-26_obstacles_m2.md), "Round 6").
+
+- **Minus Two (`minus-brain11cw13-r6-01`): the first brain run through the hairpin and past pillar C.**
+  - The early brake engaged at the arch before the hairpin (18.5-20.9 s) and at the hairpin wall (21.6-23.7 s).
+  - Turn-first turned the drone at 22.5 s after it slowed to 0.76 m/s short of the wall. It left the hairpin at
+    23.9 s and passed pillar C at 25.7 s.
+  - At 29.6 s it was passing through a low floor-standing arch as the marker switched to the next ring. The pilot
+    turned right, and the arch's leg hit the drone at 4.65 m/s.
+  - Stick change 0.0046.
+- **Straw Bale (`straw-brain11cw13-r6-01`): no ground contact on the downhill.**
+  - Every earlier brain-11 run touched the straw at about 79.4 s. Here the sighted descent withheld 0.8-1.6 m/s of
+    sink while the ring was clipped below the image.
+  - It passed the arch whose top bar ended `r5-noassist-04`.
+  - Further down, still descending with the ring clipped below the image, it came down onto the next arch's top
+    banner at 87.3 s (5.2 m/s).
+  - Stick change 0.0034.
+- **Still no race finish.** The remaining crashes share two causes:
+  - turning toward the next ring while still inside a gate;
+  - descending onto the next gate's top bar when the ring is out of view below.
+- **Compilers on the same PC:** the postflight checks of both runs found a `rustc.exe` compile running on the same PC
+  (0.71 core on Straw, 6.22 cores at the end of the Minus run). No controller-deadline, camera or telemetry failure was
+  recorded.
+
+To fly this stack, check out `m6` at `9269a62`, extract `fast-brain11-inference.zip`, and run the command below with
+`--looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow
+--sighted-descent on --motor-assist on --marker-jump shadow`. The round-6 flight records are in
+`fast-brain11-round6-flights.zip` (sha256 `829aecb4aaed864fd905a987f960064d0c81deb44550e70be84e1621244ae0fa`), and the
+two videos are release assets.
+
 ## Every flight with this checkpoint
 
 All runs used the original `[Copy] New Drone` at 6 m/s. The pilot was the fast race-cue pilot with the obstacle
