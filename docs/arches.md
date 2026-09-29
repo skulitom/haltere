@@ -274,6 +274,11 @@ command plus `--stale-evidence on`, with new log and video names. `--motor-assis
 v1, which has no entry for the fast PD (`applied: false`), and it keeps the assist CSV columns. The round-5 integration
 may replace this command with its own merged-stack plan.
 
+**On branch `m5` this command is replaced** by plan (a) in the flight card's section "Round 5 (offline): the merged m5
+stack, replays, surrogate and the live plan". That plan adds `--contact-support on` and uses the same log name. On `m5`
+the command below would declare wall pilot v6, descent view v3 with contact support v3, and motor assist v3 (not
+applied for the PD), in place of the versions listed under it.
+
 ```powershell
 .venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --descent-view on --motor-assist on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-fast6-r5-01.csv --record runs/fast-stack-20260923/minus-fast6-r5-01.mp4 --video-encoder h264_nvenc
 ```
