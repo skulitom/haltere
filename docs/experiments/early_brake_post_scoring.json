@@ -1,0 +1,20 @@
+{
+ "scope": "POST-SCORING diagnostics of configs/obstacles/early_brake_gates.json v1 (scored once: docs/experiments/early_brake_scores.json, 16 of 21). They change no score and no rule; open-loop replays of the scored gate runs (scratchpad m6/brake/gates/replays).",
+ "D5_ceiling_share_metric": {
+  "finding": "The frozen D5 and H5 metric counted ticks in state cue where the assist adds a climb (assist_vertical > 0) and the pilot's own vertical request lies > 0.05 m/s below the unassisted stack's. When version 3's cut zeroes the climb, the assist's sag climb is capped too (assist_vertical 0), so the metric cannot see the failure it was meant to catch: it scored version 3 at 0.0 s on the development case as well.",
+  "without_the_assist_condition": {
+   "straw-brain08-06 37.49-38.77 s, assist v3": "the pilot's own vertical request lies below the unassisted stack's for 1.27 s in state cue (37.50-38.76 s; first tick: own 1.25 m/s where the stack asks 1.56)",
+   "straw-brain08-06 37.49-38.77 s, assist v4": "0.00 s"
+  }
+ },
+ "H5_failure": {
+  "log": "straw-brain08-01, 75.08-75.47 s",
+  "finding": "0.38 s scored for version 4 and identically for version 3: the pilot's own sink request is -0.86 m/s where the unassisted stack asks -0.79, while the assist adds 0.73 m/s of sag climb. It is not the ceiling cut: the assisted request feeds back into the pilot's own state through the issued request (descent-path shortfall and support rule), as in every assist version since 1."
+ },
+ "H4b_H4d_quiet": {
+  "finding": "On the held-out brain-08 Straw Bale laps (offline looming stream) the early brake engages at the uphill rings (35.4, 121) and (32.5, 146) and at the arches (44, 63), (77, 14), (57, 2), (65, 3) and (-30.5, 29): those stream samples carry no below fraction and no lower-surface TTC, so the lower-window exclusion does not apply (the live fast-brain-11 laps carried one at the uphill rings). straw-brain08-04: 24 episodes in 327 s; lowest request 3.0-5.1 m/s where the round-5 stack asks 3.0-5.9. The early brake removes 1.88-2.59% of the request travel on the Straw laps and 3.95% on pine-brain08-01 (bound 1.5%); with assist v4 4.21-5.24% and 7.68% (bound 3%; assist v3 1.98-4.18% and 1.60%)."
+ },
+ "gate_style_hairpin_samples": {
+  "finding": "REPORT part of the scored run: with the harness's gate-style wall samples (below_fraction 0.5, lower-surface TTC = TTC) the lower window explains every wall sample, so the early brake never votes; without the approach source, assist v4 then passes 1 of 16 fresh hairpins for fast-brain-11-b-cw13 and fast-brain-10b (assist v3: 11 and 14). The early brake depends on wall samples without a lower-window explanation, as the recorded Minus Two walls carry (below fraction missing in 78-100% of their short-TTC samples, the lower window explaining 0-7% of the brains' ones: motor assist v1 diagnostics)."
+ }
+}

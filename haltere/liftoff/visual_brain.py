@@ -93,6 +93,24 @@ def load_stale_evidence(path=STALE_EVIDENCE_DECLARATION):
     return declaration, digest
 
 
+# Declared early brake of the obstacle stack (the looming governor engages as early as the motor contract needs).
+EARLY_BRAKE_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'early_brake.json'
+
+
+def load_early_brake(path=EARLY_BRAKE_DECLARATION):
+    """A frozen early-brake declaration and its content hash (the lag-turn declaration's canonical hash); refuses an
+    unfrozen or edited file and another rule version than FastRaceCue implements (fast_race_cue.EARLY_BRAKE_VERSION)."""
+    from .fast_race_cue import EARLY_BRAKE_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen early-brake declaration, or it changed after the freeze')
+    if declaration.get('version') != EARLY_BRAKE_VERSION:
+        raise ValueError(f'{path} declares early-brake rule version {declaration.get("version")}; the fast pilot '
+                         f'flies version {EARLY_BRAKE_VERSION}')
+    return declaration, digest
+
+
 # Declared vertical guard of the obstacle stack (sink margin, descent first, terrain climb only for rising ground).
 VERTICAL_GUARD_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'obstacles'/'vertical_guard.json'
 
@@ -430,7 +448,8 @@ class VisualController:
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
                  vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None, stale_evidence=None,
-                 stale_apply=True, contact_support='on', marker_jump=None, marker_jump_apply=True):
+                 stale_apply=True, contact_support='on', marker_jump=None, marker_jump_apply=True, early_brake=None,
+                 early_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -443,6 +462,8 @@ class VisualController:
             raise ValueError('The vertical guard is part of the fast pilot profile')
         if stale_evidence and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The stale-evidence rule is part of the fast pilot profile')
+        if early_brake and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The early brake is part of the fast pilot profile')
         if descent_view and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The view-keeping descent is part of the fast pilot profile')
         from .fast_race_cue import CONTACT_SUPPORT_MODES
@@ -530,6 +551,7 @@ class VisualController:
         self.motor_assist_declaration = None
         self.stale_evidence_declaration = None
         self.marker_jump_declaration = None
+        self.early_brake_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -641,6 +663,20 @@ class VisualController:
                                                     file_sha256=sha256(marker_jump), schema=declaration.get('schema'),
                                                     version=declaration.get('version'),
                                                     applied=bool(marker_jump_apply))
+            if early_brake:
+                # Declared per motor contract (its stopping model), never per course (obstacle stack only); a contract
+                # without an entry (the fast PD) flies unchanged and the sidecar records that nothing was applied.
+                from .fast_race_cue import early_brake_for_contract
+                declaration, digest = load_early_brake(early_brake)
+                contract = ('fast_velocity_brain_v1' if fast_brain else
+                            'fast_velocity_pd_v1' if pd_profile == 'fast' and motor_controller == 'pd' else None)
+                early_config = early_brake_for_contract(declaration, contract)
+                if early_config is not None:
+                    descent_kw.update(early_brake=early_config, early_apply=bool(early_apply))
+                self.early_brake_declaration = dict(path=str(early_brake), sha256=digest,
+                                                    file_sha256=sha256(early_brake), schema=declaration.get('schema'),
+                                                    version=declaration.get('version'), motor_contract=contract,
+                                                    applied=early_config is not None and bool(early_apply))
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -966,10 +1002,11 @@ def resolve_obstacle_stack(args):
     wall_flag = getattr(args,'wall_pilot',None)
     vertical_flag = getattr(args,'vertical_guard',None)
     stale_flag = getattr(args,'stale_evidence',None)
+    early_flag = getattr(args,'early_brake',None)
     lag = getattr(args,'lag_turn',None)
     if (gap_flag not in (None,'on','off') or wall_flag not in (None,'on','off') or vertical_flag not in (None,'on','off')
-            or stale_flag not in (None,'on','off')):
-        raise ValueError('--gap-cue, --wall-pilot, --vertical-guard and --stale-evidence are on or off')
+            or stale_flag not in (None,'on','off') or early_flag not in (None,'on','off')):
+        raise ValueError('--gap-cue, --wall-pilot, --vertical-guard, --stale-evidence and --early-brake are on or off')
     lag_path = None if lag in (None,'off') else str(LAG_TURN_DECLARATION) if lag == 'on' else str(lag)
     if mode is None:
         if gap_flag == 'on':
@@ -980,8 +1017,10 @@ def resolve_obstacle_stack(args):
             raise ValueError('The vertical guard is part of the obstacle stack: use --obstacle-stack on|shadow')
         if stale_flag == 'on':
             raise ValueError('The stale-evidence rule is part of the obstacle stack: use --obstacle-stack on|shadow')
+        if early_flag == 'on':
+            raise ValueError('The early brake is part of the obstacle stack: use --obstacle-stack on|shadow')
         return dict(mode=None,gap=False,lag_turn=lag_path,apply=True,wall_pilot=None,vertical_guard=None,
-                    stale_evidence=None)
+                    stale_evidence=None,early_brake=None)
     if mode not in ('on','shadow'):
         raise ValueError('--obstacle-stack is on or shadow')
     if getattr(args,'pilot_profile','standard') != 'fast' or not getattr(args,'looming_brake',False):
@@ -989,7 +1028,8 @@ def resolve_obstacle_stack(args):
     return dict(mode=mode,gap=gap_flag != 'off',lag_turn=str(LAG_TURN_DECLARATION) if lag is None else lag_path,
                 apply=mode == 'on',wall_pilot=None if wall_flag == 'off' else str(WALL_PILOT_DECLARATION),
                 vertical_guard=None if vertical_flag == 'off' else str(VERTICAL_GUARD_DECLARATION),
-                stale_evidence=str(STALE_EVIDENCE_DECLARATION) if stale_flag == 'on' else None)
+                stale_evidence=str(STALE_EVIDENCE_DECLARATION) if stale_flag == 'on' else None,
+                early_brake=str(EARLY_BRAKE_DECLARATION) if early_flag == 'on' else None)
 
 
 def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
@@ -1000,10 +1040,12 @@ def obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status):
                   components=dict(looming=True, gap_cue=bool(stack['gap']), lag_turn=stack['lag_turn'] is not None,
                                   wall_pilot=stack.get('wall_pilot') is not None,
                                   vertical_guard=stack.get('vertical_guard') is not None,
-                                  **({} if stack.get('stale_evidence') is None else dict(stale_evidence=True))),
+                                  **({} if stack.get('stale_evidence') is None else dict(stale_evidence=True)),
+                                  **({} if stack.get('early_brake') is None else dict(early_brake=True))),
                   note=('shadow runs the same processes and computations and logs them; no aim shift, no lag-turn '
                         'lead or heading change, no wall-pilot rule and no vertical guard is applied'
-                        +('' if stack.get('stale_evidence') is None else ' and no stale-evidence rule'))
+                        +('' if stack.get('stale_evidence') is None else ' and no stale-evidence rule')
+                        +('' if stack.get('early_brake') is None else ' and no early brake'))
                   if stack['mode'] == 'shadow' else None)
     if gap_spec:
         path, declaration, digest = gap_declaration
@@ -1102,6 +1144,20 @@ def motor_assist_row(assistance):
         return tuple('' if k == 'assist_source' else float('nan') for k in MOTOR_ASSIST_COLUMNS)
     values = log()
     return tuple(values[k] for k in MOTOR_ASSIST_COLUMNS)
+
+
+# Early brake (configs/obstacles/early_brake.json): appended after the stale-evidence columns, only when declared.
+EARLY_COLUMNS = ('early_brake',)
+
+
+def early_row(assistance):
+    """CSV values for EARLY_COLUMNS (written only when the early brake is declared): 1 while an early-brake episode holds
+    its floor (applied, or its shadow copy's), 0 otherwise; NaN when no entry applies to the motor contract."""
+    log = getattr(assistance,'early_log',None)
+    if log is None:
+        return (float('nan'),)*len(EARLY_COLUMNS)
+    values = log()
+    return tuple(values[k] for k in EARLY_COLUMNS)
 
 
 # Stale-evidence rule (configs/obstacles/stale_evidence.json): appended last, only when the stack declares it.
@@ -1321,13 +1377,15 @@ def run(args):
                                   vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
                                   descent_view=descent_view,motor_assist=motor_assist,
                                   stale_evidence=stack.get('stale_evidence'),stale_apply=stack['apply'],
-                                  contact_support=contact_mode,
+                                  contact_support=contact_mode,early_brake=stack.get('early_brake'),
+                                  early_apply=stack['apply'],
                                   **({} if marker_jump is None else dict(marker_jump=marker_jump,
                                                                          marker_jump_apply=marker_jump_mode == 'on')))
     view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
     assist_columns = MOTOR_ASSIST_COLUMNS if controller.motor_assist_declaration is not None else ()
     stale_columns = STALE_COLUMNS if controller.stale_evidence_declaration is not None else ()
     marker_columns = MARKER_JUMP_COLUMNS if controller.marker_jump_declaration is not None else ()
+    early_columns = EARLY_COLUMNS if controller.early_brake_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1460,7 +1518,7 @@ def run(args):
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
                                  *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,
-                                 *stale_columns,*marker_columns])
+                                 *stale_columns,*marker_columns,*early_columns])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1578,7 +1636,8 @@ def run(args):
                                  *(descent_view_row(controller.assistance) if view_columns else ()),
                                  *(motor_assist_row(controller.assistance) if assist_columns else ()),
                                  *(stale_row(controller.assistance) if stale_columns else ()),
-                                 *(marker_jump_row(controller.assistance) if marker_columns else ())])
+                                 *(marker_jump_row(controller.assistance) if marker_columns else ()),
+                                 *(early_row(controller.assistance) if early_columns else ())])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1658,6 +1717,8 @@ def run(args):
             pilot_meta['stale_evidence_declaration'] = controller.stale_evidence_declaration
         if controller.marker_jump_declaration is not None:
             pilot_meta['marker_jump_declaration'] = controller.marker_jump_declaration
+        if controller.early_brake_declaration is not None:
+            pilot_meta['early_brake_declaration'] = controller.early_brake_declaration
         if ring_marker_record is not None:
             pilot_meta['ring_marker_declaration'] = ring_marker_record
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
@@ -1828,6 +1889,12 @@ def main():
                    help='EXPERIMENTAL component of --obstacle-stack, off by default (on adds it): the looming '
                         'governor\'s cap follows the ray of its evidence (a confirmed wall sample off the cap\'s ray '
                         're-seats it once the old stand-off has lapsed; configs/obstacles/stale_evidence.json)')
+    p.add_argument('--early-brake',choices=['on','off'],default=None,
+                   help='EXPERIMENTAL component of --obstacle-stack, off by default (on adds it): the looming governor '
+                        'engages as early as the motor contract\'s stopping model needs (a wall sample within the '
+                        'contract\'s stopping distance votes for engagement; floored at floor_speed until the '
+                        'governor\'s own engagement condition holds; configs/obstacles/early_brake.json, declared per '
+                        'motor contract; the fast PD has no entry and flies unchanged)')
     p.add_argument('--ring-marker',default=None,metavar='on|off|DECLARATION',
                    help='EXPERIMENTAL reader rule for the visible checkpoint ring marker (off by default; needs '
                         '--pilot-assistance race-cue): a candidate counts only if its white annulus is continuous '

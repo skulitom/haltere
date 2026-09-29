@@ -2127,3 +2127,98 @@ What this means for the next flights:
   Straw Bale would show it live.
 - The second lever is contact support that climbs only while the contact lasts (the ground work of round 6).
 - `--marker-jump shadow` is safe to add to any run (identical requests); it logs where the rule would have held.
+
+## Round 6 (offline): early brake and motor assist v4 (branch `m6-brake`, not flown)
+
+Details, gates and risks: [early_brake.md](../early_brake.md). Nothing here has flown. Every live log named here is a
+development case, and the held-out evidence is the fresh harness sets and the 20 untouched logs.
+
+- **Early brake** (`configs/obstacles/early_brake.json` v1, `ecf76971...`; `--early-brake on`, off by default, inside
+  the obstacle stack).
+  - The looming governor engages when a wall sample lies within the brain contract's stopping distance (0.3 s,
+    3.5 m/s^2, 0.5 m), not only at TTC < 0.8 s.
+  - The episode is floored at 2.5 m/s while the pilot sees its ring ahead.
+  - Samples the lower window explains and governor climbs do not vote.
+  - The fast PD has no entry.
+- **Motor assist v4** (`configs/pilot/motor_assist.json`, `8954a798...`; v3 kept, refused by the runner).
+  - No approach source.
+  - Cap tracking floored at 2.5 m/s unless a wall is confirmed ahead under a wall-ahead condition.
+  - The ceiling cut bounds only the assist's share of a climb.
+- **Gates** `configs/obstacles/early_brake_gates.json` v1 (`3b029e32...`): frozen `33a27dd`, one scorer fix before scoring
+  `b4d0e3b`. **16 of 21 pass.**
+  - Identity: 31/31 bit-identical to `m5` with the rules off; the fast PD is unchanged.
+  - Development: the live hairpin cap binds 1.18 s before the wall (round 5: 0.76 s); with v4 the brain reaches the
+    wall at 1.00 m/s in the surrogate window (3.88 without).
+  - Held-out hairpins (16, live-like samples): fast-brain-10b 14 clean, fast-brain-11-b-cw13 10 clean / 2 walls (v3: 14
+    and 11).
+  - Held-out pass-through arches: no crawl like v3's 0.09-1.03 m/s. Lowest 0.66-2.38 m/s (fast-brain-11, one below the
+    0.75 bound) and 1.03-2.28 (fast-brain-10b).
+  - Fails:
+    - fast-brain-11's hairpin ceiling contacts (2; base 0) and its one slow arch;
+    - the quiet bounds on the held-out brain-08 Straw/Pine laps (early brake 1.9-4.0%, with v4 4.2-7.7%; their offline
+      looming stream lacks vertical evidence at the uphill rings);
+    - a 0.38 s ceiling-share window that v3 shares (not the cut).
+- **The fast PD's hairpin stop was not new** (`minus-fast6-r4b-01` also came to rest there, 0.12 m/s at 20.04 s; video:
+  1 km/h on the HUD), and the round-5 rules changed none of `minus-fast6-r5-01`'s requests (m4b = m5 on all 2608
+  ticks).
+  - Its pillar came from the exit line: the governor's stand-off cap along the hairpin wall's ray (24.4 deg) removed the
+    request's component toward the wall after turn-first had released aligned. The request pointed 102-106 deg with the
+    ring at the centre of the image (85-90 deg), 13-18 deg left, into the dark pillar (video 25.5-26.1 s).
+  - Diagnostic: ending the cap at the aligned release crosses the pillar's row 2.0 m to its right in the surrogate.
+  - A wall-pilot fix, not the gap aim or turn-first, is the next step; not done here.
+
+### Live flight plan (for the main session; development flights)
+
+Fly from `C:\DEV\Haltere` with `m6-brake` checked out (local branch, not pushed; see the worktree note in the round-5
+plan). The flight procedure, preflight, ground check (next number: 36), resuming after every stop, the `LIVE` telemetry
+check and the stop criteria are the round-5 plan's. **Every run is a disclosed development deviation:** no brain is
+selected, the new rules fail 5 of 21 frozen gates, and the rules of round 4b/5 keep their failures.
+
+**(r6-a) Minus Two, fast-brain-11-b-cw13, early brake + assist v4.** It is the direct comparison with
+`minus-brain11cw13-r4b-noassist-01` (hairpin wall) and `minus-brain11cw13-r5-02` (the v3 crawl at the first arch).
+
+```powershell
+.venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support on --motor-assist on --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-brain11cw13-r6-01.csv --record runs/fast-stack-20260923/minus-brain11cw13-r6-01.mp4 --video-encoder h264_nvenc
+```
+
+The sidecar must declare:
+
+- `early_brake_declaration`: version 1, `ecf76971...`, `applied: true`;
+- `motor_assist_declaration`: version 4, `8954a798...`, `applied: true`;
+- the round-5 declarations as before (wall pilot v6, stale evidence v2, descent view v3 with contact support `on`).
+
+The CSV ends with `early_brake` after the stale-evidence columns.
+
+What to look for:
+
+- **First arch (x 15-19):** `early_brake` turns 1 about 0.1-0.25 s before the governor's own brake would (open-loop replays). With the ring in view
+  the flown request should stay at or above 2.5 m/s (`cmd_v*`; the assist's `assist_wall_ahead` is 0). The r5-02 crawl
+  (6 -> 0.2 m/s) must not recur.
+- **Pillar A and the 90-degree arch:** slower than round 4b (about 2.5-4 m/s), no stop.
+- **Hairpin (wall near (81.9, 20.0)):** the cap should bind about 1.2 s before the wall (r4b: 0.77 s). After the arch
+  pass (marker to the side) the stopping source and turn-first take over. Speed at the wall well below r4b's 3.7 m/s;
+  the surrogate predicts about 1 m/s from the logged state.
+- **Ceiling:** braking climbs under the 2.2 m ceiling (the held-out harness had 2 ceiling contacts of 16).
+- **Stop criteria as round 5.** In addition, stop if the drone is parked for more than about 3 s at an arch with the
+  ring in view (that is the failure this round fixes).
+
+**(r6-b) Optional: Straw Bale, fast-brain-11-b-cw13, three laps, early brake without the assist.** The same command
+with `--seconds 480`, without `--motor-assist on`, log `straw-brain11cw13-r6-01`. The early brake slows the brain at
+the FAT SHARK arch (where r5-01 crashed at 5.2 m/s after a checkpoint switch inside the arch), at (43.8, 63.5) and at
+(-30.5, 28.4). Compare lap times with 1:42.988.
+
+- The quiet gate failed on the brain-08 laps.
+- The false marker at the start arches, the top bar after the downhill and the downhill contact are not addressed.
+
+**The fast PD:** unchanged by these rules; the pillar exit after the hairpin stand-off is open.
+
+### Blockers after round 6 (brake)
+
+| Blocker | State | What would clear it |
+|---|---|---|
+| Brain hairpin | Early brake + v4: 10-14 of 16 held-out hairpins clean for fast-brain-11/10b, the live window at 1.00 m/s; not flown | Live (r6-a); a wall-pilot stand-off that holds a stopped brain without backing it off |
+| Crawls at pass-through arches with the assist | v4 plans none with the ring in view (0 s on 20 logs); held-out lowest 0.66-2.38 m/s against v3's 0.09-1.03 | Live (r6-a) at the first arch |
+| Ceiling cut x assist sag | Fixed in v4 (development window: v3 1.27 s below the unassisted climb, v4 0.00); the frozen metric was blind | A correct metric on fresh logs |
+| Early brake on Straw/Pine | 0.8% of request travel on live brain-11 laps (development); 1.9-4.0% on the held-out brain-08 laps (failed) | Straw live lap times; a version that also leaves out samples without vertical evidence while the pilot climbs toward its ring, frozen and scored |
+| Wall behind a ring in view | The early floor holds until the marker switches | A version lifting the floor at the urgent TTC, frozen and scored |
+| Fast PD's exit after a stand-off | Deflected by the old wall's cap (diagnosed, not fixed) | A wall-pilot version, frozen and scored with PD sets and logs |

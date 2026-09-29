@@ -125,8 +125,11 @@ def test_side_balance_gives_both_sides_equal_weight_per_bin():
 
 def test_motor_assist_in_the_deployed_pilot_is_the_round5_declaration():
     from haltere.train.deployed_pilot import deployed_pilot_kwargs
-    kwargs, record = deployed_pilot_kwargs('fast_velocity_brain_v1', motor_assist=True)
-    assert 'motor_assist' in kwargs and record['motor_assist']['version'] == 3
+    # brain-12 was trained and gated with the round-5 declaration (version 3, kept as motor_assist_v3.json in round 6)
+    kwargs, record = deployed_pilot_kwargs('fast_velocity_brain_v1', motor_assist=3)
+    assert 'motor_assist' in kwargs and record['motor_assist']['version'] == 3 and kwargs['motor_assist'].version == 3
+    current, current_record = deployed_pilot_kwargs('fast_velocity_brain_v1', motor_assist=True)
+    assert current_record['motor_assist']['version'] == 4 and current['motor_assist'].version == 4
     plain, plain_record = deployed_pilot_kwargs('fast_velocity_brain_v1')
     assert 'motor_assist' not in plain and 'motor_assist' not in plain_record
     pd, _ = deployed_pilot_kwargs('fast_velocity_pd_v1', motor_assist=True)

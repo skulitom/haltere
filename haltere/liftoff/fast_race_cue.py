@@ -54,7 +54,13 @@ Optionally (``motor_assist=MotorAssistConfig``, off by default; declared per mot
 configs/pilot, for the brain contract only), the request a lagging brain receives is adjusted after
 every other rule: speed it flies beyond a binding cap lowers that cap in proportion (and a stopping model bounds the
 speed toward a confirmed wall), and a bounded climb bias is added while it sinks below its vertical request or is asked
-to accelerate hard from low speed. The pilot keeps its own request as its state.
+to accelerate hard from low speed. The pilot keeps its own request as its state. Version 4 (round 6) has no approach
+source, keeps cap tracking at or above a floor while no wall is confirmed ahead, and lets the ceiling guard's cut bound
+only the assist's share of a climb.
+
+Optionally (``early_brake=EarlyBrakeConfig``, off by default; declared per motor contract in configs/obstacles, for the
+brain contract only), the looming governor engages as early as the motor contract's stopping model needs, floored while
+the pilot sees its checkpoint ahead. ``early_apply`` False computes and logs it in the shadow governor copy.
 """
 from dataclasses import asdict, dataclass
 from types import SimpleNamespace
@@ -810,6 +816,79 @@ def marker_jump_config(declaration):
     return MarkerJumpConfig(**declaration['marker_jump'])
 
 
+# The early-brake declaration version whose rule this code implements (EarlyBrakeConfig; the declaration early_brake in
+# configs/obstacles); runners refuse others.
+EARLY_BRAKE_VERSION = 1
+
+
+@dataclass(frozen=True)
+class EarlyBrakeConfig:
+    """The TTC governor engages as early as the motor contract needs (early-brake declaration version 1, per motor
+    contract; obstacle stack only, off unless a runner passes it; in shadow the flown governor lacks it and the shadow
+    copy fed the same samples has it). TTC policy only.
+
+    The governor's engagement (confirm samples with TTC < ttc_on within confirm_window_s, or one below urgent_ttc_s) was
+    chosen for the fast PD, which follows a request within ~0.13 s. A brain that follows about 0.3 s late needs about
+    1 s of braking: on minus-brain11cw13-r4b-noassist-01 the looming read a TTC of ~1 s from 1.3 s before the hairpin
+    wall while the governor stayed armed until 0.8 s before it (development case).
+
+    With this rule a wall sample also votes for engagement when the remaining distance to it (its capture-time reach
+    along its ray minus the odometry travelled along that ray since) is at most the contract's stopping distance at the
+    measured closing speed v along that ray, v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m (the wall
+    pilot's measured stopping model of the contract). confirm such votes within confirm_window_s engage a governor that is
+    not already braking. A sample does not vote when it is below-path terrain, when (lower_window) the lower window
+    explains it (its lower-surface TTC is known and at most its alarm TTC: rising ground under the path, the vertical
+    guard's; the Straw Bale uphill rings), or (no_climb) while the governor's terrain climb is active.
+    The floor: every target of such an early episode is at least floor_speed while the floor holds, so the episode slows
+    the drone toward a surface that may be a gate arch it will fly through and never plans a stop or a stand-off there.
+    - floor_until 'wall_ahead' (declared): the floor holds while the pilot sees its next checkpoint ahead, i.e. while
+      none of turn-first's checkpoint conditions holds (marker clamped at a side edge, lost, engage_deg or more off the
+      heading, or a turn-first episode or its side guard; the pilot sets `ring_ahead` each tick). Past a gate arch with
+      the next checkpoint to the side, the episode brakes exactly as the governor does without the rule.
+    - floor_until 'engagement' (development alternative, not declared): the floor ends once the governor's own
+      engagement condition holds (confirm samples with TTC < ttc_on, or one below urgent_ttc_s).
+    The episode ends when the cap has released back to the closing speed at its engagement (or ends). For the fast PD's
+    stopping model (0.15 s, 6 m/s^2) the distance test is reached about two samples (0.11 s) before the governor's own
+    condition at 6 m/s; the declaration gives the fast PD no entry (it flies unchanged).
+    """
+    stop_latency_s: float = .3
+    stop_deceleration: float = 3.5
+    stop_margin_m: float = .5
+    floor_speed: float = 2.5
+    lower_window: bool = True
+    no_climb: bool = True
+    floor_until: str = 'wall_ahead'
+
+    def __post_init__(self):
+        values = [self.stop_latency_s, self.stop_deceleration, self.stop_margin_m, self.floor_speed]
+        if not np.isfinite(values).all() or min(values) < 0 or not self.stop_deceleration > 0:
+            raise ValueError('Use finite non-negative early-brake parameters and a positive deceleration')
+        if not isinstance(self.lower_window, bool) or not isinstance(self.no_climb, bool):
+            raise ValueError('lower_window and no_climb are booleans')
+        if self.floor_until not in ('engagement', 'wall_ahead'):
+            raise ValueError("floor_until is 'engagement' or 'wall_ahead'")
+
+    def stopping_distance(self, closing_speed):
+        """Distance (m) the declared motor needs to stop from `closing_speed` (m/s along the ray), with the margin."""
+        v = max(0., float(closing_speed))
+        return v*self.stop_latency_s+v*v/(2*self.stop_deceleration)+self.stop_margin_m
+
+
+def early_brake_for_contract(declaration, contract):
+    """The `EarlyBrakeConfig` that an early-brake declaration already parsed (and hash-checked) by the runner assigns to
+    a motor contract ('contracts': {contract: parameters or None}), or None when the contract has none (the fast PD);
+    refuses another rule version (EARLY_BRAKE_VERSION). This module reads no files."""
+    version = (declaration or {}).get('version')
+    if version != EARLY_BRAKE_VERSION:
+        raise ValueError(f'The early-brake declaration is version {version}; the fast pilot implements version '
+                         f'{EARLY_BRAKE_VERSION}')
+    contracts = declaration.get('contracts')
+    if not isinstance(contracts, dict):
+        raise ValueError('An early-brake declaration lists its motor contracts')
+    entry = contracts.get(contract)
+    return None if entry is None else EarlyBrakeConfig(**entry)
+
+
 # The vertical-guard declaration version whose rules this code implements (VerticalGuardConfig); runners refuse others.
 VERTICAL_GUARD_VERSION = 4
 
@@ -1119,9 +1198,14 @@ def contact_support_config(declaration):
 # MOTOR_ASSIST_VERSIONS are the versions this code can rebuild for replays: versions 1 and 2 are kept for provenance
 # (the kept version-1 and version-2 declarations in configs/pilot) and refused by the runner; version-1 entries get
 # MOTOR_ASSIST_V1_FIELDS. Version 3 is version 2's rule with the approach's climb exclusion declared out
-# (approach_climb_max = vertical_up: the pilot never asks for more).
-MOTOR_ASSIST_VERSION = 3
-MOTOR_ASSIST_VERSIONS = (1, 2, 3)
+# (approach_climb_max = vertical_up: the pilot never asks for more). Version 4 (round 6) has no approach source, keeps
+# cap tracking of the request and governor caps at or above track_floor unless the stopping source binds, and bounds only
+# the assist's own share of a climb with the ceiling cut (ceiling_share); versions 1-3 are kept (refused by the runner)
+# and their entries get MOTOR_ASSIST_V3_FIELDS.
+MOTOR_ASSIST_VERSION = 4
+MOTOR_ASSIST_VERSIONS = (1, 2, 3, 4)
+# The version-4 fields as versions 1-3 flew them (no tracking floor, the ceiling cut as wall pilot v6 applies it).
+MOTOR_ASSIST_V3_FIELDS = dict(track_floor=0., ceiling_share=False)
 # The binding caps whose direction cap tracking can follow (MotorAssistConfig.cap_sources); 'approach' is version 2's.
 MOTOR_ASSIST_SOURCES = ('request', 'governor', 'turn_first', 'stopping', 'approach')
 # Pilot states whose own vertical request the sag compensation leaves alone (they own the vertical request).
@@ -1210,6 +1294,21 @@ class MotorAssistConfig:
        mid-approach (the arch passed, the next marker to the side or lost) carries it over.
     6. standoff_tracking False: no cap tracking of the governor's cap while the governor holds a stand-off (it holds the
        drone at or below its stand-off speed by itself; tracking beyond that asks a slow brain to back away).
+    Version 4 (round 6; the dataclass defaults stay version 3's, version 4's entry is in the declaration):
+    7. No approach source ('approach' is not a cap source): the live round-5 flight minus-brain11cw13-r5-02 showed it
+       cutting the request 6 -> 1.3 -> -0.2 m/s in front of the first Minus Two arch, with the ring in view and centred
+       (its cap-tracking extra took the bound below its floor), and the brain crawled into the arch. Early braking toward
+       a wall is the looming governor's own (the early-brake declaration), on the pilot's own request.
+    8. track_floor: unless the stopping source binds (a wall confirmed under a wall-ahead condition), cap tracking of the
+       'request' and 'governor' sources never lowers a bound below min(the bound, track_floor): a brain that overshoots
+       a governor cap at a gate arch it flies through is not asked for a crawl there; with a wall confirmed ahead
+       tracking acts as before (0: no floor, versions 1-3).
+    9. ceiling_share: while the pilot climbs toward the ring in view (state cue) and the assist adds a sag climb, the
+       ceiling guard's overhead cut (wall pilot v6 any_climb) bounds only the assist's share of the climb: the pilot's
+       own climb keeps its exemption (the governor sees the pilot's climb as in view, as without the assist) and a
+       separate overhead hold confirmed on the assist's share bounds the sag climb to the guard's vertical_cap. Versions
+       1-3 (False) let the sag climb remove the pilot's exemption, and the cut then zeroed the whole climb request (open
+       loop on straw-brain08-06, 37.49-38.77 s, 0 m/s for 0.89 s; the round-5 integration's merge interaction).
     """
     cap_sources: tuple = ('request', 'governor', 'turn_first', 'stopping', 'approach')
     request_states: tuple = ('cue', 'below', 'below_weak', 'side')
@@ -1242,11 +1341,15 @@ class MotorAssistConfig:
     stop_memory_s: float = 1.
     floor_speed: float = 2.5
     approach_climb_max: float = 3.5
-    version: int = MOTOR_ASSIST_VERSION
+    track_floor: float = 0.
+    ceiling_share: bool = False
+    version: int = 3
 
     def __post_init__(self):
+        if not isinstance(self.ceiling_share, bool):
+            raise ValueError('ceiling_share is true or false')
         values = {k: v for k, v in asdict(self).items() if k not in ('cap_sources', 'request_states', 'stop_gate',
-                                                                    'approach_climb_max')}
+                                                                    'approach_climb_max', 'ceiling_share')}
         if not np.isfinite(list(values.values())).all() or min(values.values()) < 0:
             raise ValueError('Use finite non-negative motor-assist parameters')
         if np.isnan(self.approach_climb_max):
@@ -1261,6 +1364,12 @@ class MotorAssistConfig:
                 getattr(self, k) != v for k, v in MOTOR_ASSIST_V1_FIELDS.items())):
             raise ValueError('A version-1 motor assist has the version-1 fields (MOTOR_ASSIST_V1_FIELDS) and no '
                              "'approach' source")
+        if self.version < 4 and any(getattr(self, k) != v for k, v in MOTOR_ASSIST_V3_FIELDS.items()):
+            raise ValueError('Motor-assist versions 1-3 have no tracking floor and no ceiling share '
+                             '(MOTOR_ASSIST_V3_FIELDS)')
+        if self.version >= 4 and ('approach' in self.cap_sources or self.stop_gate != 'wall_ahead'):
+            raise ValueError("A version-4 motor assist has no 'approach' source and stops only under wall-ahead "
+                             'conditions')
         for name in ('cap_gain', 'cap_rise', 'cap_fall', 'sag_rise', 'sag_fall', 'stop_ttc_s', 'stop_window_s',
                      'stop_deceleration'):
             if not getattr(self, name) > 0:
@@ -1292,6 +1401,11 @@ def motor_assist_for_contract(declaration, contract):
     entry = dict(entry)
     if 'version' in entry:
         raise ValueError('The rule version is the declaration\'s, not a contract entry\'s')
+    if version < 4:
+        if set(entry) & set(MOTOR_ASSIST_V3_FIELDS):
+            raise ValueError('A version-1 to version-3 declaration has no version-4 fields')
+    elif any(k not in entry for k in MOTOR_ASSIST_V3_FIELDS) or 'cap_sources' not in entry:
+        raise ValueError(f'A version-4 entry declares its cap_sources and {sorted(MOTOR_ASSIST_V3_FIELDS)}')
     if version == 1:
         if set(entry) & set(MOTOR_ASSIST_V1_FIELDS):
             raise ValueError('A version-1 declaration has no version-2 fields')
@@ -1316,9 +1430,16 @@ class TtcClearanceGovernor:
     at least level (1. / False without it).
     `ray` (a `ClearanceRayConfig`, off by default) re-seats the cap on the ray of a confirmed sample that lies more than
     its stale_deg from the cap's ray (stale-evidence declarations versions 1 and 2; see ClearanceRayConfig).
+    `early` (an `EarlyBrakeConfig`, off by default) lets wall samples within the motor contract's stopping distance vote
+    for engagement, with the early episode's targets floored at its floor_speed while the floor holds (floor_until:
+    while the pilot sees its checkpoint ahead, `ring_ahead`, or until the governor's own engagement condition holds;
+    early-brake declaration version 1; see EarlyBrakeConfig).
+    With the ceiling guard's any_climb, `share_climb` (set by a pilot whose motor assist declares ceiling_share) marks a
+    climb that is only the motor assist's share on top of the pilot's own climb toward the ring in view: overhead
+    evidence then starts a separate hold whose bound (`share_cap`) the assist applies to its own share only.
     """
 
-    def __init__(self, config=None, ceiling=None, vertical=None, ray=None):
+    def __init__(self, config=None, ceiling=None, vertical=None, ray=None, early=None):
         self.config = config or TtcClearanceConfig()
         if ceiling is not None and not isinstance(ceiling, CeilingGuardConfig):
             raise ValueError('Pass a CeilingGuardConfig (or None) for the ceiling guard')
@@ -1326,9 +1447,20 @@ class TtcClearanceGovernor:
             raise ValueError('Pass a VerticalGuardConfig (or None) for the vertical guard')
         if ray is not None and not isinstance(ray, ClearanceRayConfig):
             raise ValueError('Pass a ClearanceRayConfig (or None) for the cap-ray rule')
+        if early is not None and not isinstance(early, EarlyBrakeConfig):
+            raise ValueError('Pass an EarlyBrakeConfig (or None) for the early brake')
         self.ceiling = ceiling
         self.vertical = vertical
         self.ray_rule = ray
+        self.early = early
+        self.early_active = False       # an early-brake episode holds its floor (EarlyBrakeConfig)
+        self.early_speed = np.inf       # the closing speed at that episode's engagement
+        self.ring_ahead = True          # floor_until 'wall_ahead': the pilot sees its checkpoint ahead (set by the pilot)
+        # motor-assist ceiling share (unused unless a pilot sets share_climb): its own overhead hold and bound
+        self.share_climb = False
+        self.share_times = []
+        self.share_until = -np.inf
+        self.share_cap = None
         self.stale_cos = None if ray is None else float(np.cos(np.radians(ray.stale_deg)))
         self.reseat_at = -np.inf        # the latest re-seat (ray rule; -inf without it)
         # Vertical guard state (unused without it)
@@ -1374,6 +1506,9 @@ class TtcClearanceGovernor:
         if ray is not None:
             # wall samples off the cap's ray (more than stale_deg), and the confirmed ones that re-seated the cap
             self.counts.update(stale_ray_samples=0, reseats=0)
+        if early is not None:
+            # samples that voted early, early engagements, and early episodes handed over to the own engagement condition
+            self.counts.update(early_votes=0, early_engagements=0, early_handovers=0, early_floored=0)
 
     def ingest(self, time, ttc, distance, below_fraction, position, ray, closing_speed, received=None, ttc_lower=None):
         """Add one fresh sample captured at `time` at `position` and received at `received`
@@ -1401,6 +1536,23 @@ class TtcClearanceGovernor:
         """TTC now: the capture-time reach along the ray minus the odometry travelled along it."""
         left = reach-float((np.asarray(position, float)-sample['position']) @ sample['ray'])
         return max(0., left)/max(closing, .3)
+
+    def _early_vote(self, sample, position, velocity, climbing):
+        """Whether a looming sample votes for an early engagement (EarlyBrakeConfig): a wall sample (not below-path
+        terrain, not explained by the lower window, no governor climb) whose remaining distance along its ray is within
+        the contract's stopping distance at the closing speed along that ray."""
+        e, c = self.early, self.config
+        if sample['below'] is not None and sample['below'] >= c.terrain_fraction:
+            return False
+        if e.lower_window and sample['ttc_lower'] is not None and sample['ttc_lower'] <= sample['ttc']:
+            return False
+        if e.no_climb and climbing:
+            return False
+        closing = float(np.asarray(velocity, float) @ sample['ray'])
+        if closing <= 0:
+            return False
+        left = sample['reach']-float((np.asarray(position, float)-sample['position']) @ sample['ray'])
+        return left <= e.stopping_distance(closing)
 
     def wall_distance(self, position):
         """(remaining distance along its ray to the latest wall sample, that ray) at `position`: the capture-time
@@ -1547,6 +1699,21 @@ class TtcClearanceGovernor:
                         self.counts['overhead_engagements'] += 1
                     self.overhead_until, overhead = now+g.hold_s, True
                     self.climb, self.climb_hold_until = 0., -np.inf
+            elif (g is not None and g.any_climb and self.share_climb and not climbing and not overhead
+                    and rise > g.overhead_min_rise and ttc < g.overhead_ttc_s
+                    and (unexplained or (s['below'] is not None and s['below'] <= g.overhead_fraction))):
+                # motor-assist ceiling share: the same overhead evidence while the only climb besides the pilot's own
+                # climb toward the ring in view is the assist's; its own hold bounds that share only (share_cap)
+                positive = s['below'] is not None or (s['ttc_lower'] is not None
+                                                      and s['ttc_lower'] > g.lower_ratio*max(s['ttc'], 1e-3))
+                self.counts['share_samples'] = self.counts.get('share_samples', 0)+1
+                self.share_times = [(t, p) for t, p in self.share_times
+                                    if s['received']-t <= c.confirm_window_s]+[(s['received'], positive)]
+                if (len(self.share_times) >= g.overhead_confirm
+                        and sum(p for _, p in self.share_times) >= g.overhead_positive):
+                    if now > self.share_until:
+                        self.counts['share_engagements'] = self.counts.get('share_engagements', 0)+1
+                    self.share_until = now+g.hold_s
             # climb: expansion below the path
             if terrain:
                 lower = None if s['ttc_lower'] is None else self._aged(
@@ -1598,7 +1765,19 @@ class TtcClearanceGovernor:
                 self.lowered_at = now               # a wall still in view: hold the cap
             threshold = c.ttc_target if active else c.ttc_on
             votes = sum(r['ttc'] < threshold for r in recent)
-            if not (votes >= c.confirm or ttc < c.urgent_ttc_s) or closing <= 0:
+            early = False
+            if self.early is not None:
+                # early brake (EarlyBrakeConfig): the governor's own engagement condition ends an early episode's floor
+                # (floor_until 'engagement'; with 'wall_ahead' the floor holds while the pilot sees its ring ahead)
+                if self.early_active and self.early.floor_until == 'engagement' and (
+                        sum(r['ttc'] < c.ttc_on for r in recent) >= c.confirm or ttc < c.urgent_ttc_s):
+                    self.early_active = False
+                    self.counts['early_handovers'] += 1
+                if (not (votes >= c.confirm or ttc < c.urgent_ttc_s) and not active and not brake_terrain
+                        and closing > 0 and self._early_vote(s, position, velocity, climbing)):
+                    self.counts['early_votes'] += 1
+                    early = sum(self._early_vote(r, position, velocity, climbing) for r in recent) >= c.confirm
+            if not (votes >= c.confirm or ttc < c.urgent_ttc_s or early) or closing <= 0:
                 continue
             fraction = float(np.clip((ttc-c.ttc_min)/(c.ttc_target-c.ttc_min), c.floor_fraction, 1.))
             if brake_terrain:
@@ -1607,6 +1786,11 @@ class TtcClearanceGovernor:
                 continue
             target = (closing*fraction if (ttc < c.stop_ttc_s and not brake_terrain)
                       else max(c.min_speed, closing*fraction))
+            if ((early or self.early_active) and target < self.early.floor_speed
+                    and (self.early.floor_until == 'engagement' or self.ring_ahead)):
+                # an early episode slows toward the surface, never below floor_speed (no planned stop or stand-off)
+                self.counts['early_floored'] += 1
+                target = self.early.floor_speed
             self.lowered_at = now                   # TTC has not recovered to ttc_target: keep holding
             if stale and not self.ray_rule.judge_fresh and (
                     target < self.target or (self.ray_rule.keep_standoff and now <= self.standoff_until)):
@@ -1618,9 +1802,15 @@ class TtcClearanceGovernor:
                 self.target, self.cap_ray, self.cap = target, s['ray'], closing
                 self.standoff_until = -np.inf
                 self.reseat_at = now
+                if early:
+                    self.early_active, self.early_speed = True, closing
+                    self.counts['early_engagements'] += 1
             elif self.target is None or target < self.target:
                 if self.cap is None or not active:
                     self.counts['brake_engagements'] += 1
+                    if early:
+                        self.early_active, self.early_speed = True, closing
+                        self.counts['early_engagements'] += 1
                 self.target, self.cap_ray = target, s['ray']
                 self.cap = closing if self.cap is None else min(self.cap, max(closing, target))
             if not brake_terrain and self.target <= c.standoff_speed:
@@ -1635,11 +1825,14 @@ class TtcClearanceGovernor:
             self.cap = self.target if self.cap is None or self.target >= self.cap else max(self.target, self.cap-c.brake_rate*dt)
             if self.target > 25.:
                 self.cap = self.cap_ray = self.target = None
+        if self.target is None or (self.early_active and self.target >= self.early_speed):
+            self.early_active = False       # the cap released (to the speed at the early engagement): the episode ended
         if now > self.climb_hold_until or topped:
             self.climb = max(0., self.climb-c.climb_release*dt)
         if overhead:
             self.climb = 0.
         self.vertical_cap = g.vertical_cap if overhead else None
+        self.share_cap = g.vertical_cap if g is not None and not overhead and now <= self.share_until else None
         if v is not None:
             # sink margin: the latest known below-path TTC, aged since its capture, ramps the allowed sink
             target = 1.
@@ -1671,7 +1864,7 @@ class FastRaceCue:
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
                  ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None,
                  contact_support=None, clearance_brake=None, motor_assist=None, clearance_ray=None, stale_apply=True,
-                 contact_apply=True, marker_jump=None, marker_jump_apply=True):
+                 contact_apply=True, marker_jump=None, marker_jump_apply=True, early_brake=None, early_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -1875,6 +2068,15 @@ class FastRaceCue:
         self.marker_candidates = []            # (capture time, world ring-centre ray) of the held candidate readings
         self.marker_held = False               # the latest fresh capture's marker was held (or, in shadow, would be)
         self.marker_counts = dict(held=0, candidates=0, confirmed=0, rejected=0)
+        # Early brake (off unless declared for the motor contract; obstacle stack only): see EarlyBrakeConfig. early_apply
+        # False computes and logs it without applying it (the stack's shadow control): the flown governor then lacks it
+        # and the shadow copy fed the same samples has it.
+        if early_brake is not None and not isinstance(early_brake, EarlyBrakeConfig):
+            raise ValueError('Pass an EarlyBrakeConfig (or None) for the early brake')
+        if early_brake is not None and not isinstance(self.clearance_config, TtcClearanceConfig):
+            raise ValueError('The early brake is part of the TTC clearance policy')
+        self.early_brake, self.early_apply = early_brake, bool(early_apply)
+        self.assist_share_time = 0.            # motor assist v4: seconds the ceiling share bounded the assist's climb
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -1883,19 +2085,23 @@ class FastRaceCue:
             raise ValueError('A clearance sample needs its capture time')
         if self.clearance is None:
             guard, vertical, ray = self.ceiling_guard, self.vertical_guard, self.clearance_ray
+            early = self.early_brake
             flown = dict(ceiling=guard if self.wall_apply else None,
                          vertical=vertical if self.vertical_apply else None)
             if ray is not None and self.stale_apply:
                 flown['ray'] = ray              # absent without the rule: the governor is built exactly as before
+            if early is not None and self.early_apply:
+                flown['early'] = early          # likewise
             if any(v is not None for v in flown.values()):
                 self.clearance = TtcClearanceGovernor(c, **flown)
             else:
                 self.clearance = clearance_governor(c)
             if ((guard is not None and not self.wall_apply) or (vertical is not None and not self.vertical_apply)
-                    or (ray is not None and not self.stale_apply)):
+                    or (ray is not None and not self.stale_apply) or (early is not None and not self.early_apply)):
                 # shadow: a copy with every declared rule, fed the same samples, reports what the rules would do
                 self.clearance_shadow = TtcClearanceGovernor(c, ceiling=guard, vertical=vertical,
-                                                             **({} if ray is None else dict(ray=ray)))
+                                                             **({} if ray is None else dict(ray=ray)),
+                                                             **({} if early is None else dict(early=early)))
         if not (0 <= now-stamp <= c.max_age_s
                 and (self.clearance.last_time is None or stamp > self.clearance.last_time)):
             return
@@ -2407,6 +2613,18 @@ class FastRaceCue:
                     out.append(('stopping', flat/size, float(bound)))
         return out
 
+    def _checkpoint_beside(self, state, yaw):
+        """Turn-first's checkpoint triggers (the next checkpoint does not lie through the surface ahead): its marker
+        clamped at a side edge ('side'), lost ('coast', 'search'), or its bearing engage_deg (50 deg without turn-first)
+        or more off the heading; or a turn-first episode or its side guard (as of the previous tick)."""
+        if state == 'side' or state in MOTOR_ASSIST_UNKNOWN_STATES:
+            return True
+        off = self._bearing_off_deg(yaw)
+        limit = self.turn_first.engage_deg if self.turn_first is not None else 50.
+        if state in TURN_FIRST_BEARING_STATES and off is not None and off >= limit:
+            return True
+        return bool(self.turn_first_active or self.side_guard_active)
+
     def _assist_wall_sample(self, sample):
         """A looming sample the stopping source counts as a wall: TTC under stop_ttc_s, not below-path terrain."""
         terrain = self.clearance.config.terrain_fraction
@@ -2494,6 +2712,7 @@ class FastRaceCue:
             self.assist_extra[name] = float(x+np.clip(targets[name]-x, -a.cap_fall*dt, a.cap_rise*dt))
         removed, top = {}, 0.
         before = out[:2].copy()
+        stopping = any(name == 'stopping' for name, _, _ in sources)
         plans = [bound for name, _, bound in sources if name in ('stopping', 'approach')]
         self.assist_plan = float(min(plans)) if plans else float('nan')
         if a.stop_gate != 'any':
@@ -2505,6 +2724,10 @@ class FastRaceCue:
                 continue                       # the stopping model's bounds apply as caps of their own
             along = float(out[:2] @ h)
             limit = max(0., bound-x) if name == 'request' else max(-a.cap_reverse, bound-x)
+            if a.track_floor > 0 and name in ('request', 'governor') and not stopping:
+                # version 4: unless the stopping source binds (a wall confirmed under a wall-ahead condition) cap tracking
+                # never plans a crawl below track_floor
+                limit = max(limit, min(bound, a.track_floor))
             if along > limit:
                 out[:2] -= h*(along-limit)
                 removed[name] = removed.get(name, 0.)+along-limit
@@ -2700,7 +2923,16 @@ class FastRaceCue:
                 if getattr(governor, 'ceiling', None) is not None and governor.ceiling.any_climb:
                     # ceiling-guard any_climb: every climb but the pilot's own climb toward the ring in view (state cue
                     # without a motor-assist sag climb) can be cut
-                    governor.extra_climb = not (state == 'cue' and not self.assist_sag > 0)
+                    if self.motor_assist is not None and self.motor_assist.ceiling_share:
+                        # motor assist v4: the pilot's own climb toward the ring in view keeps its exemption; the assist's
+                        # sag climb on top of it gets its own overhead hold, which bounds that share only
+                        governor.extra_climb = state != 'cue'
+                        governor.share_climb = state == 'cue' and self.assist_sag > 0
+                    else:
+                        governor.extra_climb = not (state == 'cue' and not self.assist_sag > 0)
+                if getattr(governor, 'early', None) is not None and governor.early.floor_until == 'wall_ahead':
+                    # early brake: its floor holds while the checkpoint is seen ahead (no wall-ahead condition)
+                    governor.ring_ahead = not self._checkpoint_beside(state, yaw)
             cap, ray, climb = self.clearance.limits(position, velocity, now, dt, c.vertical_up)
             shadow_climb = 0.
             if self.clearance_shadow is not None:
@@ -2821,7 +3053,12 @@ class FastRaceCue:
                 self.assist_wall_ahead = self._assist_wall_ahead(state, yaw, now)
                 self.assist_v2_time['wall_ahead'] += dt*self.assist_wall_ahead
             sources = self._assist_sources(state, cap, ray, turn_first, turn_first_bound, position, now)
-            self.velocity_command = self._motor_assist(self.pilot_command, velocity, dt, state, sources, vertical_cap)
+            assist_cap = vertical_cap
+            if assist_cap is None and self.motor_assist.ceiling_share and self.clearance is not None:
+                # version 4: the ceiling share's own hold bounds the assist's climb only (the pilot's request is kept)
+                assist_cap = getattr(self.clearance, 'share_cap', None)
+                self.assist_share_time += dt*(assist_cap is not None and self.assist_sag > 0)
+            self.velocity_command = self._motor_assist(self.pilot_command, velocity, dt, state, sources, assist_cap)
         self.state = state
         self.state_time[state] = self.state_time.get(state, 0.)+dt
         # Yaw faces the observed checkpoint; searching turns toward its last side.
@@ -3075,6 +3312,10 @@ class FastRaceCue:
                    removed_m=round(self.assist_removed, 3), climb_added_m=round(self.assist_added, 3))
         if self.motor_assist.version >= 2:
             out['v2_seconds'] = {k: round(v, 3) for k, v in self.assist_v2_time.items()}
+        if self.motor_assist.version >= 4:
+            gov = self.clearance
+            out['v4'] = dict(ceiling_share_seconds=round(self.assist_share_time, 3),
+                             ceiling_share_engagements=0 if gov is None else int(gov.counts.get('share_engagements', 0)))
         return out
 
     def _motor_assist_metadata(self):
@@ -3090,6 +3331,12 @@ class FastRaceCue:
               'guard exceeds approach_climb_max (cap tracking of the two shares one extra reduction); without '
               'standoff_tracking no cap tracking of the governor\'s cap during its stand-off'
               if self.motor_assist.version >= 2 else '')
+        if self.motor_assist.version >= 4:
+            v2 += ('; version 4: no approach source; outside a wall-ahead condition cap tracking of the request and '
+                   'governor caps never lowers a bound below min(the bound, track_floor); with ceiling_share, while the '
+                   'pilot climbs toward the ring in view the assist\'s sag climb gets its own overhead hold (the ceiling '
+                   'guard\'s evidence and confirmation) that bounds only the assist\'s share of the climb to the guard\'s '
+                   'vertical_cap; the pilot\'s own climb keeps its exemption')
         return dict(
             version=self.motor_assist.version,
             rule='cap tracking: for each binding cap of cap_sources (request: the pilot\'s final horizontal request in '
@@ -3246,6 +3493,41 @@ class FastRaceCue:
                 parameters=asdict(ray),
                 governor='flown' if self.stale_apply else 'shadow copy fed the same samples',
                 counts=None if governor is None else {k: governor.counts[k] for k in ('stale_ray_samples', 'reseats')}))
+
+    def _early_governor(self):
+        """The governor that runs the early brake: the flown one, or its shadow copy; None without the rule."""
+        for governor in (self.clearance, self.clearance_shadow):
+            if getattr(governor, 'early', None) is not None:
+                return governor
+        return None
+
+    def early_log(self):
+        """Per-tick early-brake value for logs: early_brake 1 while an early episode holds its floor (the flown
+        governor's, or the shadow copy's), 0 otherwise; NaN when the rule is not declared."""
+        if self.early_brake is None:
+            return dict(early_brake=float('nan'))
+        governor = self._early_governor()
+        return dict(early_brake=float(governor is not None and governor.early_active))
+
+    def _early_metadata(self):
+        if self.early_brake is None:
+            return None
+        governor = self._early_governor()
+        keys = ('early_votes', 'early_engagements', 'early_handovers', 'early_floored')
+        return dict(
+            version=EARLY_BRAKE_VERSION, applied=self.early_apply,
+            rule='a wall sample (not below-path terrain; with lower_window not explained by the lower window, its '
+                 'lower-surface TTC known and <= its alarm TTC; with no_climb not during a governor terrain climb) votes '
+                 'for engagement when its remaining distance along its looming ray (capture-time reach minus the '
+                 'odometry along the ray) is at most v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m at '
+                 'the closing speed v along the ray (the motor contract\'s stopping model); confirm votes within '
+                 'confirm_window_s engage a governor that is not braking; until the governor\'s own engagement '
+                 'condition holds (confirm samples with TTC < ttc_on, or one below urgent_ttc_s) the episode\'s targets '
+                 'are at least floor_speed; then the governor brakes as without the rule',
+            input='causal looming samples and odometry; the motor contract\'s declared stopping model; no course geometry',
+            parameters=asdict(self.early_brake),
+            governor='flown' if self.early_apply else 'shadow copy fed the same samples',
+            counts=None if governor is None else {k: governor.counts[k] for k in keys})
 
     def brake_log(self):
         """Per-tick clearance-brake sink values (m/s; logged by the replay harness): the sink the brake added this
@@ -3449,4 +3731,7 @@ class FastRaceCue:
             out['stale_evidence'] = stale                           # absent when the rules are off (default unchanged)
         if self.marker_jump is not None:
             out['marker_jump'] = self._marker_jump_metadata()      # absent when the rule is off (default unchanged)
+        early = self._early_metadata()
+        if early is not None:
+            out['early_brake'] = early                              # absent when the rule is off (default unchanged)
         return out

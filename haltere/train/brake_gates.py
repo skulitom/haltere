@@ -807,7 +807,10 @@ def full_pilot_tests(ctl, profile, spec):
     assist of the contract (--motor-assist on; the fast PD has no entry)."""
     from ..liftoff import descent_rehearsal as dr
     from .deployed_pilot import deployed_pilot_kwargs
-    assist = dict(motor_assist=True) if spec.get('motor_assist') else {}
+    # brain-12's gates (frozen in round 5) name `motor_assist: true`, the round-5 declaration: version 3 (kept as
+    # motor_assist_v3.json since round 6); an int names a version explicitly
+    declared = spec.get('motor_assist')
+    assist = dict(motor_assist=3 if declared is True else declared) if declared else {}
     kwargs, record = deployed_pilot_kwargs(spec['contract_brain'] if ctl.kind == 'brain' else spec['contract_pd'],
                                            **assist)
     controller = dict(kind=ctl.kind, meta=ctl.meta, cfg=ctl.cfg, brain=ctl.brain if ctl.kind == 'brain' else None,
@@ -860,7 +863,9 @@ def hairpin_tests(ctl, profile, spec):
     for variant in spec['variants']:
         if variant not in ('assist', 'no_assist'):
             raise ValueError(f'Unknown hairpin variant {variant}')
-        kwargs, record = deployed_pilot_kwargs(contract, motor_assist=variant == 'assist')
+        # the round-5 declaration (version 3) these brain-12 gates were frozen with, unless the spec names a version
+        kwargs, record = deployed_pilot_kwargs(contract, motor_assist=spec.get('motor_assist_version', 3)
+                                               if variant == 'assist' else False)
         rows, _ = mae.run_scenarios(_controller_dict(ctl), profile, scenarios, pilot_kwargs=kwargs,
                                     seconds=spec['seconds'], seed=spec['sim_seed'])
         keep = ('params', 'finished', 'crashed', 'finish_s', 'wall_contact', 'wall_contact_speed', 'floor_contact',

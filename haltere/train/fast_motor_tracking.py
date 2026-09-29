@@ -1068,7 +1068,8 @@ def main():
                              'so left and right turns are equally represented (2 x --courses drones per round)')
     parser.add_argument('--motor-assist', action='store_true',
                         help="brain-12: with --pilot deployed, the deployed pilot carries the contract's motor assist "
-                             "(the runner's --motor-assist on; configs/pilot/motor_assist.json)")
+                             "of the round-5 declaration (version 3, configs/pilot/motor_assist_v3.json), as brain-12 "
+                             "was trained")
     parser.add_argument('--descent-weight', type=float, default=1.,
                         help='brain-12: weight of aligned samples descending at >= 1 m/s with a horizontal request of '
                              '>= 0.8 x the nominal speed (refit only; keep the speed on descents)')
@@ -1141,7 +1142,7 @@ def main():
     if args.pilot == 'deployed':
         from .deployed_pilot import deployed_pilot_kwargs
         pilot_kwargs, pilot_record = deployed_pilot_kwargs('fast_velocity_brain_v1',
-                                                           **(dict(motor_assist=True) if args.motor_assist else {}))
+                                                           **(dict(motor_assist=3) if args.motor_assist else {}))
         if args.motor_assist and 'motor_assist' not in pilot_kwargs:
             raise ValueError('The motor-assist declaration has no entry for the brain contract')
     source = None

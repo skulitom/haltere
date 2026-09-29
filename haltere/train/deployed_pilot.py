@@ -13,11 +13,15 @@ declarations of the rule versions this code implements), plus a record of every 
 - the view-keeping descent (configs/pilot/descent_view.json) and, from its version 2, its contact support
   (``contact_support='off'|'shadow'`` as the runner's --contact-support; version 3);
 - with ``motor_assist=True`` (``--motor-assist on``, off by default), the motor-assist entry of the contract
-  (configs/pilot/motor_assist.json; none for the fast PD);
+  (configs/pilot/motor_assist.json, version 4 from round 6; none for the fast PD); ``motor_assist=3`` takes the kept
+  round-5 declaration (motor_assist_v3.json), with which the brain-12 training rollouts and gates were made;
 - with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
   cap follows the ray of its evidence). The runner adds it only with ``--stale-evidence on`` inside the obstacle stack
   (version 2; off by default); it is off here by default too, so the brain-11 and brain-12 records built on this
   module stay reproducible. The surrogate has no looming samples, so it is idle there;
+- with ``early_brake=True`` (``--early-brake on``, off by default, inside the obstacle stack), the early-brake entry of
+  the contract (configs/obstacles/early_brake.json; none for the fast PD): the looming governor engages as early as the
+  contract's stopping model needs. Off by default here too; idle in the surrogate (no looming samples);
 - with ``marker_jump='on'|'shadow'`` (``--marker-jump on|shadow``, off by default), the marker-jump rule
   (configs/pilot/marker_jump.json: a checkpoint marker that jumps after a gap in the readings is held until confirmed;
   shadow computes it without holding). Off here by default too.
@@ -34,7 +38,7 @@ CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 
 def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
-                          stale_evidence=False, contact_support='on', marker_jump=None):
+                          stale_evidence=False, contact_support='on', marker_jump=None, early_brake=False):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
@@ -80,9 +84,28 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         stale, digest = vb.load_stale_evidence()
         note('stale_evidence', vb.STALE_EVIDENCE_DECLARATION, stale, digest)
         kwargs.update(frc.stale_evidence_configs(stale))
+    if stack and early_brake:
+        early, digest = vb.load_early_brake()
+        note('early_brake', vb.EARLY_BRAKE_DECLARATION, early, digest)
+        config = frc.early_brake_for_contract(early, contract)
+        if config is not None:
+            kwargs['early_brake'] = config
     if motor_assist:
-        assist, digest = vb.load_motor_assist()
-        note('motor_assist', vb.MOTOR_ASSIST_DECLARATION, assist, digest)
+        # True: the declaration the runner flies (version 4 from round 6); an int: that kept version (3: the round-5
+        # declaration motor_assist_v3.json, with which the brain-12 records were made), hash-checked like the runner's
+        path = vb.MOTOR_ASSIST_DECLARATION
+        if motor_assist is not True:
+            import json
+            from ..liftoff.gap_stack import config_sha256
+            if int(motor_assist) != frc.MOTOR_ASSIST_VERSION:
+                path = path.with_name(f'motor_assist_v{int(motor_assist)}.json')
+            assist = json.loads(path.read_text(encoding='utf-8'))
+            digest = config_sha256(assist)
+            if assist.get('frozen') is not True or assist.get('sha256') != digest or assist['version'] != int(motor_assist):
+                raise ValueError(f'{path} is not the frozen motor-assist declaration version {motor_assist}')
+        else:
+            assist, digest = vb.load_motor_assist()
+        note('motor_assist', path, assist, digest)
         config = frc.motor_assist_for_contract(assist, contract)
         if config is not None:
             kwargs['motor_assist'] = config
