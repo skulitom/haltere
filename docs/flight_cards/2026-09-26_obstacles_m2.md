@@ -2069,9 +2069,9 @@ command per 10 ms tick after 3 s.
 
 | Run | Motor | Outcome |
 |---|---|---|
-| `straw-brain11cw13-r5-noassist-01` | fast-brain-11-b-cw13 | Lap 1, 19.4 s: at the tall "FAT SHARK" arch the marker switched to the next ring (far left) while the drone was still inside the arch; the pilot turned hard left (request (4.3, 4.0) -> (1.0, 4.5) m/s in 0.2 s) and the drone's momentum carried it into the arch's left leg at 5.2 m/s, (80.1, 15.6). Its line was ~0.4 m off the r4b lap, which passed. Stick change 0.0025 |
+| `straw-brain11cw13-r5-noassist-01` | fast-brain-11-b-cw13 | Lap 1, 19.4 s: at the tall "FAT SHARK" arch the marker switched to the next ring (far left) while the drone was still inside the arch; the pilot turned hard left (request (4.3, 4.0) -> (1.0, 4.5) m/s in 0.2 s); the drone yawed left faster than its path turned and its momentum carried its right side into the arch's right leg at 5.2 m/s, (80.1, 15.6) (corrected from 'left leg' after the release check of the video). Its line was ~0.4 m off the r4b lap, which passed. Stick change 0.0025 |
 | `straw-brain11cw13-r5-noassist-02`, `-03` | | Not flown: preflight refused (`rustc.exe` builds in the user's session, 8.0 and 1.5+0.6 cores) |
-| `straw-brain11cw13-r5-noassist-04` | fast-brain-11-b-cw13 | Passed the arch and the hill; on the downhill the ring stayed bottom-clipped and the view rule's steep-late bound allowed -2.2..-2.5 m/s of sink at 5.2-5.7 m/s (~24 deg); audited ground contact at 79.43-79.97 s (-36.5, 133.8), a support climb, then a renewed descent into the hillside at 81.86 s, (-36.4, 120.7). The r4b lap flew the same line to within 0.1-0.3 m and the same contact, and survived. Stick change 0.0027 |
+| `straw-brain11cw13-r5-noassist-04` | fast-brain-11-b-cw13 | Passed the arch and the hill; on the downhill the ring stayed bottom-clipped and the view rule's steep-late bound allowed -2.2..-2.5 m/s of sink at 5.2-5.7 m/s (~24 deg); audited ground contact at 79.43-79.97 s (-36.5, 133.8), answered by a support climb (both this run and the r4b lap recovered from it); 1.9 s later, flying 0.5-0.7 m higher than the r4b lap at the next (ImmersionRC) arch, it descended at ~12 degrees onto the arch's top bar at 81.86 s, (-36.4, 120.7), 5.5 m/s; the r4b lap passed under the bar (corrected from 'into the hillside' after the release check of the video). Stick change 0.0027 |
 | `minus-fast6-r5-01` | fast PD, contact support shadow | Pillar A and the hairpin, but this time the wall brake stopped it at the hairpin (stand-off, 1.0 m/s at 24.7 s); after the turn it accelerated to 5.3 m/s on a new line and hit a dark pillar at (78.3, 23.2), 26.3 s. The r4b PD took the hairpin without stopping and passed here. The stale-evidence rule did not re-seat |
 | `minus-brain11cw13-r5-01` | | Not flown: preflight refused (`rustc.exe`, 0.67 core) |
 | `minus-brain11cw13-r5-02` | fast-brain-11-b-cw13, motor assist v3 | **Assist-caused crash at the first arch.** At 6.59 s the assist's approach source cut the horizontal request from 6.0 to 1.27 m/s (4.73 m/s removed) and then to -0.21 m/s at 6.99 s in front of the first arch, which every earlier brain run passed at ~5.5 m/s; the brain pitched up and climbed (vz +0.93), crawled at 1-2 m/s and bumped the arch at (19.0, -0.5), 8.1 s, ~1 m/s. Motor assist v3 is not flyable (its declaration says the approach bound never plans below 2.5 m/s; the live request went to 1.27 and below 0) |
@@ -2079,9 +2079,10 @@ command per 10 ms tick after 3 s.
 What this shows:
 
 - Straw repeatability is the blocker: the same brain and stack flew a full lap (r4b), crashed at the arch after
-  a checkpoint switch inside the arch (r5-01), and crashed on the downhill after the same contact the full lap
-  survived (r5-04). Two generic faults: turning toward the next ring while still inside a gate structure, and
-  descending at ~24 deg into terrain the camera cannot measure (no looming evidence on the straw).
+  a checkpoint switch inside the arch (r5-01), and, after the same downhill contact the full lap survived, descended onto the next arch's
+  top bar (r5-04). Generic faults: turning toward the next ring while still inside a gate structure; descending
+  onto a gate's top bar with the ring clipped at the bottom of the image; and ~24-deg descents that touch terrain the
+  camera cannot measure (no looming evidence on the straw; both runs recovered from that touch).
 - Motor assist v3's approach source must not act at pass-through arches (a live counterpart of the review's
   harness crawl finding); the brain hairpin remains unsolved live.
 - The PD's hairpin now ends in a stand-off stop, after which its new line met a pillar: stop-and-turn exits need
