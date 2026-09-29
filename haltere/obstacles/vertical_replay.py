@@ -95,7 +95,8 @@ def variant_tag(stack, wall, vertical, stream):
 
 
 def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None, contact_support=None,
-          wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True):
+          wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True, sighted_descent=None,
+          sighted_apply=True):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
     whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
     optional DescentViewConfig added to any variant; ``contact_support``: an optional ContactSupportConfig (descent
@@ -104,7 +105,8 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     ``motor_assist``: an optional motor-assist declaration (parsed and hash-checked) whose entry for the flight's motor
     contract is added to any variant. ``stale_evidence``: an optional stale-evidence declaration (parsed and
     hash-checked) whose rules are added to a stack variant (applied with --stack on, computed in shadow; ignored by
-    --stack none and by --stack flown without the stack)."""
+    --stack none and by --stack flown without the stack). ``sighted_descent``: an optional SightedDescentConfig added
+    with ``descent_view`` (``sighted_apply`` False: computed and logged only)."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -143,6 +145,10 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         kw['contact_support'] = contact_support
         if not contact_apply:
             kw['contact_apply'] = False
+    if sighted_descent is not None:
+        kw['sighted_descent'] = sighted_descent
+        if not sighted_apply:
+            kw['sighted_apply'] = False
     assist = None
     if motor_assist is not None:
         assist = frc.motor_assist_for_contract(motor_assist, contract)
@@ -157,7 +163,9 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
                        descent_view=descent_view is not None, contact_support=contact_support is not None,
                        wall_pilot=None if wall_pilot is None else str(wall_pilot), motor_assist=assist is not None,
-                       stale_evidence='stale_apply' in kw)
+                       stale_evidence='stale_apply' in kw,
+                       **({} if sighted_descent is None
+                          else dict(sighted_descent='on' if sighted_apply else 'shadow')))
 
 
 def _near_on_path(value):
@@ -171,7 +179,8 @@ def _near_on_path(value):
 
 def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
-           wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True):
+           wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True,
+           sighted_descent=None, sighted_apply=True):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -188,7 +197,9 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     (FastRaceCue.assist_sources) and pilot state (not saved). ``stale_evidence``: an optional stale-evidence declaration
     (see build); with it the arrays also carry cap_ray_deg and cap_reseat (FastRaceCue.stale_log). ``cue_drop``: logged
     capture times (the CSV's capture_time values) whose ring cue is replaced by no detection (a frame the reader read no
-    marker in; e.g. the logged detections a reader rule rejects on the aligned recorded frame)."""
+    marker in; e.g. the logged detections a reader rule rejects on the aligned recorded frame). ``sighted_descent``: an
+    optional SightedDescentConfig (with ``descent_view``; see build); with it the arrays also carry sighted_los,
+    sighted_bound and sighted_withheld (FastRaceCue.sighted_log)."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
@@ -197,7 +208,9 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                         **({} if wall_pilot is None else dict(wall_pilot=wall_pilot)),
                         **({} if motor_assist is None else dict(motor_assist=motor_assist)),
                         **({} if stale_evidence is None else dict(stale_evidence=stale_evidence)),
-                        **({} if contact_apply else dict(contact_apply=False)))
+                        **({} if contact_apply else dict(contact_apply=False)),
+                        **({} if sighted_descent is None else dict(sighted_descent=sighted_descent,
+                                                                   sighted_apply=sighted_apply)))
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['throttle_column'] = throttle_column
     info['near_on_path'] = bool(near_on_path)
@@ -234,6 +247,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     has_stale = info.get('stale_evidence', False)
     if has_stale:
         keys += ('cap_ray_deg', 'cap_reseat')
+    if sighted_descent is not None:
+        keys += ('sighted_los', 'sighted_bound', 'sighted_withheld')
     rows = {k: [] for k in keys}
     drop = None if cue_drop is None else {round(float(c), 6) for c in cue_drop}
     last_ts = None
@@ -330,6 +345,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                                 bool(getattr(pilot, 'assist_wall_ahead', False))))
         if has_stale:
             values.update(pilot.stale_log())
+        if sighted_descent is not None:
+            values.update(pilot.sighted_log())
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}
@@ -682,6 +699,11 @@ def main(argv=None):
     parser.add_argument('--motor-assist', default=None, metavar='DECLARATION',
                         help='add the motor assist of a frozen motor-assist declaration (configs/pilot/motor_assist.json) '
                              'for the motor contract of each flight; the file tag gains -ma<version>')
+    parser.add_argument('--sighted-descent', default=None, metavar='DECLARATION',
+                        help='with --descent-view: add the sighted descent of a frozen declaration '
+                             '(configs/pilot/sighted_descent.json); the file tag gains -sd<version>')
+    parser.add_argument('--sighted-mode', default='on', choices=['on', 'shadow'],
+                        help='with --sighted-descent: shadow computes and logs it only (the file tag gains -sdshadow)')
     args = parser.parse_args(argv)
     os.environ.setdefault('OMP_NUM_THREADS', '2')
     here = str(Path(__file__).resolve().parent)
@@ -746,6 +768,21 @@ def main(argv=None):
                              'freeze')
         tag += f'-se{declaration["version"]}'
         extra['stale_evidence'] = declaration
+    if args.sighted_descent:
+        if descent_view is None:
+            raise SystemExit('--sighted-descent needs --descent-view')
+        from haltere.liftoff.gap_stack import config_sha256
+        declaration = json.loads(Path(args.sighted_descent).read_text(encoding='utf-8'))
+        if declaration.get('frozen') is not True or declaration.get('sha256') != config_sha256(declaration):
+            raise SystemExit(f'{args.sighted_descent} is not a frozen sighted-descent declaration, or it changed after '
+                             'the freeze')
+        extra['sighted_descent'] = frc.sighted_descent_config(declaration)
+        tag += f'-sd{declaration["version"]}'
+        if args.sighted_mode == 'shadow':
+            extra['sighted_apply'] = False
+            tag += '-sdshadow'
+    elif args.sighted_mode != 'on':
+        raise SystemExit('--sighted-mode shadow needs --sighted-descent')
     if args.cue_drop:
         tag += '-cd'
     results = {}
@@ -769,6 +806,8 @@ def main(argv=None):
         results[flight]['motor_assist_metadata'] = meta.get('motor_assist')
         if args.stale_evidence:
             results[flight]['stale_evidence_metadata'] = meta.get('stale_evidence')
+        if args.sighted_descent:
+            results[flight]['sighted_descent_metadata'] = meta.get('sighted_descent')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')

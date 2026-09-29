@@ -1,0 +1,256 @@
+{
+ "schema": "haltere.liftoff.sighted_descent_gates.v1",
+ "version": 1,
+ "note": "Gates of the sighted descent version 1, frozen with it before any gate run (haltere.liftoff.sighted_descent_gates). Baseline: the round-5 Straw stack of the live plan (c) (haltere.train.deployed_pilot.deployed_pilot_kwargs(contract, stale_evidence=True): wall pilot v6, vertical guard v4, descent view v3 with contact support v3, lag turn v2, gap pilot v5, stale evidence v2; no motor assist) with the rule off; the rule adds --sighted-descent on. Held out: the surrogate course seeds and sim seed 97 below, the Straw variation seeds 1001-1032, the fresh randomisation of the logged Straw geometry (sim seed 97) and every replayed log except the two development logs. Development: SD_Straw_Development. Nothing here is flight evidence.",
+ "declaration": {
+  "file": "configs/pilot/sighted_descent.json",
+  "version": 1,
+  "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6"
+ },
+ "m5": {
+  "branch": "m5",
+  "commit": "bc7c71c9714acf3a9f8f673f89c92e23d553940c",
+  "identity": "a git archive of this commit, replayed with its own haltere/obstacles/vertical_replay.py"
+ },
+ "controllers": {
+  "pd": {
+   "kind": "pd",
+   "contract": "fast_velocity_pd_v1",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+   "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+   "note": "the fast PD; the checkpoint supplies only its calibration and camera"
+  },
+  "brain11cw13": {
+   "kind": "brain",
+   "contract": "fast_velocity_brain_v1",
+   "checkpoint": "C:/DEV/Haltere/runs/fast-brain-11-b-cw13/candidate.pt",
+   "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+   "note": "fast-brain-11-b-cw13, the brain of the round-5 live flights"
+  }
+ },
+ "surrogate": {
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
+  "seconds": 150.0,
+  "sim_seed": 97,
+  "sets": [
+   "hill:8500-8515",
+   "steep:8600-8607",
+   "flat:8700-8707"
+  ],
+  "held_out": "no run in this repository or the session scratchpad used these course seeds or sim seed 97 before the freeze"
+ },
+ "straw": {
+  "seconds": 60.0,
+  "sim_seed": 97,
+  "logged_n": 32,
+  "family_seeds": "1001-1032",
+  "generator": "haltere.liftoff.straw_downhill (StrawVariant(None) and StrawVariant(seed))",
+  "held_out": "the development runs used sim seed 73 and variation seeds 1-24; the logged geometry itself comes from the two development logs"
+ },
+ "replays": {
+  "harness": "haltere/obstacles/vertical_replay.py of the tree named by each variant, run from that tree",
+  "flights": [
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-brain08-gapshadow-01",
+   "minus-brain08-loom-01",
+   "minus-brain08-vg-01",
+   "minus-brain09b-r4-01",
+   "minus-brain09b-vg-01",
+   "minus-brain10b-r4-02",
+   "minus-brain11cw13-r4b-noassist-01",
+   "minus-fast6-gapon-01",
+   "minus-fast6-r4-02",
+   "minus-fast6-r4b-01",
+   "minus-fast6-vg-02",
+   "minus-fast6-wall-01",
+   "pine-brain08-01",
+   "pine-brain08-loom-01",
+   "pine-fast6-ttc-01",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-brain11cw13-r4b-noassist-02",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01",
+   "minus-fast6-r5-01",
+   "minus-brain11cw13-r5-02",
+   "straw-brain11cw13-r5-noassist-01",
+   "straw-brain11cw13-r5-noassist-04"
+  ],
+  "streamed": [
+   "pine-brain08-01",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01"
+  ],
+  "looming_stream": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m4/vguard/streams/stream_{flight}.npz",
+  "looming_stream_sha256": {
+   "pine-brain08-01": "320bee5d04b63cdc8c3c563a3f6497c0d148bf7d52db9932e7486c7b971af91b",
+   "straw-brain08-01": "351023ceeb27ec1c4c2a0a7586bb1642ea50497e24c36b348f273f96a2cdc216",
+   "straw-brain08-02": "6d53bd960bad89933b325238a461dc6dfcd89d1e646b940acda03cd85a6f1257",
+   "straw-brain08-03": "3ed00182cf3760620cfe521dfdb924881567dc6eeca9a351417e37cac24ab0ee",
+   "straw-brain08-04": "99067a40c32e4fbc139269df38aa3bdf07e99a8459fbec94a6e0944c48a562e8",
+   "straw-brain08-06": "67029f4eb5284be3588459bb14a86fb9f2e570887428636489afe3a629d7c767",
+   "straw-fast6-01": "cef5ab61a0ce2bf8915a85e2b4ac2dd7a620b7a070b1cf577d1e832544072d3a",
+   "straw-fast6-02": "ce2a22e71c6019a9ee86171f5d41e393c7f8f9c759dd083fc7f7c7d4f882d2e0",
+   "straw-fast6-03": "5bdb98680ebaead0eddc166c1a990360eb79a30dd0cf2dfe877e618f28f1406a",
+   "straw-fast6-arc-01": "d05b1ec575353f123b20d6e24f004a8de8b52589fe6e8c92c822245b3c83a379"
+  },
+  "variants": {
+   "m5_none": {
+    "tree": "m5",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "none": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "m5_stack": {
+    "tree": "m5",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{tree}/configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "stack_off": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{tree}/configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "stack_shadow": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{tree}/configs/obstacles/stale_evidence.json",
+     "--sighted-descent",
+     "{tree}/configs/pilot/sighted_descent.json",
+     "--sighted-mode",
+     "shadow"
+    ]
+   },
+   "stack_on": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "{tree}/configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "{tree}/configs/obstacles/stale_evidence.json",
+     "--sighted-descent",
+     "{tree}/configs/pilot/sighted_descent.json"
+    ]
+   }
+  },
+  "development": [
+   "straw-brain11cw13-r5-noassist-04",
+   "straw-brain11cw13-r4b-noassist-02"
+  ]
+ },
+ "gates": {
+  "SD_Identity": {
+   "evidence": "deterministic replays (all flights, 3 pairs each)",
+   "threshold": "bit-identical command arrays (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) for m5_none = none, m5_stack = stack_off and stack_off = stack_shadow on every flight"
+  },
+  "SD_Replay_Causal": {
+   "evidence": "open-loop replays, held out except the two development logs",
+   "threshold": "on every flight the first tick whose request differs between stack_on and stack_off is a tick where the rule withheld sink"
+  },
+  "SD_Replay_KeepSpeed": {
+   "evidence": "open-loop replays",
+   "max_lower_mps": 0.05,
+   "threshold": "on every tick where the rule withheld sink, the horizontal request with the rule is not lower than without it by more than max_lower_mps"
+  },
+  "SD_Straw_Development": {
+   "evidence": "development: open-loop replays of the two development logs",
+   "development": true,
+   "flights": [
+    "straw-brain11cw13-r5-noassist-04",
+    "straw-brain11cw13-r4b-noassist-02"
+   ],
+   "lookback_s": 1.5,
+   "min_shallower_deg": 3.0,
+   "max_above_los_deg": 3.0,
+   "ring_los_deg": {
+    "straw-brain11cw13-r5-noassist-04": 14.4,
+    "straw-brain11cw13-r4b-noassist-02": 15.1
+   },
+   "threshold": "for every audited downhill contact (not the terminal impact), in the lookback_s before its start the steepest requested path with the rule is at least min_shallower_deg shallower than without it and at most max_above_los_deg steeper than ring_los_deg (the steepest line of sight to the ring over that downhill, from the offline triangulation of the in-view rays)"
+  },
+  "SD_Straw_Family": {
+   "evidence": "held out: Straw-like variations, seeds 1001-1032, sim seed 97",
+   "max_time_change": 0.01,
+   "benefit_controllers": [
+    "brain11cw13"
+   ],
+   "max_contact_s_ratio": 0.85,
+   "threshold": "per controller, rule on against off: terrain contacts not more, passes more than 1.5 m above a checkpoint not more, finishes not fewer, crashes not more, paired mean finish time at most +1%; for benefit_controllers also contact seconds at most max_contact_s_ratio of off"
+  },
+  "SD_Straw_Logged": {
+   "evidence": "held out randomisation of the development geometry: 32 drones, sim seed 97",
+   "max_time_change": 0.01,
+   "benefit_controllers": [
+    "brain11cw13"
+   ],
+   "max_contact_s_ratio": 0.85,
+   "threshold": "as SD_Straw_Family"
+  },
+  "SD_Surrogate_Hills": {
+   "evidence": "held out: hill 8500-8515 and steep 8600-8607, sim seed 97",
+   "max_time_change": 0.01,
+   "threshold": "per controller: terrain contacts not more, high passes not more, finishes not fewer, crashes not more, paired mean finish time at most +1%"
+  },
+  "SD_Flat": {
+   "evidence": "held out: flat 8700-8707, sim seed 97",
+   "max_time_change": 0.01,
+   "threshold": "per controller: the same finishes and crashes, high passes not more, paired mean finish time within +-1%"
+  }
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-29T04:37:09+00:00",
+ "sha256": "46deedeeea366a5204c19f053b3c71650867d71e3d73b5b9d7c9c525bbf0a3b1"
+}

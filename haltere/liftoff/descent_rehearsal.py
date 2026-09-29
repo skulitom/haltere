@@ -221,6 +221,9 @@ def run_batch(controller, profile, courses, terrains, *, pilot_kwargs=None, spee
                          # the contact-support rule's own onsets (descent view version 2), only when it is declared
                          **({} if getattr(p, 'contact_support', None) is None
                             else dict(contact_support=p.contact_summary())),
+                         # the sighted descent's seconds and withheld sink, only when it is declared
+                         **({} if getattr(p, 'sighted_descent', None) is None
+                            else dict(sighted_descent=p.sighted_summary())),
                          **scores[i].result()))
     return rows, trace
 

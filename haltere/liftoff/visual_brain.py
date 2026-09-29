@@ -190,6 +190,33 @@ def resolve_contact_support(args):
     return mode
 
 
+# Declared sighted descent of the fast pilot (--sighted-descent on|shadow; off by default; needs --descent-view).
+SIGHTED_DESCENT_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'sighted_descent.json'
+
+
+def load_sighted_descent(path=SIGHTED_DESCENT_DECLARATION):
+    """A frozen sighted-descent declaration and its content hash (the lag-turn declaration's canonical hash); refuses an
+    unfrozen or edited file and another rule version than FastRaceCue implements (fast_race_cue.SIGHTED_DESCENT_VERSION)."""
+    from .fast_race_cue import SIGHTED_DESCENT_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen sighted-descent declaration, or it changed after the freeze')
+    if declaration.get('version') != SIGHTED_DESCENT_VERSION:
+        raise ValueError(f'{path} declares sighted-descent rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {SIGHTED_DESCENT_VERSION}')
+    return declaration, digest
+
+
+def resolve_sighted_descent(args):
+    """The sighted-descent mode of --sighted-descent (off, the default: not built, the pilot exactly as before; on:
+    applied; shadow: computed and logged, the view bound unchanged); refuses on/shadow without --descent-view."""
+    mode = getattr(args,'sighted_descent',None) or 'off'
+    if mode != 'off' and resolve_descent_view(args) is None:
+        raise ValueError('--sighted-descent on|shadow needs --descent-view (it limits the view rule steep late)')
+    return mode
+
+
 # Declared pilot-level help for lagging brain motor contracts (--motor-assist on; off by default).
 MOTOR_ASSIST_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'motor_assist.json'
 
@@ -398,7 +425,7 @@ class VisualController:
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
                  vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None, stale_evidence=None,
-                 stale_apply=True, contact_support='on'):
+                 stale_apply=True, contact_support='on', sighted_descent='off'):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -416,6 +443,9 @@ class VisualController:
         from .fast_race_cue import CONTACT_SUPPORT_MODES
         if contact_support not in CONTACT_SUPPORT_MODES or (contact_support != 'on' and not descent_view):
             raise ValueError('--contact-support is on, off or shadow, and off/shadow need the view-keeping descent')
+        from .fast_race_cue import SIGHTED_DESCENT_MODES
+        if sighted_descent not in SIGHTED_DESCENT_MODES or (sighted_descent != 'off' and not descent_view):
+            raise ValueError('--sighted-descent is on, off or shadow, and on/shadow need the view-keeping descent')
         if motor_assist and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The motor assist is part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
@@ -495,6 +525,7 @@ class VisualController:
         self.descent_view_declaration = None
         self.motor_assist_declaration = None
         self.stale_evidence_declaration = None
+        self.sighted_descent_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -572,6 +603,19 @@ class VisualController:
                                                      schema=declaration.get('schema'),
                                                      version=declaration.get('version'), applied=True,
                                                      contact_support=None if contact is None else contact_support)
+                if sighted_descent != 'off':
+                    # Declared once for every motor contract and course; absent (not passed) when off, so the pilot is
+                    # built exactly as before. shadow: computed and logged, the view bound unchanged.
+                    from .fast_race_cue import sighted_descent_config
+                    declaration, digest = load_sighted_descent()
+                    descent_kw['sighted_descent'] = sighted_descent_config(declaration)
+                    if sighted_descent == 'shadow':
+                        descent_kw['sighted_apply'] = False
+                    self.sighted_descent_declaration = dict(path=str(SIGHTED_DESCENT_DECLARATION), sha256=digest,
+                                                            file_sha256=sha256(SIGHTED_DESCENT_DECLARATION),
+                                                            schema=declaration.get('schema'),
+                                                            version=declaration.get('version'),
+                                                            applied=sighted_descent == 'on', mode=sighted_descent)
             if motor_assist:
                 # Declared per motor contract (the brain's lag), never per course; a contract without an entry (the
                 # fast PD) flies unchanged and the sidecar records that nothing was applied.
@@ -1061,6 +1105,19 @@ def motor_assist_row(assistance):
 
 # Stale-evidence rule (configs/obstacles/stale_evidence.json): appended last, only when the stack declares it.
 STALE_COLUMNS = ('cap_ray_deg','cap_reseat')
+# Sighted descent (configs/pilot/sighted_descent.json, --sighted-descent on|shadow): appended after everything else.
+SIGHTED_COLUMNS = ('sighted_los','sighted_bound','sighted_withheld')
+
+
+def sighted_row(assistance):
+    """CSV values for SIGHTED_COLUMNS (written only with --sighted-descent on|shadow): the ring's sighted line of sight
+    (depression, degrees; NaN while none is set), the sink bound it gives while steep late acts (NaN otherwise) and the
+    sink it withheld from the pilot's request this tick (would withhold, in shadow)."""
+    log = getattr(assistance,'sighted_log',None)
+    if log is None:
+        return (float('nan'),)*len(SIGHTED_COLUMNS)
+    values = log()
+    return tuple(values[k] for k in SIGHTED_COLUMNS)
 
 
 def stale_row(assistance):
@@ -1234,6 +1291,7 @@ def run(args):
                                   schema=declaration.get('schema'), version=declaration.get('version'),
                                   applied=True)
     contact_mode = resolve_contact_support(args)
+    sighted_mode = resolve_sighted_descent(args)
     motor_assist = resolve_motor_assist(args)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
@@ -1261,10 +1319,12 @@ def run(args):
                                   vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
                                   descent_view=descent_view,motor_assist=motor_assist,
                                   stale_evidence=stack.get('stale_evidence'),stale_apply=stack['apply'],
-                                  contact_support=contact_mode)
+                                  contact_support=contact_mode,
+                                  **({} if sighted_mode == 'off' else dict(sighted_descent=sighted_mode)))
     view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
     assist_columns = MOTOR_ASSIST_COLUMNS if controller.motor_assist_declaration is not None else ()
     stale_columns = STALE_COLUMNS if controller.stale_evidence_declaration is not None else ()
+    sighted_columns = SIGHTED_COLUMNS if controller.sighted_descent_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1397,7 +1457,7 @@ def run(args):
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
                                  *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,
-                                 *stale_columns])
+                                 *stale_columns,*sighted_columns])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1514,7 +1574,8 @@ def run(args):
                                  *commit_row(controller.assistance),
                                  *(descent_view_row(controller.assistance) if view_columns else ()),
                                  *(motor_assist_row(controller.assistance) if assist_columns else ()),
-                                 *(stale_row(controller.assistance) if stale_columns else ())])
+                                 *(stale_row(controller.assistance) if stale_columns else ()),
+                                 *(sighted_row(controller.assistance) if sighted_columns else ())])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1592,6 +1653,8 @@ def run(args):
             pilot_meta['motor_assist_declaration'] = controller.motor_assist_declaration
         if controller.stale_evidence_declaration is not None:
             pilot_meta['stale_evidence_declaration'] = controller.stale_evidence_declaration
+        if controller.sighted_descent_declaration is not None:
+            pilot_meta['sighted_descent_declaration'] = controller.sighted_descent_declaration
         if ring_marker_record is not None:
             pilot_meta['ring_marker_declaration'] = ring_marker_record
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
@@ -1773,6 +1836,11 @@ def main():
                         'keep speed for bottom-clipped rings, more speed rather than less for a steeper path, gentle '
                         'sink onset, steep only late for rings that stay clipped below (on: '
                         'configs/pilot/descent_view.json; recorded in the flight-log metadata)')
+    p.add_argument('--sighted-descent',choices=['on','off','shadow'],default=None,
+                   help='EXPERIMENTAL sighted descent of --descent-view (off by default): steep late never takes the '
+                        'flight path more than a small margin below the line of sight along which the ring was last seen '
+                        'at the bottom of the image (raised by later bottom clips); shadow computes and logs it and '
+                        'changes nothing (configs/pilot/sighted_descent.json; recorded in the flight-log metadata)')
     p.add_argument('--contact-support',choices=['on','off','shadow'],default='on',
                    help='Contact support of --descent-view (descent view version 3; default on, as declared): off leaves '
                         'it out (the view rule alone), shadow computes and logs it (contact_fire marks where it would '
