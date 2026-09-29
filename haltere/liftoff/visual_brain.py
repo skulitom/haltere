@@ -1208,19 +1208,20 @@ def early_row(assistance):
 # stack declares it.
 STALE_COLUMNS = ('cap_ray_deg','cap_reseat')
 # Sighted descent (configs/pilot/sighted_descent.json, --sighted-descent on|shadow): appended last (after the early-brake
-# column).
-SIGHTED_COLUMNS = ('sighted_los','sighted_bound','sighted_withheld')
+# column). Version 2 (the sighted line, round 7) adds sighted_added and sighted_above.
+SIGHTED_COLUMNS = ('sighted_los','sighted_bound','sighted_withheld','sighted_added','sighted_above')
 
 
 def sighted_row(assistance):
-    """CSV values for SIGHTED_COLUMNS (written only with --sighted-descent on|shadow): the ring's sighted line of sight
-    (depression, degrees; NaN while none is set), the sink bound it gives while steep late acts (NaN otherwise) and the
-    sink it withheld from the pilot's request this tick (would withhold, in shadow)."""
+    """CSV values for SIGHTED_COLUMNS (written only with --sighted-descent on|shadow; version 2): the active sighted
+    line's depression (degrees; NaN while no line is set), the sink the line requests while the ring is clipped at the
+    bottom edge (NaN otherwise), the sink it withheld from and added to the view rule's request this tick (would, in
+    shadow) and the height above the line's target (m; NaN without a line)."""
     log = getattr(assistance,'sighted_log',None)
     if log is None:
         return (float('nan'),)*len(SIGHTED_COLUMNS)
     values = log()
-    return tuple(values[k] for k in SIGHTED_COLUMNS)
+    return tuple(values.get(k,float('nan')) for k in SIGHTED_COLUMNS)
 
 
 def stale_row(assistance):
@@ -1973,10 +1974,11 @@ def main():
                         'sink onset, steep only late for rings that stay clipped below (on: '
                         'configs/pilot/descent_view.json; recorded in the flight-log metadata)')
     p.add_argument('--sighted-descent',choices=['on','off','shadow'],default=None,
-                   help='EXPERIMENTAL sighted descent of --descent-view (off by default): steep late never takes the '
-                        'flight path more than a small margin below the line of sight along which the ring was last seen '
-                        'at the bottom of the image (raised by later bottom clips); shadow computes and logs it and '
-                        'changes nothing (configs/pilot/sighted_descent.json; recorded in the flight-log metadata)')
+                   help='EXPERIMENTAL sighted descent of --descent-view (off by default; version 2, the sighted line): '
+                        'while the ring is clipped at the bottom of the image the drone descends along the line on which '
+                        'it last saw the ring (lowered by later bottom clips), in place of the view rule bound; shadow '
+                        'computes and logs it and changes nothing (configs/pilot/sighted_descent.json; recorded in the '
+                        'flight-log metadata)')
     p.add_argument('--contact-support',choices=['on','off','shadow'],default='on',
                    help='Contact support of --descent-view (descent view version 3; default on, as declared): off leaves '
                         'it out (the view rule alone), shadow computes and logs it (contact_fire marks where it would '

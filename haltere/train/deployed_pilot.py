@@ -16,7 +16,10 @@ declarations of the rule versions this code implements), plus a record of every 
   (configs/pilot/motor_assist.json, version 4 from round 6; none for the fast PD); ``motor_assist=3`` takes the kept
   round-5 declaration (motor_assist_v3.json), with which the brain-12 training rollouts and gates were made;
 - with ``sighted_descent='on'|'shadow'`` (``--sighted-descent``; off by default), the sighted descent
-  (configs/pilot/sighted_descent.json; it limits the view rule's steep late to the ring's sighted line of sight);
+  (configs/pilot/sighted_descent.json, version 2 from round 7: while the ring is clipped at the bottom edge the pilot
+  descends along the line on which it last saw the ring); ``sighted_version=1`` takes the kept round-6 declaration
+  (sighted_descent_v1.json: it limits the view rule's steep late to the ring's sighted line of sight), hash-checked
+  like the runner's;
 - with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
   cap follows the ray of its evidence). The runner adds it only with ``--stale-evidence on`` inside the obstacle stack
   (version 2; off by default); it is off here by default too, so the brain-11 and brain-12 records built on this
@@ -41,7 +44,7 @@ CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
                           stale_evidence=False, contact_support='on', marker_jump=None, early_brake=False,
-                          sighted_descent='off'):
+                          sighted_descent='off', sighted_version=None):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
@@ -87,8 +90,20 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         record['descent_view']['contact_support'] = None if contact is None else contact_support
         if sighted_descent != 'off':
             # --sighted-descent on|shadow (off by default: not passed, the pilot exactly as before)
-            sighted, digest = vb.load_sighted_descent()
-            note('sighted_descent', vb.SIGHTED_DESCENT_DECLARATION, sighted, digest)
+            path = vb.SIGHTED_DESCENT_DECLARATION
+            if sighted_version is None or int(sighted_version) == frc.SIGHTED_DESCENT_VERSION:
+                sighted, digest = vb.load_sighted_descent()
+            else:
+                # a kept earlier version (1: the round-6 declaration), hash-checked like the runner's
+                import json
+                from ..liftoff.gap_stack import config_sha256
+                path = path.with_name(f'sighted_descent_v{int(sighted_version)}.json')
+                sighted = json.loads(path.read_text(encoding='utf-8'))
+                digest = config_sha256(sighted)
+                if (sighted.get('frozen') is not True or sighted.get('sha256') != digest
+                        or sighted.get('version') != int(sighted_version)):
+                    raise ValueError(f'{path} is not the frozen sighted-descent declaration version {sighted_version}')
+            note('sighted_descent', path, sighted, digest)
             record['sighted_descent']['mode'] = sighted_descent
             kwargs['sighted_descent'] = frc.sighted_descent_config(sighted)
             if sighted_descent == 'shadow':

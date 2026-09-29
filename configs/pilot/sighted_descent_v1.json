@@ -1,0 +1,30 @@
+{
+ "schema": "haltere.liftoff.sighted_descent.v1",
+ "version": 1,
+ "note": "Sighted descent of the fast race-cue pilot (haltere.liftoff.fast_race_cue.SightedDescentConfig): while the checkpoint ring is clipped at the bottom edge of the image, the pilot never requests a flight path steeper than the ring's sighted line of sight. visual_brain --sighted-descent on|off|shadow (off by default; needs --descent-view; shadow computes and logs it and changes nothing). It lowers the view-keeping descent's sink bound (configs/pilot/descent_view.json version 3, unchanged), never below the in-view bound and never above the view rule's own bound: it only withholds sink that the pilot's own bottom-clip margin or the view rule's steep late would request. Generic and course-agnostic: the ring cue, the measured attitude and velocity and the camera calibration; no height above ground, no terrain memory, no course geometry, route, logged position or per-course value. The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze. Surrogate results, Straw-like scenarios and open-loop replays are development or held-out offline evidence, never flight evidence.",
+ "sighted_descent": {
+  "margin_deg": 1.0,
+  "edge_v": 0.85,
+  "agree_deg": 1.5,
+  "agree_s": 0.5,
+  "switch_u": 0.1,
+  "growth_range_m": 20.0
+ },
+ "sighted_descent_notes": {
+  "sighting": "two fresh in-view ring-centre rays (marker u, v) with the marker at v >= edge_v (0.85: the lowest 15% of the image, about 8 degrees above the marker clamp line), captured at most agree_s (0.5 s) apart and agreeing within agree_deg (1.5 deg), set the line of sight to the later one's world depression; a single or disagreeing reading sets nothing",
+  "update": "while the measured flight path is shallower than the line of sight it turns down at V sin(los - path)/growth_range_m (20 m): as fast as for a ring 20 m away; each bottom-clamped marker raises it to the clamped ray's depression",
+  "limit": "while the ring is clipped at the bottom edge (pilot state below): the sink at which the flight path (measured horizontal speed, requested vertical speed) points margin_deg (1 deg) below the line of sight, at least the in-view bound at the current attitude (unfiltered), at most the view rule's bound",
+  "reset": "an in-view cue above edge_v, a side or top clamp, a bottom-clamped marker whose u moves by more than switch_u (0.1), the pilot's checkpoint switch (new_target_deg), search and launch"
+ },
+ "development": {
+  "logs": [
+   "straw-brain11cw13-r5-noassist-04",
+   "straw-brain11cw13-r4b-noassist-02 (their Straw Bale downhill, recorded frames and the triangulated ring; every other log is held out)"
+  ],
+  "surrogate": "hill 8100-8111 and steep 8200-8207 at sim seed 73 (fast PD and fast-brain-11-b-cw13, the round-5 Straw stack); the Straw scenario (haltere.liftoff.straw_downhill, the logged geometry, 16 drones, sim seed 73) and its variations on seeds 1-24 at sim seed 73",
+  "variants_compared": "late-only (steep late alone) against every bottom clip; margin 0/1/2 deg; no growth, a constant-range growth of 5/10/20 m and an assumed-range dead reckoning of 30 m. Without growth the fast PD passed 2 more development checkpoints high (6 -> 8 on hill 8100-8111); the 30 m dead reckoning raised its high passes on the Straw variations 2 -> 6; growth 20 m kept every development high-pass count and gave the most contact reduction there. Numbers: docs/sighted_descent.md"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-29T04:37:09+00:00",
+ "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6"
+}

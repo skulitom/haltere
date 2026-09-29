@@ -46,7 +46,12 @@ def load_gates(path=GATES_PATH):
     if gates.get('frozen') is not True or gates.get('sha256') != digest:
         raise ValueError(f'{path} is not frozen or changed after the freeze: gates are scored only when frozen')
     spec = gates['declaration']
-    declared = json.loads((REPO/spec['file']).read_text(encoding='utf-8'))
+    path_ = REPO/spec['file']
+    declared = json.loads(path_.read_text(encoding='utf-8'))
+    if declared.get('version') != spec['version']:
+        # round 7: the runner's file is a later version; version 1 is kept beside it as sighted_descent_v1.json
+        kept = path_.with_name(f'{path_.stem}_v{spec["version"]}.json')
+        declared = json.loads(kept.read_text(encoding='utf-8')) if kept.exists() else declared
     if declared.get('version') != spec['version'] or declared.get('sha256') != spec['sha256']:
         raise ValueError(f'{path} scores sighted descent version {spec["version"]} ({spec["sha256"][:12]}), not the '
                          f'declaration {spec["file"]} in this tree')

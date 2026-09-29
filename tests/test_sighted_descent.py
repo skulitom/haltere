@@ -1,5 +1,6 @@
-"""FastRaceCue sighted descent (`SightedDescentConfig`), declared in configs/pilot/sighted_descent.json (off by
-default).
+"""FastRaceCue sighted descent version 1 (`SightedDescentConfig`), declared in configs/pilot/sighted_descent.json in
+round 6 and kept as configs/pilot/sighted_descent_v1.json from round 7 (runners fly version 2, the sighted line:
+tests/test_sighted_line.py; the version-1 rule is still implemented for replays and baselines).
 
 These tests pin the rule on synthetic states: the ring's line of sight (two agreeing near-edge in-view sightings;
 raised by later bottom clips; cleared by the reset conditions), the limit it puts on the view rule's steep late (never
@@ -74,7 +75,7 @@ SIGHTED_THEN_CLIPPED = [(.5, -6., ring_cue(14., -6.)), (.06, 0., None), (3.44, 0
 # ---------------------------------------------------------------------------------------------
 def test_config_validation():
     for bad in (dict(margin_deg=-1.), dict(margin_deg=30.), dict(edge_v=0.), dict(edge_v=1.), dict(agree_s=0.),
-                dict(agree_s=3.), dict(switch_u=1.), dict(agree_deg=float('nan')), dict(version=2)):
+                dict(agree_s=3.), dict(switch_u=1.), dict(agree_deg=float('nan')), dict(version=3)):
         with pytest.raises(ValueError):
             SightedDescentConfig(**bad)
     with pytest.raises(ValueError, match='SightedDescentConfig'):
@@ -87,11 +88,15 @@ def test_config_validation():
 
 
 def test_repository_declaration_and_gates_are_frozen():
+    from haltere.liftoff.gap_stack import config_sha256
     from haltere.liftoff.sighted_descent_gates import GATES_PATH, load_gates
-    from haltere.liftoff.visual_brain import SIGHTED_DESCENT_DECLARATION, load_sighted_descent
-    declaration, digest = load_sighted_descent(SIGHTED_DESCENT_DECLARATION)
-    assert declaration['version'] == SIGHTED_DESCENT_VERSION == 1 and declaration['frozen'] is True
-    assert digest == '49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6'
+    from haltere.liftoff.visual_brain import SIGHTED_DESCENT_DECLARATION
+    # round 7: version 1 is kept (byte for byte) as sighted_descent_v1.json; runners fly version 2
+    kept = SIGHTED_DESCENT_DECLARATION.with_name('sighted_descent_v1.json')
+    declaration = json.loads(kept.read_text(encoding='utf-8'))
+    digest = config_sha256(declaration)
+    assert declaration['version'] == 1 and declaration['frozen'] is True and SIGHTED_DESCENT_VERSION == 2
+    assert digest == declaration['sha256'] == '49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6'
     assert sighted_descent_config(declaration) == SD                 # the declared values are the defaults
     assert SD.growth_range_m == 20. and SD.margin_deg == 1.
     gates, gates_digest = load_gates(GATES_PATH)
@@ -113,14 +118,18 @@ def test_loader_refuses_unfrozen_edited_and_other_versions(tmp_path):
         load_sighted_descent(path)
     frozen = dict(body, frozen=True, sha256=lag_turn_declaration_sha256(body))
     path.write_text(json.dumps(frozen))
-    declaration, digest = load_sighted_descent(path)
-    assert digest == frozen['sha256'] and sighted_descent_config(declaration) == SD
-    path.write_text(json.dumps(dict(frozen, sighted_descent=dict(body['sighted_descent'], margin_deg=0.))))
-    with pytest.raises(ValueError, match='changed after the freeze'):
-        load_sighted_descent(path)
-    other = dict(body, version=2)
-    path.write_text(json.dumps(dict(other, frozen=True, sha256=lag_turn_declaration_sha256(other))))
+    # round 7: the runner flies version 2 and refuses the kept version 1; the rule still parses it (replays, baselines)
     with pytest.raises(ValueError, match='version'):
+        load_sighted_descent(path)
+    assert sighted_descent_config(frozen) == SD
+    two = dict(schema='haltere.liftoff.sighted_descent.v2', version=2,
+               sighted_descent=dict(switch_u=.1, aim_above_m=0., band_m=.5, line_gain=1., correction_mps=.5))
+    path.write_text(json.dumps(dict(two, frozen=True, sha256=lag_turn_declaration_sha256(two))))
+    declaration, digest = load_sighted_descent(path)
+    assert declaration['version'] == 2
+    path.write_text(json.dumps(dict(two, frozen=True, sha256=lag_turn_declaration_sha256(two),
+                                    sighted_descent=dict(two['sighted_descent'], line_gain=2.))))
+    with pytest.raises(ValueError, match='changed after the freeze'):
         load_sighted_descent(path)
 
 
@@ -263,10 +272,11 @@ def test_runner_flag_columns_and_refusals():
     for bad in (SimpleNamespace(sighted_descent='on'), SimpleNamespace(sighted_descent='shadow', descent_view='off')):
         with pytest.raises(ValueError, match='needs --descent-view'):
             resolve_sighted_descent(bad)
-    assert SIGHTED_COLUMNS == ('sighted_los', 'sighted_bound', 'sighted_withheld')
-    assert len(sighted_row(None)) == 3 and all(np.isnan(sighted_row(None)))
+    # round 7: version 2 adds sighted_added and sighted_above (NaN for a version-1 pilot)
+    assert SIGHTED_COLUMNS == ('sighted_los', 'sighted_bound', 'sighted_withheld', 'sighted_added', 'sighted_above')
+    assert len(sighted_row(None)) == 5 and all(np.isnan(sighted_row(None)))
     pilot, _ = fly(SIGHTED_THEN_CLIPPED, descent_view=DV, sighted_descent=SD)
-    assert all(np.isfinite(sighted_row(pilot)))
+    assert all(np.isfinite(sighted_row(pilot)[:3])) and all(np.isnan(sighted_row(pilot)[3:]))
     for mode, view in (('on', None), ('sideways', 'x.json')):
         with pytest.raises(ValueError, match='sighted-descent'):
             VisualController('missing.pt', 'missing.json', 'cpu', pilot_assistance='race-cue', pilot_profile='fast',
@@ -294,15 +304,17 @@ def test_deployed_pilot_and_replay_harness_wiring(monkeypatch, tmp_path):
     from haltere.train.deployed_pilot import deployed_pilot_kwargs
     body = dict(schema='haltere.liftoff.sighted_descent.v1', version=1,
                 sighted_descent=dict(margin_deg=1., edge_v=.85, agree_deg=1.5, agree_s=.5, switch_u=.1))
+    # round 7: version 1 is the kept sighted_descent_v1.json beside the runner's (version 2) declaration
     path = tmp_path/'sighted_descent.json'
-    path.write_text(json.dumps(dict(body, frozen=True, sha256=lag_turn_declaration_sha256(body))))
+    (tmp_path/'sighted_descent_v1.json').write_text(json.dumps(dict(body, frozen=True,
+                                                                    sha256=lag_turn_declaration_sha256(body))))
     monkeypatch.setattr(vb, 'SIGHTED_DESCENT_DECLARATION', path)
     monkeypatch.setattr(vb.load_sighted_descent, '__defaults__', (path,))
     off, record = deployed_pilot_kwargs('fast_velocity_brain_v1')
     assert 'sighted_descent' not in off and 'sighted_descent' not in record
-    on, record = deployed_pilot_kwargs('fast_velocity_brain_v1', sighted_descent='on')
+    on, record = deployed_pilot_kwargs('fast_velocity_brain_v1', sighted_descent='on', sighted_version=1)
     assert on['sighted_descent'] == SD and 'sighted_apply' not in on and record['sighted_descent']['mode'] == 'on'
-    shadow, _ = deployed_pilot_kwargs('fast_velocity_pd_v1', sighted_descent='shadow')
+    shadow, _ = deployed_pilot_kwargs('fast_velocity_pd_v1', sighted_descent='shadow', sighted_version=1)
     assert shadow['sighted_apply'] is False
     with pytest.raises(ValueError, match='sighted-descent'):
         deployed_pilot_kwargs('fast_velocity_brain_v1', descent_view=False, sighted_descent='on')

@@ -1061,10 +1061,17 @@ def descent_view_config(declaration):
     return DescentViewConfig(**declaration['descent_view'])
 
 
-# The sighted-descent declaration version runners fly (SightedDescentConfig); runners refuse others.
-SIGHTED_DESCENT_VERSION = 1
+# The sighted-descent declaration version runners fly (SightedDescentConfig); runners refuse others. Version 1 (round 6,
+# the kept configs/pilot/sighted_descent_v1.json) stays implemented for replays and baselines.
+SIGHTED_DESCENT_VERSION = 2
+SIGHTED_DESCENT_VERSIONS = (1, 2)
 # Sighted-descent modes of the runner (--sighted-descent): applied, not built (the default), or computed and logged only.
 SIGHTED_DESCENT_MODES = ('on', 'off', 'shadow')
+# Version 2: the pilot states in which the sighted line sets the vertical request (the ring clipped at the bottom edge).
+SIGHTED_LINE_STATES = ('below', 'below_weak')
+# The declared parameters of each version (the sidecar records only its own version's).
+SIGHTED_DESCENT_FIELDS = {1: ('margin_deg', 'edge_v', 'agree_deg', 'agree_s', 'switch_u', 'growth_range_m'),
+                          2: ('switch_u', 'aim_above_m', 'band_m', 'line_gain', 'correction_mps')}
 
 
 @dataclass(frozen=True)
@@ -1105,8 +1112,41 @@ class SightedDescentConfig:
        bearing jump of new_target_deg), search (the marker lost) and launch clear it; the view rule then acts as before.
     It reads the ring cue, the measured attitude and velocity and the camera calibration: no height above ground, no
     terrain memory, no course geometry. The keep-speed parts of the view rule (no brake for a clipped ring, the speed
-    rise while sink is withheld, the descent-path governor not fed) stay as they are. Declaration version 1 (the
-    sighted-descent declaration in configs/pilot, read by the runner).
+    rise while sink is withheld, the descent-path governor not fed) stay as they are. Declaration version 1 (the kept
+    configs/pilot/sighted_descent_v1.json; runners fly version 2).
+
+    Version 2, the sighted line (round 7; configs/pilot/sighted_descent.json). Why: live, straw-brain11cw13-r6-01 came
+    down onto the next arch's top banner at 87.3 s, and -r5-noassist-04 onto the ImmersionRC arch's top bar at 81.9 s
+    (the rule's development logs; video-checked). In both the ring was clipped at the bottom edge while the drone was
+    0.7-7 m above it and 5-25 m away, its line of sight 16-35 degrees down, and the flight path was held 10-13 degrees
+    down: the view rule keeps the path inside the lower image edge, whose clamp keeps the ring clipped, and steep late
+    comes too late for a ring 25 m away (the drone arrived 1.1 m above the ring centre, where the bar begins about
+    0.85 m above it). Version 1 assumed a ring 20 m away and was never set there (a single in-view reading). The ring
+    lies on the ray along which it was last seen, and the drone knows its own position, so flying down that line
+    reaches the ring's height at the ring whatever its distance:
+    1. Sighting: every fresh in-view ring-centre reading (marker u, v; not the flag-clearance aim) anchors the line: the
+       drone's position at capture (the pose history) and the reading's world ray. Later bottom clamps of the same ring
+       add clamp lines (the drone's position at capture and the clamped marker's ray): the ring lies below each of
+       them.
+    2. Target: at the drone's horizontal position, the lowest of the sighted line and the clamp lines (each measured
+       along its own horizontal direction), aim_above_m above it: the highest point the ring can be at there, so the
+       drone reaches it at or above the ring, at it when the sighting holds.
+    3. Request: the line's sink is the measured horizontal speed along the active line times the line's slope, plus
+       line_gain times the height above the target bounded to +-correction_mps (a larger step asks a lagging motor for
+       a dive it follows late, which the older support rules read as ground contact and answer with a climb), within
+       [0, the pilot's vertical_down] (and the launch-plane sink bound near the launch plane). While the ring is clipped
+       at the bottom edge (states below and below_weak) it replaces the view rule's bound in both directions: it
+       withholds the steep-late sink below the line and adds the sink the view rule withholds above it; with clamp
+       lines only (no sighting since the switch) it is a floor under the view rule's sink. While the ring is in view
+       (state cue) and the pilot descends toward it, it only gives back sink the view rule's cue margin withholds from
+       the pilot's own request (never more than that request). The vertical guard, ceiling guard and clearance brake
+       act after it.
+    4. Reset: the pilot's checkpoint switch, a side or top clamp, a bottom clamp whose u moves by more than switch_u
+       (another ring), search and launch; without a line the view rule acts as before. A checkpoint switch the marker
+       does not show (the next ring clamped where the passed one was) keeps the passed ring's line until one of these.
+    It reads the ring cue, the measured position, attitude and velocity and the camera calibration: no height above
+    ground, no terrain or lap memory (the line lives until the next checkpoint), no course geometry. The keep-speed
+    parts of the view rule stay as they are.
     """
     margin_deg: float = 1.
     edge_v: float = .85
@@ -1114,27 +1154,39 @@ class SightedDescentConfig:
     agree_s: float = .5
     switch_u: float = .1
     growth_range_m: float = 20.
-    version: int = SIGHTED_DESCENT_VERSION
+    aim_above_m: float = 0.
+    band_m: float = .5
+    line_gain: float = 1.
+    correction_mps: float = .5
+    version: int = 1
 
     def __post_init__(self):
-        values = [self.margin_deg, self.edge_v, self.agree_deg, self.agree_s, self.switch_u, self.growth_range_m]
-        if not np.isfinite(values).all() or min(values) < 0:
+        values = [self.margin_deg, self.edge_v, self.agree_deg, self.agree_s, self.switch_u, self.growth_range_m,
+                  self.line_gain, self.correction_mps, self.band_m]
+        if not np.isfinite(values+[self.aim_above_m]).all() or min(values) < 0:
             raise ValueError('Use finite non-negative sighted-descent parameters')
         if not 0 < self.edge_v < 1 or not self.margin_deg < 30 or not 0 < self.agree_s <= 2 or not self.switch_u < 1:
             raise ValueError('Use edge_v in (0, 1), margin_deg below 30, agree_s in (0, 2] and switch_u below 1')
         if not self.growth_range_m > 0:
             raise ValueError('Use a positive growth_range_m')
-        if self.version != SIGHTED_DESCENT_VERSION:
-            raise ValueError(f'The fast pilot implements sighted-descent version {SIGHTED_DESCENT_VERSION}')
+        if not 0 < self.line_gain <= 10 or not abs(self.aim_above_m) <= 2:
+            raise ValueError('Use a line_gain in (0, 10] per second and aim_above_m within 2 m of the line')
+        if self.version not in SIGHTED_DESCENT_VERSIONS:
+            raise ValueError(f'The fast pilot implements sighted-descent versions {SIGHTED_DESCENT_VERSIONS}')
 
 
 def sighted_descent_config(declaration):
-    """The SightedDescentConfig of a sighted-descent declaration already parsed (and hash-checked) by the runner; refuses
-    another rule version. This module reads no files."""
-    if (declaration or {}).get('version') != SIGHTED_DESCENT_VERSION:
-        raise ValueError(f'The sighted-descent declaration is version {(declaration or {}).get("version")}; the fast '
-                         f'pilot implements version {SIGHTED_DESCENT_VERSION}')
-    return SightedDescentConfig(**declaration['sighted_descent'], version=declaration['version'])
+    """The SightedDescentConfig of a sighted-descent declaration already parsed (and hash-checked) by the runner or a
+    replay; refuses a rule version this code does not implement (SIGHTED_DESCENT_VERSIONS; the runner itself flies only
+    SIGHTED_DESCENT_VERSION) and parameters of another version. This module reads no files."""
+    version = (declaration or {}).get('version')
+    if version not in SIGHTED_DESCENT_VERSIONS:
+        raise ValueError(f'The sighted-descent declaration is version {version}; the fast pilot implements versions '
+                         f'{SIGHTED_DESCENT_VERSIONS}')
+    values = declaration['sighted_descent']
+    if not set(values) <= set(SIGHTED_DESCENT_FIELDS[version]):
+        raise ValueError(f'Sighted-descent version {version} declares only {SIGHTED_DESCENT_FIELDS[version]}')
+    return SightedDescentConfig(**values, version=version)
 
 
 # Gravity of the contact rule's thrust model (the fast PD's value).
@@ -2088,6 +2140,16 @@ class FastRaceCue:
         self.sighted_time = dict(set=0., limiting=0.)
         self.sighted_withheld_integral = 0.
         self.sighted_counts = dict(sightings=0, raised=0, resets=0)
+        # version 2 (the sighted line; see SightedDescentConfig): the sighted line (anchor position, horizontal unit
+        # direction, slope tan(depression)) and the clamp lines added since, and this tick's values
+        self.sighted_line = None
+        self.sighted_clamps = []
+        self.sighted_added = 0.                # sink the line added beyond the view rule's request this tick (would)
+        self.sighted_above = float('nan')      # height above the line's target this tick (m; NaN without a line)
+        if sighted_descent is not None and sighted_descent.version >= 2:
+            self.sighted_time = dict(set=0., acting=0., adding=0., withholding=0.)
+            self.sighted_counts = dict(sightings=0, clamp_lines=0, resets=0)
+            self.sighted_added_integral = 0.
         # Contact support (off unless declared; descent-view declaration version 2): see ContactSupportConfig.
         if contact_support is not None and not isinstance(contact_support, ContactSupportConfig):
             raise ValueError('Pass a ContactSupportConfig (or None) for the contact support')
@@ -2338,13 +2400,66 @@ class FastRaceCue:
                     counts=dict(self.marker_counts, pending=len(self.marker_candidates)))
 
     def _sighted_reset(self):
+        if self.sighted_descent is not None and self.sighted_descent.version >= 2:
+            if self.sighted_line is not None or self.sighted_clamps:
+                self.sighted_counts['resets'] += 1
+            self.sighted_line, self.sighted_clamps, self.sighted_clip_u = None, [], None
+            self.sighted_los = None
+            return
         if self.sighted_los is not None:
             self.sighted_counts['resets'] += 1
         self.sighted_los = self.sighted_last = self.sighted_clip_u = None
 
+    def _sighted_line_ingest(self, cue, switched, capture_time):
+        """Version 2: the sighted line and its clamp lines from one fresh ring cue (SightedDescentConfig v2, parts 1
+        and 4)."""
+        sd = self.sighted_descent
+        if switched:
+            self._sighted_reset()
+        position, quaternion = self.pose_history.at(capture_time)
+        ray = quat_wxyz_to_mat(quaternion) @ self.camera.unproject_body(np.array([[cue['u']*320, cue['v']*180]]))[0]
+        ray = ray/max(np.linalg.norm(ray), 1e-9)
+        horizontal = float(np.hypot(ray[0], ray[1]))
+        line = None if horizontal < 1e-6 else (np.array(position, float), ray[:2]/horizontal, float(-ray[2]/horizontal))
+        if not cue['edge']:
+            # an in-view reading of the ring: the ring lies on this ray (a new anchor; earlier clamp lines are dropped)
+            if line is not None:
+                self.sighted_line, self.sighted_clamps, self.sighted_clip_u = line, [], None
+                self.sighted_counts['sightings'] += 1
+            return
+        if not self.below:
+            self._sighted_reset()            # clamped at a side or the top: the ring is not below
+            return
+        if self.sighted_clip_u is not None and abs(cue['u']-self.sighted_clip_u) > sd.switch_u:
+            self._sighted_reset()            # the clamped marker jumped along the edge: another ring
+            return
+        self.sighted_clip_u = float(cue['u'])
+        if line is None or not line[2] > 0:
+            return
+        # the ring lies below the clamped marker's ray: keep the clamp lines that can still be the lowest ahead (a line
+        # higher here and no steeper than another never becomes the lowest while the drone flies on)
+        here = np.array(position, float)
+        first = [] if self.sighted_line is None else [self.sighted_line]
+        lines = first+self.sighted_clamps+[line]
+        key = [(self._line_height(c, here), c[2]) for c in lines]
+        self.sighted_clamps = [c for i, c in enumerate(lines) if i >= len(first) and not any(
+            j != i and key[j][0] <= key[i][0] and key[j][1] >= key[i][1] and (key[j] != key[i] or j < i)
+            for j in range(len(lines)))]
+        self.sighted_counts['clamp_lines'] += 1
+
+    @staticmethod
+    def _line_height(line, position):
+        """The height of a line (anchor, horizontal unit direction, slope) at a horizontal position, measured along its
+        own direction."""
+        anchor, direction, slope = line
+        return float(anchor[2]-float((np.asarray(position, float)[:2]-anchor[:2]) @ direction)*slope)
+
     def _sighted_ingest(self, cue, quaternion, switched, capture_time):
         """The ring's sighted line of sight from one fresh ring cue (SightedDescentConfig, parts 1, 2 and 4)."""
         sd = self.sighted_descent
+        if sd.version >= 2:
+            self._sighted_line_ingest(cue, switched, capture_time)
+            return
         if switched:
             self._sighted_reset()
         if not cue['edge']:
@@ -2974,14 +3089,25 @@ class FastRaceCue:
                 late = dv.late_rate_deg_s*max(0., now-self.below_since-dv.late_after_s)
                 margin = max(-dv.late_max_deg, margin-late)
             self.view_bound = self._view_sink_bound(velocity, rotation, margin, yaw, dt)
+            line = None
             if self.sighted_descent is not None:
                 if state in ('search', 'launch'):
                     self._sighted_reset()
-                self.view_bound = self._sighted_limit(self.view_bound, float(-desired[2]), state, in_view_margin,
-                                                      velocity, rotation, yaw, dt)
+                if self.sighted_descent.version >= 2:
+                    # the sighted line (version 2) sets the sink while the ring is clipped at the bottom edge
+                    line = self._sighted_line_sink(float(-desired[2]), self.view_bound, state, position, velocity, dt)
+                    if line is not None and self.sighted_apply:
+                        self.view_bound = line
+                    else:
+                        line = None
+                else:
+                    self.view_bound = self._sighted_limit(self.view_bound, float(-desired[2]), state, in_view_margin,
+                                                          velocity, rotation, yaw, dt)
             self.view_withheld = max(0., float(-desired[2])-self.view_bound)
             if self.view_withheld > 0:
                 desired[2] = -self.view_bound
+            if line is not None:
+                desired[2] = -line
             self.view_withheld_integral += dt*self.view_withheld
             self.view_time['limiting'] += dt*(self.view_withheld > 0)
         # Descent path angle: a vehicle that keeps falling short of the requested
@@ -3313,6 +3439,61 @@ class FastRaceCue:
             self.sighted_withheld_integral += dt*self.sighted_withheld
         return limited if self.sighted_apply else bound
 
+    def _sighted_line_sink(self, sink, bound, state, position, velocity, dt):
+        """Version 2 (SightedDescentConfig v2, parts 2 and 3): the sink the pilot requests this tick under the rule, or
+        None when it does not act (no line, or the ring not clipped at the bottom edge). `sink` is the pilot's own
+        requested sink and `bound` the view rule's bound this tick. With a sighted line the line's sink replaces the
+        view rule's; with clamp lines only it is a floor under the view rule's sink (the ring lies below every clamp
+        line, how far below is unknown). Logs the target and the sink it withholds from and adds to the view rule's
+        request (would, in shadow) either way."""
+        sd, c = self.sighted_descent, self.config
+        self.sighted_bound, self.sighted_withheld, self.sighted_added = float('nan'), 0., 0.
+        self.sighted_above = float('nan')
+        lines = ([] if self.sighted_line is None else [self.sighted_line])+self.sighted_clamps
+        if not lines:
+            self.sighted_los = None
+            return None
+        self.sighted_time['set'] += dt
+        heights = [self._line_height(line, position) for line in lines]
+        k = int(np.argmin(heights))
+        _, direction, slope = lines[k]
+        self.sighted_los = float(np.degrees(np.arctan(slope)))
+        self.sighted_above = float(position[2]-heights[k]-sd.aim_above_m)
+        if state not in SIGHTED_LINE_STATES and not (state == 'cue' and self.sighted_line is not None and sink > 0):
+            return None
+        top = c.vertical_down
+        if position[2] > -c.surface_release_m:
+            # the launch-plane sink bound the pilot's own request has (update)
+            top = min(top, c.surface_sink+c.surface_sink_per_m*max(0., float(position[2])))
+        along = max(0., float(np.asarray(velocity, float)[:2] @ direction))
+
+        def toward(offset):
+            # the sink that flies along the line, offset above it: the line's own slope and a height correction of at
+            # most correction_mps either way (a larger step asks a lagging motor for a dive it follows late, and the
+            # older support rules read that shortfall with the throttle cut as ground contact and climb)
+            correction = float(np.clip(sd.line_gain*(self.sighted_above-offset), -sd.correction_mps, sd.correction_mps))
+            return float(np.clip(along*slope+correction, 0., top))
+        view = min(sink, bound)
+        if state == 'cue':
+            # the ring in view: the pilot flies toward it; the rule only gives back the sink the view rule's cue margin
+            # withholds from that request while the drone is more than band_m above the line (never more than the
+            # pilot's own request, never less than the view bound)
+            line = min(sink, max(bound, toward(sd.band_m)))
+        elif self.sighted_line is None:
+            line = max(toward(0.), view)     # clamp lines only: a floor under the view rule's sink
+        else:
+            # the corridor: the view rule's sink, but never below the line and never more than band_m above it
+            line = float(np.clip(view, toward(sd.band_m), toward(0.)))
+        self.sighted_bound = line
+        self.sighted_withheld = float(max(0., view-line))
+        self.sighted_added = float(max(0., line-view))
+        self.sighted_time['acting'] += dt
+        self.sighted_time['adding'] += dt*(self.sighted_added > 0)
+        self.sighted_time['withholding'] += dt*(self.sighted_withheld > 0)
+        self.sighted_added_integral += dt*self.sighted_added
+        self.sighted_withheld_integral += dt*self.sighted_withheld
+        return line
+
     def _contact_step(self, now, issued_at, velocity, rotation, dt, issued=None, omega=None):
         """One tick of contact support (ContactSupportConfig): the window's unexplained upward specific force, the
         thrust gain in free air, and a support climb (climb_until) after hold_s of contact conditions. `issued`: the
@@ -3468,19 +3649,45 @@ class FastRaceCue:
         nan = float('nan')
         if self.sighted_descent is None:
             return dict(sighted_los=nan, sighted_bound=nan, sighted_withheld=nan)
-        return dict(sighted_los=nan if self.sighted_los is None else float(self.sighted_los),
-                    sighted_bound=float(self.sighted_bound), sighted_withheld=float(self.sighted_withheld))
+        out = dict(sighted_los=nan if self.sighted_los is None else float(self.sighted_los),
+                   sighted_bound=float(self.sighted_bound), sighted_withheld=float(self.sighted_withheld))
+        if self.sighted_descent.version >= 2:
+            # version 2: the active line's depression (deg), the line's sink request while it acts, the sink it
+            # withholds from and adds to the view rule's request, and the height above the line's target (m)
+            out.update(sighted_added=float(self.sighted_added), sighted_above=float(self.sighted_above))
+        return out
 
     def sighted_summary(self):
         """Seconds set and limiting, metres of sink withheld and counts (None when the rule is not declared)."""
         if self.sighted_descent is None:
             return None
-        return dict(applied=self.sighted_apply, seconds={k: round(v, 3) for k, v in self.sighted_time.items()},
-                    withheld_m=round(self.sighted_withheld_integral, 3), counts=dict(self.sighted_counts))
+        out = dict(applied=self.sighted_apply, seconds={k: round(v, 3) for k, v in self.sighted_time.items()},
+                   withheld_m=round(self.sighted_withheld_integral, 3), counts=dict(self.sighted_counts))
+        if self.sighted_descent.version >= 2:
+            out['added_m'] = round(self.sighted_added_integral, 3)
+        return out
 
     def _sighted_metadata(self):
         if self.sighted_descent is None:
             return None
+        sd = self.sighted_descent
+        if sd.version >= 2:
+            return dict(
+                version=sd.version,
+                rule='every fresh in-view ring-centre reading anchors the sighted line (the drone\'s position at capture, '
+                     'the reading\'s world ray); later bottom clamps of the same ring add clamp lines (the ring lies '
+                     'below each); the target is the lowest of these lines at the drone\'s horizontal position, '
+                     'aim_above_m above it; the line\'s sink is the measured horizontal speed along the active line '
+                     'times its slope plus line_gain times the height above the target (at most correction_mps either '
+                     'way), within [0, vertical_down] (and the launch-plane bound); while the ring is clipped at the '
+                     'bottom edge (states below, below_weak) it replaces the view rule\'s bound (clamp lines only: a '
+                     'floor under it); with the ring in view (state cue) it only gives back sink the cue margin '
+                     'withholds from the pilot\'s own descent; cleared by the pilot\'s checkpoint switch, a side/top '
+                     'clamp, a bottom-clamped u jump beyond switch_u, search and launch',
+                input='the ring cue, the measured position, attitude and velocity, the camera calibration; no height '
+                      'above ground, no terrain or lap memory, no course geometry',
+                parameters={k: getattr(sd, k) for k in SIGHTED_DESCENT_FIELDS[sd.version]},
+                **self.sighted_summary())
         return dict(
             version=self.sighted_descent.version,
             rule='two fresh in-view ring-centre rays with the marker at v >= edge_v, at most agree_s apart and agreeing '
@@ -3493,7 +3700,7 @@ class FastRaceCue:
                  'switch_u, the pilot\'s checkpoint switch, search and launch',
             input='the ring cue, measured attitude and velocity, the camera calibration; no height above ground, no '
                   'terrain memory, no course geometry',
-            parameters={k: v for k, v in asdict(self.sighted_descent).items() if k != 'version'},
+            parameters={k: getattr(sd, k) for k in SIGHTED_DESCENT_FIELDS[1]},
             **self.sighted_summary())
 
     def motor_assist_log(self):

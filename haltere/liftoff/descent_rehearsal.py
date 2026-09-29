@@ -91,8 +91,14 @@ def load_controller(kind, checkpoint):
 @torch.no_grad()
 def run_batch(controller, profile, courses, terrains, *, pilot_kwargs=None, speed=None, seconds=110., seed=17,
               randomize=.1, dropout=.1, camera_period=.055, camera_latency=.06, delay_steps=3, radius=3.,
-              quadratic_drag=.0075, record=False):
-    """fast_motor_tracking.rollout's closed loop (one course per drone) with pilot kwargs and descent scoring."""
+              quadratic_drag=.0075, record=False, gate_top=None):
+    """fast_motor_tracking.rollout's closed loop (one course per drone) with pilot kwargs and descent scoring.
+    ``gate_top``: an optional gate_top.GateTopConfig: each course's checkpoints also get scoring-only arch bars (each
+    row gains ``gate_top``: the plane crossings, top-bar hits and passes over an arch); with its ``pass_on_plane`` a
+    checkpoint is passed where the drone crosses its arch plane within ``radius`` of the centre (sideways and vertically,
+    as a gate is flown through) instead of within ``radius`` of the centre point (up to 3 m before the plane, after which
+    a last checkpoint's crossing is flown without guidance). None (the default) leaves the rollout and its rows exactly
+    as before."""
     from ..train.fast_motor_tracking import brain_observation
     meta, cfg, brain = controller['meta'], controller['cfg'], controller['brain']
     contract = controller['contract']
@@ -115,6 +121,12 @@ def run_batch(controller, profile, courses, terrains, *, pilot_kwargs=None, spee
     pilots = [FastRaceCue(sensor, histories[i], speed, reference_speed=speed, yaw_curve=curve,
                           calibration=calibration, **(pilot_kwargs or {})) for i in range(batch)]
     scores = [DescentScore(courses[i], camera, terrains[i]) for i in range(batch)]
+    tops = None
+    if gate_top is not None:
+        from .gate_top import GateTop
+        tops = [GateTop(courses[i], config=gate_top) for i in range(batch)]
+    plane = gate_top is not None and gate_top.pass_on_plane
+    before = [None]*batch
     teacher = FastMotorPD(profile, calibration)
     idle = torch.tensor([[-1., 0., 0., 0.]]).repeat(batch, 1)
     queue = deque(idle.clone() for _ in range(delay_steps))
@@ -144,7 +156,13 @@ def run_batch(controller, profile, courses, terrains, *, pilot_kwargs=None, spee
             break
         for i in range(batch):
             histories[i].append(now, positions[i], quaternions[i])
-            if active[i] and np.linalg.norm(courses[i][targets[i]]-positions[i]) < radius:
+            if plane:
+                passed = active[i] and before[i] is not None and tops[i].through(targets[i], before[i], positions[i],
+                                                                               radius)
+                before[i] = positions[i].copy()
+            else:
+                passed = active[i] and np.linalg.norm(courses[i][targets[i]]-positions[i]) < radius
+            if passed:
                 scores[i].passed(targets[i], now, positions[i])
                 targets[i] += 1
                 if targets[i] == len(courses[i]):
@@ -162,6 +180,9 @@ def run_batch(controller, profile, courses, terrains, *, pilot_kwargs=None, spee
         live = ~crashed & np.isnan(finish)
         for i in np.flatnonzero(live):
             scores[i].step(now, dt, targets[i], positions[i], velocities[i], quaternions[i])
+        if tops is not None:
+            for i in np.flatnonzero(~crashed):
+                tops[i].step(positions[i])
         senses = sim.sensors(state)
         requests, feedforward = [], []
         for i in range(batch):
@@ -225,6 +246,8 @@ def run_batch(controller, profile, courses, terrains, *, pilot_kwargs=None, spee
                          **({} if getattr(p, 'sighted_descent', None) is None
                             else dict(sighted_descent=p.sighted_summary())),
                          **scores[i].result()))
+        if tops is not None:
+            rows[-1]['gate_top'] = tops[i].result()
     return rows, trace
 
 

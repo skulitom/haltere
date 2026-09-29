@@ -203,7 +203,7 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
            wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True,
            lag_turn=True, gap_aim=True, marker_jump=None, marker_jump_apply=True, probe=None, early_brake=None,
-           sighted_descent=None, sighted_apply=True):
+           sighted_descent=None, sighted_apply=True, until=None):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -225,7 +225,10 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     carry the rule's log (FastRaceCue.marker_jump_log). ``probe``: an optional callable (pilot, row) -> dict of extra
     per-tick values, saved as arrays of the same names (analysis only; changes nothing). ``sighted_descent``: an
     optional SightedDescentConfig (with ``descent_view``; see build); with it the arrays also carry sighted_los,
-    sighted_bound and sighted_withheld (FastRaceCue.sighted_log)."""
+    sighted_bound and sighted_withheld, and with version 2 sighted_added and sighted_above (FastRaceCue.sighted_log).
+    ``until``: stop before the first replayable row whose logged phase is at least this (the pilot is then warmed on the
+    log up to that row, e.g. for a closed-loop window from it; haltere.liftoff.gate_top); info['next_row'] is that row's
+    CSV index. None (the default) replays every row."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
@@ -286,15 +289,20 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     if motor_assist is not None and getattr(getattr(pilot, 'motor_assist', None), 'ceiling_share', False):
         keys += ('assist_share_cap',)
     if sighted_descent is not None:
-        keys += ('sighted_los', 'sighted_bound', 'sighted_withheld')
+        # sighted_los, sighted_bound, sighted_withheld (version 2 adds sighted_added and sighted_above)
+        keys += tuple(pilot.sighted_log())
     rows = {k: [] for k in keys}
     probed = {}
     drop = None if cue_drop is None else {round(float(c), 6) for c in cue_drop}
     last_ts = None
     nan = float('nan')
-    for r in d.itertuples(index=False):
+    next_row = None
+    for index, r in enumerate(d.itertuples(index=False)):
         if not (np.isfinite(r.capture_time) and np.isfinite(r.image_age)):
             continue
+        if until is not None and float(r.phase) >= until:
+            next_row = index
+            break
         now = float(r.capture_time)+float(r.image_age)
         pos, q, vel = np.array([r.x, r.y, r.z]), np.array([r.qw, r.qx, r.qy, r.qz]), np.array([r.vx, r.vy, r.vz])
         if r.ts != last_ts:
@@ -402,6 +410,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     arrays.update({k: np.asarray(v) for k, v in probed.items()})
     info.update(flight=flight, ticks=len(arrays['t']), stop_reason=side.get('stop_reason'), impact=side.get('impact'),
                 looming_stream=looming_stream, haltere=_haltere_file())
+    if until is not None:
+        info['next_row'] = next_row
     return arrays, pilot, info
 
 
