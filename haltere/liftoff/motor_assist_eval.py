@@ -22,6 +22,8 @@ fast race-cue pilot with any pilot keyword arguments (the round-4 stack, the des
   drone reaches it slowly, low; R2 lies `ring_m` beyond it, `bearing_deg` off the R1 leg, at the same height, then R3 20 m
   further: the height lost while the brain turns and accelerates from low speed to cruise near the floor, under a
   scoring-only ceiling at `ceiling_m` (the Minus Two garage: ~2.2 m).
+- ``gate``: two arches flown through, their legs vertical posts scored for contact, with an optional false checkpoint
+  marker on the approach to the first (round 6, the marker-jump rule; see gate_scenario).
 - ``live_window``: a logged live window replayed in the surrogate from the logged state (brain warmed on the recorded
   inputs; haltere.train.brake_gates.Flight): the pilot's own logged request and, with a motor assist, the assisted
   request computed from the surrogate's measured velocity and attitude with the binding caps the pilot had at each

@@ -259,7 +259,10 @@ motor assist here), as in round 4b.
     sample (42.01 s).
   - A governor with one cap per direction would remove both limits, and was not attempted here.
 - **Every log is now development data for version 2.** Its held-out evidence is one synthetic hairpin set.
-- **The Straw false marker is unsolved.** Next steps:
+- **The Straw false marker is unsolved.** Round 6 tried a pilot-side rule on the HUD readings alone
+  ([gate_clearance.md](gate_clearance.md)): the marker-jump rule v1 holds a marker that jumps after a gap until three
+  readings confirm it. It passed this case in the surrogate (1.03 m from the contact point) and failed its held-out
+  gates, because real rings often return after a gap at a jumped bearing. Next steps:
   - log the reader's candidates (position, annulus fractions) from the live capture in the next flights, so that a
     reader rule can be scored on live frames;
   - build a reader rule that keeps low and bottom-clamped markers, for example by testing only above the stick HUD

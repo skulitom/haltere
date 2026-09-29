@@ -2087,3 +2087,43 @@ What this shows:
   harness crawl finding); the brain hairpin remains unsolved live.
 - The PD's hairpin now ends in a stand-off stop, after which its new line met a pillar: stop-and-turn exits need
   the same obstacle care as through-flight.
+
+## Round 6 (offline): gate clearance around checkpoint switches (branch `m6-gates`, not flown)
+
+Details, figures and tables: [gate_clearance.md](../gate_clearance.md). The three Straw Bale crashes of
+fast-brain-11-b-cw13 are the development cases. Their causes were re-checked on the recorded video and in the
+semi-closed-loop surrogate (development evidence):
+
+- **FAT SHARK (`r5-noassist-01`):** not the post-switch turn. The gap aim shifted the aim up to 8.0 deg right (away
+  from the arch's near left leg) from 17.4 to 18.7 s. Both round-5 passes crossed 0.5-1.1 m right of each of the 23
+  other logged passes, and after the switch the lagging path could not leave that line within the 0.37 s before the
+  right leg. Surrogate distance from the contact point: logged 0.023 m; without the lag turn 0.011 m; post-switch
+  heading/yaw holds 0.016-0.021 m; **without the gap aim 0.638 m**.
+- **Start arch (`r4b-noassist-02`):** the false marker (a banner logo read for two captures after 0.55 s unread); the
+  lag turn's lead on it accounts for 0.27 m. The marker-jump rule (below) clears the contact point by 1.03 m in the
+  surrogate (0.02 m without).
+- **Top bar (`r5-noassist-04`):** contact support v3 started its climb at 80.08 s, after the downhill touch had ended
+  (79.97 s; its manoeuvre exclusion blinded it during the touch). The climb left the drone 0.5-0.7 m above the lap
+  run's line 1.8 s before the next arch. Surrogate height at the bar: logged 13.48 m; horizontal request at 60% from
+  the end of the climb 13.16 m; **without the late climb 12.65 m** (the lap run: about 12.8 m).
+
+Turn timing after the 57 switches of the fast-brain-08 finishes (no stack) and the 13 of the fast-brain-11 runs: the
+request turns about 80 deg/s from the first tick in both. The lag turn adds 4.4 deg (p50) by 0.3 s, and the path has
+turned only 2-4 deg by then.
+
+Rules:
+
+| Rule | State | Result |
+|---|---|---|
+| Post-switch clearance (hold the request within a small angle until clear of the gate) | Tested on its development case before a freeze, **not frozen** | No effect on FAT SHARK (the line was set before the switch) |
+| Marker-jump confirmation (`configs/pilot/marker_jump.json` v1 `8752cd7e`, `--marker-jump on\|off\|shadow`, off by default) | **Frozen with its gates** (`marker_jump_gates.json` v1 `4eb99684`, `f4b2ebd`); scorer fix before scoring `1249e77` | Development case passes (the false readings held; surrogate 1.034 m from the contact point). **Fails held-out**: H2 (34 of 40 changed log windows more than 0.3 m from the base's surrogate path, worst 5.41 m: real rings reacquired after a gap were held while the pilot coasted and searched), H1 (6 new stops, three of them Minus Two fast-PD re-accelerations after a stand-off) and HG2 (fast-brain-08 28 -> 27 finishes); identity 126/126 and 126/126, H3, HG1 (fast-PD post contacts 7 -> 0), HG3 and HG4 pass (`58c3d48`). A development variant that keeps the bearing during a hold removed the new stops but still moved 33 of 40 windows more than 0.3 m: not frozen. **Do not fly `on`**; `shadow` is identical to off |
+| Gate below (keep the path under a gate's top bar when the ring is bottom-clipped) | Tested on its development case before a freeze, **not frozen** | At most 0.32 m lower at the bar; no causal cue measured the arch's distance; the late support climb was the cause |
+
+What this means for the next flights:
+
+- No rule of this round should fly with authority.
+- The largest Straw Bale lever found is the gap aim at oblique arches: a gap-pilot revision with its own frozen gates
+  (Minus Two pillars A and C, every Straw arch pass). A component-off diagnostic (`--gap-cue off` inside the stack) on
+  Straw Bale would show it live.
+- The second lever is contact support that climbs only while the contact lasts (the ground work of round 6).
+- `--marker-jump shadow` is safe to add to any run (identical requests); it logs where the rule would have held.
