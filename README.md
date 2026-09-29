@@ -62,6 +62,7 @@ geometry as the next priority and also exposes a motor-tracking gap.
 
 | Component | Current evidence and limits |
 |---|---|
+| fast-brain-11 + obstacle stack (development) | First braking brain motor to fly a full Straw Bale lap: lap 1 in **1:42.988** (fast-brain-08 1:46) with one audited downhill contact and brain-08-level smoothness; not selected by its frozen gates and no race finish (on Straw: a start-arch leg after a false marker reading, an arch leg, and an arch's top bar; the Minus Two hairpin). [Release](docs/fast_brain_11_release.md). |
 | fast-brain-10b / fast-brain-09b + obstacle stack (development) | Braking readouts distilled with synthetic governor speed caps; not selected by their frozen gates and no race finish. Minus Two only: both cleared pillar A and braked at the arches; fast-brain-10b is as smooth as brain-08 (0.0031 per tick) but missed the caps at the hairpin during a false terrain climb and hit its wall; fast-brain-09b was stopped short of that wall by the turn-first rule, then sank to the floor accelerating out. [Release](docs/fast_brain_10_release.md). |
 | fast-brain-08 + fast race-cue pilot | Re-distilled under the downhill-fixed pilot (vertical goal x 0.4 s, lower ridge, smoothing): Straw Bale 5:17.898 and **5:17.805**; downhill fast-yaw time 3-5% (brain-07 31-32%), smoother stick commands, about 10% higher roll/pitch body rates, slower and slightly rougher on sharp switches. Pilot also recognises slope contact and searches gently. Minus Two pillar and Pine Valley impacts. [Release](docs/fast_brain_08_release.md). |
 | fast-brain-07 + fast race-cue pilot | Re-distilled under arc turns: Straw Bale **5:45.792** and 5:46.846; 50% more speed through 45-75° checkpoint switches and 25% less stick chatter than brain-06. Minus Two pillar and Pine Valley impacts. [Release](docs/fast_brain_07_release.md). |
@@ -168,6 +169,7 @@ Install the gamepad driver before adding `liftoff`; see [game setup](docs/liftof
 
 | Checkpoint | Role |
 |---|---|
+| [fast-brain-11 bundle](docs/fast_brain_11_release.md) | Experimental braking motor-readout weights (fast-brain-11-b-cw13) for the obstacle stack on branch m5; one full Straw Bale lap (1:42.988). Development candidate: no race finish, not selected by its frozen gates. Download separately. |
 | [fast-brain-10 bundle](docs/fast_brain_10_release.md) | Experimental braking motor-readout weights (fast-brain-10b, fast-brain-09b) for the obstacle stack on branch m4. Development candidates: no race finish, not selected by their frozen gates. Download separately. |
 | [fast-brain-08 bundle](docs/fast_brain_08_release.md) | Experimental fast motor-readout weights distilled under the downhill-fixed pilot (vertical goal x 0.4 s, scene currents blanked). Two Straw Bale finishes (5:17.805); Minus Two and Pine Valley failed. Download separately. |
 | [fast-brain-07 bundle](docs/fast_brain_07_release.md) | Experimental fast motor-readout weights distilled under the arc-turn pilot (scene currents blanked). Two Straw Bale finishes (5:45.792); Minus Two and Pine Valley failed. Download separately. |
