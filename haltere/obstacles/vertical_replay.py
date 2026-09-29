@@ -95,7 +95,7 @@ def variant_tag(stack, wall, vertical, stream):
 
 
 def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None, contact_support=None,
-          wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True):
+          wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True, early_brake=None):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
     whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
     optional DescentViewConfig added to any variant; ``contact_support``: an optional ContactSupportConfig (descent
@@ -104,7 +104,9 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     ``motor_assist``: an optional motor-assist declaration (parsed and hash-checked) whose entry for the flight's motor
     contract is added to any variant. ``stale_evidence``: an optional stale-evidence declaration (parsed and
     hash-checked) whose rules are added to a stack variant (applied with --stack on, computed in shadow; ignored by
-    --stack none and by --stack flown without the stack)."""
+    --stack none and by --stack flown without the stack). ``early_brake``: an optional early-brake declaration (parsed and
+    hash-checked) whose entry for the flight's motor contract is added to a stack variant as ``stale_evidence`` is
+    (nothing for a contract without an entry, the fast PD)."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -135,6 +137,10 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         kw['vertical_apply'] = verticals == 'on' and applied
     if stale_evidence is not None and (stack in ('on', 'shadow') or (stack == 'flown' and flown_on)):
         kw.update(frc.stale_evidence_configs(stale_evidence), stale_apply=applied)
+    if early_brake is not None and (stack in ('on', 'shadow') or (stack == 'flown' and flown_on)):
+        config = frc.early_brake_for_contract(early_brake, contract)
+        if config is not None:
+            kw.update(early_brake=config, early_apply=applied)
     if not applied:
         kw.update(lag_turn_apply=False, gap_apply=False)
     if descent_view is not None:
@@ -157,7 +163,7 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
                        descent_view=descent_view is not None, contact_support=contact_support is not None,
                        wall_pilot=None if wall_pilot is None else str(wall_pilot), motor_assist=assist is not None,
-                       stale_evidence='stale_apply' in kw)
+                       stale_evidence='stale_apply' in kw, early_brake='early_apply' in kw)
 
 
 def _near_on_path(value):
@@ -171,7 +177,8 @@ def _near_on_path(value):
 
 def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
-           wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True):
+           wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True,
+           early_brake=None):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -197,7 +204,8 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                         **({} if wall_pilot is None else dict(wall_pilot=wall_pilot)),
                         **({} if motor_assist is None else dict(motor_assist=motor_assist)),
                         **({} if stale_evidence is None else dict(stale_evidence=stale_evidence)),
-                        **({} if contact_apply else dict(contact_apply=False)))
+                        **({} if contact_apply else dict(contact_apply=False)),
+                        **({} if early_brake is None else dict(early_brake=early_brake)))
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['throttle_column'] = throttle_column
     info['near_on_path'] = bool(near_on_path)
@@ -234,6 +242,11 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     has_stale = info.get('stale_evidence', False)
     if has_stale:
         keys += ('cap_ray_deg', 'cap_reseat')
+    has_early = info.get('early_brake', False)
+    if has_early:
+        keys += ('early_brake',)
+    if motor_assist is not None and getattr(getattr(pilot, 'motor_assist', None), 'ceiling_share', False):
+        keys += ('assist_share_cap',)
     rows = {k: [] for k in keys}
     drop = None if cue_drop is None else {round(float(c), 6) for c in cue_drop}
     last_ts = None
@@ -330,6 +343,11 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                                 bool(getattr(pilot, 'assist_wall_ahead', False))))
         if has_stale:
             values.update(pilot.stale_log())
+        if has_early:
+            values.update(pilot.early_log())
+        if 'assist_share_cap' in rows:
+            share = getattr(pilot.clearance, 'share_cap', None) if pilot.clearance is not None else None
+            values['assist_share_cap'] = nan if share is None else float(share)
         for k in keys:
             rows[k].append(values.get(k, nan))
     arrays = {k: np.asarray(v) for k, v in rows.items()}
@@ -679,6 +697,9 @@ def main(argv=None):
     parser.add_argument('--contact-support', default='on', choices=['on', 'off', 'shadow'],
                         help='with a version-3 --descent-view: off leaves the contact rule out, shadow computes it '
                              'without a climb; the file tag gains -csoff / -csshadow')
+    parser.add_argument('--early-brake', default=None, metavar='DECLARATION',
+                        help='add the early brake of a frozen early-brake declaration (configs/obstacles/early_brake.json) '
+                             'for the motor contract of each flight to a stack variant; the file tag gains -eb<version>')
     parser.add_argument('--motor-assist', default=None, metavar='DECLARATION',
                         help='add the motor assist of a frozen motor-assist declaration (configs/pilot/motor_assist.json) '
                              'for the motor contract of each flight; the file tag gains -ma<version>')
@@ -746,6 +767,13 @@ def main(argv=None):
                              'freeze')
         tag += f'-se{declaration["version"]}'
         extra['stale_evidence'] = declaration
+    if args.early_brake:
+        from haltere.liftoff.gap_stack import config_sha256
+        declaration = json.loads(Path(args.early_brake).read_text(encoding='utf-8'))
+        if declaration.get('frozen') is not True or declaration.get('sha256') != config_sha256(declaration):
+            raise SystemExit(f'{args.early_brake} is not a frozen early-brake declaration, or it changed after the freeze')
+        tag += f'-eb{declaration["version"]}'
+        extra['early_brake'] = declaration
     if args.cue_drop:
         tag += '-cd'
     results = {}
@@ -769,6 +797,8 @@ def main(argv=None):
         results[flight]['motor_assist_metadata'] = meta.get('motor_assist')
         if args.stale_evidence:
             results[flight]['stale_evidence_metadata'] = meta.get('stale_evidence')
+        if args.early_brake:
+            results[flight]['early_brake_metadata'] = meta.get('early_brake')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')

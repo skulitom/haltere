@@ -1,0 +1,49 @@
+{
+ "schema": "haltere.liftoff.early_brake.v1",
+ "version": 1,
+ "note": "Early brake of the fast race-cue pilot's looming governor inside the obstacle stack (visual_brain --obstacle-stack on|shadow with --early-brake on; off by default, also inside the stack; shadow computes and logs it in the shadow governor copy without applying it). haltere.liftoff.fast_race_cue.EarlyBrakeConfig, declared per motor contract, never per course or per brain: the brain contract (fast_velocity_brain_v1) has an entry; the fast PD contract has none and flies bit-identically with the flag on. Causal and course-agnostic: it reads the looming samples (TTC, reach, below fraction, lower-surface TTC), odometry, the measured velocity, the governor's own state and the pilot's checkpoint state; no course geometry, route, logged position or per-course value. Round 6 (branch m6-brake), after the round-4b/5 live hairpin failure minus-brain11cw13-r4b-noassist-01 (development case: the looming read a TTC of ~1 s from 1.3 s before the hairpin wall while the governor stayed armed until 0.8 s before it).",
+ "rule": "A wall sample (not below-path terrain; with lower_window not explained by the lower window, i.e. its lower-surface TTC unknown or longer than its alarm TTC; with no_climb not during a governor terrain climb) votes for engagement when its remaining distance along its looming ray (capture-time reach minus the odometry travelled along the ray) is at most v*stop_latency_s + v^2/(2*stop_deceleration) + stop_margin_m at the measured closing speed v along the ray: the contract's measured stopping model (wall pilot turn_first_stopping). The governor's own confirmation count (confirm within confirm_window_s) engages a governor that is not braking yet, with its own graded target. The episode's targets are at least floor_speed while the floor holds; with floor_until wall_ahead it holds while the pilot sees its next checkpoint ahead (no turn-first checkpoint condition: side clamp, lost marker, bearing engage_deg or more off the heading, turn-first episode or side guard). Otherwise the governor brakes exactly as without the rule. The episode ends when the cap has released back to the closing speed at its engagement.",
+ "contracts": {
+  "fast_velocity_brain_v1": {
+   "stop_latency_s": 0.3,
+   "stop_deceleration": 3.5,
+   "stop_margin_m": 0.5,
+   "floor_speed": 2.5,
+   "lower_window": true,
+   "no_climb": true,
+   "floor_until": "wall_ahead"
+  },
+  "fast_velocity_pd_v1": null
+ },
+ "parameter_notes": {
+  "stopping_model": "stop_latency_s 0.3 s, stop_deceleration 3.5 m/s^2, stop_margin_m 0.5 m: the brain contract's measured model in configs/obstacles/wall_pilot.json (turn_first_stopping) and motor assist; at 4.5 m/s the brain needs 4.74 m (a TTC of 1.05 s), at 5.5 m/s 6.47 m (1.18 s), where the governor's own engagement waits for TTC < 0.8 s",
+  "fast_pd": "no entry: its model (0.15 s, 6 m/s^2) reaches the distance test about two samples (0.11 s) before the governor's own condition at 6 m/s; the governor's thresholds were chosen for it",
+  "floor_speed": "2.5 m/s, motor assist v2/v3's approach floor: the brain stops from 2.5 m/s within 2.14 m, the room behind a gate arch before a wall (the Minus Two hairpin arch stands about 2.8 m before its wall), and it stays above the governor's stand-off speed (2 m/s), so an early episode never starts a stand-off with the ring ahead",
+  "lower_window": "true: the Straw Bale uphill rings loom at TTC 0.9-1.1 s at 4.5-4.8 m/s on the development laps (straw-brain11cw13-r4b-noassist-02, -r5-noassist-04) with a lower-surface TTC known and shorter than the alarm TTC; the Minus Two hairpin samples carry no vertical evidence (below_fraction None, no lower-surface TTC)",
+  "no_climb": "true: during a governor terrain climb the surface ahead is rising ground, the vertical guard's",
+  "floor_until": "wall_ahead: in the development harness (fast-brain-11-b-cw13, live-like wall samples) the floor until the governor's own engagement ('engagement') crawled at pass-through arches with the assist (lowest arch speed 0.17-1.6 m/s, pt41; 0.11-1.69, pt17) and hit more hairpin walls (h41 2, dev17 5, h67 1 of 12) than the floor while the ring is ahead (0.92-2.24 and 1.05-2.32 m/s; walls 1, 3, 0)"
+ },
+ "development": {
+  "logs": [
+   "minus-brain11cw13-r4b-noassist-01",
+   "minus-brain11cw13-r5-02",
+   "minus-brain10b-r4-02",
+   "minus-brain09b-r4-01",
+   "minus-fast6-r5-01",
+   "minus-fast6-r4b-01",
+   "minus-fast6-r4-02",
+   "straw-brain11cw13-r4b-noassist-02",
+   "straw-brain11cw13-r5-noassist-01",
+   "straw-brain11cw13-r5-noassist-04"
+  ],
+  "harness": "motor_assist_eval hairpin sets dev17 (seed 17), h41 (seed 41), h67 (seed 67) and pass-through sets pt17, pt41, with live-like wall samples, fast-brain-11-b-cw13 (and brain-10b/09b on h41, pt41)",
+  "open_loop_hairpin": "minus-brain11cw13-r4b-noassist-01: the cap binds the request from 22.42 s (1.18 s before the impact at 23.596 s; without the rule 22.83 s, 0.77 s), 3.18 m/s where the governor's own engagement later asks 3.47"
+ },
+ "not_included": {
+  "ttc_lead": "engaging at TTC < ttc_on + the contract's latency (0.8 + 0.3 = 1.1 s): the same samples at the hairpin, but independent of the speed; the stopping distance scales with it",
+  "standoff_exit": "minus-fast6-r5-01's pillar (analysis in docs/early_brake.md): the stand-off cap along the hairpin wall's ray kept deflecting the fast PD's exit request by ~20 deg after turn-first had released aligned; a wall-pilot change, not this rule"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-29T03:39:58+00:00",
+ "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e"
+}

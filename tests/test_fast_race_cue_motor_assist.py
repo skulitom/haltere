@@ -94,8 +94,8 @@ def test_config_validation():
 def test_contract_entries_and_version():
     from haltere.liftoff.fast_race_cue import (MOTOR_ASSIST_V1_FIELDS, MOTOR_ASSIST_VERSION, MOTOR_ASSIST_VERSIONS,
                                                motor_assist_for_contract)
-    assert MOTOR_ASSIST_VERSION == 3 and MOTOR_ASSIST_VERSIONS == (1, 2, 3)
-    declaration = dict(version=MOTOR_ASSIST_VERSION, contracts=dict(
+    assert MOTOR_ASSIST_VERSION == 4 and MOTOR_ASSIST_VERSIONS == (1, 2, 3, 4)
+    declaration = dict(version=3, contracts=dict(
         fast_velocity_brain_v1=dict(cap_sources=['request', 'stopping'], request_states=['cue'], cap_gain=2.),
         fast_velocity_pd_v1=None))
     config = motor_assist_for_contract(declaration, 'fast_velocity_brain_v1')
@@ -628,10 +628,12 @@ def test_runner_csv_tail_puts_the_assist_columns_after_the_view_columns():
     from haltere.liftoff import visual_brain
     source = re.sub(r'\s+', '', inspect.getsource(visual_brain.run))
     # round 5 (arches) appends the stale-evidence columns last, only when that rule is declared
-    assert '*VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,*stale_columns])' in source
+    # round 6 (brake) appends the early-brake column after them, only when that rule is declared
+    assert '*VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,*stale_columns,*early_columns])' in source
     assert ('*(descent_view_row(controller.assistance)ifview_columnselse()),'
             '*(motor_assist_row(controller.assistance)ifassist_columnselse()),'
-            '*(stale_row(controller.assistance)ifstale_columnselse())])') in source
+            '*(stale_row(controller.assistance)ifstale_columnselse()),'
+            '*(early_row(controller.assistance)ifearly_columnselse())])') in source
 
 
 def test_scenario_wall_geometry():
@@ -649,7 +651,8 @@ def test_scenario_wall_geometry():
 # ---------------------------------------------------------------------------------------------
 # The frozen declaration and gates
 # ---------------------------------------------------------------------------------------------
-DECLARATION_SHA256 = '7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772'
+V3_DECLARATION_SHA256 = '7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772'
+DECLARATION_SHA256 = '8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6'           # version 4 (round 6)
 V2_DECLARATION_SHA256 = 'f3f3502247d766b8b59529350746ca53e6c24a66bc818dc1f4494e65e2e36901'
 V1_DECLARATION_SHA256 = 'eefb4a42613cabe5bd9c120825c42274ab72f8f7b970750aadb26334d3781d02'
 GATES_SHA256 = 'f75a45e4e4f5ccdfda2dcf62cef81ea4ef07e086a79b38aa12e1d959527da5fc'
@@ -661,13 +664,16 @@ def test_frozen_declaration_assigns_the_rule_to_the_brain_contract_only(tmp_path
     from haltere.liftoff.fast_race_cue import MotorAssistConfig, motor_assist_for_contract
     from haltere.liftoff.visual_brain import MOTOR_ASSIST_DECLARATION, load_motor_assist
     declaration, digest = load_motor_assist()
-    assert digest == DECLARATION_SHA256 and declaration['version'] == 3
-    # the declared brain entry is the code's default rule; the fast PD (and any other contract) has none
-    assert motor_assist_for_contract(declaration, 'fast_velocity_brain_v1') == MotorAssistConfig()
+    assert digest == DECLARATION_SHA256 and declaration['version'] == 4
+    # the declared brain entry is version 3's rule without the approach, with the tracking floor and the ceiling share;
+    # the fast PD (and any other contract) has none
+    assert motor_assist_for_contract(declaration, 'fast_velocity_brain_v1') == MotorAssistConfig(
+        cap_sources=('request', 'governor', 'turn_first', 'stopping'), track_floor=2.5, ceiling_share=True, version=4)
     assert motor_assist_for_contract(declaration, 'fast_velocity_pd_v1') is None
     assert 'fast_velocity_pd_v1' in declaration['contracts']
-    assert [v['sha256'] for v in declaration['previous_versions']] == [V1_DECLARATION_SHA256, V2_DECLARATION_SHA256]
-    # an edited copy or another version is refused; the runner refuses the kept versions 1 and 2
+    assert [v['sha256'] for v in declaration['previous_versions']] == [V1_DECLARATION_SHA256, V2_DECLARATION_SHA256,
+                                                                      V3_DECLARATION_SHA256]
+    # an edited copy or another version is refused; the runner refuses the kept versions 1, 2 and 3
     edited = json.loads(MOTOR_ASSIST_DECLARATION.read_text(encoding='utf-8'))
     edited['contracts']['fast_velocity_brain_v1']['cap_gain'] = 3.
     path = tmp_path/'edited.json'
@@ -675,12 +681,12 @@ def test_frozen_declaration_assigns_the_rule_to_the_brain_contract_only(tmp_path
     with pytest.raises(ValueError, match='frozen'):
         load_motor_assist(path)
     from haltere.train.brake_gates import gates_sha256
-    other = dict(declaration, version=4)
+    other = dict(declaration, version=5)
     other['sha256'] = gates_sha256(other)
     path.write_text(json.dumps(other), encoding='utf-8')
     with pytest.raises(ValueError, match='version'):
         load_motor_assist(path)
-    for version, digest in ((1, V1_DECLARATION_SHA256), (2, V2_DECLARATION_SHA256)):
+    for version, digest in ((1, V1_DECLARATION_SHA256), (2, V2_DECLARATION_SHA256), (3, V3_DECLARATION_SHA256)):
         kept = MOTOR_ASSIST_DECLARATION.with_name(f'motor_assist_v{version}.json')
         with pytest.raises(ValueError, match=f'version {version}'):
             load_motor_assist(kept)
@@ -690,13 +696,17 @@ def test_frozen_declaration_assigns_the_rule_to_the_brain_contract_only(tmp_path
     v2 = motor_assist_for_contract(json.loads(MOTOR_ASSIST_DECLARATION.with_name('motor_assist_v2.json').read_text(
         encoding='utf-8')), 'fast_velocity_brain_v1')
     assert v2 == MotorAssistConfig(approach_climb_max=.3, version=2)
+    v3 = motor_assist_for_contract(json.loads(MOTOR_ASSIST_DECLARATION.with_name('motor_assist_v3.json').read_text(
+        encoding='utf-8')), 'fast_velocity_brain_v1')
+    assert v3 == MotorAssistConfig()                  # the dataclass defaults are version 3's
 
 
 def test_frozen_gates_name_the_frozen_declaration():
     from haltere.liftoff.motor_assist_gates import load_gates
     gates, digest, declaration = load_gates()
     assert digest == GATES_SHA256 and gates['version'] == 3
-    assert gates['motor_assist']['sha256'] == DECLARATION_SHA256 == declaration['sha256']
+    # (version 3's gates score the kept version-3 declaration)
+    assert gates['motor_assist']['sha256'] == V3_DECLARATION_SHA256 == declaration['sha256']
     assert set(gates['controllers']) == {'brain11cw13', 'brain09b', 'brain10b'}
     # the held-out hairpin set, seeds and hill courses differ from every set either earlier version was designed or
     # scored on

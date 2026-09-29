@@ -1,0 +1,545 @@
+{
+ "schema": "haltere.obstacles.early_brake_gates.v1",
+ "version": 1,
+ "note": "Offline gates of the round-6 brake rules (branch m6-brake): the early brake (configs/obstacles/early_brake.json v1) and motor assist version 4 (configs/pilot/motor_assist.json; v3 kept). Scored by haltere.obstacles.early_brake_gates (harness, replays, windows, score). Frozen and committed before any harness, replay or window run of these gates. Development evidence: the logs under logs.development (read while the rules were designed; straw-brain08-06 is the round-5 integration's ceiling-cut case) and the harness sets dev17/g23/h41/h67 and pt17/pt41 (seeds 17, 23, 41, 67). Held-out: the fresh harness sets below (seed 83, parameter values used by no earlier set), hill courses 6500-6511, and the logs under logs.held_out, which no replay of these rules touched before the freeze. None of it is flight evidence.",
+ "declarations": {
+  "early_brake": {
+   "file": "configs/obstacles/early_brake.json",
+   "version": 1,
+   "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e"
+  },
+  "motor_assist": {
+   "file": "configs/pilot/motor_assist.json",
+   "version": 4,
+   "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6"
+  },
+  "motor_assist_v3": {
+   "file": "configs/pilot/motor_assist_v3.json",
+   "version": 3,
+   "sha256": "7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772"
+  }
+ },
+ "baseline": "the m5 tree (git archive m5, bc7c71c): the flight stack of round 5 without the new rules",
+ "logs": {
+  "development": [
+   "minus-brain11cw13-r4b-noassist-01",
+   "minus-brain11cw13-r5-02",
+   "minus-brain10b-r4-02",
+   "minus-brain09b-r4-01",
+   "minus-fast6-r5-01",
+   "minus-fast6-r4b-01",
+   "minus-fast6-r4-02",
+   "straw-brain11cw13-r4b-noassist-02",
+   "straw-brain11cw13-r5-noassist-01",
+   "straw-brain11cw13-r5-noassist-04",
+   "straw-brain08-06"
+  ],
+  "held_out": [
+   "minus-fast6-wall-01",
+   "minus-brain08-gapon-01",
+   "minus-brain08-gapon-02",
+   "minus-fast6-gapon-01",
+   "minus-brain08-loom-01",
+   "minus-fast6-vg-02",
+   "minus-brain08-vg-01",
+   "minus-brain09b-vg-01",
+   "minus-brain08-gapshadow-01",
+   "pine-fast6-ttc-01",
+   "pine-brain08-loom-01",
+   "pine-brain08-01",
+   "straw-brain08-04",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01"
+  ]
+ },
+ "replays": {
+  "runs": "C:/DEV/Haltere/runs/fast-stack-20260923",
+  "stream": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m4/vguard/streams/stream_{flight}.npz",
+  "stream_flights": [
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01",
+   "pine-brain08-01"
+  ],
+  "flight_motor": {
+   "minus-brain11cw13-r4b-noassist-01": "brain",
+   "minus-brain11cw13-r5-02": "brain",
+   "minus-brain10b-r4-02": "brain",
+   "minus-brain09b-r4-01": "brain",
+   "minus-fast6-r5-01": "pd",
+   "minus-fast6-r4b-01": "pd",
+   "minus-fast6-r4-02": "pd",
+   "straw-brain11cw13-r4b-noassist-02": "brain",
+   "straw-brain11cw13-r5-noassist-01": "brain",
+   "straw-brain11cw13-r5-noassist-04": "brain",
+   "straw-brain08-06": "brain",
+   "minus-fast6-wall-01": "pd",
+   "minus-brain08-gapon-01": "brain",
+   "minus-brain08-gapon-02": "brain",
+   "minus-fast6-gapon-01": "pd",
+   "minus-brain08-loom-01": "brain",
+   "minus-fast6-vg-02": "pd",
+   "minus-brain08-vg-01": "brain",
+   "minus-brain09b-vg-01": "brain",
+   "minus-brain08-gapshadow-01": "brain",
+   "pine-fast6-ttc-01": "pd",
+   "pine-brain08-loom-01": "brain",
+   "pine-brain08-01": "brain",
+   "straw-brain08-04": "brain",
+   "straw-brain08-01": "brain",
+   "straw-brain08-02": "brain",
+   "straw-brain08-03": "brain",
+   "straw-fast6-01": "pd",
+   "straw-fast6-02": "pd",
+   "straw-fast6-03": "pd",
+   "straw-fast6-arc-01": "pd"
+  },
+  "variants": {
+   "base_none": {
+    "tree": "baseline",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "none": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "none"
+    ]
+   },
+   "base_stack": {
+    "tree": "baseline",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "stack": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "base_ma3": {
+    "tree": "baseline",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json",
+     "--motor-assist",
+     "configs/pilot/motor_assist.json"
+    ]
+   },
+   "ma3": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json",
+     "--motor-assist",
+     "configs/pilot/motor_assist_v3.json"
+    ]
+   },
+   "base_shadow": {
+    "tree": "baseline",
+    "args": [
+     "--stack",
+     "shadow",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json"
+    ]
+   },
+   "shadow_eb": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "shadow",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json",
+     "--early-brake",
+     "configs/obstacles/early_brake.json"
+    ]
+   },
+   "eb": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json",
+     "--early-brake",
+     "configs/obstacles/early_brake.json"
+    ]
+   },
+   "eb_ma4": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json",
+     "--early-brake",
+     "configs/obstacles/early_brake.json",
+     "--motor-assist",
+     "configs/pilot/motor_assist.json"
+    ]
+   },
+   "ma4": {
+    "tree": "this",
+    "args": [
+     "--stack",
+     "on",
+     "--near-on-path",
+     "--throttle-column",
+     "command_thr",
+     "--descent-view",
+     "configs/pilot/descent_view.json",
+     "--stale-evidence",
+     "configs/obstacles/stale_evidence.json",
+     "--motor-assist",
+     "configs/pilot/motor_assist.json"
+    ]
+   }
+  },
+  "note": "stack: --stack on --near-on-path --throttle-column command_thr with descent view v3 (contact support on) and stale evidence v2, the round-5 flight stack; the baseline tree's configs/pilot/motor_assist.json is version 3"
+ },
+ "surrogate": {
+  "loop": "haltere.train.brake_gates.replay_window: IdentifiedSim (measured original drone, no randomisation), 3-tick command delay, quadratic drag 0.0075, from the logged state; the request and the yaw stick per logged row from a replay (rows the replay skipped keep the log); a brain warmed on its recorded inputs for warm_s",
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
+  "warm_s": 8.0,
+  "reference": "brain08",
+  "motors": {
+   "pd": {
+    "checkpoint": "pd",
+    "contract": "fast_velocity_pd_v1"
+   },
+   "brain08": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain09b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-09b-caps-r0001m100/candidate.pt",
+    "sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain10b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-10b/candidate.pt",
+    "sha256": "0ccf116190f5135220dbd2cc20a6dd9948654d07509eaa388a2286d8d4640bcd",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain11cw13": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-11-b-cw13/candidate.pt",
+    "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+    "contract": "fast_velocity_brain_v1"
+   }
+  },
+  "flight_motor": {
+   "minus-fast6-wall-01": "pd",
+   "minus-brain08-gapon-01": "brain08",
+   "minus-brain08-gapon-02": "brain08",
+   "minus-fast6-gapon-01": "pd",
+   "minus-brain08-loom-01": "brain08",
+   "minus-fast6-vg-02": "pd",
+   "minus-brain08-vg-01": "brain08",
+   "minus-brain09b-vg-01": "brain09b",
+   "minus-brain08-gapshadow-01": "brain08",
+   "minus-fast6-r4-02": "pd",
+   "minus-brain10b-r4-02": "brain10b",
+   "minus-brain09b-r4-01": "brain09b",
+   "pine-fast6-ttc-01": "pd",
+   "pine-brain08-loom-01": "brain08",
+   "pine-brain08-01": "brain08",
+   "straw-brain08-04": "brain08",
+   "straw-brain08-06": "brain08",
+   "straw-brain08-01": "brain08",
+   "straw-brain08-02": "brain08",
+   "straw-brain08-03": "brain08",
+   "straw-fast6-01": "pd",
+   "straw-fast6-02": "pd",
+   "straw-fast6-03": "pd",
+   "straw-fast6-arc-01": "pd",
+   "minus-brain11cw13-r4b-noassist-01": "brain11cw13",
+   "minus-fast6-r4b-01": "pd",
+   "straw-brain11cw13-r4b-noassist-02": "brain11cw13"
+  },
+  "note": "stale_evidence_gates.Surrogate: haltere.train.brake_gates.replay_window"
+ },
+ "windows": [
+  {
+   "flight": "minus-brain11cw13-r4b-noassist-01",
+   "motor": "brain11cw13",
+   "t0": 22.0,
+   "horizon_s": 1.55,
+   "variants": [
+    "logged",
+    "stack",
+    "eb_ma4",
+    "ma3"
+   ],
+   "what": "the hairpin approach to 0.05 s before the wall impact (motor assist v3 gates window)"
+  }
+ ],
+ "harness": {
+  "controllers": {
+   "brain11cw13": {
+    "kind": "brain",
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-11-b-cw13/candidate.pt",
+    "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain10b": {
+    "kind": "brain",
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-10b/candidate.pt",
+    "sha256": "0ccf116190f5135220dbd2cc20a6dd9948654d07509eaa388a2286d8d4640bcd",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain09b": {
+    "kind": "brain",
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-09b-caps-r0001m100/candidate.pt",
+    "sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+    "contract": "fast_velocity_brain_v1"
+   }
+  },
+  "gated": [
+   "brain11cw13",
+   "brain10b"
+  ],
+  "gated_note": "the surrogate gates score fast-brain-11-b-cw13 (the brain flown in rounds 4b and 5) and fast-brain-10b; brain-09b is reported: in development its braking sank it to the floor at pass-through arches (pt41, live-like samples: 3 of 8 with the early brake, 2 with motor assist v3 and with the early brake and v4, none without either)",
+  "parts": {
+   "hairpin": {
+    "kind": "hairpin",
+    "set": {
+     "turn_deg": [
+      40.0,
+      70.0,
+      100.0,
+      125.0
+     ],
+     "arch_m": [
+      8.5,
+      12.5
+     ],
+     "wall_m": [
+      2.35,
+      2.75
+     ]
+    },
+    "seconds": 16.0,
+    "sim_seed": 83,
+    "live_wall_samples": true,
+    "variants": [
+     "base",
+     "ma3",
+     "eb",
+     "eb_ma4"
+    ]
+   },
+   "hairpin_gate": {
+    "kind": "hairpin",
+    "set": {
+     "turn_deg": [
+      40.0,
+      70.0,
+      100.0,
+      125.0
+     ],
+     "arch_m": [
+      8.5,
+      12.5
+     ],
+     "wall_m": [
+      2.35,
+      2.75
+     ]
+    },
+    "seconds": 16.0,
+    "sim_seed": 83,
+    "live_wall_samples": false,
+    "variants": [
+     "base",
+     "ma3",
+     "eb_ma4"
+    ],
+    "note": "REPORT: the gate-style samples (below_fraction 0.5, ttc_lower = ttc)"
+   },
+   "passthrough": {
+    "kind": "passthrough",
+    "set": {
+     "turn_deg": [
+      15.0,
+      50.0,
+      100.0
+     ],
+     "see_through_m": [
+      1.25,
+      1.75
+     ],
+     "surface_m": [
+      0.1,
+      0.35
+     ]
+    },
+    "seconds": 16.0,
+    "sim_seed": 83,
+    "live_wall_samples": true,
+    "variants": [
+     "base",
+     "ma3",
+     "eb",
+     "eb_ma4"
+    ]
+   },
+   "hill": {
+    "kind": "course",
+    "set": "hill:6500-6511",
+    "seconds": 150.0,
+    "sim_seed": 83,
+    "variants": [
+     "base",
+     "ma3",
+     "eb_ma4"
+    ]
+   }
+  },
+  "note": "motor_assist_eval.run_scenarios (IdentifiedSim, 10% randomisation, synthetic HUD marker, 3-tick delay, synthetic wall looming at 18 Hz received 0.085 s later; live_wall_samples: below_fraction None and no lower-surface TTC, as the recorded Minus Two wall samples) and descent_rehearsal.run_batch for hills; base = the deployed m5 stack (haltere.train.deployed_pilot with the stale-evidence rule)"
+ },
+ "gates": {
+  "identity": {
+   "threshold": "every command array (cvx, cvy, cvz, yaw_cmd, state, cap, climb, descent_scale) bit-identical on every log"
+  },
+  "D1_hairpin_warning": {
+   "flight": "minus-brain11cw13-r4b-noassist-01",
+   "min_s": 1.0,
+   "threshold": "DEVELOPMENT, open loop: with the early brake the governor's cap first binds the request >= 1.0 s before the impact (within the last 3 s)"
+  },
+  "D2_hairpin_cut": {
+   "flight": "minus-brain11cw13-r4b-noassist-01",
+   "cut": 1.0,
+   "min_s": 1.0,
+   "threshold": "DEVELOPMENT, open loop: with the early brake and motor assist v4 the final continuous cut of >= 1 m/s below the round-5 stack's request starts >= 1.0 s before the impact"
+  },
+  "D3_hairpin_window": {
+   "flight": "minus-brain11cw13-r4b-noassist-01",
+   "t0": 22.0,
+   "min_drop": 1.5,
+   "threshold": "DEVELOPMENT, surrogate from the logged state: speed 0.05 s before the logged impact with the early brake and assist v4 <= the round-5 stack's - 1.5 m/s"
+  },
+  "D4_first_arch": {
+   "flight": "minus-brain11cw13-r5-02",
+   "x_before": 19.0,
+   "floor": 2.5,
+   "threshold": "DEVELOPMENT, open loop: before the first arch (x < 19 m) no tick without a wall-ahead condition (and none in the preceding 0.3 s) where the assisted request lies below min(the pilot's own, 2.5 m/s) - 0.01"
+  },
+  "D5_ceiling_share": {
+   "flight": "straw-brain08-06",
+   "t0": 37.49,
+   "t1": 38.77,
+   "max_s": 0.0,
+   "threshold": "DEVELOPMENT, open loop: 37.49-38.77 s, no tick in state cue with an assist climb where the pilot's own vertical request under motor assist v4 lies more than 0.05 m/s below the unassisted stack's"
+  },
+  "H1_hairpin": {
+   "clean_gain_min": 6,
+   "wall_fraction_max": 0.25,
+   "floor_extra_max": 1,
+   "ceiling_extra_max": 1,
+   "wall_vs_v3_extra_max": 4,
+   "threshold": "HELD OUT (16 fresh hairpins, live-like samples), per gated brain, the early brake with assist v4 against the round-5 stack without an assist: clean >= base + 6; walls <= floor(25% of base); floor, ceiling <= base + 1; and walls <= assist v3's + 4"
+  },
+  "H2_passthrough": {
+   "variants": [
+    "eb",
+    "eb_ma4"
+   ],
+   "min_speed": 0.75,
+   "median_min_speed": 1.5,
+   "threshold": "HELD OUT (12 fresh pass-through arches, live-like samples), per gated brain, the early brake alone and with assist v4: finished >= base; contacts <= base; the lowest speed from 1.5 s before to 0.5 s after the arch pass >= 0.75 m/s in every scenario and >= 1.5 m/s median"
+  },
+  "H3_hill": {
+   "chatter_ratio_max": 1.15,
+   "time_slower_max": 0.02,
+   "contacts_extra_max": 1,
+   "high_passes_extra_max": 2,
+   "threshold": "HELD OUT (hill courses 6500-6511), per gated brain, early brake + assist v4 against the base: finishes >= base; crashes <= base; chatter <= 1.15 x; paired finish time <= +2%; terrain contacts <= base + 1; high passes <= base + 2"
+  },
+  "H4_replays": {
+   "crawl_max_s": 0.1,
+   "floor": 2.5,
+   "eb_removed_share_max": 0.015,
+   "assist_removed_share_max": 0.03,
+   "crawl_threshold": "HELD OUT brain logs, open loop: seconds with the ring ahead (states cue, below, below_weak, above) where the request is below 2 m/s while the round-5 stack asks >= 3 m/s: <= 0.1 s per log, early brake alone and with assist v4",
+   "eb_quiet_threshold": "HELD OUT Straw Bale and Pine Valley brain laps: the early brake removes <= 1.5% of the round-5 stack's horizontal request travel per lap",
+   "floor_threshold": "ALL brain logs: no tick without a wall-ahead condition (and none in the preceding 0.3 s) where assist v4's request lies below min(own, 2.5) - 0.01",
+   "assist_quiet_threshold": "HELD OUT Straw Bale and Pine Valley brain laps: early brake + assist v4 remove <= 3% of the request travel per lap (assist v3's quiet bound)"
+  },
+  "H5_ceiling_share": {
+   "max_s": 0.1,
+   "threshold": "HELD OUT brain logs: seconds in state cue with an assist climb where the pilot's own vertical request under assist v4 lies > 0.05 m/s below the unassisted stack's: <= 0.1 s per log"
+  }
+ },
+ "reported_not_gated": "hairpin results with the gate-style samples; assist v3 beside every surrogate gate; per-log replay changes (every log, development marked); the fast PD's minus-fast6-r5-01 exit (analysis in docs/early_brake.md)",
+ "frozen": true,
+ "frozen_at": "2026-09-29T03:39:58+00:00",
+ "sha256": "3b029e32b3171eb75020b8e6091f9e9dd8511789b244cdac3ec1cc05697f7a80"
+}

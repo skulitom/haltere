@@ -1,0 +1,809 @@
+{
+ "scope": "DEVELOPMENT evidence of the round-6 brake rules, gathered before the freeze of configs/obstacles/early_brake_gates.json: motor_assist_eval harness scenarios with live-like wall samples (below_fraction None, no lower-surface TTC, as the recorded Minus Two walls); hairpin sets dev17 (turn 20/60/90 x arch 7/11 x wall 2.1/2.6, seed 17, 14 s), h41 (motor-assist gates v3 held-out set, seed 41), h67 (round-5 integration fresh set, seed 67), pass-through sets pt17 (turn 0/45/90 x see-through 1/2, seed 17) and pt41 (gates v3 report set); counts of 12 (8 or 6 for pass-through); arch_min_speed: lowest horizontal speed from 1.5 s before to 0.5 s after the arch pass. Not flight evidence.",
+ "results": {
+  "brain11cw13 dev17": {
+   "eb+ma4 [h1]": {
+    "clean": 3,
+    "finished": 3,
+    "wall": 5,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb+ma4nf [h1]": {
+    "clean": 4,
+    "finished": 4,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "variant": "early brake (engagement floor) + assist v4 without the tracking floor",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb [h1]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (floor until the governor's own engagement)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ebw+ma4 [h1]": {
+    "clean": 3,
+    "finished": 3,
+    "wall": 3,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared) + assist v4",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ebw [h1]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "m5 [h1]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "m5 stack (no assist)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ma3 [h1]": {
+    "clean": 3,
+    "finished": 3,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "variant": "motor assist v3",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ma4 [h1]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "assist v4 without the early brake",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb+ma4 [h3]": {
+    "clean": 3,
+    "finished": 3,
+    "wall": 5,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw+ma4 [h3]": {
+    "clean": 3,
+    "finished": 3,
+    "wall": 3,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain11cw13 h41": {
+   "eb+ma4 [h1]": {
+    "clean": 7,
+    "finished": 7,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb+ma4nf [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "variant": "early brake (engagement floor) + assist v4 without the tracking floor",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb [h1]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (floor until the governor's own engagement)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ebw+ma4 [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared) + assist v4",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ebw [h1]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "m5 [h1]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "m5 stack (no assist)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ma3 [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "variant": "motor assist v3",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ma4 [h1]": {
+    "clean": 5,
+    "finished": 5,
+    "wall": 7,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "assist v4 without the early brake",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb+ma4 [h3]": {
+    "clean": 7,
+    "finished": 7,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw+ma4 [h3]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain11cw13 pt41": {
+   "eb+ma4 [h1]": {
+    "clean": 7,
+    "finished": 7,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     1.38,
+     0.58,
+     1.09,
+     0.62,
+     1.6,
+     0.21,
+     1.56,
+     0.6
+    ],
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb+ma4nf [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     1.01,
+     1.59,
+     1.79,
+     1.18,
+     1.83,
+     0.9,
+     1.75,
+     1.26
+    ],
+    "variant": "early brake (engagement floor) + assist v4 without the tracking floor",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     2.8,
+     2.26,
+     2.73,
+     2.42,
+     3.08,
+     1.82,
+     2.95,
+     2.0
+    ],
+    "variant": "early brake (floor until the governor's own engagement)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ebw+ma4 [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     2.2,
+     0.95,
+     2.24,
+     1.11,
+     2.19,
+     1.45,
+     2.19,
+     1.33
+    ],
+    "variant": "early brake (declared) + assist v4",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ebw [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     2.8,
+     2.26,
+     2.73,
+     2.42,
+     3.08,
+     1.82,
+     2.95,
+     2.0
+    ],
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "m5 [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     4.22,
+     4.07,
+     4.44,
+     4.13,
+     4.25,
+     3.97,
+     4.61,
+     4.04
+    ],
+    "variant": "m5 stack (no assist)",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ma3 [h1]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     0.76,
+     0.24,
+     0.75,
+     0.05,
+     1.06,
+     0.33,
+     0.87,
+     0.21
+    ],
+    "variant": "motor assist v3",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "ma4 [h1]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     3.45,
+     3.13,
+     3.46,
+     3.1,
+     3.54,
+     2.84,
+     3.67,
+     3.04
+    ],
+    "variant": "assist v4 without the early brake",
+    "run": "assist v4 tracking floor only outside wall-ahead conditions (superseded)"
+   },
+   "eb+ma4 [h3]": {
+    "clean": 7,
+    "finished": 7,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     1.38,
+     0.54,
+     1.09,
+     0.62,
+     1.6,
+     0.17,
+     1.56,
+     0.55
+    ],
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw+ma4 [h3]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     2.2,
+     0.92,
+     2.24,
+     1.11,
+     2.19,
+     1.39,
+     2.19,
+     1.31
+    ],
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain09b h41": {
+   "ebw+ma4 [h3]": {
+    "clean": 11,
+    "finished": 12,
+    "wall": 0,
+    "floor": 1,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw [h3]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 3,
+    "floor": 3,
+    "ceiling": 0,
+    "crashed": 6,
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "m5 [h3]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "m5 stack (no assist)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ma3 [h3]": {
+    "clean": 10,
+    "finished": 10,
+    "wall": 0,
+    "floor": 2,
+    "ceiling": 0,
+    "crashed": 2,
+    "variant": "motor assist v3",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain09b pt41": {
+   "ebw+ma4 [h3]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 0,
+    "floor": 2,
+    "ceiling": 0,
+    "crashed": 2,
+    "arch_min_speed": [
+     2.43,
+     0.68,
+     2.12,
+     0.99,
+     2.46,
+     0.49,
+     2.2,
+     0.94
+    ],
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw [h3]": {
+    "clean": 5,
+    "finished": 5,
+    "wall": 0,
+    "floor": 3,
+    "ceiling": 0,
+    "crashed": 3,
+    "arch_min_speed": [
+     2.7,
+     0.86,
+     2.23,
+     1.37,
+     2.88,
+     0.81,
+     2.22,
+     0.81
+    ],
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "m5 [h3]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     4.31,
+     3.82,
+     3.83,
+     4.04,
+     4.64,
+     2.95,
+     4.2,
+     3.71
+    ],
+    "variant": "m5 stack (no assist)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ma3 [h3]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 0,
+    "floor": 2,
+    "ceiling": 0,
+    "crashed": 2,
+    "arch_min_speed": [
+     0.82,
+     0.47,
+     1.44,
+     0.37,
+     1.12,
+     0.59,
+     0.94,
+     0.58
+    ],
+    "variant": "motor assist v3",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain10b h41": {
+   "ebw+ma4 [h3]": {
+    "clean": 9,
+    "finished": 9,
+    "wall": 3,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw [h3]": {
+    "clean": 1,
+    "finished": 1,
+    "wall": 11,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "m5 [h3]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "m5 stack (no assist)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ma3 [h3]": {
+    "clean": 11,
+    "finished": 11,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "motor assist v3",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain10b pt41": {
+   "ebw+ma4 [h3]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     2.33,
+     1.33,
+     2.12,
+     1.09,
+     2.35,
+     1.08,
+     2.14,
+     1.05
+    ],
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw [h3]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     3.61,
+     3.29,
+     2.58,
+     3.66,
+     3.96,
+     1.04,
+     3.02,
+     1.84
+    ],
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "m5 [h3]": {
+    "clean": 8,
+    "finished": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     4.75,
+     4.55,
+     4.09,
+     4.98,
+     5.05,
+     3.33,
+     4.39,
+     4.21
+    ],
+    "variant": "m5 stack (no assist)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ma3 [h3]": {
+    "clean": 7,
+    "finished": 7,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     0.84,
+     0.5,
+     0.7,
+     0.33,
+     1.12,
+     0.64,
+     0.8,
+     0.45
+    ],
+    "variant": "motor assist v3",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain11cw13 h67": {
+   "eb+ma4 [h3]": {
+    "clean": 9,
+    "finished": 9,
+    "wall": 1,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw+ma4 [h3]": {
+    "clean": 10,
+    "finished": 10,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw [h3]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "m5 [h3]": {
+    "clean": 0,
+    "finished": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "variant": "m5 stack (no assist)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ma3 [h3]": {
+    "clean": 10,
+    "finished": 11,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 2,
+    "crashed": 0,
+    "variant": "motor assist v3",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  },
+  "brain11cw13 pt17": {
+   "eb+ma4 [h3]": {
+    "clean": 5,
+    "finished": 5,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     0.92,
+     1.09,
+     0.11,
+     1.69,
+     1.51,
+     0.25
+    ],
+    "variant": "early brake (engagement floor) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw+ma4 [h3]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     2.29,
+     2.23,
+     1.45,
+     2.17,
+     2.32,
+     1.05
+    ],
+    "variant": "early brake (declared) + assist v4",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ebw [h3]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     2.6,
+     2.64,
+     1.11,
+     2.96,
+     2.81,
+     1.36
+    ],
+    "variant": "early brake (declared: floor while the ring is ahead)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "m5 [h3]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     4.31,
+     4.3,
+     4.01,
+     4.43,
+     4.1,
+     4.07
+    ],
+    "variant": "m5 stack (no assist)",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   },
+   "ma3 [h3]": {
+    "clean": 6,
+    "finished": 6,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "arch_min_speed": [
+     0.81,
+     0.74,
+     0.45,
+     0.89,
+     1.01,
+     0.44
+    ],
+    "variant": "motor assist v3",
+    "run": "declared assist v4 (tracking floor unless the stopping source binds)"
+   }
+  }
+ },
+ "open_loop": {
+  "hairpin": "minus-brain11cw13-r4b-noassist-01: the governor cap binds from 22.42 s with the early brake (1.18 s before the impact at 23.596 s), from 22.83 s without (0.77 s); request 3.18 m/s where the round-5 stack later asks 3.47",
+  "window": "the same log from 22.0 s in the surrogate (brain from the logged state, open-loop replay requests): speed 0.05 s before the logged impact 3.88 m/s (m5 stack; logged request 3.89), 3.74 (early brake alone), 1.00 (early brake + assist v4), 0.55 (assist v3)",
+  "arches": "Minus brain logs, open loop, lowest request at the first arch, pillar A and the 90-degree arch: assist v3 0.02-0.16 m/s; early brake + assist v4 2.5 m/s (the tracking floor) with the ring in view",
+  "fast_pd_r5_01": "minus-fast6-r5-01 replayed through the m4b stack and the m5 stack: 0 of 2608 ticks differ by more than 0.05 m/s (the 90-degree-arch stop and the hairpin stand-off are closed-loop outcomes of rules m4b already had)"
+ }
+}

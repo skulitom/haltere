@@ -18,6 +18,9 @@ declarations of the rule versions this code implements), plus a record of every 
   cap follows the ray of its evidence). The runner adds it only with ``--stale-evidence on`` inside the obstacle stack
   (version 2; off by default); it is off here by default too, so the brain-11 and brain-12 records built on this
   module stay reproducible. The surrogate has no looming samples, so it is idle there.
+- with ``early_brake=True`` (``--early-brake on``, off by default, inside the obstacle stack), the early-brake entry of
+  the contract (configs/obstacles/early_brake.json; none for the fast PD): the looming governor engages as early as the
+  contract's stopping model needs. Off by default here too; idle in the surrogate (no looming samples).
 
 The surrogate has no looming or gap samples, so the gap aim, the ceiling guard and the vertical guard stay idle
 there; the lag-aware turns and the view-keeping descent act, and turn-first acts on a governor cap (for example a
@@ -31,7 +34,7 @@ CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 
 def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
-                          stale_evidence=False, contact_support='on'):
+                          stale_evidence=False, contact_support='on', early_brake=False):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
@@ -77,6 +80,12 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         stale, digest = vb.load_stale_evidence()
         note('stale_evidence', vb.STALE_EVIDENCE_DECLARATION, stale, digest)
         kwargs.update(frc.stale_evidence_configs(stale))
+    if stack and early_brake:
+        early, digest = vb.load_early_brake()
+        note('early_brake', vb.EARLY_BRAKE_DECLARATION, early, digest)
+        config = frc.early_brake_for_contract(early, contract)
+        if config is not None:
+            kwargs['early_brake'] = config
     if motor_assist:
         assist, digest = vb.load_motor_assist()
         note('motor_assist', vb.MOTOR_ASSIST_DECLARATION, assist, digest)
