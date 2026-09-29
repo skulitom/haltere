@@ -695,8 +695,8 @@ def wall_pilot_configs(declaration, contract=None):
     return out
 
 
-# The stale-evidence declaration version whose rules this code implements (ClearanceRayConfig;
-# the stale-evidence declaration under configs/obstacles); runners refuse others. STALE_EVIDENCE_VERSIONS are the versions this code can
+# The stale-evidence declaration version whose rules this code implements (ClearanceRayConfig; the declaration
+# stale_evidence in configs/obstacles); runners refuse others. STALE_EVIDENCE_VERSIONS are the versions this code can
 # rebuild for replays (version 1 failed its held-out gates and is kept for provenance, refused by the runner).
 STALE_EVIDENCE_VERSION = 2
 STALE_EVIDENCE_VERSIONS = (1, 2)
@@ -704,16 +704,16 @@ STALE_EVIDENCE_VERSIONS = (1, 2)
 
 @dataclass(frozen=True)
 class ClearanceRayConfig:
-    """The TTC governor's cap follows the ray its evidence lies on (stale-evidence declaration version 1; obstacle
-    stack only, off unless a runner passes it; in shadow the flown governor lacks it and the shadow copy fed the same
-    samples has it). TTC policy only.
+    """The TTC governor's cap follows the ray its evidence lies on (stale-evidence declaration versions 1 and 2; the
+    runner flies version 2 only; obstacle stack only, off unless a runner passes it; in shadow the flown governor lacks
+    it and the shadow copy fed the same samples has it). TTC policy only.
 
     The governor keeps one cap on the speed along one looming ray: the travel direction when the wall sample that set
     the cap was captured. Without this rule a later wall sample that does not lower the target keeps that cap, holds
     it (a wall sample with TTC < hold_ttc_s) and, while the held target is at or below standoff_speed, renews the
     stand-off, whatever its own ray. On minus-fast6-r4b-01 a stand-off set at the first wall at 39.5 s (cap ray 28 deg,
     target 0.48 m/s) was renewed from 42.0 s to the impact at 44.8 s by samples along 139 deg and then -150..-162 deg:
-    the wall behind the next arch (TTC 0.86 -> 0.35 s along the travel direction, 0.9 s before the impact) never
+    the wall behind the next arch (TTC 0.86 -> 0.35 s along the travel direction, from 1.04 s before the impact) never
     lowered the cap, which bounded only the speed along the old ray, 180 deg from the flight.
 
     With this rule a sample whose ray lies more than stale_deg from the cap's ray describes another path. Once
@@ -1257,7 +1257,7 @@ class TtcClearanceGovernor:
     the policy's, and `sink_factor` / `arrest` tell the pilot how much of its own sink to keep and whether to hold
     at least level (1. / False without it).
     `ray` (a `ClearanceRayConfig`, off by default) re-seats the cap on the ray of a confirmed sample that lies more than
-    its stale_deg from the cap's ray (stale-evidence declaration version 1).
+    its stale_deg from the cap's ray (stale-evidence declarations versions 1 and 2; see ClearanceRayConfig).
     """
 
     def __init__(self, config=None, ceiling=None, vertical=None, ray=None):
@@ -3094,14 +3094,27 @@ class FastRaceCue:
         if self.clearance_ray is None:
             return None
         governor = self._ray_governor()
+        ray = self.clearance_ray
+        # the rule version its semantics match (version 1: judge_fresh, no keep_standoff; version 2: the reverse)
+        version = (1 if ray.judge_fresh and not ray.keep_standoff else
+                   2 if ray.keep_standoff and not ray.judge_fresh else None)
+        if ray.judge_fresh:
+            rule = ('a looming sample whose ray lies more than stale_deg from the TTC governor\'s cap ray neither holds '
+                    'the cap nor counts as its hysteresis (confirmed against ttc_on); once confirmed with a slow-down it '
+                    're-seats the cap on its own ray (its own target, the cap starting at the speed along that ray and '
+                    'falling at brake_rate) and ends the stand-off along the old ray')
+        else:
+            rule = ('a looming sample whose ray lies more than stale_deg from the TTC governor\'s cap ray is confirmed '
+                    'and holds the cap as without the rule; once confirmed with a slow-down whose own target does not '
+                    'lower the held one (a lower target re-aims the cap as without the rule) it re-seats the cap on its '
+                    'own ray (its own target, the cap starting at the speed along that ray and falling at brake_rate) '
+                    'and ends the stand-off along the old ray'
+                    +(', but not while that stand-off is active' if ray.keep_standoff else ''))
         return dict(
-            version=STALE_EVIDENCE_VERSION, applied=self.stale_apply,
+            version=version, applied=self.stale_apply,
             clearance_ray=dict(
-                rule='a looming sample whose ray lies more than stale_deg from the TTC governor\'s cap ray neither holds '
-                     'the cap nor counts as its hysteresis (confirmed against ttc_on); once confirmed with a slow-down it '
-                     're-seats the cap on its own ray (its own target, the cap starting at the speed along that ray and '
-                     'falling at brake_rate) and ends the stand-off along the old ray',
-                parameters=asdict(self.clearance_ray),
+                rule=rule,
+                parameters=asdict(ray),
                 governor='flown' if self.stale_apply else 'shadow copy fed the same samples',
                 counts=None if governor is None else {k: governor.counts[k] for k in ('stale_ray_samples', 'reseats')}))
 

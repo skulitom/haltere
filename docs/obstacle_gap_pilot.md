@@ -51,6 +51,7 @@ had been read before version 5 was chosen. See
 | `--wall-pilot on\|off` | on inside the stack | Component override for the [wall-pilot rules](#wall-pilot-rules-round-2). `on` is refused without `--obstacle-stack`; `shadow` computes and logs them without applying them. |
 | `--vertical-guard on\|off` | on inside the stack | Component override for the [vertical guard](vertical_guard.md) (a time margin to the ground below the path, descent first, terrain climbs above 1 m/s only for rising ground; `configs/obstacles/vertical_guard.json` version 4 on `m4b`: rising ground also needs the surface below to keep looming; version 3 flew in round 4). `on` is refused without `--obstacle-stack`; `shadow` computes and logs it without applying it. |
 | `--lag-turn [on\|off\|DECLARATION]` | on inside the stack, off outside | Component override. Outside the stack it keeps its earlier meaning (a bare flag means on). |
+| `--stale-evidence on\|off` | off, also inside the stack | Round 5 ([arches.md](arches.md)): the looming governor's cap follows the ray of its evidence (`configs/obstacles/stale_evidence.json` version 2: a confirmed wall sample more than 60 deg off the cap's ray re-seats the cap once the old stand-off has lapsed). `on` is refused without `--obstacle-stack`; in shadow it is computed and logged, not applied. Version 1 failed its held-out gates. |
 
 There is no speed cap: the live runs showed that brain-08 ignores slow requests
 (asked for 3.5 m/s, it flew 5.1 m/s). The gap cue and the lag turn change only the

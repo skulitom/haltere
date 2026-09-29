@@ -15,9 +15,9 @@ declarations of the rule versions this code implements), plus a record of every 
 - with ``motor_assist=True`` (``--motor-assist on``, off by default), the motor-assist entry of the contract
   (configs/pilot/motor_assist.json; none for the fast PD);
 - with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
-  cap follows the ray of its evidence). As in the runner (``--stale-evidence on`` inside the obstacle stack; version 2
-  is opt-in), it is off here by default, so the brain-11 and brain-12 records built on this module stay reproducible.
-  The surrogate has no looming samples, so it is idle there.
+  cap follows the ray of its evidence). The runner adds it only with ``--stale-evidence on`` inside the obstacle stack
+  (version 2; off by default); it is off here by default too, so the brain-11 and brain-12 records built on this
+  module stay reproducible. The surrogate has no looming samples, so it is idle there.
 
 The surrogate has no looming or gap samples, so the gap aim, the ceiling guard and the vertical guard stay idle
 there; the lag-aware turns and the view-keeping descent act, and turn-first acts on a governor cap (for example a
