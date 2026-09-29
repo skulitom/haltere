@@ -281,6 +281,18 @@ def test_shadow_flies_the_pilot_without_the_rule_bit_for_bit_and_logs_the_rule()
     assert speeds[-1] < a[-1] @ B-1.
 
 
+def test_metadata_names_the_rule_version_and_semantics_that_run():
+    v2 = pilot(clearance_ray=RAY)[0].metadata()['stale_evidence']
+    v1 = pilot(clearance_ray=RAY1)[0].metadata()['stale_evidence']
+    assert v2['version'] == 2 and v1['version'] == 1
+    assert v2['clearance_ray']['parameters'] == dict(stale_deg=60., judge_fresh=False, keep_standoff=True)
+    assert 'holds the cap as without the rule' in v2['clearance_ray']['rule']
+    assert 'not while that stand-off is active' in v2['clearance_ray']['rule']
+    assert 'neither holds' in v1['clearance_ray']['rule']
+    other = pilot(clearance_ray=ClearanceRayConfig(judge_fresh=False))[0].metadata()['stale_evidence']
+    assert other['version'] is None           # neither declared version's semantics
+
+
 def test_a_pilot_without_the_rule_builds_its_governor_exactly_as_before():
     p, h = pilot()
     drive_pilot(p, h, seconds=1.5)

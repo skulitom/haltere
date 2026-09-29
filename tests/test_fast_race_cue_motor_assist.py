@@ -405,9 +405,11 @@ def test_runner_csv_tail_puts_the_assist_columns_after_the_view_columns():
     import re
     from haltere.liftoff import visual_brain
     source = re.sub(r'\s+', '', inspect.getsource(visual_brain.run))
-    assert '*VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns])' in source
+    # round 5 (arches) appends the stale-evidence columns last, only when that rule is declared
+    assert '*VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,*stale_columns])' in source
     assert ('*(descent_view_row(controller.assistance)ifview_columnselse()),'
-            '*(motor_assist_row(controller.assistance)ifassist_columnselse())])') in source
+            '*(motor_assist_row(controller.assistance)ifassist_columnselse()),'
+            '*(stale_row(controller.assistance)ifstale_columnselse())])') in source
 
 
 def test_scenario_wall_geometry():

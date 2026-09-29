@@ -1297,3 +1297,43 @@ What this shows:
   and with fewer downhill contacts in this one lap; one lap is not a repeatability result.
 - New failures: arch legs beside rings (Minus at 44.8 s, Straw start arch in lap 2 while coasting), and
   the brain hairpin still needs earlier braking (the looming warning comes ~0.5 s before the wall).
+  Round 5 (below) found that the Minus failure was the wall behind the arch, not an arch leg. The Straw failure began
+  with a false ring reading about 0.3 s before the lap arch, and the impact came about 0.8 s into lap 2 (the "8 s"
+  above is a slip).
+
+## Round 5 (offline): arches (branch `m5-arches`; details in [arches.md](../arches.md))
+
+**Nothing in this section has flown.** The two round-4b clips are development cases. They were re-read from the logs,
+the recorded frames and depth replays.
+
+- **`minus-fast6-r4b-01`, 44.8 s: not an arch leg.**
+  - The PD flew through the arch (checkpoint taken at 44.55 s) and hit the garage wall 1.5 m behind it.
+  - Looming saw the wall from 43.76 s, 1.04 s before the impact (TTC 0.86 -> 0.35 s along the travel direction).
+  - The governor's only cap lay along 28 deg, 180 deg from the flight: a stand-off from the first wall at 39.5 s.
+  - Wall samples along 139 deg, then -151..-162 deg, renewed that stand-off. Their own targets were above the held
+    1.03 m/s, so none of them braked.
+  - The gap cue had nothing to see: the dark wall filled the band behind the arch.
+- **`straw-brain11cw13-r4b-noassist-02`, 112.4 s: a false marker.**
+  - At 111.34 and 111.41 s (captures) the live ring reader read a dark logo on a white fence banner beside the second
+    start arch as the marker (u 0.605, 16.6 deg right). The recorded frames show the marker elsewhere.
+  - The pilot and the lag turn swung the request from -3.6 to -20.8 deg.
+  - The marker was then lost, and the coast held the turn into the arch's right leg.
+  - The leg was visible in the depth (ratio 3.9-8.9 about the flown course from 5.6 m); looming read no evidence
+    there.
+
+| Rule | Declaration | Gates | Result |
+|---|---|---|---|
+| Stale evidence v1 | `stale_evidence_v1.json` `afcda589` (kept, refused) | v1 `81c36bf6` (`371c28d`, re-frozen `b835950`, scorer fix `68a090f`, scores `dcebaf8`) | Identity 27/27 x3. Minus development case: pass (brake 0.75 s before the impact). **Fails** the held-out logs (+2.43 and +1.93 m/s along the travel direction) and one fast-PD harness hairpin (a wall contact) |
+| Stale evidence v2 | `stale_evidence.json` `4a951606`; opt-in `--stale-evidence on` | v2 `da57c268` (`6e58ff8`, scores `3c5f9d7`) | **Passes.** Identity 27/27 x3; version 1 reproduced 4/4. Minus clip (development, open loop): re-seat at 42.01 s; brake for the wall behind the arch from 43.76 s, 1.04 s before the impact (5.9 -> 4.24 m/s along the travel direction by 43.90 s). Other logs unchanged (development). Fresh held-out harness hairpins: identical for all 5 motors (the rule did not act) |
+| Ring-marker reader v1 | `ring_marker.json` `09824e47`; `--ring-marker on` | v1 | Identity 8,193/8,193 frames. **Fails:** retention of overlay-confirmed markers 92.0-100% per held-out flight (pooled 95.1%); the dropped markers lie low in the image. Quiet Straw laps drop 6.3-6.6% of detections. The development false detections were not matched on the aligned recorded frames. **Do not fly** |
+
+The default obstacle stack is unchanged (m4b, bit for bit).
+
+**Live plan (development).** Fly the round-4b Minus Two fast-PD run with `--stale-evidence on` (command in
+[arches.md](../arches.md#live-flight-plan-for-the-main-session-development-flights)). Watch for:
+
+- a re-seat (`cap_reseat`) after the first garage wall;
+- braking about 1 s before the wall behind the arch at (52.6, 94.1).
+
+**Still open: the Straw Bale false marker.** Next: log the live reader's candidates in the next flights, then design a
+reader rule on live frames.
