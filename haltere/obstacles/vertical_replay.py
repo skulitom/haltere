@@ -320,8 +320,11 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                                  ttc_lower=finite(stream['lower'][k]))
         if have_loom and np.isfinite(r.looming_age):
             clearance = dict(time=now-float(r.looming_age), ttc=finite(r.looming_ttc),
-                             distance=finite(r.looming_distance), below_fraction=finite(r.looming_below_fraction),
-                             ttc_lower=finite(r.looming_ttc_lower))
+                             distance=finite(r.looming_distance),
+                             # logs of the first looming version carry no vertical windows (no below_fraction and no
+                             # ttc_lower columns: pine-fast6-loom-01): their samples have no vertical evidence
+                             below_fraction=finite(getattr(r, 'looming_below_fraction', nan)),
+                             ttc_lower=finite(getattr(r, 'looming_ttc_lower', nan)))
         gap = None
         if have_gap and np.isfinite(r.gap_age):
             kind = r.gap_kind if isinstance(r.gap_kind, str) else ''
