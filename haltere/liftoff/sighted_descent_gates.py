@@ -227,8 +227,8 @@ def score_replays(gates, out):
                                  rule_withheld_s=round(float((dt*withheld)[w].sum()), 3)))
         report[flight] = dict(withheld_s_per_min=round(float((dt*withheld).sum())/minutes, 3),
                               max_withheld_mps=round(float(np.nan_to_num(on['sighted_withheld']).max()), 3),
-                              more_sink_ticks=int((extra < -0.05).sum()),
-                              max_more_sink_mps=round(float(max(0., -extra.min())), 3), contacts=contacts)
+                              more_sink_ticks=int((extra > 0.05).sum()),
+                              max_more_sink_mps=round(float(max(0., extra.max())), 3), contacts=contacts)
     return identity, causal, speed, report
 
 
