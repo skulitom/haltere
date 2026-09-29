@@ -105,6 +105,53 @@ def passthrough_scenario(turn_deg=0., surface_m=0., next_m=15., leg_m=24., heigh
                             see_through_m=see_through_m))
 
 
+def gate_scenario(turn_deg=0., half_w=1.5, leg_m=24., next_m=15., height_m=1.2, false_deg=0., false_before_m=8.,
+                  false_gap_s=.55, false_captures=2, false_after_s=.5, post_radius=.25):
+    """Two gate arches flown through (the marker-jump rule's harness; report of clearance to the arch legs): from the
+    ground, north `leg_m` to ring R1, an arch whose legs are vertical posts `half_w` to each side of the ring (radius
+    `post_radius`, across the leg); R2 `next_m` beyond R1 after a turn of `turn_deg` (positive: right), an arch with its
+    legs across the R1-R2 leg; R3 20 m further. With `false_deg` != 0 (positive: right of the ring), a false marker on
+    the approach to R1: once the drone is within `false_before_m` of R1 the marker is unread for `false_gap_s`, then
+    `false_captures` captures read a marker `false_deg` beside the true ring bearing (about the drone's vertical), then
+    the marker is unread for `false_after_s` (the start-arch false reading of straw-brain11cw13-r4b-noassist-02: 0.55 s
+    unread, two captures 16.8 deg right, then unread). Scoring only: a post contact is the drone centre within
+    post_radius + 0.3 m (arm radius) of a post axis below the arch top (height_m + 1.5 m); no looming."""
+    start = np.zeros(3)
+    north = np.array([0., 1., 0.])
+    east = np.array([1., 0., 0.])
+    r1 = np.array([0., leg_m, height_m])
+    a = np.radians(turn_deg)
+    d2 = np.array([np.sin(a), np.cos(a), 0.])
+    r2 = r1+d2*next_m
+    across2 = np.array([d2[1], -d2[0], 0.])
+    posts = [r1+east*half_w, r1-east*half_w, r2+across2*half_w, r2-across2*half_w]
+    false = None
+    if false_deg:
+        false = dict(ring=0, before_m=false_before_m, gap_s=false_gap_s, captures=int(false_captures),
+                     deg=float(false_deg), after_s=false_after_s)
+    return dict(kind='gate', start=start, yaw=np.pi/2, rings=[r1, r2, r2+d2*20.], walls=[], ceiling=None,
+                dropout_after=None, dropout_s=0., wall_ring=None, height=height_m,
+                posts=[p[:2].copy() for p in posts], post_radius=post_radius, post_top=height_m+1.5,
+                false_marker=false,
+                params=dict(turn_deg=turn_deg, half_w=half_w, leg_m=leg_m, next_m=next_m, height_m=height_m,
+                            false_deg=false_deg, false_before_m=false_before_m, false_gap_s=false_gap_s,
+                            false_captures=false_captures, false_after_s=false_after_s, post_radius=post_radius))
+
+
+def gate_set(spec):
+    import itertools
+    keys = sorted(spec)
+    return [gate_scenario(**dict(zip(keys, values))) for values in itertools.product(*(spec[k] for k in keys))]
+
+
+def _false_cue(camera, ring, position, quaternion, deg):
+    """The HUD marker of a point `deg` beside the ring about the drone's vertical (positive: right)."""
+    rel = np.asarray(ring, float)-np.asarray(position, float)
+    c, s = np.cos(np.radians(-deg)), np.sin(np.radians(-deg))
+    point = np.asarray(position, float)+np.array([c*rel[0]-s*rel[1], s*rel[0]+c*rel[1], rel[2]])
+    return hud_marker(camera, point, position, quaternion)
+
+
 def accelerate_scenario(height_m=.8, bearing_deg=0., ring_m=25., near_m=3., ceiling_m=2.2):
     """Stop-then-accelerate (see the module docstring); a scoring-only ceiling at `ceiling_m` (None: none)."""
     start = np.zeros(3)
@@ -242,6 +289,12 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
     # after it, and the speed at the pass
     speed_hist = [deque() for _ in range(batch)]
     arch_min, arch_pass = np.full(batch, np.nan), np.full(batch, np.nan)
+    # gate scenarios: false-marker episode start (NaN: not begun), captures read so far, post contact and gap, lowest
+    # horizontal speed from 1.5 s before the R1 pass to the R2 pass
+    false_t0, false_end, false_n = np.full(batch, np.nan), np.full(batch, np.nan), np.zeros(batch, int)
+    post_contact, post_gap = np.zeros(batch, bool), np.full(batch, np.inf)
+    post_t, post_speed = np.full(batch, np.nan), np.full(batch, np.nan)
+    gate_min = np.full(batch, np.nan)
     trace = [] if record else None
     steps = int(seconds/dt)
     for k in range(steps):
@@ -249,7 +302,7 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
         positions = state.quad.pos.numpy().astype(float)
         quaternions = state.quad.quat.numpy().astype(float)
         velocities = state.quad.vel.numpy().astype(float)
-        active = ~crashed & np.isnan(finish) & ~wall_contact
+        active = ~crashed & np.isnan(finish) & ~wall_contact & ~post_contact
         if not active.any():
             break
         for i in range(batch):
@@ -270,15 +323,45 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
                 if arch is not None and len(passes[i]) == arch+1:
                     arch_pass[i] = float(np.hypot(velocities[i, 0], velocities[i, 1]))
                     arch_min[i] = min(v for _, v in speed_hist[i])
+                if sc.get('kind') == 'gate' and len(passes[i]) == 1:
+                    gate_min[i] = min(v for _, v in speed_hist[i])
                 targets[i] += 1
                 if targets[i] == len(sc['rings']):
                     finish[i] = now
                     continue
+            if sc.get('kind') == 'gate':
+                hs = float(np.hypot(velocities[i, 0], velocities[i, 1]))
+                speed_hist[i].append((now, hs))
+                while speed_hist[i] and now-speed_hist[i][0][0] > 1.5:
+                    speed_hist[i].popleft()
+                if len(passes[i]) == 1 and np.isfinite(gate_min[i]):
+                    gate_min[i] = min(gate_min[i], hs)
             if now >= next_capture[i]:
                 hidden = (sc['dropout_after'] is not None and len(passes[i]) > sc['dropout_after']
                           and now-passes[i][sc['dropout_after']] < sc['dropout_s'])
-                cue = None if hidden or rng.random() <= dropout else hud_marker(camera, sc['rings'][targets[i]],
-                                                                                 positions[i], quaternions[i])
+                fm = sc.get('false_marker')
+                false_cue = None
+                if fm is not None and targets[i] == fm['ring']:
+                    # the false-marker episode: unread for gap_s, `captures` false readings, unread for after_s
+                    if (np.isnan(false_t0[i])
+                            and np.linalg.norm(sc['rings'][fm['ring']]-positions[i]) < fm['before_m']):
+                        false_t0[i] = now
+                    if np.isfinite(false_t0[i]):
+                        if now-false_t0[i] < fm['gap_s']:
+                            hidden = True
+                        elif false_n[i] < fm['captures']:
+                            false_cue = _false_cue(camera, sc['rings'][fm['ring']], positions[i], quaternions[i],
+                                                   fm['deg'])
+                            false_n[i] += 1
+                            if false_n[i] == fm['captures']:
+                                false_end[i] = now
+                        elif now-false_end[i] < fm['after_s']:
+                            hidden = True
+                if false_cue is not None:
+                    cue = false_cue
+                else:
+                    cue = None if hidden or rng.random() <= dropout else hud_marker(camera, sc['rings'][targets[i]],
+                                                                                     positions[i], quaternions[i])
                 if cue is not None:
                     cue['aim_u'] = cue['u']
                 pending[i].append((now, now+camera_latency, cue))
@@ -332,7 +415,7 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
             command[i] = torch.as_tensor(pilots[i].command(command[i].numpy()), dtype=torch.float32)
         if now < 1.:
             command = idle.clone()
-        live = ~crashed & np.isnan(finish) & ~wall_contact
+        live = ~crashed & np.isnan(finish) & ~wall_contact & ~post_contact
         if previous is not None:
             chatter += live*(command[:, 1:3]-previous[:, 1:3]).abs().mean(-1).numpy()
             chatter_n += live
@@ -368,6 +451,15 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
                 ceiling_contact[i] = True
             if airborne[i] and positions[i, 2] < .05:
                 floor_contact[i] = True
+            if sc.get('posts') and positions[i, 2] < sc['post_top']:
+                # gate scenarios: the arch legs (vertical posts) below the arch top
+                for post in sc['posts']:
+                    gap = float(np.hypot(*(positions[i, :2]-post)))-sc['post_radius']
+                    post_gap[i] = min(post_gap[i], gap)
+                    if gap < ARM_M and not post_contact[i]:
+                        post_contact[i] = True
+                        post_t[i] = now
+                        post_speed[i] = float(np.hypot(velocities[i, 0], velocities[i, 1]))
             if sc['walls']:
                 gap = _wall_gap(positions[i], sc['walls'])
                 wall_gap[i] = min(wall_gap[i], gap)
@@ -397,6 +489,15 @@ def _run_scenarios(controller, profile, scenarios, *, pilot_kwargs=None, speed=N
                          **({} if sc.get('arch_ring') is None else dict(
                              arch_min_speed=None if not np.isfinite(arch_min[i]) else round(float(arch_min[i]), 3),
                              arch_pass_speed=None if not np.isfinite(arch_pass[i]) else round(float(arch_pass[i]), 3))),
+                         **({} if sc.get('kind') != 'gate' else dict(
+                             post_contact=bool(post_contact[i]),
+                             post_contact_s=round(float(post_t[i]), 2) if post_contact[i] else None,
+                             post_contact_speed=round(float(post_speed[i]), 3) if post_contact[i] else None,
+                             min_post_gap_m=None if not np.isfinite(post_gap[i]) else round(float(post_gap[i]), 3),
+                             gate_min_speed=None if not np.isfinite(gate_min[i]) else round(float(gate_min[i]), 3),
+                             false_captures=int(false_n[i]),
+                             marker_jump=(None if getattr(p, 'marker_jump', None) is None
+                                          else dict(p.marker_counts)))),
                          states={s: round(v, 2) for s, v in p.state_time.items()},
                          turn_first=None if p.turn_first is None else dict(p.turn_first_counts),
                          motor_assist=p.motor_assist_summary() if hasattr(p, 'motor_assist_summary') else None,

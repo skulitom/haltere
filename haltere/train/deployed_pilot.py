@@ -17,7 +17,10 @@ declarations of the rule versions this code implements), plus a record of every 
 - with ``stale_evidence=True``, the stale-evidence rule (configs/obstacles/stale_evidence.json; the looming governor's
   cap follows the ray of its evidence). The runner adds it only with ``--stale-evidence on`` inside the obstacle stack
   (version 2; off by default); it is off here by default too, so the brain-11 and brain-12 records built on this
-  module stay reproducible. The surrogate has no looming samples, so it is idle there.
+  module stay reproducible. The surrogate has no looming samples, so it is idle there;
+- with ``marker_jump='on'|'shadow'`` (``--marker-jump on|shadow``, off by default), the marker-jump rule
+  (configs/pilot/marker_jump.json: a checkpoint marker that jumps after a gap in the readings is held until confirmed;
+  shadow computes it without holding). Off here by default too.
 
 The surrogate has no looming or gap samples, so the gap aim, the ceiling guard and the vertical guard stay idle
 there; the lag-aware turns and the view-keeping descent act, and turn-first acts on a governor cap (for example a
@@ -31,7 +34,7 @@ CONTRACTS = ('fast_velocity_brain_v1', 'fast_velocity_pd_v1')
 
 
 def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, descent_view=True, motor_assist=False,
-                          stale_evidence=False, contact_support='on'):
+                          stale_evidence=False, contact_support='on', marker_jump=None):
     """(FastRaceCue kwargs, declarations record) of the deployed pilot for a motor contract (see the module doc)."""
     from ..liftoff import fast_race_cue as frc
     from ..liftoff import visual_brain as vb
@@ -83,4 +86,10 @@ def deployed_pilot_kwargs(contract='fast_velocity_brain_v1', *, stack=True, desc
         config = frc.motor_assist_for_contract(assist, contract)
         if config is not None:
             kwargs['motor_assist'] = config
+    if marker_jump is not None:
+        if marker_jump not in frc.MARKER_JUMP_MODES:
+            raise ValueError(f'Unknown marker-jump mode {marker_jump!r}')
+        declaration, digest = vb.load_marker_jump()
+        note('marker_jump', vb.MARKER_JUMP_DECLARATION, declaration, digest)
+        kwargs.update(marker_jump=frc.marker_jump_config(declaration), marker_jump_apply=marker_jump == 'on')
     return kwargs, record

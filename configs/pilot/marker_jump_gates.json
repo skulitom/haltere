@@ -1,0 +1,316 @@
+{
+ "schema": "haltere.liftoff.marker_jump_gates.v1",
+ "version": 1,
+ "note": "Gates of the marker-jump rule version 1 (configs/pilot/marker_jump.json), scored by haltere.obstacles.marker_jump_gates (score). Frozen with the rule before any held-out result: before the freeze the rule was run only on its development case (straw-brain11cw13-r4b-noassist-02, 110.5-112.4 s; and the two other development crash windows, where it changed nothing) and on a development harness set (sim seed 5: turn 0/60 deg, half width 1.4 m, false marker 0/16.6 deg; fast PD and fast-brain-11-b-cw13). Before the rule was designed, the round-6 measurement read the request, yaw and course after each checkpoint switch (not the marker gaps) of straw-brain08-04, straw-brain08-06 and the three fast-brain-11-b-cw13 Straw logs, and the gap-aim episodes and GateNet readings of the stack logs; those logs stay in the held-out set for this rule, reported separately as read. Every replay is open loop (the recorded motion does not respond); the windows are semi-closed loop in the identified surrogate; the harness is synthetic. Nothing here is flight evidence. The hash covers everything except frozen/frozen_at/sha256.",
+ "declarations": {
+  "marker_jump": {
+   "file": "configs/pilot/marker_jump.json",
+   "version": 1,
+   "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9"
+  }
+ },
+ "baseline_tree": {
+  "branch": "m5",
+  "commit": "bc7c71c9714acf3a9f8f673f89c92e23d553940c",
+  "note": "a git archive of m5 at bc7c71c; its variants run its own haltere/obstacles/vertical_replay.py"
+ },
+ "runs": "C:/DEV/Haltere/runs/fast-stack-20260923",
+ "flights": [
+  "minus-brain03-01",
+  "minus-brain04-02",
+  "minus-brain05-01",
+  "minus-brain06-01",
+  "minus-brain07-01",
+  "minus-brain08-01",
+  "minus-brain08-gapon-01",
+  "minus-brain08-gapon-02",
+  "minus-brain08-gapshadow-01",
+  "minus-brain08-loom-01",
+  "minus-brain08-slow35-01",
+  "minus-brain08-vg-01",
+  "minus-brain09b-r4-01",
+  "minus-brain09b-vg-01",
+  "minus-brain10b-r4-01",
+  "minus-brain10b-r4-02",
+  "minus-brain11cw13-r4b-noassist-01",
+  "minus-brain11cw13-r5-02",
+  "minus-fast6-01",
+  "minus-fast6-cur-01",
+  "minus-fast6-gapon-01",
+  "minus-fast6-r4-01",
+  "minus-fast6-r4-02",
+  "minus-fast6-r4b-01",
+  "minus-fast6-r5-01",
+  "minus-fast6-vg-02",
+  "minus-fast6-wall-01",
+  "pine-brain03-01",
+  "pine-brain04-01",
+  "pine-brain05-01",
+  "pine-brain05-02",
+  "pine-brain06-01",
+  "pine-brain06-ttc-01",
+  "pine-brain07-01",
+  "pine-brain08-01",
+  "pine-brain08-loom-01",
+  "pine-fast6-01",
+  "pine-fast6-loom-01",
+  "pine-fast6-ttc-01",
+  "straw-brain03-01",
+  "straw-brain04-01",
+  "straw-brain05-01",
+  "straw-brain05-gov-01",
+  "straw-brain05-trim-01",
+  "straw-brain05-trim-02",
+  "straw-brain06-01",
+  "straw-brain06-02",
+  "straw-brain06-03",
+  "straw-brain07-02",
+  "straw-brain07-03",
+  "straw-brain07-nosweep-01",
+  "straw-brain07-steep-02",
+  "straw-brain08-01",
+  "straw-brain08-02",
+  "straw-brain08-03",
+  "straw-brain08-04",
+  "straw-brain08-05",
+  "straw-brain08-06",
+  "straw-brain11cw13-r4b-noassist-02",
+  "straw-brain11cw13-r5-noassist-01",
+  "straw-brain11cw13-r5-noassist-04",
+  "straw-brain6-02",
+  "straw-fast6-01",
+  "straw-fast6-02",
+  "straw-fast6-03",
+  "straw-fast6-arc-01"
+ ],
+ "flights_note": "every Straw Bale, Minus Two and Pine Valley log of runs/fast-stack-20260923 with a sidecar (straw-brain07-steep-01 has none); a flight with no replayable tick (minus-brain10b-r4-01, minus-fast6-r4-01: stopped at 0 ticks) is reported and scores nothing",
+ "read_by_measurement": [
+  "straw-brain08-04",
+  "straw-brain08-06",
+  "straw-brain11cw13-r4b-noassist-02",
+  "straw-brain11cw13-r5-noassist-01",
+  "straw-brain11cw13-r5-noassist-04"
+ ],
+ "development_windows": {
+  "straw-brain11cw13-r4b-noassist-02": [
+   110.5,
+   112.4
+  ],
+  "straw-brain11cw13-r5-noassist-01": [
+   17.0,
+   19.4
+  ],
+  "straw-brain11cw13-r5-noassist-04": [
+   78.0,
+   81.9
+  ]
+ },
+ "replays": {
+  "stream": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m4/vguard/streams/stream_{flight}.npz",
+  "streamed": [
+   "straw-brain08-04",
+   "straw-brain08-06",
+   "straw-brain08-01",
+   "straw-brain08-02",
+   "straw-brain08-03",
+   "straw-fast6-01",
+   "straw-fast6-02",
+   "straw-fast6-03",
+   "straw-fast6-arc-01",
+   "pine-brain08-01"
+  ],
+  "streamed_note": "the offline looming stream of the round-4/5 replays for the flights flown without looming (stack variants only); every other flight feeds its logged looming samples, if any",
+  "bases": {
+   "stack": [
+    "--stack",
+    "on",
+    "--near-on-path",
+    "--throttle-column",
+    "command_thr",
+    "--descent-view",
+    "{tree}/configs/pilot/descent_view.json",
+    "--stale-evidence",
+    "{tree}/configs/obstacles/stale_evidence.json"
+   ],
+   "default": [
+    "--stack",
+    "none",
+    "--throttle-column",
+    "command_thr"
+   ]
+  },
+  "bases_note": "stack: the m5 stack as the round-5 Straw runs flew it (wall pilot v6, vertical guard v4, gap pilot v5, lag turn v2, descent view v3 with contact support v3, stale evidence v2; no motor assist); default: the default fast race-cue pilot",
+  "variants": {
+   "base": [],
+   "rule": [
+    "--marker-jump",
+    "{tree}/configs/pilot/marker_jump.json"
+   ],
+   "shadow": [
+    "--marker-jump",
+    "{tree}/configs/pilot/marker_jump.json",
+    "--marker-jump-mode",
+    "shadow"
+   ]
+  }
+ },
+ "surrogate": {
+  "loop": "haltere.obstacles.stale_evidence_gates.Surrogate (haltere.train.brake_gates.replay_window): IdentifiedSim of the measured original drone, no randomisation, 3-tick command delay, quadratic drag 0.0075, from the logged state; the request and the yaw stick per logged row from a replay (rows the replay skipped keep the log); a brain warmed on its recorded inputs for warm_s",
+  "profile": "C:/DEV/Haltere/runs/measured-dynamics-low-speed-20260923/profile.json",
+  "profile_sha256": "266d40b4d777194cd774eef741df8d773250f6278955554e48bd3002b0b924b5",
+  "warm_s": 8.0,
+  "reference": "brain08",
+  "motors": {
+   "pd": {
+    "checkpoint": "pd",
+    "contract": "fast_velocity_pd_v1"
+   },
+   "brain08": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain09b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-09b-caps-r0001m100/candidate.pt",
+    "sha256": "a222544cd617452088c54123f6b250e8d6b6ede859109437ad50b8ea97efc8d1",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain10b": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-10b/candidate.pt",
+    "sha256": "0ccf116190f5135220dbd2cc20a6dd9948654d07509eaa388a2286d8d4640bcd",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain11cw13": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-11-b-cw13/candidate.pt",
+    "sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+    "contract": "fast_velocity_brain_v1"
+   }
+  },
+  "motor_of_flight": "the fast PD for a fast_velocity_pd_v1 flight; otherwise the brain whose sha256 prefix (8 hex) is the sidecar's checkpoint_sha256 prefix; flights of other brains (fast-brain-02 to -07, with recorded scene currents, which the surrogate refuses) are scored open loop only (H1, H3 open-loop proxy) and reported",
+  "window": "from pre_s before a changed window's first differing tick to post_s after its last (a change is a request differing by more than 0.05 m/s horizontally or vertically; windows closer than 0.5 s merged), cut at the flight's first velocity jump (impact)",
+  "pre_s": 0.5,
+  "post_s": 1.5
+ },
+ "harness": {
+  "loop": "haltere.liftoff.motor_assist_eval.run_scenarios (the fast-brain development gate's closed loop: IdentifiedSim with 10% per-drone randomisation, synthetic HUD marker at 18 Hz with 10% dropout and 0.06 s latency, three-tick command delay, quadratic drag)",
+  "pilot": "haltere.train.deployed_pilot.deployed_pilot_kwargs(contract, stale_evidence=True): the m5 stack as flown on Straw (no motor assist); rule: plus marker_jump='on'",
+  "motors": {
+   "pd": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "kind": "pd",
+    "contract": "fast_velocity_pd_v1"
+   },
+   "brain11cw13": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-11-b-cw13/candidate.pt",
+    "kind": "brain",
+    "contract": "fast_velocity_brain_v1"
+   },
+   "brain08": {
+    "checkpoint": "C:/DEV/Haltere/runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "kind": "brain",
+    "contract": "fast_velocity_brain_v1"
+   }
+  },
+  "gate_set": {
+   "spec": {
+    "turn_deg": [
+     -75.0,
+     -30.0,
+     0.0,
+     45.0,
+     90.0
+    ],
+    "half_w": [
+     1.2,
+     1.8
+    ],
+    "false_deg": [
+     0.0,
+     -14.0,
+     20.0
+    ]
+   },
+   "seconds": 18.0,
+   "sim_seed": 83
+  },
+  "gate_set_note": "motor_assist_eval.gate_scenario (two arches with posts as legs; a false marker false_deg beside the ring after 0.55 s unread within 8 m of the first arch, two captures, then 0.5 s unread); FRESH: parameters and sim seed never run before",
+  "hairpin_set": {
+   "spec": {
+    "turn_deg": [
+     60.0,
+     100.0
+    ],
+    "arch_m": [
+     8.0,
+     12.0
+    ],
+    "wall_m": [
+     2.0,
+     2.5
+    ]
+   },
+   "seconds": 14.0,
+   "sim_seed": 83
+  },
+  "hairpin_set_note": "motor_assist_eval.hairpin_scenario (the Minus-Two-like hairpin; the marker unread for 0.45 s after the arch pass, so the next ring's marker returns jumped after a gap: the rule's cost); FRESH: never run before"
+ },
+ "gates": {
+  "I1_default_off": {
+   "rule": "HELD-OUT (identity): both bases (stack, default) replayed on this tree without the rule equal the m5 tree's replays bit for bit (vertical_replay.COMMAND_KEYS) on every flight with ticks"
+  },
+  "I2_shadow": {
+   "rule": "HELD-OUT (identity): each base with the rule in shadow equals the base bit for bit on every flight with ticks"
+  },
+  "D1_start_arch": {
+   "flight": "straw-brain11cw13-r4b-noassist-02",
+   "base": "stack",
+   "held_captures": [
+    218018.163,
+    218018.238
+   ],
+   "motor": "brain11cw13",
+   "t0": 111.2,
+   "horizon_s": 1.4,
+   "contact_point": [
+    27.13,
+    -0.54
+   ],
+   "validation_max_m": 0.15,
+   "clear_min_m": 0.4,
+   "rule": "DEVELOPMENT (measured before the freeze, see the declaration): (a) the rule holds both logged false readings (capture times listed; the rule's marker_held is 1 at their ticks); (b) semi-closed loop from the logged state at t0: the base's replayed requests pass within validation_max_m of the contact point (the drone centre at the audited impact) and the rule's requests pass at least clear_min_m from it, with the path left of it (away from the leg)"
+  },
+  "D2_other_crashes": {
+   "rule": "DEVELOPMENT (report only): the requests the rule changes inside the development windows of straw-brain11cw13-r5-noassist-01 and -04 (stack base)"
+  },
+  "H1_no_new_stop": {
+   "stop_mps": 1.0,
+   "rule": "HELD-OUT: in every changed window (padded pre_s/post_s) outside the development windows, both bases: no tick where the rule's horizontal request is below stop_mps while the base's is at or above it"
+  },
+  "H2_clearance": {
+   "max_lateral_m": 0.3,
+   "rule": "HELD-OUT, semi-closed loop: every changed window of the stack base outside the development windows, in flights with a surrogate motor: the largest lateral deviation of the rule's surrogate path from the base's (stale_evidence_gates.path_compare) is at most max_lateral_m"
+  },
+  "H3_course_time": {
+   "max_fraction": 0.02,
+   "rule": "HELD-OUT, per flight, stack base, outside the development windows: the progress the rule's surrogate path loses over its changed windows (the sum of path_compare's progress lost, s) is at most max_fraction of the flight's replayed duration; flights without a surrogate motor use the open-loop proxy: the horizontal request travel the rule removes (integral of |base request| - |rule request|, where positive) is at most max_fraction of the base's"
+  },
+  "HG1_gate_posts": {
+   "rule": "HELD-OUT (fresh harness set): per motor over the gate set, post contacts with the rule <= without"
+  },
+  "HG2_gate_finishes": {
+   "rule": "HELD-OUT (fresh harness set): per motor over the gate set, finished scenarios with the rule >= without"
+  },
+  "HG3_gate_quiet": {
+   "max_time_fraction": 0.02,
+   "stop_mps": 1.0,
+   "rule": "HELD-OUT (fresh harness set): per motor, the scenarios without a false marker: the mean finish time of the scenarios both variants finish is at most max_time_fraction slower with the rule, and no scenario whose lowest horizontal speed near the arches (gate_min_speed) is at or above stop_mps without the rule falls below it with the rule"
+  },
+  "HG4_hairpin": {
+   "rule": "HELD-OUT (fresh harness set): per motor over the hairpin set, wall contacts with the rule <= without and clean passes (finished, no wall, floor or ceiling contact, no crash) >= without"
+  }
+ },
+ "frozen": true,
+ "baseline_tree_path": "C:/Users/artem/AppData/Local/Temp/claude/C--DEV-Haltere/6f308e08-af33-4f7e-b2e8-e1cad1c82b5f/scratchpad/m6/gates/m5_tree",
+ "frozen_at": "2026-09-29T03:39:15+00:00",
+ "sha256": "4eb99684589314e14323e5141b87e40a8532843488653436fa872d236d907f15"
+}
