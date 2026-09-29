@@ -2806,3 +2806,60 @@ What this shows:
 - The common blocker now is gate structures around checkpoint switches: turning toward the next ring while still
   inside a gate (Minus floor arch, earlier FAT SHARK) and descending onto the next gate's top bar with the ring clipped
   below the image (Straw, twice). Pine needs a guard that answers real hillsides.
+
+## Round 7 (offline): vertical guard v5 for real hillsides (branch `m7-pine`, not flown)
+
+**Nothing here has flown.** Details, figure and every number: [vertical_guard.md](../vertical_guard.md#round-7-version-5).
+Branch `m7-pine` from `m6` (`c88bf73`).
+
+**The Pine hillside (`pine-fast6-r6-01`, development case; log, video and replay as flown).** Guard v4 started its
+gentle climb at 13.65 s. It then blocked the escalation twice (13.89 and 14.18 s) with samples of the slope's face at the
+flight path (below_fraction 0.05-0.64, lower TTC 1.3-5.7 s). Every below-path sample of the climb read the ground under
+1.2 s, and the alarm fell from 1.35 to 0.67 s. The drone climbed 0.85 m/s into the slope at 14.79 s (video frames
+266-268).
+
+**The rule** (`configs/obstacles/vertical_guard.json` v5 `43a9ddb221c1...`): one switch, `clear_below_terrain`; every v4
+value is kept. v4 is kept as `vertical_guard_v4.json` and refused. Only a below-path sample (below_fraction >= 0.7, the
+governor's own terrain test) can show the surface below clear and block an escalation. It is causal and course-agnostic:
+it reads the looming samples and the measured vertical speed only.
+
+**Frozen gates** (`configs/obstacles/vertical_guard_gates.json` v5 `cbe2f0ca21b0...`, frozen in `2d55a6d` before any
+held-out replay; harness fix `36ccae6` before scoring; scores `docs/experiments/vertical_guard_v5_scores.json`):
+**6 of 8 pass.**
+
+| Gate | Result | Pass |
+|---|---|---|
+| Identity: default pilot, round-6 stack in shadow, stack without the guard = `m6`, 43 logs | 146/146 bit-identical | yes |
+| V_Pine_R6 (development): r6-01 as flown escalates by 14.29 s and asks >= 2.5 m/s | 13.89 s, 2.90 m/s (v4: gentle 1 m/s only) | yes |
+| V_Pine_hillsides (development): `pine-brain08-01`, the ttc-01 hillside by 19.05 s, the mound | 16.96 s (v4 none); ttc-01 at 19.0501 s, the same tick as v4 but 0.0001 s after the frozen window end; mound 4.55 s, 106.1% | **no** |
+| V_R4 (development): r4-02 as flown and under the round-6 stack | no escalation, window 0.958 m/s | yes |
+| V_Minus: v4's windows; no escalation on 12 development + 6 held-out Minus logs | 0.97 / 0.119 / 0.976 m/s, 0.022 m; max guard climb 1.0 everywhere | yes |
+| V_Straw_uphill: 9 development + 4 held-out laps | 0.0 escalated s | yes |
+| V_Pine_heldout: 8 Pine logs never replayed through a guard, no later than v4 | 8/8 (same onsets on 4; a new one on `pine-brain05-02` 0.2 s before its end) | yes |
+| Idealised (fresh seeds 1000-1039): identical on ramps and the floor; better on hills with face readings | one floor seed of 40 differs (sigma 0.5: v4 was blocked by ceiling samples); hills: median clearance higher in 6/6, by >= 0.1 m in 5 | **no** |
+
+Under the round-6 stack only three of the 43 logs change at all (`pine-fast6-r6-01`, `pine-brain08-01`,
+`pine-brain05-02`). Every Minus Two and Straw Bale replay is bit-identical to `m6`.
+
+**The cost** (idealised, a report): a garage floor misread with face readings of a structure at path height escalates
+in 62.5-95% of seeds against 7.5-12.5% for v4. Version 4's clear-below evidence had also been a ceiling brake: ceiling
+samples and structures at path height with long lower readings. A candidate fix, in which overhead samples block
+explicitly, is described but not frozen.
+
+**Live plan change (for the main session; development flights).** The commands stay as they are. The runner loads
+`configs/obstacles/vertical_guard.json` from the checkout, so a flight from `m7-pine`, or from a branch that merges it,
+flies v5. The sidecar's `vertical_guard_declaration` must say version 5, `43a9ddb221c1...`; a wiring check of the four
+round-6 commands on this branch confirmed that.
+
+- **Pine Valley, fast PD (run (d)):** watch the hillside at 13.5-14.8 s. Expect `vertical_stage` 2 from about 13.9 s and
+  a request above 2.5 m/s. Stop if the drone keeps climbing above about 4 m after the ridge.
+- **Minus Two:** no replay changes. Stop at a climb above about 1.9 m in the garage, as before.
+
+This is a disclosed development deviation: v5 fails 2 of its 8 frozen gates.
+
+**Blockers, updated.**
+
+- The Pine hillside answer now has an offline fix: open loop, one development case, not flown.
+- In the Minus windows under the round-6 stack, the motor assist's sag compensation adds 0.645 m/s on top of the guard's
+  gentle 1 m/s (open loop, `minus-brain08-gapon-02`: 1.531 m/s issued). That share is the assist's, not the guard's,
+  and is unchanged from `m6`.
