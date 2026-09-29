@@ -24,12 +24,52 @@ def arrays(n=400, dt=.01, **columns):
     return base
 
 
-def test_gates_declaration_is_frozen_and_names_the_guard_version():
+def test_gates_v5_are_frozen_with_the_guard_and_keep_v4s_values():
+    """Gates version 5 (scoring guard v5 against the m6 tree, guard v4): frozen, naming the guard's hash and version 4's
+    kept gates; v4's V_R4, V_Minus, V_Straw_uphill and mound criteria keep their values; every flight is either
+    development or held out; the idealised seeds are fresh."""
     gates, digest = vr.load_gates()
-    assert gates['version'] == 4 and gates['frozen'] is True and digest == gates['sha256']
+    assert gates['version'] == 5 and gates['frozen'] is True and digest == gates['sha256']
     from haltere.liftoff.visual_brain import VERTICAL_GUARD_DECLARATION, load_vertical_guard
     _, guard_digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 4
+    assert gates['vertical_guard']['sha256'] == guard_digest and gates['vertical_guard']['version'] == 5
+    v4, v4_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v4.json'))
+    assert v4['version'] == 4 and v4_digest.startswith('7901b154abbe')
+    assert [p['sha256'] for p in gates['previous_versions']][:2] == [v4_digest, v4['previous_versions'][0]['sha256']]
+    g, g4 = gates['gates'], v4['gates']
+    assert gates['baseline_tree']['guard_version'] == 4 and gates['baseline_tree']['commit'].startswith('c88bf73')
+    assert {k: g['V_R4'][k] for k in ('flight', 'window', 'max_climb')} == {k: g4['V_R4'][k] for k in
+                                                                            ('flight', 'window', 'max_climb')}
+    assert g['V_Minus']['flights'] == g4['V_Minus']['flights'] and g['V_Minus']['no_escalation']['max_climb'] == 1.
+    assert all(g['V_Minus'][k] == g4['V_Minus'][k] for k in ('before_onset_s', 'max_climb', 'level_band',
+                                                              'max_height_loss_m'))
+    dev_minus = set(g['V_Minus']['no_escalation']['development'])
+    assert set(g4['V_Minus']['no_escalation']['flights']+g4['V_Minus']['no_escalation']['held_out_flights']
+               + [g4['V_R4']['flight']]) == dev_minus
+    assert g['V_Straw_uphill']['max_escalated_per_min'] == g4['V_Straw_uphill']['max_escalated_per_min'] == 0.
+    assert set(g['V_Straw_uphill']['development']['plan']) == set(g4['V_Straw_uphill']['flights'])
+    mound = g['V_Pine_hillsides']['episodes']['pine-fast6-ttc-01 mound']
+    assert all(mound[k] == g4['V_Pine'][k] for k in ('mound_fraction', 'mound_escalated_by_s', 'min_vz'))
+    assert g['V_Straw_downhill']['flights'] == g4['V_Straw_downhill']['flights']
+    development, held_out = set(gates['flights']['development']), set(gates['flights']['held_out'])
+    assert not development & held_out and development | held_out == set(g['Identity']['flights'])
+    assert set(g4['Identity']['flights']) <= development and 'pine-fast6-r6-01' in development
+    assert set(g['V_Minus']['no_escalation']['held_out']) | set(g['V_Straw_uphill']['held_out']['plan']) | set(
+        g['V_Pine_heldout']['flights']) == held_out
+    assert set(gates['inputs']['streams']['flights']) <= set(g['Identity']['flights'])
+    assert {f[:-4] for f in gates['inputs']['log_sha256']} == set(g['Identity']['flights'])
+    assert set(gates['inputs']['streams']['sha256']) == {f'stream_{f}.npz' for f in gates['inputs']['streams']['flights']}
+    for name, digest4 in v4['inputs']['looming_stream']['sha256'].items():
+        assert gates['inputs']['streams']['sha256'][name] == digest4          # gates v4's streams, unchanged
+    ideal = g['Idealised']
+    assert ideal['seeds'][0] >= 40 and ideal['baseline_version'] == 4 and ideal['baseline_sha256'].startswith('409d06f9')
+    assert g['V_Pine_R6']['escalated_by_s'] == pytest.approx(g['V_Pine_R6']['impact_t']-.5)
+
+
+def test_gates_v4_are_kept_verbatim():
+    gates, digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v4.json'))
+    assert gates['version'] == 4 and gates['frozen'] is True and digest == gates['sha256']
+    assert gates['vertical_guard']['version'] == 4 and gates['vertical_guard']['sha256'].startswith('409d06f9')
     v3, v3_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v3.json'))
     v2, v2_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v2.json'))
     v1, v1_digest = vr.load_gates(vr.GATES_PATH.with_name('vertical_guard_gates_v1.json'))
@@ -97,6 +137,69 @@ def test_score_r4_mound_escalation_and_guard_report():
                              arrays(vertical_climb=climb, vertical_stage=np.where(climb > 0, 1., 0.)))
     assert report['escalated_s'] == .5 and report['escalations'] == 1 and report['max_guard_climb'] == 3.5
     assert report['baseline'] == dict(climb_s=2., escalated_s=0., escalations=0, max_guard_climb=1.)
+
+
+def test_gates_v5_scoring_functions():
+    """Gates v5: an answered climb (a stage-2 tick by a time or inside a window, with an issued request), the held-out
+    Pine criterion (the first escalation no later than the baseline's) and the changed-ticks report."""
+    stage = np.zeros(400)
+    stage[150:250] = 2                             # escalated from 1.5 s
+    cvz = np.where(stage > 0, 2.9, .9)
+    guard = arrays(vertical_stage=stage, cvz=cvz, vertical_climb=np.where(stage > 0, 2.9, 1.))
+    r = vr.score_escalated_by(guard, 1.6, 2.5)
+    assert r['passed'] and r['first_escalated_t'] == 1.5 and r['max_issued_vz_by'] == 2.9
+    assert r['escalation_onsets'] == [1.5]
+    assert not vr.score_escalated_by(guard, 1.4, 2.5)['passed']               # too late
+    assert not vr.score_escalated_by(arrays(vertical_stage=stage, cvz=np.full(400, .9)), 1.6, 2.5)['passed']
+    assert vr.score_escalated_by(guard, None, window=[1., 2.])['passed']
+    assert not vr.score_escalated_by(guard, None, window=[2.6, 3.])['passed']
+    later = np.zeros(400)
+    later[200:250] = 2
+    baseline = arrays(vertical_stage=later)
+    r = vr.score_no_later(guard, baseline)
+    assert r['passed'] and r['onsets'] == [1.5] and r['baseline_onsets'] == [2.] and r['new_onsets'] == [1.5]
+    assert not vr.score_no_later(baseline, guard)['passed']
+    assert vr.score_no_later(arrays(), arrays())['passed']                     # nobody escalates
+    assert not vr.score_no_later(arrays(), guard)['passed']                    # v5 must escalate when v4 does
+    c = vr.changed_ticks(guard, arrays(vertical_stage=stage, cvz=cvz))
+    assert c['ticks'] == 0 and c['first_t'] is None
+    other = arrays(vertical_stage=stage, cvz=np.where(np.arange(400) >= 300, 0., cvz))
+    c = vr.changed_ticks(guard, other)
+    assert c['ticks'] == 100 and c['first_t'] == 3.
+
+
+def test_score_ideal_v5():
+    gate = dict(identical_scenarios=['ramp', 'floor'], hill_scenarios=['hill'], tolerance_m=.02, improvement_m=.1,
+                min_improved=1)
+
+    def out(hill_median, ramp=(.3, .2)):
+        def case(scenario, median, per_seed):
+            return dict(scenario=scenario, metric='m', escalated_share=1., median=median, worst=min(per_seed),
+                        per_seed=per_seed, per_seed_escalated=[True]*len(per_seed))
+        return dict(seeds=[1000, 2], results={'ramp a': case('ramp', .25, list(ramp)),
+                                              'hill a': case('hill', hill_median, [hill_median]*2),
+                                              'floor_split a': case('floor_split', 2., [2., 2.])})
+    r = vr.score_ideal_v5(out(.3), out(.1), gate)
+    assert r['passed'] and r['hill_improved_cases'] == 1 and r['cases']['ramp a']['identical']
+    assert not vr.score_ideal_v5(out(.3, ramp=(.3, .21)), out(.1), gate)['passed']     # not identical on a ramp
+    assert not vr.score_ideal_v5(out(.07), out(.1), gate)['passed']                   # worse on the hill
+    assert not vr.score_ideal_v5(out(.15), out(.1), gate)['passed']                   # not improved enough
+
+
+def test_vertical_ideal_runs_the_declared_guards():
+    """The idealised check (vertical_ideal.py) builds each guard from its declaration file: version 4 and version 5
+    differ only through the clear-below switch, and on a ramp case (every sample below the path) they are identical."""
+    from pathlib import Path
+    from haltere.liftoff import fast_race_cue as frc
+    from haltere.obstacles import vertical_ideal as vi
+    ob = Path(vr.__file__).resolve().parents[2]/'configs'/'obstacles'
+    guards = {v: frc.VerticalGuardConfig(**json.loads((ob/name).read_text(encoding='utf-8'))['vertical_guard'])
+              for v, name in ((4, 'vertical_guard_v4.json'), (5, 'vertical_guard.json'))}
+    assert not guards[4].clear_below_terrain and guards[5].clear_below_terrain
+    ramp = [vi.fly(frc, guards[v], 'ramp', np.random.default_rng(7), slope=.35) for v in (4, 5)]
+    assert ramp[0] == ramp[1]
+    names = [name for name, _, _ in vi.cases()]
+    assert len(names) == 16 and sum(n.startswith('hill') for n in names) == 6
 
 
 def test_identity_compares_bitwise_with_nan():

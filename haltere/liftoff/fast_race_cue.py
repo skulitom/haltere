@@ -890,7 +890,8 @@ def early_brake_for_contract(declaration, contract):
 
 
 # The vertical-guard declaration version whose rules this code implements (VerticalGuardConfig); runners refuse others.
-VERTICAL_GUARD_VERSION = 4
+# Version 4's rules are VerticalGuardConfig with clear_below_terrain False (replays and idealised checks rebuild it).
+VERTICAL_GUARD_VERSION = 5
 
 
 @dataclass(frozen=True)
@@ -941,10 +942,18 @@ class VerticalGuardConfig:
        flickers with the attitude) or a structure the climb is already clearing gives such readings while the gentle
        climb runs: the climb was enough at that moment, so it is not escalated. Rising ground that the gentle climb
        does not clear keeps every reading under climb_on_s.
-    Declaration version 4 (version 1 used ttc_lower alone for rules 1 and 2, counted any climb as rising-ground
+       Version 5 (clear_below_terrain True; False keeps version 4): only a below-path sample shows the surface below
+       the path clear, i.e. a sample whose expansion lies below the path (below_fraction >= the policy's
+       terrain_fraction, the governor's own terrain test) with a lower-surface TTC of climb_on_s or more, or none. A
+       sample whose expansion lies at or above the path (a wall to the governor, such as the face of a slope the flight
+       path heads into, which reads about 0.5) says nothing about the surface below: its lower-window plane fit is not
+       the ground under the path (pine-fast6-r6-01: such samples blocked the hillside's escalation while every
+       below-path reading stayed under climb_on_s).
+    Declaration version 5 (version 1 used ttc_lower alone for rules 1 and 2, counted any climb as rising-ground
     evidence and had no contact rule; version 2 started climbs on the lower window alone and compared the guard's
     climb only with the pilot's request of the same tick; version 3 escalated on alarms of the rising window although
-    other samples of it saw the surface below farther than climb_on_s; all are kept and refused).
+    other samples of it saw the surface below farther than climb_on_s; version 4 counted every sample with a long or
+    missing lower-surface TTC as clear below, whatever the placement of its expansion; all are kept and refused).
     """
     margin_full_s: float = 1.5
     margin_zero_s: float = .6
@@ -963,9 +972,13 @@ class VerticalGuardConfig:
     rising_confirm: int = 2
     rising_window_s: float = .5
     rising_min_rise: float = .5
+    clear_below_terrain: bool = False
 
     def __post_init__(self):
-        values = list(asdict(self).values())
+        values = asdict(self)
+        if not isinstance(values.pop('clear_below_terrain'), bool):
+            raise ValueError('clear_below_terrain is true or false')
+        values = list(values.values())
         if not np.isfinite(values).all() or min(values) <= 0:
             raise ValueError('Use finite positive vertical-guard parameters')
         for name in ('confirm', 'rising_confirm'):
@@ -1735,9 +1748,11 @@ class TtcClearanceGovernor:
             closing = float(velocity @ s['ray'])
             ttc = self._aged(s, s['reach'], position, closing)
             if v is not None and (s['below'] is not None if s['ttc_lower'] is None else self._aged(
-                    s, s['ttc_lower']*s['reach']/max(s['ttc'], 1e-3), position, closing) >= v.climb_on_s):
+                    s, s['ttc_lower']*s['reach']/max(s['ttc'], 1e-3), position, closing) >= v.climb_on_s) and (
+                    not v.clear_below_terrain or (s['below'] is not None and s['below'] >= c.terrain_fraction)):
                 # vertical guard v4: the surface below the path does not loom within climb_on_s (a lower-surface TTC at
-                # least climb_on_s, or none although the vertical windows had evidence): no rising ground is confirmed
+                # least climb_on_s, or none although the vertical windows had evidence); v5 (clear_below_terrain): only
+                # from a below-path sample (below_fraction >= terrain_fraction): no rising ground is confirmed
                 # for rising_window_s after its receipt
                 self.vertical_counts['clear_below_samples'] += 1
                 self.clear_below_at = s['received']
@@ -3617,7 +3632,9 @@ class FastRaceCue:
             return None
         guard = self._vertical_governor()
         return dict(
-            version=VERTICAL_GUARD_VERSION, applied=self.vertical_apply,
+            # version 4's rules are this config with clear_below_terrain False (a replay or idealised check of it)
+            version=VERTICAL_GUARD_VERSION if self.vertical_guard.clear_below_terrain else 4,
+            applied=self.vertical_apply,
             rule='sink margin: the pilot\'s own requested sink x clip((crossing_aged - margin_zero_s)/(margin_full_s - '
                  'margin_zero_s), 0, 1), crossing = max(alarm ttc, ttc_lower) of the latest sample with a ttc_lower, '
                  'the factor ramped at factor_down_rate/factor_up_rate per s, kept memory_s; keep speed: while it '
@@ -3633,7 +3650,8 @@ class FastRaceCue:
                  'rising_window_s while climbing faster than rising_min_rise with the guard\'s climb at least '
                  'rising_min_rise above every vertical request the pilot made itself in the last rising_window_s '
                  '(rising ground; v4: only if no looming sample of the last rising_window_s saw the surface below the '
-                 'path farther than climb_on_s), then up to vertical_up and the policy\'s climb_max_m; the policy\'s '
+                 'path farther than climb_on_s; v5, clear_below_terrain: only a below-path sample, below_fraction >= '
+                 'terrain_fraction, can show that), then up to vertical_up and the policy\'s climb_max_m; the policy\'s '
                  'climb hold and release; the ceiling guard still cuts climbs',
             input='causal looming samples (below_fraction, ttc_lower, ttc) and the measured vertical speed; no height '
                   'above ground, no metric distance',

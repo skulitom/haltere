@@ -31,7 +31,9 @@ aim's target, applied shift, flown offset, mode, committed side, conflict and th
 frozen descent-view declaration to any variant (tag -dv<version>; the arrays gain view_sink_bound, view_withheld and
 view_boost): with ``--stack on --near-on-path`` it is the full round-4 stack as `--obstacle-stack on --descent-view on`
 would fly it. The gates (``score``) are versioned: version 4 scores guard v4 against the m4 tree (guard v3), with the
-round-4 live flights replayed as flown (their stack variants tagged -nop-dv1). ``--motor-assist DECLARATION`` adds the
+round-4 live flights replayed as flown (their stack variants tagged -nop-dv1); version 5 scores guard v5 against the m6
+tree (guard v4) under the round-6 stack (variants and file-tag suffixes declared in the gates), and with ``score
+--ideal`` also the idealised checks of haltere/obstacles/vertical_ideal.py. ``--motor-assist DECLARATION`` adds the
 motor assist of a frozen motor-assist declaration for the flight's motor contract (tag -ma<version>; nothing for a
 contract without an entry, the fast PD): the arrays gain the pilot's own request (assist_pilot_vx/vy/vz),
 assist_horizontal, assist_vertical and assist_source, while cvx/cvy/cvz are the assisted request. The recorded motion
@@ -914,6 +916,8 @@ def score_all(out, baseline, gates_path=GATES_PATH, runs=RUNS):
     """Score the frozen gates from the replay files: `out` is this tree's prefix, `baseline` the baseline tree's.
     Expected files: {prefix}_{variant_tag}_{flight}.npz as written by main()."""
     gates, digest = load_gates(gates_path)
+    if gates['version'] >= 5:
+        return score_all_v5(out, baseline, gates, digest, runs)
     if gates['version'] >= 4:
         return score_all_v4(out, baseline, gates, digest, runs)
     if gates['version'] >= 3:
@@ -1269,6 +1273,220 @@ def score_all_v4(out, baseline, gates, digest, runs=RUNS):
     return result
 
 
+def escalation_onsets(guard):
+    """Times of the ticks where the guard's climb becomes escalated (vertical_stage 2)."""
+    t = np.asarray(guard['t'], float)
+    stage = np.nan_to_num(np.asarray(guard['vertical_stage'], float))
+    return [round(float(t[i]), 3) for i in onsets(stage == 2)]
+
+
+def score_escalated_by(guard, by_s, min_issued=None, window=None):
+    """An answered climb (gates v5): a tick with vertical_stage 2 at or before by_s (inside `window` = [t0, t1] when
+    given, then by_s is ignored and the window's end is used) and, with min_issued, an issued vertical request (cvz) of
+    at least min_issued at a tick at or before by_s."""
+    t = np.asarray(guard['t'], float)
+    stage = np.nan_to_num(np.asarray(guard['vertical_stage'], float))
+    lo, hi = (-np.inf, by_s) if window is None else window
+    span = (t >= lo-EPS) & (t <= hi+EPS)
+    escalated = span & (stage == 2)
+    first = float(t[escalated][0]) if escalated.any() else None
+    early = t <= hi+EPS
+    issued = float(np.max(guard['cvz'][early])) if early.any() else None
+    result = dict(first_escalated_t=None if first is None else round(first, 3), by_s=hi,
+                  window=None if window is None else list(window), max_issued_vz_by=None if issued is None else
+                  round(issued, 3), escalation_onsets=escalation_onsets(guard))
+    result['passed'] = bool(first is not None and (min_issued is None or (issued is not None
+                                                                           and issued >= min_issued-EPS)))
+    return result
+
+
+def score_no_later(guard, baseline):
+    """V_Pine_heldout (gates v5): the guard's first escalation comes no later than the baseline guard's (when the
+    baseline escalates at all); both onset lists are reported, and the onsets the baseline does not have."""
+    mine, theirs = escalation_onsets(guard), escalation_onsets(baseline)
+    result = dict(onsets=mine, baseline_onsets=theirs, new_onsets=[t for t in mine if t not in theirs],
+                  end_t=round(float(np.asarray(guard['t'], float)[-1]), 3),
+                  report=guard_report(guard, baseline))
+    result['passed'] = bool(not theirs or (mine and mine[0] <= theirs[0]+EPS))
+    return result
+
+
+def changed_ticks(a, b, keys=COMMAND_KEYS):
+    """Ticks whose command differs between two replays of one flight (report), and the first such time."""
+    t = np.asarray(a['t'], float)
+    diff = np.zeros(len(t), bool)
+    for k in keys:
+        x, y = np.asarray(a[k]), np.asarray(b[k])
+        if x.shape != y.shape:
+            return dict(ticks=None, note='different tick counts')
+        if x.dtype.kind in 'fc' and y.dtype.kind in 'fc':
+            diff |= ~((x == y) | (np.isnan(x) & np.isnan(y)))
+        else:
+            diff |= x != y
+    return dict(ticks=int(diff.sum()), seconds=round(float(durations(t)[diff].sum()), 3),
+                first_t=round(float(t[diff][0]), 3) if diff.any() else None)
+
+
+def score_all_v5(out, baseline, gates, digest, runs=RUNS):
+    """Score gates version 5 (see configs/obstacles/vertical_guard_gates.json): the baseline is the m6 tree (guard v4).
+    Every variant's file tag is variant_tag(...) plus the variant's declared suffix; flights of inputs.streams use the
+    '-stream' tag. The idealised checks are scored by score_ideal_v5 from vertical_ideal.py's outputs."""
+    g = gates['gates']
+    variants = gates['variants']
+    stream_flights = set(gates['inputs']['streams']['flights'])
+    result = dict(gates_sha256=digest, gates_version=gates['version'], vertical_guard=gates['vertical_guard'],
+                  baseline_tree=gates['baseline_tree'])
+
+    def tag(variant, flight, stream=None):
+        spec = variants[variant]
+        stream = flight in stream_flights if stream is None else stream
+        return variant_tag(spec['stack'], 'off', spec['vertical'], stream)+spec['suffix']
+
+    def load(prefix, variant, flight, stream=None):
+        return _load(prefix, tag(variant, flight, stream), flight)
+
+    def side(flight):
+        return json.loads((Path(runs)/f'{flight}.json').read_text(encoding='utf-8'))
+    # Identity: the default pilot, the stack in shadow and the stack without the guard, bit-identical to the baseline
+    identity = []
+    spec = g['Identity']
+    for flight in spec['flights']:
+        streamed = flight in stream_flights
+        cases = [(v, False if v == 'none' else streamed) for v in spec['variants']]
+        if streamed:
+            cases.append(('none', True))
+        for variant, stream in cases:
+            name = tag(variant, flight, stream)
+            try:
+                same, keys = identical(_load(out, name, flight), _load(baseline, name, flight))
+            except FileNotFoundError as exc:
+                same, keys = None, str(exc)
+            identity.append(dict(flight=flight, variant=name, identical=same, keys=keys))
+    result['Identity'] = dict(pairs=identity, n_pairs=len(identity),
+                              identical_pairs=sum(bool(r['identical']) for r in identity),
+                              passed=bool(identity and all(r['identical'] for r in identity)))
+    # the stack as flown in round 6, v5 against v4 (report): which ticks change
+    result['Changed_report'] = {f: changed_ticks(load(out, 'plan', f), load(baseline, 'plan', f))
+                                for f in spec['flights']}
+    # V_Pine_R6 (development): the live hillside failure, as flown
+    r6 = g['V_Pine_R6']
+    result['V_Pine_R6'] = dict(score_escalated_by(load(out, r6['variant'], r6['flight']), r6['escalated_by_s'],
+                                                  r6['min_issued_vz']),
+                               baseline_report_only=score_escalated_by(load(baseline, r6['variant'], r6['flight']),
+                                                                       r6['escalated_by_s'], r6['min_issued_vz']))
+    # V_Pine_hillsides (development)
+    hs = g['V_Pine_hillsides']
+    hill = {}
+    for name, item in hs['episodes'].items():
+        a, b = load(out, item['variant'], item['flight']), load(baseline, item['variant'], item['flight'])
+        if item.get('mound'):
+            pine = score_pine_v3(a, side(item['flight']), item)
+            esc = mound_escalation(a, item)
+            hill[name] = dict(mound_height_fraction=pine['mound_height_fraction'], mound_escalation=esc,
+                              passed=bool(pine['mound_passed'] and esc['passed']),
+                              baseline_report_only=dict(
+                                  mound_height_fraction=score_pine_v3(b, side(item['flight']), item)[
+                                      'mound_height_fraction'], mound_escalation=mound_escalation(b, item)))
+        else:
+            window = item.get('window')
+            hill[name] = dict(score_escalated_by(a, item.get('escalated_by_s'), window=window),
+                              baseline_report_only=score_escalated_by(b, item.get('escalated_by_s'), window=window))
+    result['V_Pine_hillsides'] = dict(episodes=hill, passed=all(r['passed'] for r in hill.values()))
+    # V_R4 (development): the round-4 false escalation must not recur, as flown and under the round-6 stack
+    vr4 = g['V_R4']
+    rows = {v: score_r4(load(out, v, vr4['flight']), vr4) for v in vr4['variants']}
+    result['V_R4'] = dict(variants=rows, passed=all(r['passed'] for r in rows.values()),
+                          baseline_report_only={v: score_r4(load(baseline, v, vr4['flight']), vr4)
+                                                for v in vr4['variants']})
+    # V_Minus: v4's windows and floor sink (variant on), no escalation on every Minus Two flight
+    vm = g['V_Minus']
+    windows, windows_plan = {}, {}
+    for flight, item in vm['flights'].items():
+        windows[flight] = score_minus(load(out, vm['windows_variant'], flight), side(flight), vm, item['floor_sink'])
+        windows_plan[flight] = score_minus(load(out, 'plan', flight), side(flight), vm, item['floor_sink'])
+    ne = vm['no_escalation']
+    escalation = {}
+    for group in ('development', 'held_out'):
+        for flight, variant_list in ne[group].items():
+            for variant in variant_list:
+                escalation[f'{flight} [{variant}]'] = dict(score_minus_escalation(load(out, variant, flight), ne),
+                                                           group=group)
+    result['V_Minus'] = dict(windows=windows, windows_plan_report_only=windows_plan, no_escalation=escalation,
+                             windows_passed=all(r.get('passed') for r in windows.values()),
+                             no_escalation_passed=all(r['passed'] for r in escalation.values()),
+                             held_out_passed=all(r['passed'] for r in escalation.values() if r['group'] == 'held_out'))
+    result['V_Minus']['passed'] = result['V_Minus']['windows_passed'] and result['V_Minus']['no_escalation_passed']
+    # V_Straw_uphill: no escalated tick on any lap
+    vu = g['V_Straw_uphill']
+    uphill = {}
+    for group in ('development', 'held_out'):
+        for variant, flights in vu[group].items():
+            uphill[f'{group} [{variant}]'] = score_straw_uphill({f: load(out, variant, f) for f in flights}, vu)
+            uphill[f'{group} [{variant}]']['baseline_report_only'] = score_straw_uphill(
+                {f: load(baseline, variant, f) for f in flights}, vu)['escalated_s']
+    result['V_Straw_uphill'] = dict(sets=uphill, passed=all(r['passed'] for r in uphill.values()),
+                                    held_out_passed=all(r['passed'] for k, r in uphill.items()
+                                                        if k.startswith('held_out')))
+    # V_Pine_heldout: Pine logs never replayed through a guard; the first escalation no later than v4's
+    vh = g['V_Pine_heldout']
+    held = {f: score_no_later(load(out, vh['variant'], f), load(baseline, vh['variant'], f)) for f in vh['flights']}
+    result['V_Pine_heldout'] = dict(flights=held, passed=all(r['passed'] for r in held.values()))
+    # V_Straw_downhill (report): v3's definitions on the two finishes, unchanged
+    vd = g['V_Straw_downhill']
+    laps = {f: score_straw(load(out, 'on', f), load(out, 'on_voff', f), load(out, 'none', f, False), vd)
+            for f in vd['flights']}
+    for flight, lap in laps.items():
+        # its whole-lap guard numbers are v3's report; its lap pass flag is not a v5 gate
+        lap.pop('passed', None)
+    episodes = [e for lap in laps.values() for e in lap['episodes']]
+    result['V_Straw_downhill'] = dict(
+        report_only=True, n_episodes=len(episodes),
+        limited_fraction=round(sum(e['limited_before_contact'] for e in episodes)/len(episodes), 3) if episodes else None,
+        ticks_raised_above_pilot=sum(lap['ticks_raised_above_pilot'] for lap in laps.values()),
+        ticks_horizontal_reduced=sum(lap['ticks_horizontal_reduced'] for lap in laps.values()))
+    # V_Keep (report): every flight's guard replay (the round-6 stack) against the baseline's
+    result['V_Keep'] = {f: guard_report(load(out, 'plan', f), load(baseline, 'plan', f)) for f in spec['flights']}
+    # v4's V_Pine climb and no-descent criteria (report; open loop, the flown climbs remove the evidence)
+    old = gates['old_definitions']['V_Pine']
+    pine = score_pine_v3(load(out, old['variant'], old['flight']), side(old['flight']), old)
+    result['old_definitions'] = dict(V_Pine=dict(
+        answered_fraction=pine['answered_fraction'], late_min_requested_vz=pine['late_min_requested_vz'],
+        mound_height_fraction=pine['mound_height_fraction'], episodes=pine['episodes'],
+        climb_passed=pine['climb_passed'], no_descent_passed=pine['no_descent_passed'],
+        baseline_answered_fraction=score_pine_v3(load(baseline, old['variant'], old['flight']), side(old['flight']),
+                                                 old)['answered_fraction']))
+    result['passed'] = {k: result[k]['passed'] for k in ('Identity', 'V_Pine_R6', 'V_Pine_hillsides', 'V_R4', 'V_Minus',
+                                                         'V_Straw_uphill', 'V_Pine_heldout')}
+    return result
+
+
+def score_ideal_v5(v5, v4, gate):
+    """Idealised gates (gates v5) from vertical_ideal.py outputs of guard v5 and guard v4 (same seeds): identical per
+    seed on the ramp and floor cases; on the hill cases v5's escalation share at least v4's and its median clearance
+    at least v4's minus tolerance_m, and at least min_improved cases improved by improvement_m; floor_split reported."""
+    a, b = v5['results'], v4['results']
+    rows, identical_ok, hill_ok, improved = {}, True, True, 0
+    for name, r in a.items():
+        s = b[name]
+        row = dict(scenario=r['scenario'], metric=r['metric'], v5=dict(escalated_share=r['escalated_share'],
+                   median=r['median'], worst=r['worst']), v4=dict(escalated_share=s['escalated_share'],
+                   median=s['median'], worst=s['worst']))
+        if r['scenario'] in gate['identical_scenarios']:
+            row['identical'] = bool(r['per_seed'] == s['per_seed'] and r['per_seed_escalated'] == s['per_seed_escalated'])
+            identical_ok &= row['identical']
+        elif r['scenario'] in gate['hill_scenarios']:
+            row['non_inferior'] = bool(r['escalated_share'] >= s['escalated_share']-EPS
+                                       and r['median'] >= s['median']-gate['tolerance_m']-EPS)
+            row['improved'] = bool(r['median'] >= s['median']+gate['improvement_m']-EPS)
+            hill_ok &= row['non_inferior']
+            improved += row['improved']
+        rows[name] = row
+    result = dict(cases=rows, seeds=v5['seeds'], identical_passed=bool(identical_ok), hill_non_inferior=bool(hill_ok),
+                  hill_improved_cases=improved, hill_passed=bool(hill_ok and improved >= gate['min_improved']))
+    result['passed'] = result['identical_passed'] and result['hill_passed']
+    return result
+
+
 def score_main(argv=None):
     parser = argparse.ArgumentParser(description='Score the frozen vertical-guard gates from replay files')
     parser.add_argument('--out', required=True, help="this tree's replay prefix")
@@ -1276,9 +1494,22 @@ def score_main(argv=None):
     parser.add_argument('--gates', default=str(GATES_PATH))
     parser.add_argument('--runs', default=str(RUNS))
     parser.add_argument('--json', required=True, help='where to write the scores')
+    parser.add_argument('--ideal', nargs=2, default=None, metavar=('GUARD_JSON', 'BASELINE_JSON'),
+                        help='gates v5: vertical_ideal.py outputs of the scored guard and of the baseline guard (same '
+                             'seeds); scored as the Idealised gate')
     args = parser.parse_args(argv)
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
     result = score_all(args.out, args.baseline, args.gates, args.runs)
+    if args.ideal:
+        gates, _ = load_gates(args.gates)
+        mine, theirs = (json.loads(Path(p).read_text(encoding='utf-8')) for p in args.ideal)
+        gate = gates['gates']['Idealised']
+        if (mine['sha256'] != gates['vertical_guard']['sha256'] or theirs['version'] != gate['baseline_version']
+                or theirs['sha256'] != gate['baseline_sha256'] or mine['seeds'] != gate['seeds']
+                or theirs['seeds'] != gate['seeds']):
+            raise SystemExit('the idealised outputs are not the declared guards on the declared seeds')
+        result['Idealised'] = score_ideal_v5(mine, theirs, gate)
+        result['passed']['Idealised'] = result['Idealised']['passed']
     Path(args.json).write_text(json.dumps(result, indent=1, default=str), encoding='utf-8')
     print(json.dumps(result['passed']))
 

@@ -7,7 +7,7 @@ climb, that the default behaviour is unchanged and that the shadow control flies
 open-loop replays of the live logs are in haltere/obstacles/vertical_replay.py. None of this is flight evidence.
 """
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 
 import numpy as np
 import pytest
@@ -23,7 +23,8 @@ X = [1., 0., 0.]
 FRAME = 1/18.
 TTC = TtcClearanceConfig()               # the flown TTC policy
 GUARD = CeilingGuardConfig()
-VG = VerticalGuardConfig()
+VG = VerticalGuardConfig()               # version 4's rules (clear_below_terrain False)
+V5 = replace(VG, clear_below_terrain=True)  # the declared version 5
 AHEAD = cue_toward([10., 0., 0.])
 BELOW = cue_toward([10., 0., -1.5])      # a ring ahead and below: the pilot requests a sink of about 0.9 m/s
 
@@ -70,7 +71,8 @@ def series(rows, key):
 # ---------------------------------------------------------------------------------------------
 def test_config_validation():
     for bad in (dict(margin_zero_s=2.), dict(climb_full_s=1.5), dict(confirm=1.5), dict(rising_confirm=0),
-                dict(gentle_climb=float('inf')), dict(level_band=-.1), dict(memory_s=0.)):
+                dict(gentle_climb=float('inf')), dict(level_band=-.1), dict(memory_s=0.),
+                dict(clear_below_terrain=1), dict(clear_below_terrain='yes')):
         with pytest.raises(ValueError):
             VerticalGuardConfig(**bad)
     with pytest.raises(ValueError, match='VerticalGuardConfig'):
@@ -85,9 +87,10 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
                                               load_vertical_guard)
     declaration, digest = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
-    assert declaration['version'] == VERTICAL_GUARD_VERSION == 4 and declaration['frozen'] is True
+    assert declaration['version'] == VERTICAL_GUARD_VERSION == 5 and declaration['frozen'] is True
     assert digest == declaration['sha256'] == lag_turn_declaration_sha256(declaration)
-    assert vertical_guard_config(declaration) == VG                     # the declared values are the defaults
+    # the declared values are the defaults, with version 5's switch on (the default False is version 4's rules)
+    assert vertical_guard_config(declaration) == V5 and V5.clear_below_terrain is True
     # the declared values the task gave: full sink at 1.5 s, none at 0.6 s; about 1 m/s without rising ground
     assert (VG.margin_full_s, VG.margin_zero_s, VG.gentle_climb) == (1.5, .6, 1.)
     edited = dict(declaration, vertical_guard=dict(declaration['vertical_guard'], gentle_climb=2.))
@@ -96,7 +99,7 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
     with pytest.raises(ValueError, match='changed after the freeze'):
         load_vertical_guard(path)
     other = {k: v for k, v in declaration.items() if k not in ('frozen', 'frozen_at', 'sha256')}
-    other['version'] = 5
+    other['version'] = 6
     other.update(frozen=True, sha256=lag_turn_declaration_sha256(other))
     path.write_text(json.dumps(other))
     with pytest.raises(ValueError, match='version'):
@@ -105,20 +108,24 @@ def test_repository_declaration_is_frozen_and_declares_the_defaults(tmp_path):
         vertical_guard_config(other)
 
 
-@pytest.mark.parametrize('version, prefix', [(1, '703f60e33aa0'), (2, 'e06b690d0d4f'), (3, 'b70e263ccdc5')])
+@pytest.mark.parametrize('version, prefix', [(1, '703f60e33aa0'), (2, 'e06b690d0d4f'), (3, 'b70e263ccdc5'),
+                                             (4, '409d06f9ded7')])
 def test_earlier_versions_are_kept_verbatim_and_refused(version, prefix):
-    """Version 1 (replayed, never flown), version 2 (replayed, flown on Minus Two in round 3) and version 3 (replayed,
-    flown on Minus Two in round 4) are kept for provenance: every version keeps v1's values; version 2 changed three
-    rules (the crossing TTC for the sink rules, the binding test of rising ground, keep speed on contact), version 3
-    two (a path alarm to start a climb, the binding test over the pilot's recent requests), version 4 one (the
-    surface below must keep looming throughout the rising window); no version changed a value."""
+    """Version 1 (replayed, never flown), version 2 (replayed, flown on Minus Two in round 3), version 3 (replayed,
+    flown on Minus Two in round 4) and version 4 (flown in rounds 4b-6) are kept for provenance: every version keeps
+    v1's values; version 2 changed three rules (the crossing TTC for the sink rules, the binding test of rising ground,
+    keep speed on contact), version 3 two (a path alarm to start a climb, the binding test over the pilot's recent
+    requests), version 4 one (the surface below must keep looming throughout the rising window), version 5 one (only a
+    below-path sample shows the surface below clear; its switch clear_below_terrain is the only key it adds); no
+    version changed a value."""
     from haltere.liftoff.visual_brain import (VERTICAL_GUARD_DECLARATION, lag_turn_declaration_sha256,
                                               load_vertical_guard)
     current, _ = load_vertical_guard(VERTICAL_GUARD_DECLARATION)
     path = VERTICAL_GUARD_DECLARATION.with_name(f'vertical_guard_v{version}.json')
     old = json.loads(path.read_text(encoding='utf-8'))
     assert old['version'] == version and old['frozen'] is True and lag_turn_declaration_sha256(old) == old['sha256']
-    assert old['sha256'].startswith(prefix) and old['vertical_guard'] == current['vertical_guard']
+    assert old['sha256'].startswith(prefix) and current['vertical_guard'].pop('clear_below_terrain') is True
+    assert old['vertical_guard'] == current['vertical_guard']
     previous = {p['version']: p for p in current['previous_versions']}
     assert previous[version]['sha256'] == old['sha256'] and current['change']
     with pytest.raises(ValueError, match='version'):
@@ -360,6 +367,75 @@ def test_a_lower_window_that_sees_no_crossing_counts_as_clear_below():
     assert gov.vertical_counts['clear_below_samples'] == 0 and gov.vertical_counts['clear_below_blocks'] == 0
 
 
+# pine-fast6-r6-01, 13.43-14.76 s (development case of version 5): the looming samples the camera published while guard
+# v4 answered the Pine hillside with its gentle climb (alarm ttc, ttc_lower, below_fraction; None: not published), and
+# the measured vertical speed at each. The first is the slope's face above the path (below_fraction 0.05, lower 5.7 s);
+# two path alarms start the gentle climb; two below-path alarms while climbing 0.66-0.73 m/s are rising ground, but
+# samples with the face at the path (below_fraction 0.48-0.64, lower 1.3-2.7 s) keep arriving. Every below-path sample
+# of the climb reads the lower surface under 1.2 s. The drone hit the slope 0.03 s after the last sample.
+R6_01 = [(2.704, 5.737, .054, -.09), (.805, .135, 1., -.25), (.805, .264, 1., -.26), (5.176, None, None, -.15),
+         (5.176, .446, .922, .38), (1.11, .62, .951, .66), (1.11, .773, .767, .73), (1.328, 1.337, .597, .77),
+         (1.328, 1.125, .621, .80), (1.348, 1.52, .644, .81), (1.282, 1.151, .868, .83), (1.282, 2.664, .509, .84),
+         (1.221, 2.027, .593, .84), (1.17, 1.709, .52, .85), (.884, .654, .548, .85), (.676, .335, .994, .85),
+         (.668, .377, .483, .85), (.676, None, 0., .85), (2.414, 1.123, .993, .78)]
+
+
+def r6_01(t):
+    k = int(round(t/FRAME))
+    if k < len(R6_01):
+        ttc, lower, below, _ = R6_01[k]
+        return dict(ttc=ttc, lower=lower, below=below)
+    return None
+
+
+def r6_01_rise(t):
+    return R6_01[min(int(round(max(t-.08, 0.)/FRAME)), len(R6_01)-1)][3]
+
+
+def test_v5_answers_the_hillside_that_v4_blocked():
+    """Version 5: a sample whose expansion lies at or above the path says nothing about the surface below it. On the
+    r6-01 samples version 4 blocks every escalation (the face's long lower readings) and climbs at the gentle 1 m/s;
+    version 5 confirms rising ground on the two below-path alarms of the climb and asks for more."""
+    gov4 = TtcClearanceGovernor(TTC, vertical=VG)
+    rows4 = run(gov4, r6_01, 1.15, rise=r6_01_rise, pilot=lambda t: .3)
+    assert not gov4.escalated and gov4.vertical_counts['clear_below_blocks'] > 0
+    assert max(r['climb'] for r in rows4) == pytest.approx(VG.gentle_climb)
+    gov5 = TtcClearanceGovernor(TTC, vertical=V5)
+    rows5 = run(gov5, r6_01, 1.15, rise=r6_01_rise, pilot=lambda t: .3)
+    first = next(r['t'] for r in rows5 if r['stage'] == 2)
+    assert gov5.vertical_counts['escalations'] == 1 and gov5.vertical_counts['clear_below_blocks'] == 0
+    assert first <= 7*FRAME+.08+.02 and max(r['climb'] for r in rows5) > 2.5
+    # the two runs agree until the escalation (the switch changes nothing else)
+    early = [r['t'] < first for r in rows5]
+    assert [r['climb'] for r, e in zip(rows4, early) if e] == [r['climb'] for r, e in zip(rows5, early) if e]
+
+
+def test_v5_still_blocks_the_r4_02_floor_and_arch():
+    """Version 5 keeps version 4's answer to minus-fast6-r4-02: its two long readings (1.34 and 1.41 s) are below-path
+    samples (below_fraction 1.0), so the gentle climb is not escalated."""
+    def rise(t):
+        return .45 if t < .15 else .9
+    gov = TtcClearanceGovernor(TTC, vertical=V5)
+    rows = run(gov, r4_02, 1., rise=rise, pilot=lambda t: .4)
+    assert not gov.escalated and gov.vertical_counts['clear_below_blocks'] > 0
+    assert max(r['climb'] for r in rows) == pytest.approx(V5.gentle_climb)
+
+
+@pytest.mark.parametrize('sample, v4_clear, v5_clear', [
+    (dict(ttc=1.3, lower=2.5, below=.95), True, True),       # below-path, the lower surface far: clear in both
+    (dict(ttc=1.3, below=.95), True, True),                  # below-path, no crossing seen: clear in both
+    (dict(ttc=1.3, lower=2.5, below=.55), True, False),      # the face at the path: v5 says nothing
+    (dict(ttc=.7, below=0.), True, False),                   # expansion above the path, no crossing
+    (dict(ttc=1.3, lower=2.5), True, False),                 # no below_fraction: v4 read the lower TTC alone
+    (dict(ttc=1.3), False, False),                           # no vertical-window evidence: nothing in either
+    (dict(ttc=1.3, lower=.5, below=.95), False, False)])     # the surface below looms: not clear
+def test_which_samples_show_the_surface_below_clear(sample, v4_clear, v5_clear):
+    for config, expected in ((VG, v4_clear), (V5, v5_clear)):
+        gov = TtcClearanceGovernor(TTC, vertical=config)
+        run(gov, lambda t: sample if t < FRAME/2 else None, .3)
+        assert gov.vertical_counts['clear_below_samples'] == int(expected)
+
+
 def test_without_the_guard_the_governor_is_unchanged():
     """The vertical guard's state exists but nothing reads it: the same limits at every tick as the policy."""
     def mixed(t):
@@ -414,8 +490,11 @@ def test_the_pilot_keeps_a_time_margin_to_the_ground_below_a_descent():
     assert np.abs(np.diff(vz)).max() <= 5.*.01+1e-9                          # the pilot's own slew: no jump
     np.testing.assert_allclose([r[1][:2] for r in rows], [r[1][:2] for r in plain], atol=1e-9)   # same horizontal
     meta = json.loads(json.dumps(guarded.metadata()))['vertical_guard']
-    assert meta['version'] == VERTICAL_GUARD_VERSION and meta['applied'] is True
+    assert meta['version'] == 4 and meta['applied'] is True           # VG: version 4's rules
     assert meta['parameters'] == asdict(VG) and meta['seconds']['limiting'] > 1.
+    guarded, _ = fly(ground, plant='perfect', vertical_guard=V5)
+    meta = json.loads(json.dumps(guarded.metadata()))['vertical_guard']
+    assert meta['version'] == VERTICAL_GUARD_VERSION == 5 and meta['parameters']['clear_below_terrain'] is True
 
 
 def test_a_withheld_sink_does_not_cut_the_horizontal_speed():
