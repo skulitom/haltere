@@ -1,0 +1,7867 @@
+{
+ "scope": "Round-6 integration (branch m6 = m5 bc7c71c + m6-gates 01f10c9 + m6-brake 13bacfe + m6-ground 1102c45). Open-loop replays of live logs: development evidence (every log was read by a round-6 branch). Closed-loop harness and surrogate sets: fresh (sim seed 113, scenario values and course seeds chosen before any run), a report, not gates. Nothing here is flight evidence; nothing was flown.",
+ "trees": {
+  "m5": "git archive bc7c71c (haltere, configs)",
+  "m6": "git archive eb22ecd (haltere, configs; the merged code)"
+ },
+ "tests": {
+  "full_suite": "1266 passed in 339.52 s on eb22ecd; 1266 passed in 291.89 s on the integration commit (documents only)"
+ },
+ "frozen_files": {
+  "files": 61,
+  "bad": 0,
+  "changed_by_round6": [
+   {
+    "path": "configs/obstacles/early_brake.json",
+    "version": 1,
+    "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e",
+    "branch": "m6-brake"
+   },
+   {
+    "path": "configs/obstacles/early_brake_gates.json",
+    "version": 1,
+    "sha256": "3b029e32b3171eb75020b8e6091f9e9dd8511789b244cdac3ec1cc05697f7a80",
+    "branch": "m6-brake"
+   },
+   {
+    "path": "configs/pilot/marker_jump.json",
+    "version": 1,
+    "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9",
+    "branch": "m6-gates"
+   },
+   {
+    "path": "configs/pilot/marker_jump_gates.json",
+    "version": 1,
+    "sha256": "4eb99684589314e14323e5141b87e40a8532843488653436fa872d236d907f15",
+    "branch": "m6-gates"
+   },
+   {
+    "path": "configs/pilot/motor_assist.json",
+    "version": 4,
+    "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6",
+    "branch": "m6-brake"
+   },
+   {
+    "path": "configs/pilot/motor_assist_v3.json",
+    "version": 3,
+    "sha256": "7c3b49e7bcc70ece18b00e68285c427ea430016fc52392122663205fd6be8772",
+    "branch": "m6-brake"
+   },
+   {
+    "path": "configs/pilot/sighted_descent.json",
+    "version": 1,
+    "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6",
+    "branch": "m6-ground"
+   },
+   {
+    "path": "configs/pilot/sighted_descent_gates.json",
+    "version": 1,
+    "sha256": "46deedeeea366a5204c19f053b3c71650867d71e3d73b5b9d7c9c525bbf0a3b1",
+    "branch": "m6-ground"
+   }
+  ]
+ },
+ "loaders": {
+  "loaded": {
+   "lag_turn": {
+    "path": "configs/obstacles/lag_turn.json",
+    "version": 2,
+    "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860"
+   },
+   "gap_pilot": {
+    "path": "configs/obstacles/gap_pilot.json",
+    "version": 5,
+    "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+   },
+   "wall_pilot": {
+    "path": "configs/obstacles/wall_pilot.json",
+    "version": 6,
+    "sha256": "fe65951d3d683bc87307cb0d978bf2cfab168f9bc5e460a7af9b39644634869f"
+   },
+   "vertical_guard": {
+    "path": "configs/obstacles/vertical_guard.json",
+    "version": 4,
+    "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8"
+   },
+   "descent_view": {
+    "path": "configs/pilot/descent_view.json",
+    "version": 3,
+    "sha256": "2bdb17fc2479fc2d05b8521d65037cbd8f8e56f2b4a46b7cf7b33034ecbbb0cb"
+   },
+   "motor_assist": {
+    "path": "configs/pilot/motor_assist.json",
+    "version": 4,
+    "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6"
+   },
+   "stale_evidence": {
+    "path": "configs/obstacles/stale_evidence.json",
+    "version": 2,
+    "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a"
+   },
+   "ring_marker": {
+    "path": "configs/pilot/ring_marker.json",
+    "version": 1,
+    "sha256": "09824e473659b7117c6e653c60e3e968015f521b3c6e2b7fb85c863247574f68"
+   },
+   "early_brake": {
+    "path": "configs/obstacles/early_brake.json",
+    "version": 1,
+    "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e"
+   },
+   "marker_jump": {
+    "path": "configs/pilot/marker_jump.json",
+    "version": 1,
+    "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9"
+   },
+   "sighted_descent": {
+    "path": "configs/pilot/sighted_descent.json",
+    "version": 1,
+    "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6"
+   }
+  },
+  "refused": {
+   "obstacles/wall_pilot_v1.json": true,
+   "obstacles/wall_pilot_v2.json": true,
+   "obstacles/wall_pilot_v3.json": true,
+   "obstacles/wall_pilot_v4.json": true,
+   "obstacles/wall_pilot_v5.json": true,
+   "obstacles/vertical_guard_v1.json": true,
+   "obstacles/vertical_guard_v2.json": true,
+   "obstacles/vertical_guard_v3.json": true,
+   "pilot/descent_view_v1.json": true,
+   "pilot/descent_view_v2.json": true,
+   "pilot/motor_assist_v1.json": true,
+   "pilot/motor_assist_v2.json": true,
+   "pilot/motor_assist_v3.json": true,
+   "obstacles/stale_evidence_v1.json": true,
+   "obstacles/gap_pilot_v1.json": true,
+   "obstacles/gap_pilot_v2.json": true,
+   "obstacles/gap_pilot_v3.json": true,
+   "obstacles/gap_pilot_v4.json": true
+  }
+ },
+ "identity": {
+  "summary": {
+   "pairs": 226,
+   "command_identical": 226,
+   "all_common_arrays_identical": 226
+  },
+  "pairs": {
+   "m6_none vs m5_none": {
+    "n": 31,
+    "command_identical": 31,
+    "all_arrays_identical": 31
+   },
+   "m6_shadow vs m5_shadow": {
+    "n": 31,
+    "command_identical": 31,
+    "all_arrays_identical": 31
+   },
+   "m6_r5 vs m5_r5": {
+    "n": 31,
+    "command_identical": 31,
+    "all_arrays_identical": 31
+   },
+   "m6_r5ma3 vs m5_r5ma3": {
+    "n": 31,
+    "command_identical": 31,
+    "all_arrays_identical": 31
+   },
+   "m6_r5_newshadow vs m6_r5": {
+    "n": 31,
+    "command_identical": 31,
+    "all_arrays_identical": 31
+   },
+   "m6_r5_newshadow vs m5_r5": {
+    "n": 31,
+    "command_identical": 31,
+    "all_arrays_identical": 31
+   },
+   "m6_shadow_eb vs m5_shadow": {
+    "n": 31,
+    "command_identical": 31,
+    "all_arrays_identical": 31
+   },
+   "m6_full vs m6_nosd": {
+    "n": 3,
+    "command_identical": 3,
+    "all_arrays_identical": 3
+   },
+   "m6_noma vs m6_full": {
+    "n": 3,
+    "command_identical": 3,
+    "all_arrays_identical": 3
+   },
+   "m6_noeb vs m6_full": {
+    "n": 3,
+    "command_identical": 3,
+    "all_arrays_identical": 3
+   }
+  }
+ },
+ "replay_variants": {
+  "m5": "round-5 stack: --stack on --near-on-path --throttle-column command_thr --descent-view dv3 --stale-evidence (m5 archive)",
+  "m5ma3": "m5 + motor assist v3 (m5 archive)",
+  "m6": "m5 flags + --early-brake + --sighted-descent + --motor-assist (v4) + --marker-jump shadow (contact support on; m6 archive)",
+  "m6_csshadow": "m6 with --contact-support shadow: the stack of the live plan",
+  "m6_noma": "m6 without the assist",
+  "m6_noeb": "m6 without the early brake",
+  "m6_nosd": "m6 without the sighted descent"
+ },
+ "replays": {
+  "minus-fast6-r4-02": {
+   "motor": "pd",
+   "streamed": false,
+   "audit": [
+    {
+     "t": [
+      27.328,
+      27.988
+     ],
+     "kind": "support"
+    },
+    {
+     "t": [
+      29.018,
+      29.548
+     ],
+     "kind": "support"
+    },
+    {
+     "t": [
+      30.679,
+      31.059
+     ],
+     "kind": "support"
+    },
+    {
+     "t": [
+      34.079,
+      34.089
+     ],
+     "kind": "impact"
+    }
+   ],
+   "removed_vs_m5_pct": 0.0,
+   "removed_noma_vs_m5_pct": 0.0,
+   "removed_m5ma3_vs_m5_pct": null,
+   "m5": {
+    "end_t": 34.09,
+    "support_onsets": [],
+    "turn_first_s": 0.53,
+    "view_limiting_s": 0.25,
+    "braking_s": 17.65,
+    "contact_onsets": []
+   },
+   "m5ma3": null,
+   "m6": {
+    "end_t": 34.09,
+    "support_onsets": [],
+    "turn_first_s": 0.53,
+    "view_limiting_s": 0.25,
+    "braking_s": 17.65,
+    "contact_onsets": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.06,
+    "sighted_windows": [],
+    "assist_h_s": 0.0,
+    "assist_h_max": 0.0,
+    "assist_removed_pct": null,
+    "assist_v_s": 0.0,
+    "assist_v_max": 0.0,
+    "assist_sources": {},
+    "assist_wall_ahead_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "m6_csshadow": {
+    "end_t": 34.09,
+    "support_onsets": [],
+    "turn_first_s": 0.53,
+    "view_limiting_s": 0.25,
+    "braking_s": 17.65,
+    "contact_onsets": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.06,
+    "sighted_windows": [],
+    "assist_h_s": 0.0,
+    "assist_h_max": 0.0,
+    "assist_removed_pct": null,
+    "assist_v_s": 0.0,
+    "assist_v_max": 0.0,
+    "assist_sources": {},
+    "assist_wall_ahead_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "change_vs_m5": {
+    "seconds": 0.0,
+    "first": null,
+    "max_dh": 0.0,
+    "max_dz": 0.0
+   },
+   "change_vs_m5ma3": null,
+   "assist_share_s": 0.0,
+   "early_share_s": 0.0,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "floor 26.4-29.7": {
+     "m5": {
+      "min_h": 1.11,
+      "max_h": 3.61,
+      "min_cvz": -0.0,
+      "max_cvz": 0.04,
+      "steepest_path_deg": 0.07,
+      "measured_speed": [
+       0.45,
+       4.09
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": null,
+     "m6": {
+      "min_h": 1.11,
+      "max_h": 3.61,
+      "min_cvz": -0.0,
+      "max_cvz": 0.04,
+      "steepest_path_deg": 0.07,
+      "measured_speed": [
+       0.45,
+       4.09
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 1.11,
+      "max_h": 3.61,
+      "min_cvz": -0.0,
+      "max_cvz": 0.04,
+      "steepest_path_deg": 0.07,
+      "measured_speed": [
+       0.45,
+       4.09
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 1.11,
+      "max_h": 3.61,
+      "min_cvz": -0.0,
+      "max_cvz": 0.04,
+      "steepest_path_deg": 0.07,
+      "measured_speed": [
+       0.45,
+       4.09
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 1.11,
+      "max_h": 3.61,
+      "min_cvz": -0.0,
+      "max_cvz": 0.04,
+      "steepest_path_deg": 0.07,
+      "measured_speed": [
+       0.45,
+       4.09
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 1.11,
+      "max_h": 3.61,
+      "min_cvz": -0.0,
+      "max_cvz": 0.04,
+      "steepest_path_deg": 0.07,
+      "measured_speed": [
+       0.45,
+       4.09
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": null
+  },
+  "minus-brain10b-r4-02": {
+   "motor": "brain",
+   "streamed": false,
+   "audit": [],
+   "removed_vs_m5_pct": 7.55,
+   "removed_noma_vs_m5_pct": 1.96,
+   "removed_m5ma3_vs_m5_pct": 11.29,
+   "m5": {
+    "end_t": 21.57,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.89,
+    "braking_s": 6.63,
+    "contact_onsets": []
+   },
+   "m5ma3": {
+    "end_t": 21.57,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.89,
+    "braking_s": 6.63,
+    "contact_onsets": [],
+    "assist_h_s": 5.18,
+    "assist_h_max": 4.92,
+    "assist_removed_pct": 11.29,
+    "assist_v_s": 0.55,
+    "assist_v_max": 0.45,
+    "assist_sources": {
+     "approach": 1.82,
+     "governor": 0.67,
+     "request": 2.2,
+     "stopping": 0.47
+    },
+    "assist_wall_ahead_s": 0.47
+   },
+   "m6": {
+    "end_t": 21.57,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.93,
+    "braking_s": 7.52,
+    "contact_onsets": [],
+    "early_s": 6.97,
+    "early_episodes": [
+     {
+      "t": [
+       6.48,
+       8.18
+      ],
+      "x": 15.8,
+      "y": 0.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       12.17,
+       14.9
+      ],
+      "x": 43.8,
+      "y": 2.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       17.55,
+       20.07
+      ],
+      "x": 67.2,
+      "y": 9.6,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 0.15,
+    "sighted_withheld_max": 0.168,
+    "sighted_set_s": 1.39,
+    "sighted_windows": [
+     {
+      "t": [
+       7.04,
+       7.19
+      ],
+      "x": 18.8,
+      "y": 0.2,
+      "max_withheld": 0.17
+     }
+    ],
+    "assist_h_s": 4.99,
+    "assist_h_max": 4.13,
+    "assist_removed_pct": 5.7,
+    "assist_v_s": 0.55,
+    "assist_v_max": 0.45,
+    "assist_sources": {
+     "governor": 0.5,
+     "request": 4.1,
+     "stopping": 0.39
+    },
+    "assist_wall_ahead_s": 0.47,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "m6_csshadow": {
+    "end_t": 21.57,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.93,
+    "braking_s": 7.52,
+    "contact_onsets": [],
+    "early_s": 6.97,
+    "early_episodes": [
+     {
+      "t": [
+       6.48,
+       8.18
+      ],
+      "x": 15.8,
+      "y": 0.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       12.17,
+       14.9
+      ],
+      "x": 43.8,
+      "y": 2.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       17.55,
+       20.07
+      ],
+      "x": 67.2,
+      "y": 9.6,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 0.15,
+    "sighted_withheld_max": 0.168,
+    "sighted_set_s": 1.39,
+    "sighted_windows": [
+     {
+      "t": [
+       7.04,
+       7.19
+      ],
+      "x": 18.8,
+      "y": 0.2,
+      "max_withheld": 0.17
+     }
+    ],
+    "assist_h_s": 4.99,
+    "assist_h_max": 4.13,
+    "assist_removed_pct": 5.7,
+    "assist_v_s": 0.55,
+    "assist_v_max": 0.45,
+    "assist_sources": {
+     "governor": 0.5,
+     "request": 4.1,
+     "stopping": 0.39
+    },
+    "assist_wall_ahead_s": 0.47,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "change_vs_m5": {
+    "seconds": 5.42,
+    "first": 3.38,
+    "max_dh": 4.13,
+    "max_dz": 0.45
+   },
+   "change_vs_m5ma3": {
+    "seconds": 4.49,
+    "first": 3.29,
+    "max_dh": 3.0,
+    "max_dz": 0.09
+   },
+   "assist_share_s": 5.34,
+   "early_share_s": 1.46,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "hairpin 19.0-21.6": {
+     "m5": {
+      "min_h": 3.62,
+      "max_h": 5.33,
+      "min_cvz": -0.1,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 1.08,
+      "measured_speed": [
+       2.78,
+       5.25
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 0.33,
+      "max_h": 5.33,
+      "min_cvz": -0.1,
+      "max_cvz": 1.45,
+      "steepest_path_deg": 1.08,
+      "measured_speed": [
+       2.78,
+       5.25
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 1.17,
+      "max_h": 5.33,
+      "min_cvz": -0.1,
+      "max_cvz": 1.45,
+      "steepest_path_deg": 1.08,
+      "measured_speed": [
+       2.78,
+       5.25
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.06,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 3.62,
+      "max_h": 5.33,
+      "min_cvz": -0.1,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 1.08,
+      "measured_speed": [
+       2.78,
+       5.25
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.06,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 1.17,
+      "max_h": 5.33,
+      "min_cvz": -0.1,
+      "max_cvz": 1.45,
+      "steepest_path_deg": 1.08,
+      "measured_speed": [
+       2.78,
+       5.25
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 1.17,
+      "max_h": 5.33,
+      "min_cvz": -0.1,
+      "max_cvz": 1.45,
+      "steepest_path_deg": 1.08,
+      "measured_speed": [
+       2.78,
+       5.25
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.06,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 1.17,
+      "max_h": 5.33,
+      "min_cvz": -0.1,
+      "max_cvz": 1.45,
+      "steepest_path_deg": 1.08,
+      "measured_speed": [
+       2.78,
+       5.25
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.06,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": null
+  },
+  "minus-brain09b-r4-01": {
+   "motor": "brain",
+   "streamed": false,
+   "audit": [],
+   "removed_vs_m5_pct": 7.51,
+   "removed_noma_vs_m5_pct": 3.63,
+   "removed_m5ma3_vs_m5_pct": 12.53,
+   "m5": {
+    "end_t": 23.68,
+    "support_onsets": [],
+    "turn_first_s": 0.4,
+    "view_limiting_s": 0.11,
+    "braking_s": 8.19,
+    "contact_onsets": []
+   },
+   "m5ma3": {
+    "end_t": 23.68,
+    "support_onsets": [],
+    "turn_first_s": 0.4,
+    "view_limiting_s": 0.11,
+    "braking_s": 8.19,
+    "contact_onsets": [],
+    "assist_h_s": 5.32,
+    "assist_h_max": 5.32,
+    "assist_removed_pct": 12.53,
+    "assist_v_s": 4.02,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "approach": 2.55,
+     "governor": 0.35,
+     "request": 1.85,
+     "stopping": 0.09,
+     "turn_first": 0.36
+    },
+    "assist_wall_ahead_s": 0.61
+   },
+   "m6": {
+    "end_t": 23.68,
+    "support_onsets": [],
+    "turn_first_s": 0.4,
+    "view_limiting_s": 0.11,
+    "braking_s": 9.58,
+    "contact_onsets": [],
+    "early_s": 10.25,
+    "early_episodes": [
+     {
+      "t": [
+       6.39,
+       9.03
+      ],
+      "x": 15.5,
+      "y": 0.0,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       12.76,
+       15.3
+      ],
+      "x": 44.4,
+      "y": 2.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       18.16,
+       21.16
+      ],
+      "x": 67.0,
+      "y": 9.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       21.53,
+       23.56
+      ],
+      "x": 76.8,
+      "y": 16.1,
+      "min_h": 0.27
+     }
+    ],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 2.89,
+    "sighted_windows": [],
+    "assist_h_s": 4.96,
+    "assist_h_max": 2.55,
+    "assist_removed_pct": 4.02,
+    "assist_v_s": 4.15,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.42,
+     "request": 4.04,
+     "stopping": 0.05,
+     "turn_first": 0.36
+    },
+    "assist_wall_ahead_s": 0.61,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "m6_csshadow": {
+    "end_t": 23.68,
+    "support_onsets": [],
+    "turn_first_s": 0.4,
+    "view_limiting_s": 0.11,
+    "braking_s": 9.58,
+    "contact_onsets": [],
+    "early_s": 10.25,
+    "early_episodes": [
+     {
+      "t": [
+       6.39,
+       9.03
+      ],
+      "x": 15.5,
+      "y": 0.0,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       12.76,
+       15.3
+      ],
+      "x": 44.4,
+      "y": 2.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       18.16,
+       21.16
+      ],
+      "x": 67.0,
+      "y": 9.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       21.53,
+       23.56
+      ],
+      "x": 76.8,
+      "y": 16.1,
+      "min_h": 0.27
+     }
+    ],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 2.89,
+    "sighted_windows": [],
+    "assist_h_s": 4.96,
+    "assist_h_max": 2.55,
+    "assist_removed_pct": 4.02,
+    "assist_v_s": 4.15,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.42,
+     "request": 4.04,
+     "stopping": 0.05,
+     "turn_first": 0.36
+    },
+    "assist_wall_ahead_s": 0.61,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "change_vs_m5": {
+    "seconds": 11.13,
+    "first": 3.78,
+    "max_dh": 3.5,
+    "max_dz": 1.0
+   },
+   "change_vs_m5ma3": {
+    "seconds": 8.64,
+    "first": 3.41,
+    "max_dh": 3.0,
+    "max_dz": 0.11
+   },
+   "assist_share_s": 8.33,
+   "early_share_s": 6.44,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "release 22.8-23.7": {
+     "m5": {
+      "min_h": 0.68,
+      "max_h": 4.92,
+      "min_cvz": 0.0,
+      "max_cvz": 0.29,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       0.49,
+       3.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 0.63,
+      "max_h": 4.92,
+      "min_cvz": 0.0,
+      "max_cvz": 1.29,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       0.49,
+       3.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 0.63,
+      "max_h": 4.92,
+      "min_cvz": 0.0,
+      "max_cvz": 1.29,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       0.49,
+       3.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.76,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 0.67,
+      "max_h": 4.92,
+      "min_cvz": 0.0,
+      "max_cvz": 0.29,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       0.49,
+       3.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.76,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 0.63,
+      "max_h": 4.92,
+      "min_cvz": 0.0,
+      "max_cvz": 1.29,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       0.49,
+       3.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 0.63,
+      "max_h": 4.92,
+      "min_cvz": 0.0,
+      "max_cvz": 1.29,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       0.49,
+       3.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.76,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 0.63,
+      "max_h": 4.92,
+      "min_cvz": 0.0,
+      "max_cvz": 1.29,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       0.49,
+       3.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.76,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": null
+  },
+  "minus-fast6-r4b-01": {
+   "motor": "pd",
+   "streamed": false,
+   "audit": [],
+   "removed_vs_m5_pct": 0.0,
+   "removed_noma_vs_m5_pct": 0.0,
+   "removed_m5ma3_vs_m5_pct": null,
+   "m5": {
+    "end_t": 44.79,
+    "support_onsets": [],
+    "turn_first_s": 1.26,
+    "view_limiting_s": 0.49,
+    "braking_s": 19.07,
+    "contact_onsets": []
+   },
+   "m5ma3": null,
+   "m6": {
+    "end_t": 44.79,
+    "support_onsets": [],
+    "turn_first_s": 1.26,
+    "view_limiting_s": 0.49,
+    "braking_s": 19.07,
+    "contact_onsets": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.0,
+    "sighted_windows": [],
+    "assist_h_s": 0.0,
+    "assist_h_max": 0.0,
+    "assist_removed_pct": null,
+    "assist_v_s": 0.0,
+    "assist_v_max": 0.0,
+    "assist_sources": {},
+    "assist_wall_ahead_s": 0.0,
+    "marker_held_ticks": 10,
+    "marker_held_onsets": [
+     39.65
+    ]
+   },
+   "m6_csshadow": {
+    "end_t": 44.79,
+    "support_onsets": [],
+    "turn_first_s": 1.26,
+    "view_limiting_s": 0.49,
+    "braking_s": 19.07,
+    "contact_onsets": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.0,
+    "sighted_windows": [],
+    "assist_h_s": 0.0,
+    "assist_h_max": 0.0,
+    "assist_removed_pct": null,
+    "assist_v_s": 0.0,
+    "assist_v_max": 0.0,
+    "assist_sources": {},
+    "assist_wall_ahead_s": 0.0,
+    "marker_held_ticks": 10,
+    "marker_held_onsets": [
+     39.65
+    ]
+   },
+   "change_vs_m5": {
+    "seconds": 0.0,
+    "first": null,
+    "max_dh": 0.0,
+    "max_dz": 0.0
+   },
+   "change_vs_m5ma3": null,
+   "assist_share_s": 0.0,
+   "early_share_s": 0.0,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "first wall 38.5-41.5": {
+     "m5": {
+      "min_h": 0.46,
+      "max_h": 5.99,
+      "min_cvz": -0.13,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 1.37,
+      "measured_speed": [
+       0.44,
+       6.23
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": null,
+     "m6": {
+      "min_h": 0.46,
+      "max_h": 5.99,
+      "min_cvz": -0.13,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 1.37,
+      "measured_speed": [
+       0.44,
+       6.23
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 10
+     },
+     "m6_noma": {
+      "min_h": 0.46,
+      "max_h": 5.99,
+      "min_cvz": -0.13,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 1.37,
+      "measured_speed": [
+       0.44,
+       6.23
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 10
+     },
+     "m6_noeb": {
+      "min_h": 0.46,
+      "max_h": 5.99,
+      "min_cvz": -0.13,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 1.37,
+      "measured_speed": [
+       0.44,
+       6.23
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 10
+     },
+     "m6_nosd": {
+      "min_h": 0.46,
+      "max_h": 5.99,
+      "min_cvz": -0.13,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 1.37,
+      "measured_speed": [
+       0.44,
+       6.23
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "marker_held_ticks": 10
+     },
+     "m6_csshadow": {
+      "min_h": 0.46,
+      "max_h": 5.99,
+      "min_cvz": -0.13,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 1.37,
+      "measured_speed": [
+       0.44,
+       6.23
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 10
+     }
+    },
+    "arch and wall 41.5-44.8": {
+     "m5": {
+      "min_h": 3.79,
+      "max_h": 6.0,
+      "min_cvz": -0.21,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 2.04,
+      "measured_speed": [
+       4.14,
+       6.15
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": null,
+     "m6": {
+      "min_h": 3.79,
+      "max_h": 6.0,
+      "min_cvz": -0.21,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 2.04,
+      "measured_speed": [
+       4.14,
+       6.15
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 3.79,
+      "max_h": 6.0,
+      "min_cvz": -0.21,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 2.04,
+      "measured_speed": [
+       4.14,
+       6.15
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 3.79,
+      "max_h": 6.0,
+      "min_cvz": -0.21,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 2.04,
+      "measured_speed": [
+       4.14,
+       6.15
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 3.79,
+      "max_h": 6.0,
+      "min_cvz": -0.21,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 2.04,
+      "measured_speed": [
+       4.14,
+       6.15
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 3.79,
+      "max_h": 6.0,
+      "min_cvz": -0.21,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 2.04,
+      "measured_speed": [
+       4.14,
+       6.15
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": {
+    "t": 44.797,
+    "tick_t": 44.787,
+    "m5": {
+     "request_along_travel": 3.75,
+     "brake_onset_before_s": 2.781
+    },
+    "m5ma3": {
+     "request_along_travel": 3.75,
+     "brake_onset_before_s": 2.781
+    },
+    "m6": {
+     "request_along_travel": 3.75,
+     "brake_onset_before_s": 2.781
+    },
+    "m6_noma": {
+     "request_along_travel": 3.75,
+     "brake_onset_before_s": 2.781
+    },
+    "m6_noeb": {
+     "request_along_travel": 3.75,
+     "brake_onset_before_s": 2.781
+    },
+    "m6_final_cut_vs_m5_s": null
+   }
+  },
+  "minus-brain11cw13-r4b-noassist-01": {
+   "motor": "brain",
+   "streamed": false,
+   "audit": [],
+   "removed_vs_m5_pct": 8.61,
+   "removed_noma_vs_m5_pct": 3.14,
+   "removed_m5ma3_vs_m5_pct": 13.66,
+   "m5": {
+    "end_t": 23.59,
+    "support_onsets": [],
+    "turn_first_s": 0.04,
+    "view_limiting_s": 0.12,
+    "braking_s": 8.16,
+    "contact_onsets": []
+   },
+   "m5ma3": {
+    "end_t": 23.59,
+    "support_onsets": [],
+    "turn_first_s": 0.04,
+    "view_limiting_s": 0.12,
+    "braking_s": 8.16,
+    "contact_onsets": [],
+    "assist_h_s": 5.76,
+    "assist_h_max": 5.53,
+    "assist_removed_pct": 13.66,
+    "assist_v_s": 3.06,
+    "assist_v_max": 0.34,
+    "assist_sources": {
+     "approach": 3.15,
+     "governor": 0.48,
+     "request": 1.63,
+     "stopping": 0.33,
+     "turn_first": 0.04
+    },
+    "assist_wall_ahead_s": 0.69
+   },
+   "m6": {
+    "end_t": 23.59,
+    "support_onsets": [],
+    "turn_first_s": 0.04,
+    "view_limiting_s": 0.12,
+    "braking_s": 7.78,
+    "contact_onsets": [],
+    "early_s": 8.5,
+    "early_episodes": [
+     {
+      "t": [
+       6.54,
+       9.56
+      ],
+      "x": 16.0,
+      "y": 0.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       14.27,
+       16.72
+      ],
+      "x": 44.6,
+      "y": 2.5,
+      "min_h": 1.78
+     },
+     {
+      "t": [
+       19.59,
+       21.43
+      ],
+      "x": 67.3,
+      "y": 9.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       22.41,
+       23.59
+      ],
+      "x": 77.2,
+      "y": 16.8,
+      "min_h": 0.55
+     }
+    ],
+    "sighted_withheld_s": 0.04,
+    "sighted_withheld_max": 0.157,
+    "sighted_set_s": 1.83,
+    "sighted_windows": [
+     {
+      "t": [
+       7.09,
+       7.12
+      ],
+      "x": 19.0,
+      "y": 0.2,
+      "max_withheld": 0.16
+     }
+    ],
+    "assist_h_s": 5.1,
+    "assist_h_max": 4.46,
+    "assist_removed_pct": 5.31,
+    "assist_v_s": 3.85,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.69,
+     "request": 4.2,
+     "stopping": 0.19,
+     "turn_first": 0.04
+    },
+    "assist_wall_ahead_s": 0.69,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "m6_csshadow": {
+    "end_t": 23.59,
+    "support_onsets": [],
+    "turn_first_s": 0.04,
+    "view_limiting_s": 0.12,
+    "braking_s": 7.78,
+    "contact_onsets": [],
+    "early_s": 8.5,
+    "early_episodes": [
+     {
+      "t": [
+       6.54,
+       9.56
+      ],
+      "x": 16.0,
+      "y": 0.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       14.27,
+       16.72
+      ],
+      "x": 44.6,
+      "y": 2.5,
+      "min_h": 1.78
+     },
+     {
+      "t": [
+       19.59,
+       21.43
+      ],
+      "x": 67.3,
+      "y": 9.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       22.41,
+       23.59
+      ],
+      "x": 77.2,
+      "y": 16.8,
+      "min_h": 0.55
+     }
+    ],
+    "sighted_withheld_s": 0.04,
+    "sighted_withheld_max": 0.157,
+    "sighted_set_s": 1.83,
+    "sighted_windows": [
+     {
+      "t": [
+       7.09,
+       7.12
+      ],
+      "x": 19.0,
+      "y": 0.2,
+      "max_withheld": 0.16
+     }
+    ],
+    "assist_h_s": 5.1,
+    "assist_h_max": 4.46,
+    "assist_removed_pct": 5.31,
+    "assist_v_s": 3.85,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.69,
+     "request": 4.2,
+     "stopping": 0.19,
+     "turn_first": 0.04
+    },
+    "assist_wall_ahead_s": 0.69,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "change_vs_m5": {
+    "seconds": 9.88,
+    "first": 3.35,
+    "max_dh": 4.49,
+    "max_dz": 0.97
+   },
+   "change_vs_m5ma3": {
+    "seconds": 9.92,
+    "first": 3.34,
+    "max_dh": 4.0,
+    "max_dz": 0.94
+   },
+   "assist_share_s": 8.27,
+   "early_share_s": 7.99,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "first arch 5.5-8.5": {
+     "m5": {
+      "min_h": 2.22,
+      "max_h": 6.0,
+      "min_cvz": -0.5,
+      "max_cvz": 0.25,
+      "steepest_path_deg": 7.55,
+      "measured_speed": [
+       1.6,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 0.06,
+      "max_h": 6.0,
+      "min_cvz": -0.5,
+      "max_cvz": 0.55,
+      "steepest_path_deg": 80.33,
+      "measured_speed": [
+       1.6,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 2.5,
+      "max_h": 6.0,
+      "min_cvz": -0.5,
+      "max_cvz": 0.55,
+      "steepest_path_deg": 11.37,
+      "measured_speed": [
+       1.6,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.98,
+      "sighted_withheld_max": 0.16,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 2.77,
+      "max_h": 6.0,
+      "min_cvz": -0.5,
+      "max_cvz": 0.25,
+      "steepest_path_deg": 7.55,
+      "measured_speed": [
+       1.6,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.98,
+      "sighted_withheld_max": 0.16,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 2.22,
+      "max_h": 6.0,
+      "min_cvz": -0.5,
+      "max_cvz": 0.55,
+      "steepest_path_deg": 11.37,
+      "measured_speed": [
+       1.6,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.16,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 2.5,
+      "max_h": 6.0,
+      "min_cvz": -0.5,
+      "max_cvz": 0.55,
+      "steepest_path_deg": 11.37,
+      "measured_speed": [
+       1.6,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.98,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 2.5,
+      "max_h": 6.0,
+      "min_cvz": -0.5,
+      "max_cvz": 0.55,
+      "steepest_path_deg": 11.37,
+      "measured_speed": [
+       1.6,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.98,
+      "sighted_withheld_max": 0.16,
+      "marker_held_ticks": 0
+     }
+    },
+    "hairpin 21.5-23.6": {
+     "m5": {
+      "min_h": 3.3,
+      "max_h": 5.91,
+      "min_cvz": -0.04,
+      "max_cvz": 0.12,
+      "steepest_path_deg": 0.4,
+      "measured_speed": [
+       3.69,
+       5.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 0.28,
+      "max_h": 5.77,
+      "min_cvz": -0.04,
+      "max_cvz": 0.12,
+      "steepest_path_deg": 1.71,
+      "measured_speed": [
+       3.69,
+       5.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 0.55,
+      "max_h": 5.79,
+      "min_cvz": -0.04,
+      "max_cvz": 0.12,
+      "steepest_path_deg": 0.86,
+      "measured_speed": [
+       3.69,
+       5.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.18,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 3.0,
+      "max_h": 5.79,
+      "min_cvz": -0.04,
+      "max_cvz": 0.12,
+      "steepest_path_deg": 0.62,
+      "measured_speed": [
+       3.69,
+       5.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.18,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 0.05,
+      "max_h": 5.91,
+      "min_cvz": -0.04,
+      "max_cvz": 0.12,
+      "steepest_path_deg": 0.56,
+      "measured_speed": [
+       3.69,
+       5.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 0.55,
+      "max_h": 5.79,
+      "min_cvz": -0.04,
+      "max_cvz": 0.12,
+      "steepest_path_deg": 0.86,
+      "measured_speed": [
+       3.69,
+       5.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.18,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 0.55,
+      "max_h": 5.79,
+      "min_cvz": -0.04,
+      "max_cvz": 0.12,
+      "steepest_path_deg": 0.86,
+      "measured_speed": [
+       3.69,
+       5.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 1.18,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": {
+    "t": 23.596,
+    "tick_t": 23.586,
+    "m5": {
+     "request_along_travel": 2.17,
+     "brake_onset_before_s": 0.76
+    },
+    "m5ma3": {
+     "request_along_travel": -0.02,
+     "brake_onset_before_s": 0.76
+    },
+    "m6": {
+     "request_along_travel": 0.17,
+     "brake_onset_before_s": 1.18
+    },
+    "m6_noma": {
+     "request_along_travel": 2.28,
+     "brake_onset_before_s": 1.18
+    },
+    "m6_noeb": {
+     "request_along_travel": -0.02,
+     "brake_onset_before_s": 0.76
+    },
+    "m6_final_cut_vs_m5_s": 1.15
+   }
+  },
+  "straw-brain11cw13-r4b-noassist-02": {
+   "motor": "brain",
+   "streamed": false,
+   "audit": [
+    {
+     "t": [
+      79.354,
+      80.044
+     ],
+     "kind": "support"
+    }
+   ],
+   "removed_vs_m5_pct": 1.31,
+   "removed_noma_vs_m5_pct": 0.79,
+   "removed_m5ma3_vs_m5_pct": 0.52,
+   "m5": {
+    "end_t": 112.37,
+    "support_onsets": [
+     80.08
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 14.32,
+    "braking_s": 0.0,
+    "contact_onsets": [
+     80.08
+    ]
+   },
+   "m5ma3": {
+    "end_t": 112.37,
+    "support_onsets": [
+     80.08
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 14.32,
+    "braking_s": 0.0,
+    "contact_onsets": [
+     80.08
+    ],
+    "assist_h_s": 3.04,
+    "assist_h_max": 2.9,
+    "assist_removed_pct": 0.52,
+    "assist_v_s": 12.62,
+    "assist_v_max": 0.82,
+    "assist_sources": {
+     "approach": 1.77,
+     "request": 0.35
+    },
+    "assist_wall_ahead_s": 5.93
+   },
+   "m6": {
+    "end_t": 112.37,
+    "support_onsets": [
+     80.08
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 14.4,
+    "braking_s": 1.81,
+    "contact_onsets": [
+     80.08
+    ],
+    "early_s": 3.83,
+    "early_episodes": [
+     {
+      "t": [
+       18.83,
+       20.14
+      ],
+      "x": 77.4,
+      "y": 13.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       30.99,
+       32.27
+      ],
+      "x": 43.8,
+      "y": 63.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       98.86,
+       100.08
+      ],
+      "x": -30.5,
+      "y": 28.4,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 2.76,
+    "sighted_withheld_max": 1.078,
+    "sighted_set_s": 20.38,
+    "sighted_windows": [
+     {
+      "t": [
+       77.42,
+       79.49
+      ],
+      "x": -36.5,
+      "y": 143.4,
+      "max_withheld": 1.08
+     },
+     {
+      "t": [
+       80.89,
+       81.43
+      ],
+      "x": -36.6,
+      "y": 124.5,
+      "max_withheld": 0.19
+     },
+     {
+      "t": [
+       91.44,
+       91.54
+      ],
+      "x": -35.7,
+      "y": 68.2,
+      "max_withheld": 0.01
+     }
+    ],
+    "assist_h_s": 3.13,
+    "assist_h_max": 1.78,
+    "assist_removed_pct": 0.53,
+    "assist_v_s": 14.64,
+    "assist_v_max": 0.82,
+    "assist_sources": {
+     "governor": 0.13,
+     "request": 3.07
+    },
+    "assist_wall_ahead_s": 5.93,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 63,
+    "marker_held_onsets": [
+     64.61,
+     70.6,
+     71.93,
+     87.14,
+     111.4
+    ]
+   },
+   "m6_csshadow": {
+    "end_t": 112.37,
+    "support_onsets": [
+     80.48
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 14.4,
+    "braking_s": 1.81,
+    "contact_onsets": [
+     80.08
+    ],
+    "early_s": 3.83,
+    "early_episodes": [
+     {
+      "t": [
+       18.83,
+       20.14
+      ],
+      "x": 77.4,
+      "y": 13.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       30.99,
+       32.27
+      ],
+      "x": 43.8,
+      "y": 63.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       98.86,
+       100.08
+      ],
+      "x": -30.5,
+      "y": 28.4,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 2.76,
+    "sighted_withheld_max": 1.078,
+    "sighted_set_s": 20.38,
+    "sighted_windows": [
+     {
+      "t": [
+       77.42,
+       79.49
+      ],
+      "x": -36.5,
+      "y": 143.4,
+      "max_withheld": 1.08
+     },
+     {
+      "t": [
+       80.89,
+       81.43
+      ],
+      "x": -36.6,
+      "y": 124.5,
+      "max_withheld": 0.19
+     },
+     {
+      "t": [
+       91.44,
+       91.54
+      ],
+      "x": -35.7,
+      "y": 68.2,
+      "max_withheld": 0.01
+     }
+    ],
+    "assist_h_s": 3.13,
+    "assist_h_max": 1.78,
+    "assist_removed_pct": 0.53,
+    "assist_v_s": 14.86,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.13,
+     "request": 3.07
+    },
+    "assist_wall_ahead_s": 5.93,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 63,
+    "marker_held_onsets": [
+     64.61,
+     70.6,
+     71.93,
+     87.14,
+     111.4
+    ]
+   },
+   "change_vs_m5": {
+    "seconds": 16.19,
+    "first": 3.34,
+    "max_dh": 3.5,
+    "max_dz": 1.77
+   },
+   "change_vs_m5ma3": {
+    "seconds": 8.84,
+    "first": 3.34,
+    "max_dh": 3.5,
+    "max_dz": 1.77
+   },
+   "assist_share_s": 13.86,
+   "early_share_s": 4.81,
+   "sighted_share_s": 2.38,
+   "contact_share_s": 1.91,
+   "windows": {
+    "FAT SHARK 16.5-19.6": {
+     "m5": {
+      "min_h": 4.4,
+      "max_h": 6.0,
+      "min_cvz": -0.37,
+      "max_cvz": 0.05,
+      "steepest_path_deg": 3.55,
+      "measured_speed": [
+       4.56,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 3.1,
+      "max_h": 6.0,
+      "min_cvz": -0.37,
+      "max_cvz": 0.05,
+      "steepest_path_deg": 4.95,
+      "measured_speed": [
+       4.56,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 2.5,
+      "max_h": 6.0,
+      "min_cvz": -0.31,
+      "max_cvz": 0.05,
+      "steepest_path_deg": 7.05,
+      "measured_speed": [
+       4.56,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.78,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 3.83,
+      "max_h": 6.0,
+      "min_cvz": -0.31,
+      "max_cvz": 0.05,
+      "steepest_path_deg": 4.6,
+      "measured_speed": [
+       4.56,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.78,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 4.4,
+      "max_h": 6.0,
+      "min_cvz": -0.37,
+      "max_cvz": 0.05,
+      "steepest_path_deg": 3.55,
+      "measured_speed": [
+       4.56,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 2.5,
+      "max_h": 6.0,
+      "min_cvz": -0.31,
+      "max_cvz": 0.05,
+      "steepest_path_deg": 7.05,
+      "measured_speed": [
+       4.56,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.78,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 2.5,
+      "max_h": 6.0,
+      "min_cvz": -0.31,
+      "max_cvz": 0.05,
+      "steepest_path_deg": 7.05,
+      "measured_speed": [
+       4.56,
+       5.54
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.78,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    },
+    "downhill 72-79.4": {
+     "m5": {
+      "min_h": 5.69,
+      "max_h": 6.0,
+      "min_cvz": -2.61,
+      "max_cvz": 0.01,
+      "steepest_path_deg": 23.52,
+      "measured_speed": [
+       4.66,
+       5.79
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 5.69,
+      "max_h": 6.0,
+      "min_cvz": -2.61,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 23.52,
+      "measured_speed": [
+       4.66,
+       5.79
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 5.69,
+      "max_h": 6.0,
+      "min_cvz": -1.73,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 16.06,
+      "measured_speed": [
+       4.66,
+       5.79
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 1.04,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 5.69,
+      "max_h": 6.0,
+      "min_cvz": -1.73,
+      "max_cvz": 0.01,
+      "steepest_path_deg": 16.11,
+      "measured_speed": [
+       4.66,
+       5.79
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 1.04,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 5.69,
+      "max_h": 6.0,
+      "min_cvz": -1.73,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 16.06,
+      "measured_speed": [
+       4.66,
+       5.79
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 1.04,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 5.69,
+      "max_h": 6.0,
+      "min_cvz": -2.61,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 23.52,
+      "measured_speed": [
+       4.66,
+       5.79
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 5.69,
+      "max_h": 6.0,
+      "min_cvz": -1.73,
+      "max_cvz": 0.23,
+      "steepest_path_deg": 16.06,
+      "measured_speed": [
+       4.66,
+       5.79
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 1.04,
+      "marker_held_ticks": 0
+     }
+    },
+    "ImmersionRC arch 80-82.5": {
+     "m5": {
+      "min_h": 5.01,
+      "max_h": 5.99,
+      "min_cvz": -1.3,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 12.77,
+      "measured_speed": [
+       4.37,
+       5.91
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ]
+     },
+     "m5ma3": {
+      "min_h": 5.01,
+      "max_h": 5.99,
+      "min_cvz": -1.3,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 12.77,
+      "measured_speed": [
+       4.37,
+       5.91
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ]
+     },
+     "m6": {
+      "min_h": 5.01,
+      "max_h": 5.99,
+      "min_cvz": -1.29,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 12.77,
+      "measured_speed": [
+       4.37,
+       5.91
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.19,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 5.01,
+      "max_h": 5.99,
+      "min_cvz": -1.29,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 12.77,
+      "measured_speed": [
+       4.37,
+       5.91
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.19,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 5.01,
+      "max_h": 5.99,
+      "min_cvz": -1.29,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 12.77,
+      "measured_speed": [
+       4.37,
+       5.91
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ],
+      "sighted_withheld_max": 0.19,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 5.01,
+      "max_h": 5.99,
+      "min_cvz": -1.3,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 12.77,
+      "measured_speed": [
+       4.37,
+       5.91
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 5.01,
+      "max_h": 5.99,
+      "min_cvz": -0.99,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 9.42,
+      "measured_speed": [
+       4.37,
+       5.91
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.19,
+      "marker_held_ticks": 0
+     }
+    },
+    "start arch 110.8-112.4": {
+     "m5": {
+      "min_h": 4.88,
+      "max_h": 6.0,
+      "min_cvz": -0.15,
+      "max_cvz": 0.5,
+      "steepest_path_deg": 1.41,
+      "measured_speed": [
+       5.41,
+       5.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "search"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 4.88,
+      "max_h": 6.0,
+      "min_cvz": -0.15,
+      "max_cvz": 0.54,
+      "steepest_path_deg": 1.41,
+      "measured_speed": [
+       5.41,
+       5.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "search"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 4.88,
+      "max_h": 6.0,
+      "min_cvz": -0.15,
+      "max_cvz": 0.54,
+      "steepest_path_deg": 1.41,
+      "measured_speed": [
+       5.41,
+       5.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "search"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 13
+     },
+     "m6_noma": {
+      "min_h": 4.88,
+      "max_h": 6.0,
+      "min_cvz": -0.15,
+      "max_cvz": 0.5,
+      "steepest_path_deg": 1.41,
+      "measured_speed": [
+       5.41,
+       5.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "search"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 13
+     },
+     "m6_noeb": {
+      "min_h": 4.88,
+      "max_h": 6.0,
+      "min_cvz": -0.15,
+      "max_cvz": 0.54,
+      "steepest_path_deg": 1.41,
+      "measured_speed": [
+       5.41,
+       5.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "search"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 13
+     },
+     "m6_nosd": {
+      "min_h": 4.88,
+      "max_h": 6.0,
+      "min_cvz": -0.15,
+      "max_cvz": 0.54,
+      "steepest_path_deg": 1.41,
+      "measured_speed": [
+       5.41,
+       5.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "search"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "marker_held_ticks": 13
+     },
+     "m6_csshadow": {
+      "min_h": 4.88,
+      "max_h": 6.0,
+      "min_cvz": -0.15,
+      "max_cvz": 0.54,
+      "steepest_path_deg": 1.41,
+      "measured_speed": [
+       5.41,
+       5.6
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "coast",
+       "cue",
+       "search"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 13
+     }
+    }
+   },
+   "impact": {
+    "t": 112.376,
+    "tick_t": 112.366,
+    "m5": {
+     "request_along_travel": 4.55,
+     "brake_onset_before_s": null
+    },
+    "m5ma3": {
+     "request_along_travel": 4.55,
+     "brake_onset_before_s": null
+    },
+    "m6": {
+     "request_along_travel": 4.55,
+     "brake_onset_before_s": null
+    },
+    "m6_noma": {
+     "request_along_travel": 4.55,
+     "brake_onset_before_s": null
+    },
+    "m6_noeb": {
+     "request_along_travel": 4.55,
+     "brake_onset_before_s": null
+    },
+    "m6_final_cut_vs_m5_s": null
+   }
+  },
+  "straw-brain11cw13-r5-noassist-01": {
+   "motor": "brain",
+   "streamed": false,
+   "audit": [],
+   "removed_vs_m5_pct": 0.0,
+   "removed_noma_vs_m5_pct": 0.0,
+   "removed_m5ma3_vs_m5_pct": 0.17,
+   "m5": {
+    "end_t": 19.37,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.17,
+    "braking_s": 0.0,
+    "contact_onsets": []
+   },
+   "m5ma3": {
+    "end_t": 19.37,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.17,
+    "braking_s": 0.0,
+    "contact_onsets": [],
+    "assist_h_s": 0.32,
+    "assist_h_max": 0.89,
+    "assist_removed_pct": 0.17,
+    "assist_v_s": 0.09,
+    "assist_v_max": 0.12,
+    "assist_sources": {
+     "approach": 0.17,
+     "request": 0.11
+    },
+    "assist_wall_ahead_s": 0.76
+   },
+   "m6": {
+    "end_t": 19.37,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.17,
+    "braking_s": 0.0,
+    "contact_onsets": [],
+    "early_s": 0.0,
+    "early_episodes": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.49,
+    "sighted_windows": [],
+    "assist_h_s": 0.01,
+    "assist_h_max": 0.06,
+    "assist_removed_pct": 0.0,
+    "assist_v_s": 0.09,
+    "assist_v_max": 0.12,
+    "assist_sources": {
+     "request": 0.06
+    },
+    "assist_wall_ahead_s": 0.76,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "m6_csshadow": {
+    "end_t": 19.37,
+    "support_onsets": [],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 0.17,
+    "braking_s": 0.0,
+    "contact_onsets": [],
+    "early_s": 0.0,
+    "early_episodes": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.49,
+    "sighted_windows": [],
+    "assist_h_s": 0.01,
+    "assist_h_max": 0.06,
+    "assist_removed_pct": 0.0,
+    "assist_v_s": 0.09,
+    "assist_v_max": 0.12,
+    "assist_sources": {
+     "request": 0.06
+    },
+    "assist_wall_ahead_s": 0.76,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "change_vs_m5": {
+    "seconds": 0.06,
+    "first": 3.34,
+    "max_dh": 0.06,
+    "max_dz": 0.12
+   },
+   "change_vs_m5ma3": {
+    "seconds": 0.31,
+    "first": 3.34,
+    "max_dh": 0.89,
+    "max_dz": 0.0
+   },
+   "assist_share_s": 0.06,
+   "early_share_s": 0.0,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "FAT SHARK 16.5-19.4": {
+     "m5": {
+      "min_h": 4.63,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.03,
+      "steepest_path_deg": 3.48,
+      "measured_speed": [
+       4.63,
+       5.43
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 4.63,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.03,
+      "steepest_path_deg": 3.48,
+      "measured_speed": [
+       4.63,
+       5.43
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 4.63,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.03,
+      "steepest_path_deg": 3.48,
+      "measured_speed": [
+       4.63,
+       5.43
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 4.63,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.03,
+      "steepest_path_deg": 3.48,
+      "measured_speed": [
+       4.63,
+       5.43
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 4.63,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.03,
+      "steepest_path_deg": 3.48,
+      "measured_speed": [
+       4.63,
+       5.43
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 4.63,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.03,
+      "steepest_path_deg": 3.48,
+      "measured_speed": [
+       4.63,
+       5.43
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 4.63,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.03,
+      "steepest_path_deg": 3.48,
+      "measured_speed": [
+       4.63,
+       5.43
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": {
+    "t": 19.4,
+    "tick_t": 19.367,
+    "m5": {
+     "request_along_travel": 3.98,
+     "brake_onset_before_s": null
+    },
+    "m5ma3": {
+     "request_along_travel": 3.98,
+     "brake_onset_before_s": null
+    },
+    "m6": {
+     "request_along_travel": 3.98,
+     "brake_onset_before_s": null
+    },
+    "m6_noma": {
+     "request_along_travel": 3.98,
+     "brake_onset_before_s": null
+    },
+    "m6_noeb": {
+     "request_along_travel": 3.98,
+     "brake_onset_before_s": null
+    },
+    "m6_final_cut_vs_m5_s": null
+   }
+  },
+  "straw-brain11cw13-r5-noassist-04": {
+   "motor": "brain",
+   "streamed": false,
+   "audit": [
+    {
+     "t": [
+      79.427,
+      79.968
+     ],
+     "kind": "support"
+    }
+   ],
+   "removed_vs_m5_pct": 1.32,
+   "removed_noma_vs_m5_pct": 0.76,
+   "removed_m5ma3_vs_m5_pct": 0.66,
+   "m5": {
+    "end_t": 81.85,
+    "support_onsets": [
+     80.08
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 9.17,
+    "braking_s": 0.0,
+    "contact_onsets": [
+     80.08
+    ]
+   },
+   "m5ma3": {
+    "end_t": 81.85,
+    "support_onsets": [
+     80.08
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 9.17,
+    "braking_s": 0.0,
+    "contact_onsets": [
+     80.08
+    ],
+    "assist_h_s": 3.07,
+    "assist_h_max": 2.93,
+    "assist_removed_pct": 0.66,
+    "assist_v_s": 10.16,
+    "assist_v_max": 0.59,
+    "assist_sources": {
+     "approach": 1.6,
+     "request": 0.65
+    },
+    "assist_wall_ahead_s": 4.42
+   },
+   "m6": {
+    "end_t": 81.85,
+    "support_onsets": [
+     80.76
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 9.5,
+    "braking_s": 1.12,
+    "contact_onsets": [],
+    "early_s": 2.44,
+    "early_episodes": [
+     {
+      "t": [
+       31.17,
+       32.47
+      ],
+      "x": 43.7,
+      "y": 63.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       62.04,
+       63.16
+      ],
+      "x": 1.6,
+      "y": 194.8,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 2.43,
+    "sighted_withheld_max": 0.937,
+    "sighted_set_s": 12.54,
+    "sighted_windows": [
+     {
+      "t": [
+       77.61,
+       79.43
+      ],
+      "x": -36.5,
+      "y": 143.9,
+      "max_withheld": 0.94
+     },
+     {
+      "t": [
+       80.43,
+       81.01
+      ],
+      "x": -36.6,
+      "y": 128.4,
+      "max_withheld": 0.53
+     }
+    ],
+    "assist_h_s": 2.58,
+    "assist_h_max": 1.73,
+    "assist_removed_pct": 0.56,
+    "assist_v_s": 12.24,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.18,
+     "request": 2.41
+    },
+    "assist_wall_ahead_s": 4.42,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 20,
+    "marker_held_onsets": [
+     14.85,
+     58.97
+    ]
+   },
+   "m6_csshadow": {
+    "end_t": 81.85,
+    "support_onsets": [
+     80.76
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 9.5,
+    "braking_s": 1.12,
+    "contact_onsets": [],
+    "early_s": 2.44,
+    "early_episodes": [
+     {
+      "t": [
+       31.17,
+       32.47
+      ],
+      "x": 43.7,
+      "y": 63.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       62.04,
+       63.16
+      ],
+      "x": 1.6,
+      "y": 194.8,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 2.43,
+    "sighted_withheld_max": 0.937,
+    "sighted_set_s": 12.54,
+    "sighted_windows": [
+     {
+      "t": [
+       77.61,
+       79.43
+      ],
+      "x": -36.5,
+      "y": 143.9,
+      "max_withheld": 0.94
+     },
+     {
+      "t": [
+       80.43,
+       81.01
+      ],
+      "x": -36.6,
+      "y": 128.4,
+      "max_withheld": 0.53
+     }
+    ],
+    "assist_h_s": 2.58,
+    "assist_h_max": 1.73,
+    "assist_removed_pct": 0.56,
+    "assist_v_s": 12.24,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 0.18,
+     "request": 2.41
+    },
+    "assist_wall_ahead_s": 4.42,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 20,
+    "marker_held_onsets": [
+     14.85,
+     58.97
+    ]
+   },
+   "change_vs_m5": {
+    "seconds": 13.74,
+    "first": 3.34,
+    "max_dh": 3.5,
+    "max_dz": 2.33
+   },
+   "change_vs_m5ma3": {
+    "seconds": 9.4,
+    "first": 3.34,
+    "max_dh": 3.5,
+    "max_dz": 2.33
+   },
+   "assist_share_s": 12.1,
+   "early_share_s": 3.36,
+   "sighted_share_s": 4.11,
+   "contact_share_s": 0.0,
+   "windows": {
+    "FAT SHARK 16.5-19.6": {
+     "m5": {
+      "min_h": 5.19,
+      "max_h": 5.97,
+      "min_cvz": -0.43,
+      "max_cvz": 0.08,
+      "steepest_path_deg": 4.43,
+      "measured_speed": [
+       4.0,
+       5.63
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 5.19,
+      "max_h": 5.97,
+      "min_cvz": -0.43,
+      "max_cvz": 0.08,
+      "steepest_path_deg": 4.43,
+      "measured_speed": [
+       4.0,
+       5.63
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 5.19,
+      "max_h": 5.97,
+      "min_cvz": -0.43,
+      "max_cvz": 0.08,
+      "steepest_path_deg": 4.43,
+      "measured_speed": [
+       4.0,
+       5.63
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 5.19,
+      "max_h": 5.97,
+      "min_cvz": -0.43,
+      "max_cvz": 0.08,
+      "steepest_path_deg": 4.43,
+      "measured_speed": [
+       4.0,
+       5.63
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 5.19,
+      "max_h": 5.97,
+      "min_cvz": -0.43,
+      "max_cvz": 0.08,
+      "steepest_path_deg": 4.43,
+      "measured_speed": [
+       4.0,
+       5.63
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 5.19,
+      "max_h": 5.97,
+      "min_cvz": -0.43,
+      "max_cvz": 0.08,
+      "steepest_path_deg": 4.43,
+      "measured_speed": [
+       4.0,
+       5.63
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 5.19,
+      "max_h": 5.97,
+      "min_cvz": -0.43,
+      "max_cvz": 0.08,
+      "steepest_path_deg": 4.43,
+      "measured_speed": [
+       4.0,
+       5.63
+      ],
+      "support_ticks": 0,
+      "states": [
+       "coast",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    },
+    "downhill 72-79.4": {
+     "m5": {
+      "min_h": 5.63,
+      "max_h": 6.0,
+      "min_cvz": -2.44,
+      "max_cvz": -0.78,
+      "steepest_path_deg": 22.15,
+      "measured_speed": [
+       4.4,
+       5.78
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 5.63,
+      "max_h": 6.0,
+      "min_cvz": -2.44,
+      "max_cvz": -0.78,
+      "steepest_path_deg": 22.15,
+      "measured_speed": [
+       4.4,
+       5.78
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 5.63,
+      "max_h": 6.0,
+      "min_cvz": -1.63,
+      "max_cvz": -0.75,
+      "steepest_path_deg": 15.2,
+      "measured_speed": [
+       4.4,
+       5.78
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.94,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 5.63,
+      "max_h": 6.0,
+      "min_cvz": -1.64,
+      "max_cvz": -0.78,
+      "steepest_path_deg": 15.29,
+      "measured_speed": [
+       4.4,
+       5.78
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.94,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 5.63,
+      "max_h": 6.0,
+      "min_cvz": -1.63,
+      "max_cvz": -0.75,
+      "steepest_path_deg": 15.2,
+      "measured_speed": [
+       4.4,
+       5.78
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.94,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 5.63,
+      "max_h": 6.0,
+      "min_cvz": -2.44,
+      "max_cvz": -0.78,
+      "steepest_path_deg": 22.15,
+      "measured_speed": [
+       4.4,
+       5.78
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 5.63,
+      "max_h": 6.0,
+      "min_cvz": -1.63,
+      "max_cvz": -0.75,
+      "steepest_path_deg": 15.2,
+      "measured_speed": [
+       4.4,
+       5.78
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.94,
+      "marker_held_ticks": 0
+     }
+    },
+    "after touch 79.4-81.9": {
+     "m5": {
+      "min_h": 5.3,
+      "max_h": 6.0,
+      "min_cvz": -2.39,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 21.7,
+      "measured_speed": [
+       4.88,
+       5.71
+      ],
+      "support_ticks": 61,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ]
+     },
+     "m5ma3": {
+      "min_h": 5.3,
+      "max_h": 6.0,
+      "min_cvz": -2.39,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 21.7,
+      "measured_speed": [
+       4.88,
+       5.71
+      ],
+      "support_ticks": 61,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ]
+     },
+     "m6": {
+      "min_h": 5.3,
+      "max_h": 6.0,
+      "min_cvz": -1.2,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 11.28,
+      "measured_speed": [
+       4.88,
+       5.71
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.53,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 5.3,
+      "max_h": 6.0,
+      "min_cvz": -1.45,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 13.59,
+      "measured_speed": [
+       4.88,
+       5.71
+      ],
+      "support_ticks": 61,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.53,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 5.3,
+      "max_h": 6.0,
+      "min_cvz": -1.2,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 11.28,
+      "measured_speed": [
+       4.88,
+       5.71
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.53,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 5.3,
+      "max_h": 6.0,
+      "min_cvz": -2.39,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 21.7,
+      "measured_speed": [
+       4.88,
+       5.71
+      ],
+      "support_ticks": 61,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [
+       80.08
+      ],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 5.3,
+      "max_h": 6.0,
+      "min_cvz": -1.2,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 11.28,
+      "measured_speed": [
+       4.88,
+       5.71
+      ],
+      "support_ticks": 60,
+      "states": [
+       "below",
+       "cue",
+       "side",
+       "support_climb"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.53,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": {
+    "t": 81.86,
+    "tick_t": 81.85,
+    "m5": {
+     "request_along_travel": 5.11,
+     "brake_onset_before_s": null
+    },
+    "m5ma3": {
+     "request_along_travel": 5.11,
+     "brake_onset_before_s": null
+    },
+    "m6": {
+     "request_along_travel": 5.11,
+     "brake_onset_before_s": null
+    },
+    "m6_noma": {
+     "request_along_travel": 5.11,
+     "brake_onset_before_s": null
+    },
+    "m6_noeb": {
+     "request_along_travel": 5.11,
+     "brake_onset_before_s": null
+    },
+    "m6_final_cut_vs_m5_s": null
+   }
+  },
+  "minus-fast6-r5-01": {
+   "motor": "pd",
+   "streamed": false,
+   "audit": null,
+   "removed_vs_m5_pct": 0.0,
+   "removed_noma_vs_m5_pct": 0.0,
+   "removed_m5ma3_vs_m5_pct": null,
+   "m5": {
+    "end_t": 26.31,
+    "support_onsets": [],
+    "turn_first_s": 1.32,
+    "view_limiting_s": 2.05,
+    "braking_s": 12.95,
+    "contact_onsets": []
+   },
+   "m5ma3": null,
+   "m6": {
+    "end_t": 26.31,
+    "support_onsets": [],
+    "turn_first_s": 1.32,
+    "view_limiting_s": 2.05,
+    "braking_s": 12.95,
+    "contact_onsets": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 1.89,
+    "sighted_windows": [],
+    "assist_h_s": 0.0,
+    "assist_h_max": 0.0,
+    "assist_removed_pct": null,
+    "assist_v_s": 0.0,
+    "assist_v_max": 0.0,
+    "assist_sources": {},
+    "assist_wall_ahead_s": 0.0,
+    "marker_held_ticks": 12,
+    "marker_held_onsets": [
+     23.2
+    ]
+   },
+   "m6_csshadow": {
+    "end_t": 26.31,
+    "support_onsets": [],
+    "turn_first_s": 1.32,
+    "view_limiting_s": 2.05,
+    "braking_s": 12.95,
+    "contact_onsets": [],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 1.89,
+    "sighted_windows": [],
+    "assist_h_s": 0.0,
+    "assist_h_max": 0.0,
+    "assist_removed_pct": null,
+    "assist_v_s": 0.0,
+    "assist_v_max": 0.0,
+    "assist_sources": {},
+    "assist_wall_ahead_s": 0.0,
+    "marker_held_ticks": 12,
+    "marker_held_onsets": [
+     23.2
+    ]
+   },
+   "change_vs_m5": {
+    "seconds": 0.0,
+    "first": null,
+    "max_dh": 0.0,
+    "max_dz": 0.0
+   },
+   "change_vs_m5ma3": null,
+   "assist_share_s": 0.0,
+   "early_share_s": 0.0,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "hairpin 23.5-25.0": {
+     "m5": {
+      "min_h": 0.7,
+      "max_h": 1.86,
+      "min_cvz": -0.34,
+      "max_cvz": 1.2,
+      "steepest_path_deg": 20.73,
+      "measured_speed": [
+       0.94,
+       2.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": null,
+     "m6": {
+      "min_h": 0.7,
+      "max_h": 1.86,
+      "min_cvz": -0.34,
+      "max_cvz": 1.2,
+      "steepest_path_deg": 20.73,
+      "measured_speed": [
+       0.94,
+       2.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 0.7,
+      "max_h": 1.86,
+      "min_cvz": -0.34,
+      "max_cvz": 1.2,
+      "steepest_path_deg": 20.73,
+      "measured_speed": [
+       0.94,
+       2.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 0.7,
+      "max_h": 1.86,
+      "min_cvz": -0.34,
+      "max_cvz": 1.2,
+      "steepest_path_deg": 20.73,
+      "measured_speed": [
+       0.94,
+       2.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 0.7,
+      "max_h": 1.86,
+      "min_cvz": -0.34,
+      "max_cvz": 1.2,
+      "steepest_path_deg": 20.73,
+      "measured_speed": [
+       0.94,
+       2.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 0.7,
+      "max_h": 1.86,
+      "min_cvz": -0.34,
+      "max_cvz": 1.2,
+      "steepest_path_deg": 20.73,
+      "measured_speed": [
+       0.94,
+       2.2
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    },
+    "exit 25.0-26.3": {
+     "m5": {
+      "min_h": 1.88,
+      "max_h": 4.78,
+      "min_cvz": -0.3,
+      "max_cvz": 0.38,
+      "steepest_path_deg": 8.78,
+      "measured_speed": [
+       1.09,
+       5.31
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": null,
+     "m6": {
+      "min_h": 1.88,
+      "max_h": 4.78,
+      "min_cvz": -0.3,
+      "max_cvz": 0.38,
+      "steepest_path_deg": 8.78,
+      "measured_speed": [
+       1.09,
+       5.31
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 1.88,
+      "max_h": 4.78,
+      "min_cvz": -0.3,
+      "max_cvz": 0.38,
+      "steepest_path_deg": 8.78,
+      "measured_speed": [
+       1.09,
+       5.31
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 1.88,
+      "max_h": 4.78,
+      "min_cvz": -0.3,
+      "max_cvz": 0.38,
+      "steepest_path_deg": 8.78,
+      "measured_speed": [
+       1.09,
+       5.31
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 1.88,
+      "max_h": 4.78,
+      "min_cvz": -0.3,
+      "max_cvz": 0.38,
+      "steepest_path_deg": 8.78,
+      "measured_speed": [
+       1.09,
+       5.31
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 1.88,
+      "max_h": 4.78,
+      "min_cvz": -0.3,
+      "max_cvz": 0.38,
+      "steepest_path_deg": 8.78,
+      "measured_speed": [
+       1.09,
+       5.31
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below_weak",
+       "cue",
+       "side"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": {
+    "t": 26.3,
+    "tick_t": 26.297,
+    "m5": {
+     "request_along_travel": 4.4,
+     "brake_onset_before_s": 1.32
+    },
+    "m5ma3": {
+     "request_along_travel": 4.4,
+     "brake_onset_before_s": 1.32
+    },
+    "m6": {
+     "request_along_travel": 4.4,
+     "brake_onset_before_s": 1.32
+    },
+    "m6_noma": {
+     "request_along_travel": 4.4,
+     "brake_onset_before_s": 1.32
+    },
+    "m6_noeb": {
+     "request_along_travel": 4.4,
+     "brake_onset_before_s": 1.32
+    },
+    "m6_final_cut_vs_m5_s": null
+   }
+  },
+  "minus-brain11cw13-r5-02": {
+   "motor": "brain",
+   "streamed": false,
+   "audit": null,
+   "removed_vs_m5_pct": 4.79,
+   "removed_noma_vs_m5_pct": 2.93,
+   "removed_m5ma3_vs_m5_pct": 8.28,
+   "m5": {
+    "end_t": 8.09,
+    "support_onsets": [],
+    "turn_first_s": 0.01,
+    "view_limiting_s": 0.49,
+    "braking_s": 1.26,
+    "contact_onsets": []
+   },
+   "m5ma3": {
+    "end_t": 8.09,
+    "support_onsets": [],
+    "turn_first_s": 0.01,
+    "view_limiting_s": 0.49,
+    "braking_s": 1.26,
+    "contact_onsets": [],
+    "assist_h_s": 0.95,
+    "assist_h_max": 5.62,
+    "assist_removed_pct": 8.28,
+    "assist_v_s": 0.83,
+    "assist_v_max": 0.52,
+    "assist_sources": {
+     "approach": 0.8,
+     "request": 0.11,
+     "stopping": 0.01
+    },
+    "assist_wall_ahead_s": 0.01
+   },
+   "m6": {
+    "end_t": 8.09,
+    "support_onsets": [],
+    "turn_first_s": 0.01,
+    "view_limiting_s": 0.49,
+    "braking_s": 1.2,
+    "contact_onsets": [],
+    "early_s": 1.58,
+    "early_episodes": [
+     {
+      "t": [
+       6.51,
+       8.09
+      ],
+      "x": 15.8,
+      "y": 0.1,
+      "min_h": 1.75
+     }
+    ],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.0,
+    "sighted_windows": [],
+    "assist_h_s": 0.69,
+    "assist_h_max": 1.3,
+    "assist_removed_pct": 1.88,
+    "assist_v_s": 0.83,
+    "assist_v_max": 0.84,
+    "assist_sources": {
+     "governor": 0.06,
+     "request": 0.6,
+     "stopping": 0.01
+    },
+    "assist_wall_ahead_s": 0.01,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "m6_csshadow": {
+    "end_t": 8.09,
+    "support_onsets": [],
+    "turn_first_s": 0.01,
+    "view_limiting_s": 0.49,
+    "braking_s": 1.2,
+    "contact_onsets": [],
+    "early_s": 1.58,
+    "early_episodes": [
+     {
+      "t": [
+       6.51,
+       8.09
+      ],
+      "x": 15.8,
+      "y": 0.1,
+      "min_h": 1.75
+     }
+    ],
+    "sighted_withheld_s": 0.0,
+    "sighted_withheld_max": 0.0,
+    "sighted_set_s": 0.0,
+    "sighted_windows": [],
+    "assist_h_s": 0.69,
+    "assist_h_max": 1.3,
+    "assist_removed_pct": 1.88,
+    "assist_v_s": 0.83,
+    "assist_v_max": 0.84,
+    "assist_sources": {
+     "governor": 0.06,
+     "request": 0.6,
+     "stopping": 0.01
+    },
+    "assist_wall_ahead_s": 0.01,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 0,
+    "marker_held_onsets": []
+   },
+   "change_vs_m5": {
+    "seconds": 1.64,
+    "first": 3.33,
+    "max_dh": 3.5,
+    "max_dz": 0.84
+   },
+   "change_vs_m5ma3": {
+    "seconds": 1.74,
+    "first": 3.33,
+    "max_dh": 3.0,
+    "max_dz": 0.51
+   },
+   "assist_share_s": 1.48,
+   "early_share_s": 1.58,
+   "sighted_share_s": 0.0,
+   "contact_share_s": 0.0,
+   "windows": {
+    "first arch 6.0-8.1": {
+     "m5": {
+      "min_h": 1.01,
+      "max_h": 6.0,
+      "min_cvz": -0.39,
+      "max_cvz": 0.01,
+      "steepest_path_deg": 11.58,
+      "measured_speed": [
+       0.56,
+       5.53
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 0.13,
+      "max_h": 6.0,
+      "min_cvz": -0.39,
+      "max_cvz": 0.39,
+      "steepest_path_deg": 69.08,
+      "measured_speed": [
+       0.56,
+       5.53
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 1.75,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.71,
+      "steepest_path_deg": 7.56,
+      "measured_speed": [
+       0.56,
+       5.53
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 1.58,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 1.91,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.02,
+      "steepest_path_deg": 5.89,
+      "measured_speed": [
+       0.56,
+       5.53
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 1.58,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 0.84,
+      "max_h": 6.0,
+      "min_cvz": -0.39,
+      "max_cvz": 0.39,
+      "steepest_path_deg": 10.28,
+      "measured_speed": [
+       0.56,
+       5.53
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 1.75,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.71,
+      "steepest_path_deg": 7.56,
+      "measured_speed": [
+       0.56,
+       5.53
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 1.58,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 1.75,
+      "max_h": 6.0,
+      "min_cvz": -0.33,
+      "max_cvz": 0.71,
+      "steepest_path_deg": 7.56,
+      "measured_speed": [
+       0.56,
+       5.53
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "coast",
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 1.58,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": {
+    "t": 8.1,
+    "tick_t": 8.088,
+    "m5": {
+     "request_along_travel": -0.67,
+     "brake_onset_before_s": 1.261
+    },
+    "m5ma3": {
+     "request_along_travel": -0.67,
+     "brake_onset_before_s": 1.261
+    },
+    "m6": {
+     "request_along_travel": -1.38,
+     "brake_onset_before_s": 1.582
+    },
+    "m6_noma": {
+     "request_along_travel": -1.38,
+     "brake_onset_before_s": 1.582
+    },
+    "m6_noeb": {
+     "request_along_travel": -0.67,
+     "brake_onset_before_s": 1.261
+    },
+    "m6_final_cut_vs_m5_s": null
+   }
+  },
+  "straw-brain08-04": {
+   "motor": "brain",
+   "streamed": true,
+   "audit": [
+    {
+     "t": [
+      71.42,
+      72.84
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      76.591,
+      78.341
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      79.551,
+      80.882
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      175.855,
+      177.444
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      181.542,
+      186.299
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      282.458,
+      283.919
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      287.583,
+      288.954
+     ],
+     "kind": "slide"
+    }
+   ],
+   "removed_vs_m5_pct": 4.57,
+   "removed_noma_vs_m5_pct": 2.59,
+   "removed_m5ma3_vs_m5_pct": 1.98,
+   "m5": {
+    "end_t": 326.83,
+    "support_onsets": [
+     71.83,
+     76.97,
+     78.27,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97,
+     289.5
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.26,
+    "braking_s": 5.86,
+    "contact_onsets": [
+     71.83,
+     76.97,
+     78.27,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97
+    ]
+   },
+   "m5ma3": {
+    "end_t": 326.83,
+    "support_onsets": [
+     71.84,
+     76.97,
+     78.28,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97,
+     289.5
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.26,
+    "braking_s": 5.86,
+    "contact_onsets": [
+     71.84,
+     76.97,
+     78.28,
+     80.73,
+     176.83,
+     181.91,
+     183.27,
+     186.14,
+     283.13,
+     287.97
+    ],
+    "assist_h_s": 25.18,
+    "assist_h_max": 5.22,
+    "assist_removed_pct": 1.97,
+    "assist_v_s": 69.59,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "approach": 9.24,
+     "governor": 0.15,
+     "request": 11.41,
+     "stopping": 0.51
+    },
+    "assist_wall_ahead_s": 9.67
+   },
+   "m6": {
+    "end_t": 326.83,
+    "support_onsets": [
+     71.84,
+     77.03,
+     78.32,
+     80.73,
+     176.83,
+     181.93,
+     183.29,
+     186.14,
+     283.13,
+     288.03,
+     289.56
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.55,
+    "braking_s": 30.56,
+    "contact_onsets": [
+     71.84,
+     77.03,
+     78.32,
+     80.73,
+     176.83,
+     181.93,
+     183.29,
+     186.14,
+     283.13,
+     288.03
+    ],
+    "early_s": 30.47,
+    "early_episodes": [
+     {
+      "t": [
+       13.29,
+       14.53
+      ],
+      "x": 56.8,
+      "y": 1.8,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       17.84,
+       19.23
+      ],
+      "x": 77.0,
+      "y": 13.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       29.62,
+       31.06
+      ],
+      "x": 44.0,
+      "y": 63.0,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       41.45,
+       43.48
+      ],
+      "x": 35.4,
+      "y": 121.4,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       58.34,
+       59.24
+      ],
+      "x": 1.5,
+      "y": 194.7,
+      "min_h": 3.0
+     },
+     {
+      "t": [
+       102.57,
+       103.37
+      ],
+      "x": -30.5,
+      "y": 28.9,
+      "min_h": 4.64
+     },
+     {
+      "t": [
+       108.08,
+       109.25
+      ],
+      "x": -12.8,
+      "y": 6.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       120.69,
+       121.52
+      ],
+      "x": 57.5,
+      "y": 1.6,
+      "min_h": 4.26
+     },
+     {
+      "t": [
+       122.01,
+       123.35
+      ],
+      "x": 65.2,
+      "y": 2.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       125.0,
+       126.33
+      ],
+      "x": 77.2,
+      "y": 13.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       136.78,
+       138.18
+      ],
+      "x": 44.0,
+      "y": 63.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       148.39,
+       149.76
+      ],
+      "x": 35.5,
+      "y": 120.6,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       166.54,
+       168.49
+      ],
+      "x": -4.0,
+      "y": 197.8,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       209.52,
+       210.95
+      ],
+      "x": -29.1,
+      "y": 20.6,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       213.45,
+       214.51
+      ],
+      "x": -12.7,
+      "y": 6.8,
+      "min_h": 2.64
+     },
+     {
+      "t": [
+       221.35,
+       222.54
+      ],
+      "x": 29.8,
+      "y": -0.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       226.22,
+       227.32
+      ],
+      "x": 57.2,
+      "y": 1.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       230.72,
+       231.9
+      ],
+      "x": 77.6,
+      "y": 14.2,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       242.39,
+       243.74
+      ],
+      "x": 44.0,
+      "y": 63.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       254.01,
+       255.32
+      ],
+      "x": 35.5,
+      "y": 120.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       259.34,
+       260.66
+      ],
+      "x": 32.5,
+      "y": 146.4,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       269.4,
+       270.41
+      ],
+      "x": 8.1,
+      "y": 190.6,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       301.4,
+       302.35
+      ],
+      "x": -36.4,
+      "y": 97.7,
+      "min_h": 2.55
+     },
+     {
+      "t": [
+       319.73,
+       320.85
+      ],
+      "x": -12.5,
+      "y": 6.6,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 6.74,
+    "sighted_withheld_max": 0.424,
+    "sighted_set_s": 58.66,
+    "sighted_windows": [
+     {
+      "t": [
+       73.44,
+       73.64
+      ],
+      "x": -37.8,
+      "y": 156.5,
+      "max_withheld": 0.38
+     },
+     {
+      "t": [
+       76.31,
+       76.84
+      ],
+      "x": -37.1,
+      "y": 146.7,
+      "max_withheld": 0.2
+     },
+     {
+      "t": [
+       77.93,
+       78.73
+      ],
+      "x": -36.7,
+      "y": 141.5,
+      "max_withheld": 0.42
+     },
+     {
+      "t": [
+       80.04,
+       80.19
+      ],
+      "x": -36.4,
+      "y": 134.2,
+      "max_withheld": 0.04
+     },
+     {
+      "t": [
+       81.52,
+       81.58
+      ],
+      "x": -36.4,
+      "y": 128.6,
+      "max_withheld": 0.22
+     },
+     {
+      "t": [
+       87.09,
+       87.71
+      ],
+      "x": -36.0,
+      "y": 107.2,
+      "max_withheld": 0.24
+     },
+     {
+      "t": [
+       177.97,
+       178.06
+      ],
+      "x": -36.6,
+      "y": 160.5,
+      "max_withheld": 0.08
+     },
+     {
+      "t": [
+       181.06,
+       181.79
+      ],
+      "x": -36.3,
+      "y": 149.2,
+      "max_withheld": 0.31
+     },
+     {
+      "t": [
+       183.32,
+       184.06
+      ],
+      "x": -36.0,
+      "y": 142.1,
+      "max_withheld": 0.32
+     },
+     {
+      "t": [
+       185.2,
+       185.56
+      ],
+      "x": -35.9,
+      "y": 135.6,
+      "max_withheld": 0.08
+     },
+     {
+      "t": [
+       186.92,
+       186.97
+      ],
+      "x": -36.0,
+      "y": 129.2,
+      "max_withheld": 0.17
+     },
+     {
+      "t": [
+       187.34,
+       187.34
+      ],
+      "x": -36.1,
+      "y": 127.5,
+      "max_withheld": 0.0
+     },
+     {
+      "t": [
+       192.67,
+       193.36
+      ],
+      "x": -36.2,
+      "y": 106.8,
+      "max_withheld": 0.27
+     },
+     {
+      "t": [
+       284.49,
+       284.74
+      ],
+      "x": -37.6,
+      "y": 159.1,
+      "max_withheld": 0.34
+     },
+     {
+      "t": [
+       287.38,
+       287.85
+      ],
+      "x": -37.0,
+      "y": 149.1,
+      "max_withheld": 0.19
+     },
+     {
+      "t": [
+       289.53,
+       289.77
+      ],
+      "x": -36.5,
+      "y": 141.4,
+      "max_withheld": 0.38
+     },
+     {
+      "t": [
+       292.71,
+       293.18
+      ],
+      "x": -36.2,
+      "y": 130.3,
+      "max_withheld": 0.18
+     },
+     {
+      "t": [
+       303.3,
+       303.39
+      ],
+      "x": -35.9,
+      "y": 88.5,
+      "max_withheld": 0.04
+     }
+    ],
+    "assist_h_s": 37.38,
+    "assist_h_max": 2.08,
+    "assist_removed_pct": 2.04,
+    "assist_v_s": 68.22,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 2.48,
+     "request": 34.49,
+     "stopping": 0.28
+    },
+    "assist_wall_ahead_s": 9.67,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 66,
+    "marker_held_onsets": [
+     55.44,
+     66.56,
+     89.9,
+     90.67,
+     114.72,
+     115.29,
+     219.99,
+     301.67
+    ]
+   },
+   "m6_csshadow": {
+    "end_t": 326.83,
+    "support_onsets": [
+     177.69,
+     289.23
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.55,
+    "braking_s": 30.56,
+    "contact_onsets": [
+     71.84,
+     77.03,
+     77.79,
+     80.73,
+     176.83,
+     181.93,
+     182.69,
+     186.14,
+     283.13,
+     288.03,
+     288.79
+    ],
+    "early_s": 30.47,
+    "early_episodes": [
+     {
+      "t": [
+       13.29,
+       14.53
+      ],
+      "x": 56.8,
+      "y": 1.8,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       17.84,
+       19.23
+      ],
+      "x": 77.0,
+      "y": 13.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       29.62,
+       31.06
+      ],
+      "x": 44.0,
+      "y": 63.0,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       41.45,
+       43.48
+      ],
+      "x": 35.4,
+      "y": 121.4,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       58.34,
+       59.24
+      ],
+      "x": 1.5,
+      "y": 194.7,
+      "min_h": 3.0
+     },
+     {
+      "t": [
+       102.57,
+       103.37
+      ],
+      "x": -30.5,
+      "y": 28.9,
+      "min_h": 4.64
+     },
+     {
+      "t": [
+       108.08,
+       109.25
+      ],
+      "x": -12.8,
+      "y": 6.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       120.69,
+       121.52
+      ],
+      "x": 57.5,
+      "y": 1.6,
+      "min_h": 4.26
+     },
+     {
+      "t": [
+       122.01,
+       123.35
+      ],
+      "x": 65.2,
+      "y": 2.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       125.0,
+       126.33
+      ],
+      "x": 77.2,
+      "y": 13.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       136.78,
+       138.18
+      ],
+      "x": 44.0,
+      "y": 63.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       148.39,
+       149.76
+      ],
+      "x": 35.5,
+      "y": 120.6,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       166.54,
+       168.49
+      ],
+      "x": -4.0,
+      "y": 197.8,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       209.52,
+       210.95
+      ],
+      "x": -29.1,
+      "y": 20.6,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       213.45,
+       214.51
+      ],
+      "x": -12.7,
+      "y": 6.8,
+      "min_h": 2.64
+     },
+     {
+      "t": [
+       221.35,
+       222.54
+      ],
+      "x": 29.8,
+      "y": -0.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       226.22,
+       227.32
+      ],
+      "x": 57.2,
+      "y": 1.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       230.72,
+       231.9
+      ],
+      "x": 77.6,
+      "y": 14.2,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       242.39,
+       243.74
+      ],
+      "x": 44.0,
+      "y": 63.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       254.01,
+       255.32
+      ],
+      "x": 35.5,
+      "y": 120.7,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       259.34,
+       260.66
+      ],
+      "x": 32.5,
+      "y": 146.4,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       269.4,
+       270.41
+      ],
+      "x": 8.1,
+      "y": 190.6,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       301.4,
+       302.35
+      ],
+      "x": -36.4,
+      "y": 97.7,
+      "min_h": 2.55
+     },
+     {
+      "t": [
+       319.73,
+       320.85
+      ],
+      "x": -12.5,
+      "y": 6.6,
+      "min_h": 2.5
+     }
+    ],
+    "sighted_withheld_s": 6.74,
+    "sighted_withheld_max": 0.424,
+    "sighted_set_s": 58.66,
+    "sighted_windows": [
+     {
+      "t": [
+       73.44,
+       73.64
+      ],
+      "x": -37.8,
+      "y": 156.5,
+      "max_withheld": 0.38
+     },
+     {
+      "t": [
+       76.31,
+       76.84
+      ],
+      "x": -37.1,
+      "y": 146.7,
+      "max_withheld": 0.2
+     },
+     {
+      "t": [
+       77.93,
+       78.73
+      ],
+      "x": -36.7,
+      "y": 141.5,
+      "max_withheld": 0.42
+     },
+     {
+      "t": [
+       80.04,
+       80.19
+      ],
+      "x": -36.4,
+      "y": 134.2,
+      "max_withheld": 0.04
+     },
+     {
+      "t": [
+       81.52,
+       81.58
+      ],
+      "x": -36.4,
+      "y": 128.6,
+      "max_withheld": 0.22
+     },
+     {
+      "t": [
+       87.09,
+       87.71
+      ],
+      "x": -36.0,
+      "y": 107.2,
+      "max_withheld": 0.24
+     },
+     {
+      "t": [
+       177.97,
+       178.06
+      ],
+      "x": -36.6,
+      "y": 160.5,
+      "max_withheld": 0.08
+     },
+     {
+      "t": [
+       181.06,
+       181.79
+      ],
+      "x": -36.3,
+      "y": 149.2,
+      "max_withheld": 0.31
+     },
+     {
+      "t": [
+       183.32,
+       184.06
+      ],
+      "x": -36.0,
+      "y": 142.1,
+      "max_withheld": 0.32
+     },
+     {
+      "t": [
+       185.2,
+       185.56
+      ],
+      "x": -35.9,
+      "y": 135.6,
+      "max_withheld": 0.08
+     },
+     {
+      "t": [
+       186.92,
+       186.97
+      ],
+      "x": -36.0,
+      "y": 129.2,
+      "max_withheld": 0.17
+     },
+     {
+      "t": [
+       187.34,
+       187.34
+      ],
+      "x": -36.1,
+      "y": 127.5,
+      "max_withheld": 0.0
+     },
+     {
+      "t": [
+       192.67,
+       193.36
+      ],
+      "x": -36.2,
+      "y": 106.8,
+      "max_withheld": 0.27
+     },
+     {
+      "t": [
+       284.49,
+       284.74
+      ],
+      "x": -37.6,
+      "y": 159.1,
+      "max_withheld": 0.34
+     },
+     {
+      "t": [
+       287.38,
+       287.85
+      ],
+      "x": -37.0,
+      "y": 149.1,
+      "max_withheld": 0.19
+     },
+     {
+      "t": [
+       289.53,
+       289.77
+      ],
+      "x": -36.5,
+      "y": 141.4,
+      "max_withheld": 0.38
+     },
+     {
+      "t": [
+       292.71,
+       293.18
+      ],
+      "x": -36.2,
+      "y": 130.3,
+      "max_withheld": 0.18
+     },
+     {
+      "t": [
+       303.3,
+       303.39
+      ],
+      "x": -35.9,
+      "y": 88.5,
+      "max_withheld": 0.04
+     }
+    ],
+    "assist_h_s": 37.38,
+    "assist_h_max": 2.08,
+    "assist_removed_pct": 2.04,
+    "assist_v_s": 65.91,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 2.48,
+     "request": 34.49,
+     "stopping": 0.28
+    },
+    "assist_wall_ahead_s": 9.67,
+    "assist_share_s": 0.0,
+    "marker_held_ticks": 66,
+    "marker_held_onsets": [
+     55.44,
+     66.56,
+     89.9,
+     90.67,
+     114.72,
+     115.29,
+     219.99,
+     301.67
+    ]
+   },
+   "change_vs_m5": {
+    "seconds": 105.58,
+    "first": 3.81,
+    "max_dh": 3.57,
+    "max_dz": 1.29
+   },
+   "change_vs_m5ma3": {
+    "seconds": 62.91,
+    "first": 3.71,
+    "max_dh": 5.11,
+    "max_dz": 1.19
+   },
+   "assist_share_s": 90.97,
+   "early_share_s": 44.65,
+   "sighted_share_s": 9.08,
+   "contact_share_s": 13.4,
+   "windows": {
+    "downhill 75-80.5": {
+     "m5": {
+      "min_h": 5.98,
+      "max_h": 6.0,
+      "min_cvz": -1.07,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 10.12,
+      "measured_speed": [
+       2.64,
+       3.89
+      ],
+      "support_ticks": 121,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "contact_fires": [
+       76.97,
+       78.27
+      ]
+     },
+     "m5ma3": {
+      "min_h": 5.98,
+      "max_h": 6.0,
+      "min_cvz": -1.07,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 10.12,
+      "measured_speed": [
+       2.64,
+       3.89
+      ],
+      "support_ticks": 121,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "contact_fires": [
+       76.97,
+       78.28
+      ]
+     },
+     "m6": {
+      "min_h": 5.98,
+      "max_h": 6.0,
+      "min_cvz": -1.0,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 9.51,
+      "measured_speed": [
+       2.64,
+       3.89
+      ],
+      "support_ticks": 121,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "contact_fires": [
+       77.03,
+       78.32
+      ],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.42,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 5.98,
+      "max_h": 6.0,
+      "min_cvz": -1.0,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 9.51,
+      "measured_speed": [
+       2.64,
+       3.89
+      ],
+      "support_ticks": 122,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "contact_fires": [
+       77.03,
+       78.31
+      ],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.42,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 5.98,
+      "max_h": 6.0,
+      "min_cvz": -1.0,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 9.51,
+      "measured_speed": [
+       2.64,
+       3.89
+      ],
+      "support_ticks": 121,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "contact_fires": [
+       77.03,
+       78.32
+      ],
+      "sighted_withheld_max": 0.42,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 5.98,
+      "max_h": 6.0,
+      "min_cvz": -1.07,
+      "max_cvz": 1.0,
+      "steepest_path_deg": 10.12,
+      "measured_speed": [
+       2.64,
+       3.89
+      ],
+      "support_ticks": 121,
+      "states": [
+       "below",
+       "cue",
+       "support_climb"
+      ],
+      "contact_fires": [
+       76.97,
+       78.28
+      ],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 5.89,
+      "max_h": 5.99,
+      "min_cvz": -1.25,
+      "max_cvz": -0.12,
+      "steepest_path_deg": 11.86,
+      "measured_speed": [
+       2.64,
+       3.89
+      ],
+      "support_ticks": 0,
+      "states": [
+       "below",
+       "cue"
+      ],
+      "contact_fires": [
+       77.03,
+       77.79
+      ],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.42,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": null
+  },
+  "straw-brain08-06": {
+   "motor": "brain",
+   "streamed": true,
+   "audit": [
+    {
+     "t": [
+      70.609,
+      72.05
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      75.881,
+      77.241
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      176.445,
+      178.014
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      182.101,
+      183.471
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      281.567,
+      283.128
+     ],
+     "kind": "slide"
+    },
+    {
+     "t": [
+      286.962,
+      288.323
+     ],
+     "kind": "slide"
+    }
+   ],
+   "removed_vs_m5_pct": 2.99,
+   "removed_noma_vs_m5_pct": 1.41,
+   "removed_m5ma3_vs_m5_pct": 2.43,
+   "m5": {
+    "end_t": 326.74,
+    "support_onsets": [
+     71.27,
+     76.25,
+     77.8,
+     177.3,
+     182.46,
+     184.01,
+     282.47,
+     287.33,
+     288.87
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.17,
+    "braking_s": 10.08,
+    "contact_onsets": [
+     71.27,
+     76.25,
+     177.3,
+     182.46,
+     282.47,
+     287.33
+    ]
+   },
+   "m5ma3": {
+    "end_t": 326.74,
+    "support_onsets": [
+     71.27,
+     76.25,
+     77.8,
+     177.3,
+     182.46,
+     184.01,
+     282.47,
+     287.33,
+     288.87
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.17,
+    "braking_s": 10.08,
+    "contact_onsets": [
+     71.27,
+     76.25,
+     177.3,
+     182.46,
+     282.47,
+     287.33
+    ],
+    "assist_h_s": 29.55,
+    "assist_h_max": 6.31,
+    "assist_removed_pct": 2.43,
+    "assist_v_s": 69.27,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "approach": 10.54,
+     "governor": 0.95,
+     "request": 13.56,
+     "stopping": 0.64
+    },
+    "assist_wall_ahead_s": 11.38
+   },
+   "m6": {
+    "end_t": 326.74,
+    "support_onsets": [
+     71.27,
+     76.3,
+     77.84,
+     177.3,
+     182.5,
+     184.04,
+     282.47,
+     287.4,
+     288.94
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.84,
+    "braking_s": 22.15,
+    "contact_onsets": [
+     71.27,
+     76.3,
+     177.3,
+     182.5,
+     282.47,
+     287.4
+    ],
+    "early_s": 23.43,
+    "early_episodes": [
+     {
+      "t": [
+       6.61,
+       8.04
+      ],
+      "x": 17.2,
+      "y": 0.3,
+      "min_h": 0.69
+     },
+     {
+      "t": [
+       13.37,
+       14.56
+      ],
+      "x": 57.3,
+      "y": 1.8,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       17.93,
+       19.34
+      ],
+      "x": 77.5,
+      "y": 14.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       29.82,
+       31.16
+      ],
+      "x": 43.4,
+      "y": 63.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       89.32,
+       90.6
+      ],
+      "x": -36.3,
+      "y": 98.5,
+      "min_h": 1.39
+     },
+     {
+      "t": [
+       103.95,
+       105.38
+      ],
+      "x": -28.9,
+      "y": 20.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       107.78,
+       109.06
+      ],
+      "x": -12.9,
+      "y": 6.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       114.94,
+       115.83
+      ],
+      "x": 25.8,
+      "y": 0.3,
+      "min_h": 4.54
+     },
+     {
+      "t": [
+       121.83,
+       123.19
+      ],
+      "x": 65.0,
+      "y": 2.4,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       125.04,
+       126.26
+      ],
+      "x": 77.6,
+      "y": 14.2,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       136.66,
+       138.06
+      ],
+      "x": 44.2,
+      "y": 62.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       148.31,
+       149.62
+      ],
+      "x": 35.5,
+      "y": 120.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       164.97,
+       166.28
+      ],
+      "x": 2.5,
+      "y": 194.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       213.65,
+       214.94
+      ],
+      "x": -13.1,
+      "y": 7.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       230.7,
+       232.04
+      ],
+      "x": 77.1,
+      "y": 13.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       242.48,
+       243.88
+      ],
+      "x": 44.0,
+      "y": 63.2,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       315.84,
+       317.2
+      ],
+      "x": -28.7,
+      "y": 20.0,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       319.5,
+       320.5
+      ],
+      "x": -13.2,
+      "y": 7.2,
+      "min_h": 3.19
+     }
+    ],
+    "sighted_withheld_s": 5.14,
+    "sighted_withheld_max": 0.527,
+    "sighted_set_s": 47.16,
+    "sighted_windows": [
+     {
+      "t": [
+       72.64,
+       72.91
+      ],
+      "x": -38.2,
+      "y": 158.6,
+      "max_withheld": 0.32
+     },
+     {
+      "t": [
+       75.52,
+       76.13
+      ],
+      "x": -37.4,
+      "y": 148.6,
+      "max_withheld": 0.22
+     },
+     {
+      "t": [
+       77.82,
+       78.07
+      ],
+      "x": -36.8,
+      "y": 140.6,
+      "max_withheld": 0.42
+     },
+     {
+      "t": [
+       80.96,
+       81.29
+      ],
+      "x": -36.3,
+      "y": 129.7,
+      "max_withheld": 0.13
+     },
+     {
+      "t": [
+       90.92,
+       91.17
+      ],
+      "x": -36.1,
+      "y": 90.9,
+      "max_withheld": 0.15
+     },
+     {
+      "t": [
+       178.51,
+       178.7
+      ],
+      "x": -35.6,
+      "y": 159.1,
+      "max_withheld": 0.2
+     },
+     {
+      "t": [
+       181.57,
+       182.34
+      ],
+      "x": -35.5,
+      "y": 148.0,
+      "max_withheld": 0.3
+     },
+     {
+      "t": [
+       184.04,
+       184.31
+      ],
+      "x": -35.4,
+      "y": 139.6,
+      "max_withheld": 0.53
+     },
+     {
+      "t": [
+       187.13,
+       187.41
+      ],
+      "x": -35.7,
+      "y": 128.8,
+      "max_withheld": 0.11
+     },
+     {
+      "t": [
+       283.65,
+       283.89
+      ],
+      "x": -36.5,
+      "y": 161.3,
+      "max_withheld": 0.24
+     },
+     {
+      "t": [
+       286.62,
+       287.24
+      ],
+      "x": -36.2,
+      "y": 150.6,
+      "max_withheld": 0.25
+     },
+     {
+      "t": [
+       288.92,
+       289.15
+      ],
+      "x": -36.0,
+      "y": 142.5,
+      "max_withheld": 0.45
+     },
+     {
+      "t": [
+       292.05,
+       292.59
+      ],
+      "x": -35.9,
+      "y": 131.6,
+      "max_withheld": 0.21
+     },
+     {
+      "t": [
+       304.13,
+       304.26
+      ],
+      "x": -35.2,
+      "y": 83.0,
+      "max_withheld": 0.17
+     }
+    ],
+    "assist_h_s": 28.79,
+    "assist_h_max": 3.55,
+    "assist_removed_pct": 1.61,
+    "assist_v_s": 69.31,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 1.52,
+     "request": 26.8,
+     "stopping": 0.29
+    },
+    "assist_wall_ahead_s": 11.38,
+    "assist_share_s": 1.01,
+    "marker_held_ticks": 123,
+    "marker_held_onsets": [
+     56.06,
+     89.74,
+     114.71,
+     114.81,
+     162.46,
+     162.56,
+     195.63,
+     221.62,
+     222.22,
+     268.59,
+     294.7,
+     301.63,
+     302.26
+    ]
+   },
+   "m6_csshadow": {
+    "end_t": 326.74,
+    "support_onsets": [
+     77.53,
+     178.27,
+     183.76,
+     283.38,
+     288.62
+    ],
+    "turn_first_s": 0.0,
+    "view_limiting_s": 46.84,
+    "braking_s": 22.15,
+    "contact_onsets": [
+     71.27,
+     76.3,
+     77.06,
+     177.3,
+     182.5,
+     183.27,
+     282.47,
+     287.4,
+     288.15
+    ],
+    "early_s": 23.43,
+    "early_episodes": [
+     {
+      "t": [
+       6.61,
+       8.04
+      ],
+      "x": 17.2,
+      "y": 0.3,
+      "min_h": 0.69
+     },
+     {
+      "t": [
+       13.37,
+       14.56
+      ],
+      "x": 57.3,
+      "y": 1.8,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       17.93,
+       19.34
+      ],
+      "x": 77.5,
+      "y": 14.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       29.82,
+       31.16
+      ],
+      "x": 43.4,
+      "y": 63.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       89.32,
+       90.6
+      ],
+      "x": -36.3,
+      "y": 98.5,
+      "min_h": 1.39
+     },
+     {
+      "t": [
+       103.95,
+       105.38
+      ],
+      "x": -28.9,
+      "y": 20.3,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       107.78,
+       109.06
+      ],
+      "x": -12.9,
+      "y": 6.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       114.94,
+       115.83
+      ],
+      "x": 25.8,
+      "y": 0.3,
+      "min_h": 4.54
+     },
+     {
+      "t": [
+       121.83,
+       123.19
+      ],
+      "x": 65.0,
+      "y": 2.4,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       125.04,
+       126.26
+      ],
+      "x": 77.6,
+      "y": 14.2,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       136.66,
+       138.06
+      ],
+      "x": 44.2,
+      "y": 62.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       148.31,
+       149.62
+      ],
+      "x": 35.5,
+      "y": 120.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       164.97,
+       166.28
+      ],
+      "x": 2.5,
+      "y": 194.5,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       213.65,
+       214.94
+      ],
+      "x": -13.1,
+      "y": 7.1,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       230.7,
+       232.04
+      ],
+      "x": 77.1,
+      "y": 13.9,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       242.48,
+       243.88
+      ],
+      "x": 44.0,
+      "y": 63.2,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       315.84,
+       317.2
+      ],
+      "x": -28.7,
+      "y": 20.0,
+      "min_h": 2.5
+     },
+     {
+      "t": [
+       319.5,
+       320.5
+      ],
+      "x": -13.2,
+      "y": 7.2,
+      "min_h": 3.19
+     }
+    ],
+    "sighted_withheld_s": 5.14,
+    "sighted_withheld_max": 0.527,
+    "sighted_set_s": 47.16,
+    "sighted_windows": [
+     {
+      "t": [
+       72.64,
+       72.91
+      ],
+      "x": -38.2,
+      "y": 158.6,
+      "max_withheld": 0.32
+     },
+     {
+      "t": [
+       75.52,
+       76.13
+      ],
+      "x": -37.4,
+      "y": 148.6,
+      "max_withheld": 0.22
+     },
+     {
+      "t": [
+       77.82,
+       78.07
+      ],
+      "x": -36.8,
+      "y": 140.6,
+      "max_withheld": 0.42
+     },
+     {
+      "t": [
+       80.96,
+       81.29
+      ],
+      "x": -36.3,
+      "y": 129.7,
+      "max_withheld": 0.13
+     },
+     {
+      "t": [
+       90.92,
+       91.17
+      ],
+      "x": -36.1,
+      "y": 90.9,
+      "max_withheld": 0.15
+     },
+     {
+      "t": [
+       178.51,
+       178.7
+      ],
+      "x": -35.6,
+      "y": 159.1,
+      "max_withheld": 0.2
+     },
+     {
+      "t": [
+       181.57,
+       182.34
+      ],
+      "x": -35.5,
+      "y": 148.0,
+      "max_withheld": 0.3
+     },
+     {
+      "t": [
+       184.04,
+       184.31
+      ],
+      "x": -35.4,
+      "y": 139.6,
+      "max_withheld": 0.53
+     },
+     {
+      "t": [
+       187.13,
+       187.41
+      ],
+      "x": -35.7,
+      "y": 128.8,
+      "max_withheld": 0.11
+     },
+     {
+      "t": [
+       283.65,
+       283.89
+      ],
+      "x": -36.5,
+      "y": 161.3,
+      "max_withheld": 0.24
+     },
+     {
+      "t": [
+       286.62,
+       287.24
+      ],
+      "x": -36.2,
+      "y": 150.6,
+      "max_withheld": 0.25
+     },
+     {
+      "t": [
+       288.92,
+       289.15
+      ],
+      "x": -36.0,
+      "y": 142.5,
+      "max_withheld": 0.45
+     },
+     {
+      "t": [
+       292.05,
+       292.59
+      ],
+      "x": -35.9,
+      "y": 131.6,
+      "max_withheld": 0.21
+     },
+     {
+      "t": [
+       304.13,
+       304.26
+      ],
+      "x": -35.2,
+      "y": 83.0,
+      "max_withheld": 0.17
+     }
+    ],
+    "assist_h_s": 28.79,
+    "assist_h_max": 3.55,
+    "assist_removed_pct": 1.61,
+    "assist_v_s": 69.13,
+    "assist_v_max": 1.0,
+    "assist_sources": {
+     "governor": 1.52,
+     "request": 26.8,
+     "stopping": 0.29
+    },
+    "assist_wall_ahead_s": 11.43,
+    "assist_share_s": 1.01,
+    "marker_held_ticks": 123,
+    "marker_held_onsets": [
+     56.06,
+     89.74,
+     114.71,
+     114.81,
+     162.46,
+     162.56,
+     195.63,
+     221.62,
+     222.22,
+     268.59,
+     294.7,
+     301.63,
+     302.26
+    ]
+   },
+   "change_vs_m5": {
+    "seconds": 97.13,
+    "first": 3.8,
+    "max_dh": 5.31,
+    "max_dz": 1.0
+   },
+   "change_vs_m5ma3": {
+    "seconds": 51.8,
+    "first": 3.71,
+    "max_dh": 6.3,
+    "max_dz": 1.59
+   },
+   "assist_share_s": 87.8,
+   "early_share_s": 26.87,
+   "sighted_share_s": 10.07,
+   "contact_share_s": 12.58,
+   "windows": {
+    "uphill 37.49-38.77": {
+     "m5": {
+      "min_h": 5.8,
+      "max_h": 5.97,
+      "min_cvz": 1.47,
+      "max_cvz": 1.59,
+      "steepest_path_deg": -13.82,
+      "measured_speed": [
+       4.04,
+       4.91
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m5ma3": {
+      "min_h": 4.65,
+      "max_h": 5.97,
+      "min_cvz": 0.0,
+      "max_cvz": 1.47,
+      "steepest_path_deg": -0.0,
+      "measured_speed": [
+       4.04,
+       4.91
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue"
+      ],
+      "contact_fires": []
+     },
+     "m6": {
+      "min_h": 5.8,
+      "max_h": 5.97,
+      "min_cvz": 1.47,
+      "max_cvz": 1.62,
+      "steepest_path_deg": -13.82,
+      "measured_speed": [
+       4.04,
+       4.91
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noma": {
+      "min_h": 5.8,
+      "max_h": 5.97,
+      "min_cvz": 1.47,
+      "max_cvz": 1.59,
+      "steepest_path_deg": -13.82,
+      "measured_speed": [
+       4.04,
+       4.91
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_noeb": {
+      "min_h": 5.8,
+      "max_h": 5.97,
+      "min_cvz": 1.47,
+      "max_cvz": 1.62,
+      "steepest_path_deg": -13.82,
+      "measured_speed": [
+       4.04,
+       4.91
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue"
+      ],
+      "contact_fires": [],
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_nosd": {
+      "min_h": 5.8,
+      "max_h": 5.97,
+      "min_cvz": 1.47,
+      "max_cvz": 1.62,
+      "steepest_path_deg": -13.82,
+      "measured_speed": [
+       4.04,
+       4.91
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "marker_held_ticks": 0
+     },
+     "m6_csshadow": {
+      "min_h": 5.8,
+      "max_h": 5.97,
+      "min_cvz": 1.47,
+      "max_cvz": 1.62,
+      "steepest_path_deg": -13.82,
+      "measured_speed": [
+       4.04,
+       4.91
+      ],
+      "support_ticks": 0,
+      "states": [
+       "cue"
+      ],
+      "contact_fires": [],
+      "early_s": 0.0,
+      "sighted_withheld_max": 0.0,
+      "marker_held_ticks": 0
+     }
+    }
+   },
+   "impact": null
+  }
+ },
+ "closed_loop": {
+  "sim_seed": 113,
+  "sets": {
+   "hairpin": "turn 50/90/130 x arch 9/13 x wall 2.3/2.7, live-like wall samples, 16 s",
+   "passthrough": "turn 25/75 x see-through 1.4/1.9 x surface 0.05/0.3, live-like samples, 16 s",
+   "gates": "turn -60/-15/30/75 x half width 1.3/1.7 x false marker 0/-17/+15 deg, 18 s",
+   "hill": "hill 9300-9311, 150 s",
+   "steep": "steep 9400-9407, 150 s",
+   "straw_logged": "logged Straw geometry, 16 drones, 60 s",
+   "straw_family": "Straw variations 2001-2016, 60 s"
+  },
+  "variants": {
+   "m5": "deployed_pilot_kwargs(contract, stale_evidence=True) (m6 tree, round-6 rules off)",
+   "m5ma3": "m5 + motor_assist=3 (the kept declaration)",
+   "m6": "+ early_brake=True, motor_assist=True (v4), sighted_descent='on', marker_jump='shadow' (contact support on; it made no onset in any run)",
+   "m6_noma": "m6 without the assist"
+  },
+  "results": {
+   "brain11cw13|gates|m5": {
+    "n": 24,
+    "finished": 24,
+    "clean": 24,
+    "clean_incl_posts": 24,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": 0.549,
+    "chatter": 0.002735,
+    "finish_mean": 13.043,
+    "max_height": 1.938,
+    "posts_false_marker": 0,
+    "finished_false_marker": 16,
+    "contact_support_onsets": 0,
+    "elapsed_s": 40.8
+   },
+   "brain11cw13|gates|m5ma3": {
+    "n": 24,
+    "finished": 24,
+    "clean": 24,
+    "clean_incl_posts": 24,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": 0.564,
+    "chatter": 0.002792,
+    "finish_mean": 13.048,
+    "max_height": 1.945,
+    "posts_false_marker": 0,
+    "finished_false_marker": 16,
+    "contact_support_onsets": 0,
+    "elapsed_s": 42.9
+   },
+   "brain11cw13|gates|m6": {
+    "n": 24,
+    "finished": 24,
+    "clean": 24,
+    "clean_incl_posts": 24,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": 0.564,
+    "chatter": 0.002792,
+    "finish_mean": 13.046,
+    "max_height": 1.945,
+    "posts_false_marker": 0,
+    "finished_false_marker": 16,
+    "contact_support_onsets": 0,
+    "elapsed_s": 43.5
+   },
+   "brain11cw13|gates|m6_noma": {
+    "n": 24,
+    "finished": 24,
+    "clean": 24,
+    "clean_incl_posts": 24,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": 0.549,
+    "chatter": 0.002735,
+    "finish_mean": 13.043,
+    "max_height": 1.938,
+    "posts_false_marker": 0,
+    "finished_false_marker": 16,
+    "contact_support_onsets": 0,
+    "elapsed_s": 49.1
+   },
+   "brain11cw13|hairpin|m5": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "clean_incl_posts": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.003659,
+    "finish_mean": null,
+    "max_height": 1.247,
+    "contact_support_onsets": 0,
+    "elapsed_s": 17.8
+   },
+   "brain11cw13|hairpin|m5ma3": {
+    "n": 12,
+    "finished": 10,
+    "clean": 9,
+    "clean_incl_posts": 9,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.005183,
+    "finish_mean": 14.888,
+    "max_height": 2.116,
+    "contact_support_onsets": 0,
+    "elapsed_s": 31.2
+   },
+   "brain11cw13|hairpin|m6": {
+    "n": 12,
+    "finished": 9,
+    "clean": 9,
+    "clean_incl_posts": 9,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.004923,
+    "finish_mean": 14.437,
+    "max_height": 1.92,
+    "contact_support_onsets": 0,
+    "elapsed_s": 36.5
+   },
+   "brain11cw13|hairpin|m6_noma": {
+    "n": 12,
+    "finished": 0,
+    "clean": 0,
+    "clean_incl_posts": 0,
+    "wall": 12,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.003806,
+    "finish_mean": null,
+    "max_height": 1.265,
+    "contact_support_onsets": 0,
+    "elapsed_s": 18.5
+   },
+   "brain11cw13|hill|m5": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 10,
+    "contact_s": 18.33,
+    "high_passes": 7,
+    "support_climbs": null,
+    "mean_finish_s": 58.02,
+    "below_view_fraction": 0.4276,
+    "contact_support_onsets": 0,
+    "elapsed_s": 115.0
+   },
+   "brain11cw13|hill|m5ma3": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 9,
+    "contact_s": 17.55,
+    "high_passes": 7,
+    "support_climbs": null,
+    "mean_finish_s": 58.02,
+    "below_view_fraction": 0.4257,
+    "contact_support_onsets": 0,
+    "elapsed_s": 129.1
+   },
+   "brain11cw13|hill|m6": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 9,
+    "contact_s": 17.48,
+    "high_passes": 7,
+    "support_climbs": null,
+    "mean_finish_s": 57.99,
+    "below_view_fraction": 0.4234,
+    "contact_support_onsets": 0,
+    "elapsed_s": 124.8
+   },
+   "brain11cw13|hill|m6_noma": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 10,
+    "contact_s": 18.19,
+    "high_passes": 7,
+    "support_climbs": null,
+    "mean_finish_s": 57.98,
+    "below_view_fraction": 0.4248,
+    "contact_support_onsets": 0,
+    "elapsed_s": 120.5
+   },
+   "brain11cw13|passthrough|m5": {
+    "n": 8,
+    "finished": 8,
+    "clean": 8,
+    "clean_incl_posts": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.002595,
+    "finish_mean": 13.125,
+    "max_height": 1.133,
+    "arch_min_speed": [
+     4.08,
+     4.26,
+     4.41
+    ],
+    "contact_support_onsets": 0,
+    "elapsed_s": 18.7
+   },
+   "brain11cw13|passthrough|m5ma3": {
+    "n": 8,
+    "finished": 5,
+    "clean": 5,
+    "clean_incl_posts": 5,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.003853,
+    "finish_mean": 14.64,
+    "max_height": 2.051,
+    "arch_min_speed": [
+     0.04,
+     0.44,
+     0.89
+    ],
+    "contact_support_onsets": 0,
+    "elapsed_s": 23.2
+   },
+   "brain11cw13|passthrough|m6": {
+    "n": 8,
+    "finished": 8,
+    "clean": 8,
+    "clean_incl_posts": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.003494,
+    "finish_mean": 14.002,
+    "max_height": 1.835,
+    "arch_min_speed": [
+     0.92,
+     1.705,
+     2.38
+    ],
+    "contact_support_onsets": 0,
+    "elapsed_s": 27.6
+   },
+   "brain11cw13|passthrough|m6_noma": {
+    "n": 8,
+    "finished": 8,
+    "clean": 8,
+    "clean_incl_posts": 8,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.002805,
+    "finish_mean": 13.698,
+    "max_height": 1.278,
+    "arch_min_speed": [
+     1.37,
+     2.4299999999999997,
+     2.86
+    ],
+    "contact_support_onsets": 0,
+    "elapsed_s": 19.9
+   },
+   "brain11cw13|steep|m5": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 2,
+    "contact_s": 6.5,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 64.51,
+    "below_view_fraction": 0.4237,
+    "contact_support_onsets": 0,
+    "elapsed_s": 97.7
+   },
+   "brain11cw13|steep|m5ma3": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 2,
+    "contact_s": 5.96,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 64.61,
+    "below_view_fraction": 0.3944,
+    "contact_support_onsets": 0,
+    "elapsed_s": 102.7
+   },
+   "brain11cw13|steep|m6": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 2,
+    "contact_s": 5.95,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 64.61,
+    "below_view_fraction": 0.4025,
+    "contact_support_onsets": 0,
+    "elapsed_s": 108.4
+   },
+   "brain11cw13|steep|m6_noma": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 2,
+    "contact_s": 6.48,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 64.5,
+    "below_view_fraction": 0.4251,
+    "contact_support_onsets": 0,
+    "elapsed_s": 107.1
+   },
+   "brain11cw13|straw_family|m5": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 7,
+    "contact_s": 19.58,
+    "high_passes": 3,
+    "support_climbs": null,
+    "mean_finish_s": 27.96,
+    "below_view_fraction": 0.342,
+    "ring_passed": 16,
+    "contact_drones": 7,
+    "contact_support_onsets": 0,
+    "elapsed_s": 64.6
+   },
+   "brain11cw13|straw_family|m5ma3": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 7,
+    "contact_s": 18.45,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 27.98,
+    "below_view_fraction": 0.3379,
+    "ring_passed": 16,
+    "contact_drones": 7,
+    "contact_support_onsets": 0,
+    "elapsed_s": 67.7
+   },
+   "brain11cw13|straw_family|m6": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 5,
+    "contact_s": 11.74,
+    "high_passes": 1,
+    "support_climbs": null,
+    "mean_finish_s": 27.91,
+    "below_view_fraction": 0.3427,
+    "ring_passed": 16,
+    "contact_drones": 5,
+    "contact_support_onsets": 0,
+    "elapsed_s": 77.2
+   },
+   "brain11cw13|straw_family|m6_noma": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 5,
+    "contact_s": 11.99,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 27.89,
+    "below_view_fraction": 0.3438,
+    "ring_passed": 16,
+    "contact_drones": 5,
+    "contact_support_onsets": 0,
+    "elapsed_s": 70.7
+   },
+   "brain11cw13|straw_logged|m5": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 3,
+    "contact_s": 13.94,
+    "high_passes": 4,
+    "support_climbs": null,
+    "mean_finish_s": 28.45,
+    "below_view_fraction": 0.3069,
+    "ring_passed": 16,
+    "contact_drones": 3,
+    "contact_support_onsets": 0,
+    "elapsed_s": 63.6
+   },
+   "brain11cw13|straw_logged|m5ma3": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 3,
+    "contact_s": 13.77,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 28.5,
+    "below_view_fraction": 0.3105,
+    "ring_passed": 16,
+    "contact_drones": 3,
+    "contact_support_onsets": 0,
+    "elapsed_s": 68.4
+   },
+   "brain11cw13|straw_logged|m6": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 3,
+    "contact_s": 13.65,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 28.49,
+    "below_view_fraction": 0.3105,
+    "ring_passed": 16,
+    "contact_drones": 3,
+    "contact_support_onsets": 0,
+    "elapsed_s": 69.4
+   },
+   "brain11cw13|straw_logged|m6_noma": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 3,
+    "contact_s": 13.79,
+    "high_passes": 4,
+    "support_climbs": null,
+    "mean_finish_s": 28.45,
+    "below_view_fraction": 0.3076,
+    "ring_passed": 16,
+    "contact_drones": 3,
+    "contact_support_onsets": 0,
+    "elapsed_s": 64.3
+   },
+   "pd|gates|m5": {
+    "n": 24,
+    "finished": 17,
+    "clean": 17,
+    "clean_incl_posts": 17,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 1,
+    "posts": 6,
+    "min_post_gap_m": 0.276,
+    "chatter": 0.006379,
+    "finish_mean": 12.031,
+    "max_height": 2.438,
+    "posts_false_marker": 6,
+    "finished_false_marker": 10,
+    "contact_support_onsets": 0,
+    "elapsed_s": 26.6
+   },
+   "pd|gates|m6": {
+    "n": 24,
+    "finished": 17,
+    "clean": 17,
+    "clean_incl_posts": 17,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 1,
+    "posts": 6,
+    "min_post_gap_m": 0.276,
+    "chatter": 0.006371,
+    "finish_mean": 12.029,
+    "max_height": 2.438,
+    "posts_false_marker": 6,
+    "finished_false_marker": 10,
+    "contact_support_onsets": 0,
+    "elapsed_s": 28.5
+   },
+   "pd|hairpin|m5": {
+    "n": 12,
+    "finished": 10,
+    "clean": 10,
+    "clean_incl_posts": 10,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.009409,
+    "finish_mean": 12.419,
+    "max_height": 3.664,
+    "contact_support_onsets": 0,
+    "elapsed_s": 20.9
+   },
+   "pd|hairpin|m6": {
+    "n": 12,
+    "finished": 10,
+    "clean": 10,
+    "clean_incl_posts": 10,
+    "wall": 2,
+    "floor": 0,
+    "ceiling": 1,
+    "crashed": 0,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.009409,
+    "finish_mean": 12.419,
+    "max_height": 3.664,
+    "contact_support_onsets": 0,
+    "elapsed_s": 18.5
+   },
+   "pd|hill|m5": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 10,
+    "contact_s": 12.44,
+    "high_passes": 9,
+    "support_climbs": null,
+    "mean_finish_s": 50.91,
+    "below_view_fraction": 0.2951,
+    "contact_support_onsets": 0,
+    "elapsed_s": 70.0
+   },
+   "pd|hill|m6": {
+    "courses": 12,
+    "finished": 12,
+    "crashed": 0,
+    "contacts": 10,
+    "contact_s": 12.47,
+    "high_passes": 9,
+    "support_climbs": null,
+    "mean_finish_s": 50.84,
+    "below_view_fraction": 0.2975,
+    "contact_support_onsets": 0,
+    "elapsed_s": 70.2
+   },
+   "pd|passthrough|m5": {
+    "n": 8,
+    "finished": 7,
+    "clean": 7,
+    "clean_incl_posts": 7,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 1,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.005704,
+    "finish_mean": 12.521,
+    "max_height": 1.26,
+    "arch_min_speed": [
+     0.41,
+     0.94,
+     2.38
+    ],
+    "contact_support_onsets": 0,
+    "elapsed_s": 11.4
+   },
+   "pd|passthrough|m6": {
+    "n": 8,
+    "finished": 7,
+    "clean": 7,
+    "clean_incl_posts": 7,
+    "wall": 0,
+    "floor": 0,
+    "ceiling": 0,
+    "crashed": 1,
+    "posts": 0,
+    "min_post_gap_m": null,
+    "chatter": 0.005704,
+    "finish_mean": 12.521,
+    "max_height": 1.26,
+    "arch_min_speed": [
+     0.41,
+     0.94,
+     2.38
+    ],
+    "contact_support_onsets": 0,
+    "elapsed_s": 11.5
+   },
+   "pd|steep|m5": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 8,
+    "contact_s": 6.36,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 56.5,
+    "below_view_fraction": 0.3264,
+    "contact_support_onsets": 0,
+    "elapsed_s": 55.4
+   },
+   "pd|steep|m6": {
+    "courses": 8,
+    "finished": 8,
+    "crashed": 0,
+    "contacts": 7,
+    "contact_s": 6.32,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 56.47,
+    "below_view_fraction": 0.3325,
+    "contact_support_onsets": 0,
+    "elapsed_s": 56.1
+   },
+   "pd|straw_family|m5": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 8,
+    "contact_s": 27.15,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 23.9,
+    "below_view_fraction": 0.1911,
+    "ring_passed": 16,
+    "contact_drones": 8,
+    "contact_support_onsets": 0,
+    "elapsed_s": 45.8
+   },
+   "pd|straw_family|m6": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 6,
+    "contact_s": 23.32,
+    "high_passes": 1,
+    "support_climbs": null,
+    "mean_finish_s": 23.64,
+    "below_view_fraction": 0.1959,
+    "ring_passed": 16,
+    "contact_drones": 6,
+    "contact_support_onsets": 0,
+    "elapsed_s": 39.4
+   },
+   "pd|straw_logged|m5": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 7,
+    "contact_s": 29.73,
+    "high_passes": 2,
+    "support_climbs": null,
+    "mean_finish_s": 24.13,
+    "below_view_fraction": 0.1757,
+    "ring_passed": 16,
+    "contact_drones": 6,
+    "contact_support_onsets": 0,
+    "elapsed_s": 37.7
+   },
+   "pd|straw_logged|m6": {
+    "courses": 16,
+    "finished": 16,
+    "crashed": 0,
+    "contacts": 6,
+    "contact_s": 29.09,
+    "high_passes": 0,
+    "support_climbs": null,
+    "mean_finish_s": 24.09,
+    "below_view_fraction": 0.1228,
+    "ring_passed": 16,
+    "contact_drones": 5,
+    "contact_support_onsets": 0,
+    "elapsed_s": 44.1
+   }
+  }
+ },
+ "plan": {
+  "commands": {
+   "a_straw_brain11": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 480 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/straw-brain11cw13-r6-01.csv --record runs/fast-stack-20260923/straw-brain11cw13-r6-01.mp4 --video-encoder h264_nvenc",
+   "b_minus_pd": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-fast6-r6-01.csv --record runs/fast-stack-20260923/minus-fast6-r6-01.mp4 --video-encoder h264_nvenc",
+   "c_minus_brain11": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-brain11cw13-r6-01.csv --record runs/fast-stack-20260923/minus-brain11cw13-r6-01.mp4 --video-encoder h264_nvenc",
+   "d_pine_pd": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/pine-fast6-r6-01.csv --record runs/fast-stack-20260923/pine-fast6-r6-01.mp4 --video-encoder h264_nvenc"
+  },
+  "wiring": {
+   "a_straw_brain11": {
+    "command": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 480 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/straw-brain11cw13-r6-01.csv --record runs/fast-stack-20260923/straw-brain11cw13-r6-01.mp4 --video-encoder h264_nvenc",
+    "checkpoint": "runs/fast-brain-11-b-cw13/candidate.pt",
+    "checkpoint_sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+    "motor": "brain",
+    "contract": "fast_velocity_brain_v1",
+    "stack": "on",
+    "applied": true,
+    "looming": true,
+    "ring_reader": "earlier reader (no rule)",
+    "lag_turn": {
+     "version": 2,
+     "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1"
+    },
+    "wall_pilot": {
+     "version": 6,
+     "sha256": "fe65951d3d683bc87307cb0d978bf2cfab168f9bc5e460a7af9b39644634869f",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1",
+     "stopping_model": "fast_velocity_brain_v1"
+    },
+    "vertical_guard": {
+     "version": 4,
+     "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+     "applied": true
+    },
+    "descent_view": {
+     "version": 3,
+     "sha256": "2bdb17fc2479fc2d05b8521d65037cbd8f8e56f2b4a46b7cf7b33034ecbbb0cb",
+     "applied": true,
+     "contact_support": "shadow"
+    },
+    "motor_assist": {
+     "version": 4,
+     "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1"
+    },
+    "stale_evidence": {
+     "version": 2,
+     "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a",
+     "applied": true
+    },
+    "early_brake": {
+     "version": 1,
+     "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1"
+    },
+    "marker_jump": {
+     "version": 1,
+     "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9",
+     "applied": false
+    },
+    "sighted_descent": {
+     "version": 1,
+     "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6",
+     "applied": true,
+     "mode": "on"
+    },
+    "gap_pilot": {
+     "version": 5,
+     "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+    },
+    "gap_spec_motor": "brain08",
+    "pilot_has": {
+     "turn_first": true,
+     "vertical_guard": true,
+     "descent_view": true,
+     "gap_aim": true,
+     "lag_turn": true,
+     "clearance_brake": true,
+     "contact_support": true,
+     "contact_apply": false,
+     "motor_assist": true,
+     "motor_assist_version": 4,
+     "clearance_ray": true,
+     "stale_apply": true,
+     "early_brake": true,
+     "early_apply": true,
+     "marker_jump": true,
+     "marker_jump_apply": false,
+     "sighted_descent": true,
+     "sighted_apply": true
+    },
+    "metadata_versions": {
+     "wall_pilot": 6,
+     "vertical_guard": 4,
+     "descent_view": 3,
+     "motor_assist": 4,
+     "early_brake": 1,
+     "marker_jump": 1,
+     "sighted_descent": 1
+    },
+    "csv_tail": {
+     "wall": 4,
+     "vertical": 6,
+     "commit": 1,
+     "view": 8,
+     "assist": 8,
+     "stale": 2,
+     "marker": 2,
+     "early": 1,
+     "sighted": 3,
+     "view_columns": [
+      "view_sink_bound",
+      "view_withheld",
+      "view_boost",
+      "contact_unexplained",
+      "contact_gain",
+      "contact_fire",
+      "contact_armed",
+      "contact_excluded"
+     ],
+     "assist_columns": [
+      "assist_pilot_vx",
+      "assist_pilot_vy",
+      "assist_pilot_vz",
+      "assist_horizontal",
+      "assist_vertical",
+      "assist_source",
+      "assist_plan",
+      "assist_wall_ahead"
+     ],
+     "stale_columns": [
+      "cap_ray_deg",
+      "cap_reseat"
+     ],
+     "marker_columns": [
+      "marker_held",
+      "marker_candidates"
+     ],
+     "early_columns": [
+      "early_brake"
+     ],
+     "sighted_columns": [
+      "sighted_los",
+      "sighted_bound",
+      "sighted_withheld"
+     ]
+    },
+    "seconds": 480.0,
+    "limits": [
+     250.0,
+     14.0,
+     2000.0
+    ],
+    "log": "runs/fast-stack-20260923/straw-brain11cw13-r6-01.csv",
+    "record": "runs/fast-stack-20260923/straw-brain11cw13-r6-01.mp4",
+    "pause_on_stop": true,
+    "udp_out": "127.0.0.1:9003"
+   },
+   "b_minus_pd": {
+    "command": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-fast6-r6-01.csv --record runs/fast-stack-20260923/minus-fast6-r6-01.mp4 --video-encoder h264_nvenc",
+    "checkpoint": "runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "checkpoint_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+    "motor": "pd",
+    "contract": "fast_velocity_pd_v1",
+    "stack": "on",
+    "applied": true,
+    "looming": true,
+    "ring_reader": "earlier reader (no rule)",
+    "lag_turn": {
+     "version": 2,
+     "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+     "applied": true,
+     "motor_contract": "fast_velocity_pd_v1"
+    },
+    "wall_pilot": {
+     "version": 6,
+     "sha256": "fe65951d3d683bc87307cb0d978bf2cfab168f9bc5e460a7af9b39644634869f",
+     "applied": true,
+     "motor_contract": "fast_velocity_pd_v1",
+     "stopping_model": "fast_velocity_pd_v1"
+    },
+    "vertical_guard": {
+     "version": 4,
+     "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+     "applied": true
+    },
+    "descent_view": {
+     "version": 3,
+     "sha256": "2bdb17fc2479fc2d05b8521d65037cbd8f8e56f2b4a46b7cf7b33034ecbbb0cb",
+     "applied": true,
+     "contact_support": "shadow"
+    },
+    "motor_assist": {
+     "version": 4,
+     "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6",
+     "applied": false,
+     "motor_contract": "fast_velocity_pd_v1"
+    },
+    "stale_evidence": {
+     "version": 2,
+     "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a",
+     "applied": true
+    },
+    "early_brake": {
+     "version": 1,
+     "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e",
+     "applied": false,
+     "motor_contract": "fast_velocity_pd_v1"
+    },
+    "marker_jump": {
+     "version": 1,
+     "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9",
+     "applied": false
+    },
+    "sighted_descent": {
+     "version": 1,
+     "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6",
+     "applied": true,
+     "mode": "on"
+    },
+    "gap_pilot": {
+     "version": 5,
+     "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+    },
+    "gap_spec_motor": "fast_pd",
+    "pilot_has": {
+     "turn_first": true,
+     "vertical_guard": true,
+     "descent_view": true,
+     "gap_aim": true,
+     "lag_turn": true,
+     "clearance_brake": true,
+     "contact_support": true,
+     "contact_apply": false,
+     "motor_assist": false,
+     "motor_assist_version": null,
+     "clearance_ray": true,
+     "stale_apply": true,
+     "early_brake": false,
+     "early_apply": true,
+     "marker_jump": true,
+     "marker_jump_apply": false,
+     "sighted_descent": true,
+     "sighted_apply": true
+    },
+    "metadata_versions": {
+     "wall_pilot": 6,
+     "vertical_guard": 4,
+     "descent_view": 3,
+     "motor_assist": null,
+     "early_brake": null,
+     "marker_jump": 1,
+     "sighted_descent": 1
+    },
+    "csv_tail": {
+     "wall": 4,
+     "vertical": 6,
+     "commit": 1,
+     "view": 8,
+     "assist": 8,
+     "stale": 2,
+     "marker": 2,
+     "early": 1,
+     "sighted": 3,
+     "view_columns": [
+      "view_sink_bound",
+      "view_withheld",
+      "view_boost",
+      "contact_unexplained",
+      "contact_gain",
+      "contact_fire",
+      "contact_armed",
+      "contact_excluded"
+     ],
+     "assist_columns": [
+      "assist_pilot_vx",
+      "assist_pilot_vy",
+      "assist_pilot_vz",
+      "assist_horizontal",
+      "assist_vertical",
+      "assist_source",
+      "assist_plan",
+      "assist_wall_ahead"
+     ],
+     "stale_columns": [
+      "cap_ray_deg",
+      "cap_reseat"
+     ],
+     "marker_columns": [
+      "marker_held",
+      "marker_candidates"
+     ],
+     "early_columns": [
+      "early_brake"
+     ],
+     "sighted_columns": [
+      "sighted_los",
+      "sighted_bound",
+      "sighted_withheld"
+     ]
+    },
+    "seconds": 150.0,
+    "limits": [
+     250.0,
+     14.0,
+     2000.0
+    ],
+    "log": "runs/fast-stack-20260923/minus-fast6-r6-01.csv",
+    "record": "runs/fast-stack-20260923/minus-fast6-r6-01.mp4",
+    "pause_on_stop": true,
+    "udp_out": "127.0.0.1:9003"
+   },
+   "c_minus_brain11": {
+    "command": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-brain11cw13-r6-01.csv --record runs/fast-stack-20260923/minus-brain11cw13-r6-01.mp4 --video-encoder h264_nvenc",
+    "checkpoint": "runs/fast-brain-11-b-cw13/candidate.pt",
+    "checkpoint_sha256": "44cca3c4fc3e40f8ab1cc9cb5e94337edf0229dc10d1611e271e640e5627c11d",
+    "motor": "brain",
+    "contract": "fast_velocity_brain_v1",
+    "stack": "on",
+    "applied": true,
+    "looming": true,
+    "ring_reader": "earlier reader (no rule)",
+    "lag_turn": {
+     "version": 2,
+     "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1"
+    },
+    "wall_pilot": {
+     "version": 6,
+     "sha256": "fe65951d3d683bc87307cb0d978bf2cfab168f9bc5e460a7af9b39644634869f",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1",
+     "stopping_model": "fast_velocity_brain_v1"
+    },
+    "vertical_guard": {
+     "version": 4,
+     "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+     "applied": true
+    },
+    "descent_view": {
+     "version": 3,
+     "sha256": "2bdb17fc2479fc2d05b8521d65037cbd8f8e56f2b4a46b7cf7b33034ecbbb0cb",
+     "applied": true,
+     "contact_support": "shadow"
+    },
+    "motor_assist": {
+     "version": 4,
+     "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1"
+    },
+    "stale_evidence": {
+     "version": 2,
+     "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a",
+     "applied": true
+    },
+    "early_brake": {
+     "version": 1,
+     "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e",
+     "applied": true,
+     "motor_contract": "fast_velocity_brain_v1"
+    },
+    "marker_jump": {
+     "version": 1,
+     "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9",
+     "applied": false
+    },
+    "sighted_descent": {
+     "version": 1,
+     "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6",
+     "applied": true,
+     "mode": "on"
+    },
+    "gap_pilot": {
+     "version": 5,
+     "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+    },
+    "gap_spec_motor": "brain08",
+    "pilot_has": {
+     "turn_first": true,
+     "vertical_guard": true,
+     "descent_view": true,
+     "gap_aim": true,
+     "lag_turn": true,
+     "clearance_brake": true,
+     "contact_support": true,
+     "contact_apply": false,
+     "motor_assist": true,
+     "motor_assist_version": 4,
+     "clearance_ray": true,
+     "stale_apply": true,
+     "early_brake": true,
+     "early_apply": true,
+     "marker_jump": true,
+     "marker_jump_apply": false,
+     "sighted_descent": true,
+     "sighted_apply": true
+    },
+    "metadata_versions": {
+     "wall_pilot": 6,
+     "vertical_guard": 4,
+     "descent_view": 3,
+     "motor_assist": 4,
+     "early_brake": 1,
+     "marker_jump": 1,
+     "sighted_descent": 1
+    },
+    "csv_tail": {
+     "wall": 4,
+     "vertical": 6,
+     "commit": 1,
+     "view": 8,
+     "assist": 8,
+     "stale": 2,
+     "marker": 2,
+     "early": 1,
+     "sighted": 3,
+     "view_columns": [
+      "view_sink_bound",
+      "view_withheld",
+      "view_boost",
+      "contact_unexplained",
+      "contact_gain",
+      "contact_fire",
+      "contact_armed",
+      "contact_excluded"
+     ],
+     "assist_columns": [
+      "assist_pilot_vx",
+      "assist_pilot_vy",
+      "assist_pilot_vz",
+      "assist_horizontal",
+      "assist_vertical",
+      "assist_source",
+      "assist_plan",
+      "assist_wall_ahead"
+     ],
+     "stale_columns": [
+      "cap_ray_deg",
+      "cap_reseat"
+     ],
+     "marker_columns": [
+      "marker_held",
+      "marker_candidates"
+     ],
+     "early_columns": [
+      "early_brake"
+     ],
+     "sighted_columns": [
+      "sighted_los",
+      "sighted_bound",
+      "sighted_withheld"
+     ]
+    },
+    "seconds": 150.0,
+    "limits": [
+     250.0,
+     14.0,
+     2000.0
+    ],
+    "log": "runs/fast-stack-20260923/minus-brain11cw13-r6-01.csv",
+    "record": "runs/fast-stack-20260923/minus-brain11cw13-r6-01.mp4",
+    "pause_on_stop": true,
+    "udp_out": "127.0.0.1:9003"
+   },
+   "d_pine_pd": {
+    "command": ".venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/pine-fast6-r6-01.csv --record runs/fast-stack-20260923/pine-fast6-r6-01.mp4 --video-encoder h264_nvenc",
+    "checkpoint": "runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+    "checkpoint_sha256": "dad013ed19b161da1f8930f318b8763f5f0083d869684363ca573ca5dbb17ad6",
+    "motor": "pd",
+    "contract": "fast_velocity_pd_v1",
+    "stack": "on",
+    "applied": true,
+    "looming": true,
+    "ring_reader": "earlier reader (no rule)",
+    "lag_turn": {
+     "version": 2,
+     "sha256": "d4eb83da51ab517adb0fbadc81c1e42e3776938f09d336fec05a8b21fb0c9860",
+     "applied": true,
+     "motor_contract": "fast_velocity_pd_v1"
+    },
+    "wall_pilot": {
+     "version": 6,
+     "sha256": "fe65951d3d683bc87307cb0d978bf2cfab168f9bc5e460a7af9b39644634869f",
+     "applied": true,
+     "motor_contract": "fast_velocity_pd_v1",
+     "stopping_model": "fast_velocity_pd_v1"
+    },
+    "vertical_guard": {
+     "version": 4,
+     "sha256": "409d06f9ded73c35e3b79887488bc1811f86a56d7646049b976b4a7142a2c0b8",
+     "applied": true
+    },
+    "descent_view": {
+     "version": 3,
+     "sha256": "2bdb17fc2479fc2d05b8521d65037cbd8f8e56f2b4a46b7cf7b33034ecbbb0cb",
+     "applied": true,
+     "contact_support": "shadow"
+    },
+    "motor_assist": {
+     "version": 4,
+     "sha256": "8954a798e127a5594fa4f761f57a238ab0456dd607263b107e17a871185fd5a6",
+     "applied": false,
+     "motor_contract": "fast_velocity_pd_v1"
+    },
+    "stale_evidence": {
+     "version": 2,
+     "sha256": "4a9516068f1f71229cb9cb5a4c3caf4058740aab756bc7b890da4311ee8bd53a",
+     "applied": true
+    },
+    "early_brake": {
+     "version": 1,
+     "sha256": "ecf76971107f4abb459d6b8f994d0a8ae63a6a5fc1735cdc5d345e1a8513f23e",
+     "applied": false,
+     "motor_contract": "fast_velocity_pd_v1"
+    },
+    "marker_jump": {
+     "version": 1,
+     "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9",
+     "applied": false
+    },
+    "sighted_descent": {
+     "version": 1,
+     "sha256": "49b8d7a79f32d5c5d4b63bdd815ba4092f9de35ce8c853a9580cb59f401424e6",
+     "applied": true,
+     "mode": "on"
+    },
+    "gap_pilot": {
+     "version": 5,
+     "sha256": "43c304204f93b3e98e17a1d47d456fab47f5aa52f47a7b229b13f5c83cce5c0f"
+    },
+    "gap_spec_motor": "fast_pd",
+    "pilot_has": {
+     "turn_first": true,
+     "vertical_guard": true,
+     "descent_view": true,
+     "gap_aim": true,
+     "lag_turn": true,
+     "clearance_brake": true,
+     "contact_support": true,
+     "contact_apply": false,
+     "motor_assist": false,
+     "motor_assist_version": null,
+     "clearance_ray": true,
+     "stale_apply": true,
+     "early_brake": false,
+     "early_apply": true,
+     "marker_jump": true,
+     "marker_jump_apply": false,
+     "sighted_descent": true,
+     "sighted_apply": true
+    },
+    "metadata_versions": {
+     "wall_pilot": 6,
+     "vertical_guard": 4,
+     "descent_view": 3,
+     "motor_assist": null,
+     "early_brake": null,
+     "marker_jump": 1,
+     "sighted_descent": 1
+    },
+    "csv_tail": {
+     "wall": 4,
+     "vertical": 6,
+     "commit": 1,
+     "view": 8,
+     "assist": 8,
+     "stale": 2,
+     "marker": 2,
+     "early": 1,
+     "sighted": 3,
+     "view_columns": [
+      "view_sink_bound",
+      "view_withheld",
+      "view_boost",
+      "contact_unexplained",
+      "contact_gain",
+      "contact_fire",
+      "contact_armed",
+      "contact_excluded"
+     ],
+     "assist_columns": [
+      "assist_pilot_vx",
+      "assist_pilot_vy",
+      "assist_pilot_vz",
+      "assist_horizontal",
+      "assist_vertical",
+      "assist_source",
+      "assist_plan",
+      "assist_wall_ahead"
+     ],
+     "stale_columns": [
+      "cap_ray_deg",
+      "cap_reseat"
+     ],
+     "marker_columns": [
+      "marker_held",
+      "marker_candidates"
+     ],
+     "early_columns": [
+      "early_brake"
+     ],
+     "sighted_columns": [
+      "sighted_los",
+      "sighted_bound",
+      "sighted_withheld"
+     ]
+    },
+    "seconds": 150.0,
+    "limits": [
+     250.0,
+     14.0,
+     2000.0
+    ],
+    "log": "runs/fast-stack-20260923/pine-fast6-r6-01.csv",
+    "record": "runs/fast-stack-20260923/pine-fast6-r6-01.mp4",
+    "pause_on_stop": true,
+    "udp_out": "127.0.0.1:9003"
+   }
+  }
+ }
+}

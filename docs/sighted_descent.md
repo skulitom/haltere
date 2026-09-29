@@ -241,6 +241,10 @@ Nothing is flight evidence.
 
 ## Live plan (for the main session; development flights)
 
+**Superseded on `m6`:** fly the one-stack plan of the flight card's section "Round 6 (offline): the merged m6 stack"
+(`docs/flight_cards/2026-09-26_obstacles_m2.md`), which adds `--sighted-descent on` to every run. The command below is
+this branch's own proposal and is kept for the record.
+
 No run of this round is flown by this branch. If the main session flies it (a disclosed development deviation: the
 rule fails 2 of its 12 frozen gates, no brain is selected), the Straw Bale run of the round-5 amended plan (c) adds
 one flag:

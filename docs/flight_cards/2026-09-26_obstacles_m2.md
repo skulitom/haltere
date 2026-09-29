@@ -2280,3 +2280,480 @@ near 15-16 degrees from about 77.5 s, 6 m/s kept, no touch at y 133) and the Imm
 **Blockers, updated:** the Straw downhill row of round 5 now has a pilot-side lever that holds the requested descent to
 the ring's line of sight (offline evidence only); a live Straw lap with it, and a fix for the brain's sink overshoot
 in view, remain. The contact audit's video validation is unchanged.
+
+## Round 6 (offline): the merged m6 stack, replays, harness and surrogate, and the live plan
+
+**Nothing in this section has flown.** Branch `m6` is `m5` (`bc7c71c`) with the three round-6 branches merged in this
+order: `m6-gates` (`01f10c9`: marker-jump rule v1 and its gates, the gate-clearance analysis, replay-harness switches),
+`m6-brake` (`13bacfe`: early brake v1, motor assist v4, their gates) and `m6-ground` (`1102c45`: sighted descent v1 and
+its gates, the Straw downhill rebuild). Every live log replayed below was read by at least one round-6 branch while it
+designed its rule, so **every replay here is development evidence**. The closed-loop sets are fresh (course seeds,
+scenario values and sim seed 113 chosen before any run and used by nothing before); they are reports, not gates.
+
+**Merges.** `m6-gates` merged cleanly. `m6-brake` and then `m6-ground` conflicted with the branches before them in
+`fast_race_cue.py`, `visual_brain.py`, the replay harness, `deployed_pilot.py`, the motor-assist CSV-tail test and this
+card. Every conflict was independent additions, and all sides were kept:
+
+- `FastRaceCue` takes `marker_jump`/`marker_jump_apply`, `early_brake`/`early_apply` and
+  `sighted_descent`/`sighted_apply`; its metadata gains each rule's record when it is declared.
+- The runner resolves `--marker-jump`, `--early-brake` (inside the obstacle stack) and `--sighted-descent` and passes
+  them to the controller. The CSV ends with the view and contact columns, the assist columns (8), the stale-evidence
+  columns (2), then `marker_held`, `marker_candidates` (with `--marker-jump`), `early_brake` (with `--early-brake on`)
+  and `sighted_los`, `sighted_bound`, `sighted_withheld` (with `--sighted-descent`). The column comments and the three
+  CSV-tail tests (`test_fast_race_cue_motor_assist.py`, `test_round6_brake.py`, `test_sighted_descent.py`) now state
+  that order.
+- The replay harness takes `--marker-jump [--marker-jump-mode shadow]`, `--lag-turn off`, `--gap-aim off`,
+  `--early-brake` and `--sighted-descent [--sighted-mode shadow]` together.
+- `deployed_pilot_kwargs` takes `marker_jump=None`, `early_brake=False` and `sighted_descent='off'` beside
+  `motor_assist` (`True`: version 4; `3`: the kept round-5 declaration).
+- This card keeps the three round-6 branch sections above in the order gates, brake, ground.
+- `docs/fast_racing.md` gained the early-brake and sighted-descent rows; its motor-assist and descent-view rows now name
+  the current versions.
+
+**Can the brain release graduate now? No.** The bar is one frozen stack that finishes Straw Bale 3/3 with no ground
+contact and Minus Two 3/3. After round 6:
+
+- **No brain is selected.** `fast-brain-11-b-cw13` is flown because it is the only braking brain with live Straw and
+  Minus evidence, not because a gate selected it.
+- **Every round-6 rule fails at least one of its own frozen gates**: the marker-jump rule fails its held-out gates
+  (it is flown in shadow only), the early brake and motor assist v4 pass 16 of 21, the sighted descent 10 of 12. The
+  round-4b/5 rules keep their failures (contact support v3 3 of 13 safety gates, guard v4, the view rule, the wall
+  pilot's brake floor, the contact audit's video check).
+- **Two of the three video-verified Straw crashes are not addressed:** the gap aim's line at the oblique FAT SHARK arch
+  (`r5-noassist-01`) and the false marker at the lap-2 start arch (`r4b-noassist-02`). The third (`r5-noassist-04`,
+  top bar after a late support climb) is addressed only upstream: the sighted descent is meant to prevent the downhill
+  touch, and the plan below flies contact support in shadow so that a late climb cannot happen.
+- **Nothing of round 6 has flown.**
+
+The flights below are development flights. They can show whether the round-6 fixes work live; they cannot graduate the
+release.
+
+### Frozen gates of the three round-6 branches (as scored by each branch)
+
+| Branch | Declaration (content sha256) | Gates; freeze / scores | Result |
+|---|---|---|---|
+| `m6-gates` | `configs/pilot/marker_jump.json` v1 `8752cd7e` | `marker_jump_gates.json` v1 `4eb99684`; `f4b2ebd` / `58c3d48` (scorer fix `1249e77` before scoring) | **Fails its held-out gates** H1 (6 new stops), H2 (34 of 40 surrogate windows moved more than 0.3 m) and HG2 (fast-brain-08 28 -> 27 finishes). Passes identity (126/126 off = m5, 126/126 shadow = off), its development case (surrogate 1.034 m from the start-arch contact point), H3, HG1, HG3, HG4. Not flown with authority; `shadow` is identical to off |
+| `m6-brake` | `configs/obstacles/early_brake.json` v1 `ecf76971`; `configs/pilot/motor_assist.json` v4 `8954a798` (v3 kept as `motor_assist_v3.json` `7c3b49e7`, refused by the runner) | `early_brake_gates.json` v1 `3b029e32`; `33a27dd` / `13bacfe` (scorer fix `b4d0e3b` before scoring) | **16 of 21.** Fails H1 fast-brain-11 hairpins (10 clean, 2 walls, 2 ceiling contacts against the base's 0), H2 fast-brain-11 pass-through (lowest 0.66 m/s with v4, bound 0.75), H4b quiet early brake (Straw brain-08 laps 1.88-2.59%, `pine-brain08-01` 3.95%; bound 1.5%), H4d quiet with v4 (4.21-5.24%, 7.68%; bound 3%) and H5 ceiling share (0.38 s on `straw-brain08-01`, v3 identical) |
+| `m6-ground` | `configs/pilot/sighted_descent.json` v1 `49b8d7a7` | `sighted_descent_gates.json` v1 `46deedee`; `98c4609` / `1102c45` (scored on `afd6277`; a report-only field's sign fixed after the first scoring, no gate changed) | **10 of 12.** Fails SD_Replay_KeepSpeed (horizontal request 0.111 / 0.173 m/s lower for at most 0.25 s on the counterfactual fast-brain-08 laps) and SD_Surrogate_Hills fast PD (high passes 8 -> 9). Held-out Straw variations: fast-brain-11 contacts 15 -> 8 (36.86 -> 20.50 s), fast PD 16 -> 11 |
+
+Every frozen declaration and gate file under `configs/` (61 files) kept its content and hash: its canonical hash equals
+its own `sha256`, and its bytes equal the round-6 branch that added or changed it (8 files, each changed by one branch
+only) or `m5` (53 files). The runner's own loaders on `m6` load:
+
+| Declaration | Version | Content sha256 |
+|---|---|---|
+| `configs/obstacles/lag_turn.json` | 2 | `d4eb83da51ab...` |
+| `configs/obstacles/gap_pilot.json` (gap cue v2) | 5 | `43c304204f93...` |
+| `configs/obstacles/wall_pilot.json` | 6 | `fe65951d3d68...` |
+| `configs/obstacles/vertical_guard.json` | 4 | `409d06f9ded7...` |
+| `configs/obstacles/stale_evidence.json` | 2 | `4a9516068f1f...` |
+| `configs/obstacles/early_brake.json` (`--early-brake on`) | 1 | `ecf76971107f...` |
+| `configs/pilot/descent_view.json` (contact support v3) | 3 | `2bdb17fc2479...` |
+| `configs/pilot/sighted_descent.json` (`--sighted-descent on\|shadow`) | 1 | `49b8d7a79f32...` |
+| `configs/pilot/motor_assist.json` (brain contract only) | 4 | `8954a798e127...` |
+| `configs/pilot/marker_jump.json` (`--marker-jump on\|shadow`; **failed its held-out gates**) | 1 | `8752cd7e2860...` |
+| `configs/pilot/ring_marker.json` (off by default; failed its gates in round 5) | 1 | `09824e473659...` |
+
+They refuse the kept wall pilot v1-v5, vertical guard v1-v3, descent view v1-v2, motor assist v1-v3, stale evidence v1
+and gap pilot v1-v4 (checked with each loader).
+
+### Identity: the round-6 rules off (or in shadow) are m5
+
+Open-loop replays of all 31 logs with ticks (the 27 of round 5 and the four round-5 live flights) through a `git
+archive` of `m5` (`bc7c71c`) and of `m6` (`eb22ecd`, the merged code), each tree with its own harness, run from that
+tree. **226 of 226 pairs are bit-identical**, in the command arrays and in every other array both replays carry:
+
+- the default pilot (`--stack none`): 31 of 31;
+- the stack in shadow: 31 of 31;
+- the round-5 stack as flown on Straw Bale in round 5 (`--stack on --near-on-path --throttle-column command_thr
+  --descent-view --stale-evidence`, no assist): 31 of 31;
+- the same with motor assist v3 as flown on Minus Two in round 5 (on `m6` the kept `motor_assist_v3.json`): 31 of 31;
+- `m6`'s round-5 stack with the marker-jump rule and the sighted descent both in shadow, against `m6`'s round-5 stack and
+  against `m5`'s: 31 of 31 each;
+- `m6`'s shadow stack with the early brake against `m5`'s shadow stack: 31 of 31;
+- the three live fast-PD logs of rounds 4-5 through the full `m6` stack against the same stack without the sighted
+  descent, without the assist and without the early brake: 3 of 3 each (the PD has no early-brake or assist entry, and
+  the sighted descent changes no request on these Minus Two logs).
+
+On the merged tree the brake branch's full-stack digest test (round-5 stack with assist v3 = `m5`) and the ground
+branch's golden digests (default pilot, view rule, round-5 view rule with contact support v3; rule absent and in shadow)
+still pass. The full suite passed on the merged code (`eb22ecd`): **1266 passed in 339.52 s**, and again on the
+integration commit, which adds only documents (1266 passed in 291.89 s). Scripts and raw outputs
+are in the session scratchpad under `m6/integrate/`. Results: `docs/experiments/round6_integration.json`.
+
+### Open-loop replays: what the m6 stack changes, per log (development evidence)
+
+The live logs of rounds 4, 4b and 5 that have ticks (the two r4-01 logs have none) and the two fast-brain-08 Straw
+finishes, each replayed at its recorded states. The recorded motion does not respond to the requests, so every figure
+is what a stack would have **requested** there; cap tracking keeps pushing a drone that cannot slow, so the removal
+figures are upper bounds. The Straw finishes of fast-brain-08 flew without the obstacle stack and use the offline
+looming stream, which carries no vertical evidence at the uphill rings.
+
+- `m5`: the round-5 stack as flown on Straw Bale in round 5 (`--stack on --near-on-path --throttle-column command_thr
+  --descent-view --stale-evidence`, contact support v3 on, no assist), on the `m5` archive; `m5ma3` adds motor assist v3
+  (as flown on Minus Two in `minus-brain11cw13-r5-02`).
+- `m6`: the `m5` flags plus `--early-brake`, `--sighted-descent`, `--motor-assist` (v4) and `--marker-jump` in shadow, on
+  the `m6` archive. Its shares: the same without the assist, without the early brake, without the sighted descent.
+- The stack of the live plan below is `m6` with `--contact-support shadow`. It equals `m6` on every log except where
+  contact support v3 fires: 1.91 s of `straw-brain11cw13-r4b-noassist-02` and 12.6-13.4 s of the two fast-brain-08 laps.
+
+| Log | Motor | Request changed vs `m5`, s (assist v4 / early brake / sighted descent) | Early brake, s; lowest request in an episode, m/s | Sighted descent withheld sink, s | Request travel removed vs `m5`, % (without the assist) | Contact-support v3 onsets: `m5` -> `m6` | Marker jump in shadow: would-hold ticks |
+|---|---|---|---|---|---|---|---|
+| `minus-fast6-r4-02` | fast PD | 0.0 (0.0 / 0.0 / 0.0) | - | 0.0 | 0.0 (0.0) | 0 -> 0 | 0 |
+| `minus-brain10b-r4-02` | brain | 5.42 (5.34 / 1.46 / 0.0) | 6.97; 2.5 | 0.15 | 7.55 (1.96) | 0 -> 0 | 0 |
+| `minus-brain09b-r4-01` | brain | 11.13 (8.33 / 6.44 / 0.0) | 10.25; 0.27 | 0.0 | 7.51 (3.63) | 0 -> 0 | 0 |
+| `minus-fast6-r4b-01` | fast PD | 0.0 (0.0 / 0.0 / 0.0) | - | 0.0 | 0.0 (0.0) | 0 -> 0 | 10 |
+| `minus-brain11cw13-r4b-noassist-01` | brain | 9.88 (8.27 / 7.99 / 0.0) | 8.5; 0.55 | 0.04 | 8.61 (3.14) | 0 -> 0 | 0 |
+| `straw-brain11cw13-r4b-noassist-02` | brain | 16.19 (13.86 / 4.81 / 2.38) | 3.83; 2.5 | 2.76 | 1.31 (0.79) | 1 -> 1 (80.08 s) | 63 |
+| `straw-brain11cw13-r5-noassist-01` | brain | 0.06 (0.06 / 0.0 / 0.0) | 0.0; - | 0.0 | 0.0 (0.0) | 0 -> 0 | 0 |
+| `straw-brain11cw13-r5-noassist-04` | brain | 13.74 (12.1 / 3.36 / 4.11) | 2.44; 2.5 | 2.43 | 1.32 (0.76) | 1 (80.08 s) -> 0 | 20 |
+| `minus-fast6-r5-01` | fast PD | 0.0 (0.0 / 0.0 / 0.0) | - | 0.0 | 0.0 (0.0) | 0 -> 0 | 12 |
+| `minus-brain11cw13-r5-02` | brain | 1.64 (1.48 / 1.58 / 0.0) | 1.58; 1.75 | 0.0 | 4.79 (2.93) | 0 -> 0 | 0 |
+| `straw-brain08-04` | brain | 105.58 (90.97 / 44.65 / 9.08) | 30.47; 2.5 | 6.74 | 4.57 (2.59) | 10 -> 10 | 66 |
+| `straw-brain08-06` | brain | 97.13 (87.8 / 26.87 / 10.07) | 23.43; 0.69 | 5.14 | 2.99 (1.41) | 6 -> 6 | 123 |
+
+The shares overlap (a tick can change for several rules). Against `m5ma3`, the Minus brain logs lose 8.28-13.66% of
+their request travel to assist v3 and 4.79-8.61% to the `m6` stack.
+
+**Straw Bale, fast-brain-11-b-cw13 (the three development crashes):**
+
+- **Downhill touch (both laps that reached it).** The sighted descent withholds sink from 77.42 s (`r4b-noassist-02`)
+  and 77.61 s (`r5-noassist-04`) to the touch, up to 1.08 and 0.94 m/s. The steepest requested path in 72 s to the
+  touch is 16.06 and 15.2 deg (`m5`: 23.52 and 22.15; the ring lay 13.6-15.1 deg below the drone). The horizontal
+  request stays 5.63-6.0 m/s, as in `m5`. The assist adds up to 0.23 m/s of climb there (its sag compensation: the
+  recorded drone sinks faster than the shallower request); without it the path figures are 16.11 and 15.29 deg.
+- **After the touch (`r5-noassist-04`, top bar at 81.86 s).** Contact support v3 does not fire in the `m6` replay
+  (`m5`: 80.08 s); it still fires at 80.08 s without the assist or without the sighted descent, so the changed requests
+  after the touch account for it, and it says nothing about live behaviour. In `r4b-noassist-02` it fires at 80.08 s in
+  every variant, after the audited touch ended (80.044 s); in shadow that is logged and no climb starts. In open loop the
+  pilot's older support rule then starts a climb at 80.48 s (`r4b-noassist-02`) and 80.76 s (`r5-noassist-04`),
+  because the recorded drone climbed (it flew the round-5 contact climb) while the replay asks to sink. Open loop cannot
+  say whether either would start live, or whether the touch itself would happen.
+- **FAT SHARK (`r5-noassist-01`, 19.4 s).** The `m6` stack changes 0.06 s of requests before the crash (the assist, at
+  most 0.06 m/s). The early brake has no episode there, and nothing in the stack acts on the gap aim's line, which the
+  gates branch found on video and in the surrogate to be the cause. In `r4b-noassist-02`'s pass the early brake acts from
+  18.83 to 20.14 s and the request reaches its 2.5 m/s floor (without the assist 3.83; `m5` 4.4).
+- **Lap-2 start arch (`r4b-noassist-02`, 110.8-112.4 s).** No request changes (lowest 4.88 m/s, as `m5`; the looming
+  reads no evidence against the sky). The marker jump in shadow would hold the false reading at 111.40 s; it would also
+  have held real rings at 64.61, 70.60, 71.93 and 87.14 s, which is why it failed its held-out gates.
+- **Early brake elsewhere on these laps:** `r4b-noassist-02` at (43.8, 63.5) and (-30.5, 28.4), `r5-noassist-04` at
+  (43.7, 63.7) and (1.6, 194.8), each floored at 2.5 m/s. Assist v4's ceiling-share hold never acts on these laps (0 s).
+
+**Straw Bale, fast-brain-08 finishes (flown without the stack; counterfactual):**
+
+- The early brake acts 24 and 18 times (30.47 and 23.43 s), at the arches and, because the offline stream lacks
+  vertical evidence, at the uphill rings; 4.57% and 2.99% of `m5`'s request travel is removed (2.59% and 1.41% without
+  the assist).
+- **An interaction of the two brake-branch rules at a lost marker.** At `straw-brain08-06`'s first start arch (7.82 s,
+  the marker lost for about 0.1 s, pilot state coast) the early brake and assist v4 together ask 0.69 m/s, where the
+  early brake alone asks 4.0 and the assist alone 4.19 (`m5` 6.0). At (-36.3, 98.5), 89.6 s, together 1.39 m/s (alone
+  3.49 and 2.76). Outside the ring-in-view floor the early episode brakes as the governor does, and the assist's cap
+  tracking then follows a drone that, in the replay, keeps flying 4.8-5.9 m/s. It is an upper bound, and it does not
+  occur on the brain-11 laps (lowest 2.5 m/s), but it is a crawl risk at an arch where the marker drops out. The brake
+  branch's crawl gate measured only ticks with the ring ahead.
+- The round-5 ceiling-cut window (`straw-brain08-06`, 37.49-38.77 s): the pilot's climb request stays 1.47-1.62 m/s
+  (assist v3: 0-1.47); the ceiling-share hold acts 1.01 s in the whole lap.
+- The sighted descent withholds sink 6.74 and 5.14 s (at most 0.42 and 0.53 m/s); in `-04`'s first downhill (75-80.5 s,
+  two audited slides) the steepest request falls from 10.12 to 9.51 deg.
+
+**Minus Two:**
+
+- **Brain hairpin (`minus-brain11cw13-r4b-noassist-01`, wall at 23.596 s).** The governor's cap first binds 1.18 s
+  before the impact (`m5` 0.76 s). The request falls at least 1 m/s below `m5`'s from 1.15 s before the impact. At the
+  last tick the request along the travel direction is 0.17 m/s (`m5` 2.17; `m5ma3` -0.02; `m6` without the assist
+  2.28). The early brake alone does not make the brain follow; the assist's cap tracking does (the brake branch's
+  surrogate window: 1.00 m/s at the wall with both, 3.74 with the early brake alone).
+- **First arch (`minus-brain11cw13-r5-02`, the assist-v3 crash).** From 6.61 s (x 16.4, the arch at about x 19) the
+  request falls 6.0 -> 4.17 -> 2.59 -> 2.50 m/s and stays at the 2.5 m/s floor while the ring is in view, where v3 asked
+  1.02 -> 0.23 m/s (the live crawl) and `m5` without an assist kept 6.0 until 6.81 s. The window's lowest request,
+  1.75 m/s, comes at 8.0-8.09 s, when the recorded drone had already crawled to 1-1.7 m/s and the pilot's own
+  acceleration-limited request was below the floor.
+- **Arches and pillars (brain logs):** early episodes at the first arch, around pillar A (x 43.8-44.6; lowest 1.78 m/s
+  in `r4b-noassist-01`) and at the 90-degree arch (x 67), floored at 2.5 m/s while the ring is ahead. Episodes go below
+  the floor only at the hairpin (0.27-0.55 m/s), around pillar A and at the end of `r5-02` (above).
+- **Fast PD:** no request changes on its three logs (no early-brake or assist entry; the sighted descent does not act).
+  The `r5-01` pillar exit (the stand-off cap along the old wall ray, diagnosed by the brake branch) is unchanged. The
+  marker jump in shadow would hold at 39.65 s (`r4b-01`) and 23.2 s (`r5-01`), two of its held-out new-stop cases.
+
+### Harness and surrogate (closed loop in the identified simulator; not flight evidence)
+
+Fresh sets, chosen here before any run and used by no gate, screening or earlier integration: sim seed 113;
+hairpins turn 50/90/130 deg x arch 9/13 m x wall 2.3/2.7 m and pass-through arches turn 25/75 deg x see-through
+1.4/1.9 m x surface 0.05/0.3 m, both with live-like wall samples (no below fraction, as the recorded Minus walls); the
+gate-post set of `m6-gates` (turn -60/-15/30/75 deg x half width 1.3/1.7 m x false marker 0/-17/+15 deg); descent
+surrogate hill 9300-9311 and steep 9400-9407; the Straw downhill rebuild of `m6-ground` with its logged geometry (16
+drones) and variations 2001-2016. All runs on the `m6` tree:
+
+- `m5`: `deployed_pilot_kwargs(contract, stale_evidence=True)` (the round-6 rules off: bit-identical to `m5` in the
+  replays); `m5ma3`: plus the kept motor assist v3;
+- `m6`: plus the early brake, motor assist v4, the sighted descent and the marker jump in shadow;
+- `m6` without the assist.
+
+Contact support v3 was on and made **no onset in any run**, so these runs are also the plan's stack (contact support in
+shadow). The surrogate has no looming or gap samples (the early brake, gap aim, turn-first and ceiling guard stay idle
+there) and no contact physics; the harness walls and arches are synthetic.
+
+Cells: clean (wall / floor / ceiling contacts; posts for the gate set); for pass-through, the lowest speed near the arch
+(min / median / max).
+
+| Motor | Stack | Hairpins (12) | Pass-through (8): finished; lowest speed | Gate posts (24): clean; post contacts (with a false marker); smallest post gap |
+|---|---|---|---|---|
+| fast-brain-11-b-cw13 | `m5` | 0 (12 / 0 / 0) | 8; 4.08 / 4.26 / 4.41 | 24; 0 (0); 0.549 m |
+| fast-brain-11-b-cw13 | `m5ma3` | 9 (0 / 0 / 1), 2 unfinished | 5; 0.04 / 0.44 / 0.89 | 24; 0 (0); 0.564 m |
+| fast-brain-11-b-cw13 | `m6` | 9 (0 / 0 / 0), 3 unfinished | 8; 0.92 / 1.71 / 2.38 | 24; 0 (0); 0.564 m |
+| fast-brain-11-b-cw13 | `m6` without the assist | 0 (12 / 0 / 0) | 8; 1.37 / 2.43 / 2.86 | 24; 0 (0); 0.549 m |
+| fast PD | `m5` | 10 (2 / 0 / 1) | 7 (1 crash); 0.41 / 0.94 / 2.38 | 17; 6 (6); 0.276 m |
+| fast PD | `m6` | 10 (2 / 0 / 1) | 7 (1 crash); 0.41 / 0.94 / 2.38 | 17; 6 (6); 0.276 m |
+
+| Motor | Stack | Hill (12): contacts / s; high passes | Steep (8): contacts / s; high | Straw variations (16): contacts / s; high | Straw logged (16): contacts / s; high |
+|---|---|---|---|---|---|
+| fast-brain-11-b-cw13 | `m5` | 10 / 18.33; 7 | 2 / 6.5; 2 | 7 / 19.58; 3 | 3 / 13.94; 4 |
+| fast-brain-11-b-cw13 | `m5ma3` | 9 / 17.55; 7 | 2 / 5.96; 2 | 7 / 18.45; 2 | 3 / 13.77; 2 |
+| fast-brain-11-b-cw13 | `m6` | 9 / 17.48; 7 | 2 / 5.95; 2 | **5 / 11.74; 1** | 3 / 13.65; 2 |
+| fast-brain-11-b-cw13 | `m6` without the assist | 10 / 18.19; 7 | 2 / 6.48; 2 | 5 / 11.99; 2 | 3 / 13.79; 4 |
+| fast PD | `m5` | 10 / 12.44; 9 | 8 / 6.36; 2 | 8 / 27.15; 2 | 7 / 29.73; 2 |
+| fast PD | `m6` | 10 / 12.47; 9 | 7 / 6.32; 2 | **6 / 23.32; 1** | 6 / 29.09; 0 |
+
+Every course finished and none crashed in every variant; mean finish times moved by at most 0.26 s.
+
+- **The brain needs the assist at hairpins.** Without motor assist v4 fast-brain-11 hits the wall in 12 of 12 (as under
+  `m5`); with it, 9 are clean, none touches, and 3 (arch 9 m, turns 90 and 130 deg) stop 0.40-1.33 m from the wall and
+  do not finish within 16 s: the stand-off holds a stopped brain (a known blocker). Assist v3 gave 9 clean with one
+  ceiling contact.
+- **No v3-like crawl at pass-through arches,** but the brain is slower there: lowest 0.92-2.38 m/s with `m6` (without the
+  assist 1.37-2.86; `m5` 4.08-4.41; v3 0.04-0.89 with 3 of 8 unfinished).
+- **Gate posts:** fast-brain-11 is clean in all 24 scenarios under every variant. The fast PD touches a post in 6 of the
+  16 false-marker scenarios under `m5` and `m6` alike (the marker jump is in shadow; its `on` mode removed these in the
+  gates branch but failed elsewhere).
+- **Ground contact:** on the fresh Straw variations the `m6` stack has fewer contacts than `m5` for both motors
+  (fast-brain-11 7 -> 5, 19.58 -> 11.74 s; fast PD 8 -> 6, 27.15 -> 23.32 s) and fewer high passes (3 -> 1, 2 -> 1). On
+  the logged geometry fast-brain-11 stays at 3 (13.94 -> 13.65 s) and the fast PD goes 7 -> 6; on the hills and steep
+  courses the counts move by at most one. The
+  assist's own share on Straw is small and not harmful here: 11.99 -> 11.74 s and 2 -> 1 high passes on the variations,
+  4 -> 2 high passes on the logged geometry. **The user's request is still not met in the surrogate:** 5 of 16
+  fast-brain-11 drones touch the Straw variations under `m6`.
+
+### Live flight plan (for the main session; development flights)
+
+Fly from `C:\DEV\Haltere` with `m6` checked out. It is a local branch and is not pushed. While the integration worktree
+holds the branch, use `git switch --detach m6` in the main checkout, or remove that worktree first. The runner loads
+its declarations from the checkout it runs from and refuses other versions. Keep the untracked
+`configs/explore_spiral.yaml`. This plan replaces the live plans of the three round-6 branch sections above,
+`docs/early_brake.md` and `docs/sighted_descent.md`.
+
+**One stack for every course:**
+
+```
+--looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow
+```
+
+- **Motor assist v4 is on for every run, the brain on Straw Bale included.** The brain does not stop at a hairpin
+  without it: 0 of 12 fresh hairpins clean without it, 9 of 12 with it (above); on the live hairpin the open-loop
+  request at the wall is 0.17 m/s with it and 2.28 without, and the brake branch's surrogate window ends at 1.00 m/s
+  against 3.74. Version 4 has no approach source (the cause of the `r5-02` crash) and bounds only its own share of a
+  climb under a ceiling (0 s of such holds on the brain-11 Straw laps). On Straw Bale it removes 0.5% more of the
+  request travel on the brain-11 laps (1.31-1.32% with the early brake, open loop) and, in the surrogate, adds no
+  contact (Straw variations 11.99 -> 11.74 s, high passes 2 -> 1). One stack means the Straw run needs it too. Its
+  costs: the quiet gates failed on the fast-brain-08 laps (4.21-5.24% with the early brake), arches are slower (lowest
+  0.92-2.38 m/s in the fresh pass-through set), and with the marker lost at a looming arch the early brake and the
+  assist together can ask for a crawl (0.69 m/s in one fast-brain-08 replay; above). The fast PD has no entry: its
+  commands are bit-identical with and without the flag and its sidecar records `applied: false`.
+- **Contact support v3 runs in shadow** (`contact_fire` logs where it would climb; it starts no climb). Round 5 flew it
+  `on` for the brain. Why the change:
+  - in both fast-brain-11 downhill touches it fired at 80.08 s, after the touch had ended (79.968 s and 80.044 s), and
+    in `r5-noassist-04` that late climb left the drone 0.5-0.7 m high onto the next arch's top bar (video-verified by
+    the gates branch; surrogate: 13.48 m at the bar with the climb, 12.65 m without, the lap run about 12.8 m);
+  - both touches ended without any support climb;
+  - it fails 3 of its 13 safety gates, held-out detection of this touch among them;
+  - no live run and no closed-loop set shows a v3 climb that helped (no onset in any set above; no onset in any Minus
+    replay; the round-5 fast-PD run in shadow logged none).
+
+  The pilot's older support rule (a descent the drone cannot achieve while the issued throttle stays below hover) stays
+  active. A contact-support version that climbs only while the contact lasts is the fix (a blocker below).
+- **Marker jump in shadow:** identical requests (126/126 in the gates branch, 31/31 here); it logs where it would hold
+  a marker (`marker_held`, `marker_candidates`), the data a reader-side rule needs. `on` failed its held-out gates.
+- **Early brake and sighted descent on** for every run; the fast PD has no early-brake entry.
+
+A wiring check parsed every command below with the runner's own argparse and built what `run()` builds before the
+camera starts, with `run()`'s own calls and keyword arguments (no camera, pad, preflight record or flight). Each run
+declares:
+
+| Declaration | Version | Content sha256 | Applied |
+|---|---|---|---|
+| `configs/obstacles/lag_turn.json` (the contract's entry) | 2 | `d4eb83da51ab...` | yes |
+| `configs/obstacles/gap_pilot.json` (gap cue v2) | 5 | `43c304204f93...` | yes |
+| `configs/obstacles/wall_pilot.json` (the contract's stopping model) | 6 | `fe65951d3d68...` | yes |
+| `configs/obstacles/vertical_guard.json` | 4 | `409d06f9ded7...` | yes |
+| `configs/obstacles/stale_evidence.json` | 2 | `4a9516068f1f...` | yes |
+| `configs/obstacles/early_brake.json` | 1 | `ecf76971107f...` | brain: yes; fast PD: no |
+| `configs/pilot/descent_view.json` (contact support `shadow`) | 3 | `2bdb17fc2479...` | yes (contact support logged only) |
+| `configs/pilot/sighted_descent.json` (mode `on`) | 1 | `49b8d7a79f32...` | yes |
+| `configs/pilot/motor_assist.json` | 4 | `8954a798e127...` | brain: yes; fast PD: no |
+| `configs/pilot/marker_jump.json` (shadow) | 1 | `8752cd7e2860...` | no (logged only) |
+
+The CSV ends with the view and contact columns (8), the assist columns (8), `cap_ray_deg`, `cap_reseat`, `marker_held`,
+`marker_candidates`, `early_brake`, `sighted_los`, `sighted_bound`, `sighted_withheld`. Limits for every run:
+`--max-height 250 --max-speed 14 --max-distance 2000`. The camera reads the ring with the earlier reader (no
+ring-marker rule). Checkpoints: fast-brain-11-b-cw13 `44cca3c4...`, the fast PD's calibration checkpoint `dad013ed...`.
+
+**Every run is a disclosed development deviation:** no brain is selected; the marker jump, the early brake with assist
+v4 and the sighted descent each fail frozen gates; the round-4b/5 rules keep their failures; the contact audit cannot
+gate.
+
+**Before every launch** (in the Anode seat, from `C:\DEV\Haltere`; viewer hidden; Liftoff stays open between runs):
+
+1. **Liftoff in the seat.** If the seat was restarted and Liftoff is gone, relaunch it there with Anode's
+   `steam_launch 410340`. A NordVPN window opens in the seat over the game: minimize it (about (966,16)). Then the
+   original `[Copy] New Drone` on the course.
+2. **The pad** must report `seatOnly` and `verifiedFromDesktop` (`anode gamepad state`). A user's game on the desktop is
+   no reason to stop; a machine-wide pad or a guard unplug is.
+3. **A quiet machine for 60 s.** The runner's preflight refuses competing workloads, for example the user's `rustc.exe`
+   builds (they refused four round-4b/5 launches). A refusal writes `<log>.preflight.json`, so that log name cannot be
+   reused: use the next number (`-02`). This loop prints each blocker and returns after six passing checks about 10 s
+   apart (about 60 s of quiet); it writes nothing:
+
+   ```powershell
+   $q = 0; while ($q -lt 6) { $r = .venv/Scripts/python.exe -m haltere.liftoff.preflight | Out-String | ConvertFrom-Json; if ($r.passed) { $q++ } else { $q = 0; $r.blockers | ForEach-Object { "$($_.executable) pid $($_.pid) $($_.cpu_cores) cores" } }; Start-Sleep -Seconds 9 }; 'quiet for about 60 s'
+   ```
+
+4. **Ground check** (throttle-low, then throttle, roll, pitch and yaw, checking the processed controls; Xbox neutral
+   throttle is not zero):
+
+   ```powershell
+   .venv/Scripts/python.exe runs/fast-stack-20260923/ground_check.py runs/fast-stack-20260923/ground-check-36.json
+   ```
+
+   Increment the number for every check (36, 37, ...; 35 was the last). **The ground check pauses the game when it
+   exits** (the pause inside it cannot be disabled), and `--pause-on-stop` pauses it after every run: click
+   **Réinitialiser** (646,277) in the pause menu, or resume, before the next step.
+5. **Telemetry live.** This prints `LIVE` when two frames 0.5 s apart show an advancing game timestamp:
+
+   ```powershell
+   .venv/Scripts/python.exe -c "import time; from haltere.liftoff.telemetry import TelemetryReceiver,read_config,DEFAULT_STREAM; rx=TelemetryReceiver(port=9001,stream=(read_config() or {}).get('StreamFormat',DEFAULT_STREAM)); a=rx.wait(1.0); time.sleep(0.5); b=rx.wait(1.0); rx.close(); print('LIVE' if a is not None and b is not None and b.timestamp > a.timestamp else 'NOT LIVE', None if b is None else [round(float(v), 2) for v in b.position])"
+   ```
+
+   Launch only after `LIVE` (otherwise the run stops at 0 ticks, as both r4-01 runs did).
+
+Run the flights in this order. Each command is one line. Change the course between (a) and (b) and before (d) from the
+pause menu (`Changer de Niveau`); steps 1-5 apply before every launch.
+
+**(a) Straw Bale, fast-brain-11-b-cw13, three laps (first).** The graduation course and the user's downhill request;
+the direct comparison with `straw-brain11cw13-r4b-noassist-02` (lap 1 in 1:42.988) and the two round-5 laps.
+
+```powershell
+.venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 480 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/straw-brain11cw13-r6-01.csv --record runs/fast-stack-20260923/straw-brain11cw13-r6-01.mp4 --video-encoder h264_nvenc
+```
+
+What to look for (replay figures are open-loop requests at the recorded states of the development laps):
+
+- **FAT SHARK arch (about 17-19.5 s, x 77-80, y 13-16): not addressed.** The gap aim's right shift (`gap_applied`, up
+  to 8.0 and 9.9 deg right at 17.4-18.7 s in the two round-5 laps) set the line that met the right leg. The path at
+  y = 14 m: x 77.17-77.56 m in the 23 earlier passes, 78.30 m (passed) and 78.08 m (crashed) in round 5.
+  `early_brake` may slow the approach (the 2.5 m/s floor in the r4b lap's replay; no episode in `r5-noassist-01`).
+- **(43.8, 63.5), (-30.5, 28.4) and similar:** `early_brake` 1 with the request at 2.5 m/s or more while the ring is in
+  view. A request below 2.5 m/s with `pilot_state` `coast` or `search` near an arch is the lost-marker interaction.
+- **Uphill rings:** no ceiling holds expected (`assist_share_cap` never set on the replayed brain-11 laps); the climb
+  request should not drop to 0.
+- **Downhill after the hilltop (72-80 s):** `sighted_los` about 13.5-15 deg; from about 77.5 s `sighted_withheld` > 0
+  and the requested path held near 15-16 deg (round 5 asked 22-24); horizontal request 5.6-6 m/s. **No touch at y
+  133-134 (x -36.5).** `contact_fire` 1 there means contact support would have climbed (shadow: it does not).
+- **ImmersionRC arch (y about 120.7):** pass under the top bar at about 12.8 m (the r4b lap; `r5-noassist-04` hit it at
+  13.5 m after the late climb). A `support_climb` state right after a touch is the older support rule.
+- **Start arches of laps 2 and 3 (x 23-27, y -0.5 to 0.4): the false marker is not addressed.** `marker_held` 1 marks a
+  reading the rule would have held (the r4b replay: 111.40 s).
+- **Lap times** against 1:42.988 (expect them longer: slower arches); stick change 0.0025-0.0030 in round 4b/5.
+
+After the run, score ground contact with the contact audit (report next to the video; its false-positive check failed,
+so it does not decide pass or fail). The same command, with the run's name, works for every run:
+
+```powershell
+.venv/Scripts/python.exe -m haltere.liftoff.contact_audit runs/fast-stack-20260923/straw-brain11cw13-r6-01.csv --json runs/fast-stack-20260923/straw-brain11cw13-r6-01.contact-audit.json
+```
+
+**(b) Minus Two, fast PD.** The PD has no early-brake or assist entry and the sighted descent changed none of its
+Minus requests, so this repeats `minus-fast6-r5-01` with contact support in shadow (as then).
+
+```powershell
+.venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-fast6-r6-01.csv --record runs/fast-stack-20260923/minus-fast6-r6-01.mp4 --video-encoder h264_nvenc
+```
+
+What to look for: the sidecar's `early_brake_declaration` and `motor_assist_declaration` say `applied: false`.
+
+- **The 90-degree arch and the hairpin:** `r4b-01` came to rest at the hairpin too (0.12 m/s at 20.04 s); `r5-01` also
+  stopped past the 90-degree arch (0.26 m/s at 18.32 s).
+- **The hairpin exit: not addressed.** In `r5-01` the governor's stand-off cap along the old wall ray (24.4 deg) stayed
+  active after turn-first released aligned; the path ran 13-18 deg left of the ring's bearing into the dark pillar at
+  (78.3, 23.2). Watch `clearance_status` `standoff` after `turn_first` ends while the ring sits at the image centre.
+- **The garage wall behind the arch at (52.6, 94.1):** stale-evidence re-seat (`cap_reseat`) as in the round-5 plan.
+
+**(c) Minus Two, fast-brain-11-b-cw13, with motor assist v4 (on, as in every run: see above).** The direct comparison
+with `minus-brain11cw13-r4b-noassist-01` (hairpin wall) and `minus-brain11cw13-r5-02` (the v3 crawl at the first arch).
+
+```powershell
+.venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-11-b-cw13/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller brain --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/minus-brain11cw13-r6-01.csv --record runs/fast-stack-20260923/minus-brain11cw13-r6-01.mp4 --video-encoder h264_nvenc
+```
+
+What to look for (open-loop figures from the two development logs):
+
+- **First arch (x 15-19):** `early_brake` 1 from about x 16; the request settles at 2.5 m/s while the ring is in view
+  (v3 asked 1.02 -> 0.23 m/s there and the brain crawled into the arch). No request below 2.5 m/s with the ring in
+  view.
+- **Pillar A and the 90-degree arch:** slower than round 4b (2.5-4 m/s); around pillar A the replay went to 1.78 m/s.
+- **Hairpin (wall near (81.9, 20.0)):** the cap should bind about 1.2 s before the wall (r4b: 0.76 s), the request fall
+  to about 0.2 m/s at the wall (open loop) and the brain arrive at about 1 m/s (surrogate). The harness also shows the
+  stand-off parking a stopped brain 0.4-1.3 m from the wall.
+- **Ceiling:** braking climbs under the 2.2 m ceiling (`assist_vertical`, `assist_share_cap`).
+- **Stick change per tick:** 0.0038 in r4b.
+
+**(d) Pine Valley, fast PD.** No round-6 rule acts for the PD except the sighted descent, which withheld sink for
+0.15 s of `pine-fast6-ttc-01` without changing a request (the ground branch's replay).
+
+```powershell
+.venv/Scripts/python.exe -m haltere.liftoff.visual_brain runs/fast-brain-08-vgs04-s10r03m30/candidate.pt --mapping runs/pine-route-collection-01/liftoff-original-drone.yaml --device cpu --vision-device cuda --pilot-assistance race-cue --pilot-profile fast --assist-speed 6 --motor-controller pd --pd-profile fast --dynamics-profile runs/measured-dynamics-low-speed-20260923/profile.json --looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on --contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow --seconds 150 --max-height 250 --max-speed 14 --max-distance 2000 --udp-out 127.0.0.1:9003 --pause-on-stop --log runs/fast-stack-20260923/pine-fast6-r6-01.csv --record runs/fast-stack-20260923/pine-fast6-r6-01.mp4 --video-encoder h264_nvenc
+```
+
+What to look for: as round 5's plan (d): the mound escalation near 4.55 s, the backside sink at 6.3-7.4 s, the hillside
+at 15.2 s, the end hillside escalation near 19.05 s; no rule arrests a descent into the boulder.
+
+**Stop criteria.**
+
+- **Before a run, do not start if** the machine was not quiet for 60 s, the pad is not `seatOnly`, the ground check
+  fails, or telemetry is not `LIVE`.
+- **After a run, stop the series if** the sidecar declares any other version or hash than the table above, the
+  descent view's `contact_support` is not `shadow`, `sighted_descent_declaration` or `early_brake_declaration` is
+  missing, `motor_assist_declaration.applied` or `early_brake_declaration.applied` is wrong for the motor, or a
+  controller deadline or camera failure was recorded.
+- **During a run, stop the runner if:**
+  - the drone climbs above about 1.9 m in the Minus garage, or keeps climbing above 4 m elsewhere;
+  - it is parked for more than about 3 s (an early-brake, assist, turn-first or governor stand-off hold), in particular
+    at an arch with the ring in view or with the marker lost;
+  - it circles in search for more than about 30 s;
+  - on the Straw downhill the drone overflies the ImmersionRC arch or turns back for it (the sighted descent holding the
+    path too shallow).
+- **Between runs:** stop and analyse instead of flying the next run if a round-6 rule causes a new failure. First
+  replay the log through this stack (development evidence), from `C:\DEV\Haltere` with `m6` checked out; `LOGNAME` is
+  the log's name without `.csv`, and the output folder must exist:
+
+  ```powershell
+  New-Item -ItemType Directory -Force C:/Users/artem/AppData/Local/Temp/haltere-replay | Out-Null
+  .venv/Scripts/python.exe haltere/obstacles/vertical_replay.py LOGNAME --out C:/Users/artem/AppData/Local/Temp/haltere-replay/r6 --stack on --near-on-path --throttle-column command_thr --descent-view configs/pilot/descent_view.json --contact-support shadow --stale-evidence configs/obstacles/stale_evidence.json --early-brake configs/obstacles/early_brake.json --sighted-descent configs/pilot/sighted_descent.json --motor-assist configs/pilot/motor_assist.json --marker-jump configs/pilot/marker_jump.json --marker-jump-mode shadow
+  ```
+
+- **Graduation evidence:** none of these runs counts (no brain is selected and rules of the stack fail gates). A clean
+  Straw 3-lap run without an audited contact would be the first live evidence for the downhill fix; a crash cause must
+  be checked on the video before it is written down.
+
+### Blockers for graduation, and what would clear them
+
+| Blocker | State after round 6 | What would clear it |
+|---|---|---|
+| A selected brain | None; fast-brain-11-b-cw13 flies as the only braking brain with live Straw and Minus evidence | A brain scored once on fresh frozen gates that passes them; then flights |
+| Straw FAT SHARK arch (gap aim at an oblique arch) | Not addressed: the gap aim's pre-switch right shift set the crash line; the `m6` stack changes 0.06 s of that log's requests | A gap-pilot revision that separates a gate's own leg from a pillar (the gap cue's depth profile on both sides of the ring), frozen with gates on the gap-commit sets and every Straw arch pass |
+| Straw start-arch false marker | Not addressed: the marker-jump rule failed its held-out gates (it holds real rings reacquired after a gap); flown in shadow to log live candidates | A reader-side rule scored on the live `marker_held` logs and the reader's candidates |
+| Straw downhill ground contact | Sighted descent v1 (10 of 12 gates): the request held at 15-16 deg where round 5 asked 22-24 (open loop); fresh Straw variations 7 -> 5 contacts for fast-brain-11 (surrogate); not flown | Live (a) without an audited contact; a fix for the brain flying 2-4 deg steeper than asked in view and for crest-grazing lines |
+| Late support climb (top-bar crash) | Contact support v3 fires after the touch has ended; flown in shadow in this plan | A contact-support version that climbs only while the contact lasts, frozen and scored on the two Straw touches and the safety gates |
+| Brain hairpin | Early brake + assist v4: 9 of 12 fresh hairpins clean (0 without the assist), 3 parked 0.4-1.3 m from the wall; not flown | Live (c); a wall-pilot stand-off that holds a stopped brain without parking it |
+| Slower arches, lost-marker crawl | Lowest pass-through speed 0.92-2.38 m/s; 0.69 m/s requested at a lost marker in one fast-brain-08 replay | Live lap times; an early-brake/assist version that keeps a floor while the marker is briefly lost, frozen and scored |
+| Fast PD hairpin exit | The stand-off cap along the old wall ray deflects the exit (diagnosed, not fixed) | A wall-pilot version, frozen and scored with PD hairpin sets and the Minus PD logs |
+| Quiet gates (early brake, assist v4) | Failed on the fast-brain-08 laps (offline stream without vertical evidence); 1.31-1.32% on the live brain-11 laps | Straw live lap times; a version that also leaves out samples without vertical evidence while the pilot climbs toward its ring |
+| Contact audit | Its video false-positive check still fails | An audit v2 validated on video, frozen before scoring |
