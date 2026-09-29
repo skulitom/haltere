@@ -1,0 +1,34 @@
+{
+ "schema": "haltere.liftoff.marker_jump.v1",
+ "version": 1,
+ "note": "Checkpoint-marker jump confirmation of the fast race-cue pilot (visual_brain --marker-jump on|off|shadow; off by default; needs --pilot-assistance race-cue --pilot-profile fast; shadow computes and logs it and holds nothing). 'marker_jump': haltere.liftoff.fast_race_cue.MarkerJumpConfig. A fresh in-view (not edge-clamped) ring marker whose ring-centre ray lies at least jump_deg from the ring-centre ray of the last accepted in-view marker, after more than gap_s without any accepted reading, is a candidate: the pilot treats that capture as no reading (coast, then search, as for a lost marker) until the candidate's confirm-th reading, each within agree_deg of the previous one and all within window_s of the first. A marker that moves directly from one reading to the next (a checkpoint switch, or motion) and every edge-clamped marker are taken as before. Generic and course-agnostic: it reads only the ring cue's image position, its capture time and the camera pose at capture; no course geometry, route, logged position or per-course value. The runner refuses another version (fast_race_cue.MARKER_JUMP_VERSION). The hash covers everything except frozen/frozen_at/sha256; a change needs a new version and a new freeze. Gates: configs/pilot/marker_jump_gates.json version 1, frozen with this version before any held-out result. Offline replays are open loop or run in a surrogate and are not flight evidence.",
+ "marker_jump": {
+  "jump_deg": 10.0,
+  "gap_s": 0.15,
+  "confirm": 3,
+  "agree_deg": 6.0,
+  "window_s": 0.3
+ },
+ "marker_jump_notes": {
+  "jump_deg": "the lag-aware turn's switch trigger (configs/obstacles/lag_turn.json trigger_deg 10): a smaller jump is the same ring",
+  "gap_s": "two missed captures at the 18 Hz camera (1 capture about 0.055 s): a marker that jumps between consecutive readings (no gap) is a checkpoint switch or motion and is taken at once",
+  "confirm": "one more reading than the longest false reading seen: the live start-arch false marker of straw-brain11cw13-r4b-noassist-02 lasted two captures (111.34 and 111.41 s), and the round-5 arches study found 1-2 frame reacquisitions at jumped bearings in the fast-brain-08 start-arch box (docs/arches.md)",
+  "agree_deg": "the gap pilot's ring-conflict angle (configs/obstacles/gap_pilot.json conflict_deg 6): readings further apart describe another ring",
+  "window_s": "three readings with one unread capture between each at the slowest live camera rate (14.6 Hz: 4 x 0.068 s = 0.27 s)",
+  "shadow": "--marker-jump shadow: the verdicts are computed and logged (marker_held, marker_candidates) and nothing is held; the verdicts depend only on the readings, so they equal the applied rule's"
+ },
+ "development": {
+  "scope": "DEVELOPMENT evidence only, measured before this freeze on the development case; the held-out gates are frozen separately (configs/pilot/marker_jump_gates.json) and scored afterwards",
+  "case": "straw-brain11cw13-r4b-noassist-02 (m4b stack, fast-brain-11-b-cw13): no accepted marker from 110.85 s (capture 218017.610) to 111.40 s; two in-view readings of a banner logo at ring-centre azimuth -20.15 and -20.43 deg (the ring bearing was -3.3 deg; jump 16.8 deg); no reading until an edge-clamped marker at 112.11 s; impact with the second start arch's right leg at 112.376 s, (27.13, -0.54)",
+  "open_loop": "the m5 stack replayed with the rule (tag -mj1): both readings held (candidate of 2, rejected); the request heading stays at -3.56 deg (the logged request turned to -20.85 deg); the pilot coasts and searches (request 6.0 -> 3.84 m/s by 112.1 s, climbing 0.5 m/s) until the edge-clamped marker at 112.11 s",
+  "surrogate": "semi-closed loop (haltere.obstacles.stale_evidence_gates.Surrogate, fast-brain-11-b-cw13, from the logged state at 111.2 s for 1.4 s): the logged requests pass 0.022 m from the contact point (validation), the m5 stack's replayed requests 0.023 m, the rule's 1.034 m, left of it",
+  "other_development_crashes": "the rule changes no request in straw-brain11cw13-r5-noassist-01 17.0-19.4 s (the FAT SHARK arch: the marker slid over three captures without a gap) nor in straw-brain11cw13-r5-noassist-04 78.0-81.9 s (the top bar: the marker was clamped at the bottom edge); those crashes have other causes (docs/gate_clearance.md)"
+ },
+ "not_frozen": {
+  "post_switch_clearance": "tested on its development case before the freeze and not frozen: on straw-brain11cw13-r5-noassist-01 (FAT SHARK) holding the request heading and the yaw stick at their switch values for 0.2 or 0.35 s after the switch (18.995 s) leaves the surrogate path 0.016 and 0.021 m from the contact point (logged requests from 18.8 s: 0.017 m). From 17.2 s: logged requests 0.023 m, the m5 stack without the lag-aware turn 0.011 m, without the gap aim 0.638 m. The path could not respond to anything after the switch before the leg (0.37 s); its line was set before the switch by the gap aim's right shift (applied up to 8.0 deg from 17.4 to 18.7 s), which put both round-5 passes of that arch 0.5-1.1 m right of each of the 23 other logged passes where they cross y = 14 m",
+  "gate_below": "tested on its development case before the freeze and not frozen: on straw-brain11cw13-r5-noassist-04 the surrogate height at the arch's top bar is 13.48 m with the logged requests (audited contact at 13.50 m), 13.31 m with the horizontal request scaled to 75% and 13.16 m to 60% from the end of the support climb (80.63 s), and 12.65 m without the support climb that contact support started at 80.09 s, after the touch had ended at 79.97 s; the lap run passed at about 12.8 m. No causal cue measured the arch's distance there (GateNet's range read 6.9-14.0 m while the arch was 1.7-7.2 m away, looming reported no evidence and the gap cue no ring), and a brake for every bottom-clipped ring is the downhill failure the view-keeping descent removed"
+ },
+ "frozen": true,
+ "frozen_at": "2026-09-29T03:39:15+00:00",
+ "sha256": "8752cd7e28603e382abd8660ea0866ded5245f1d489a3bb894655fc7c00bdbc9"
+}

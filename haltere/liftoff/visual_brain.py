@@ -217,6 +217,38 @@ def resolve_motor_assist(args):
     return str(MOTOR_ASSIST_DECLARATION) if flag == 'on' else str(flag)
 
 
+# Declared marker-jump confirmation of the fast pilot (--marker-jump on|shadow; off by default).
+MARKER_JUMP_DECLARATION = Path(__file__).resolve().parents[2]/'configs'/'pilot'/'marker_jump.json'
+
+
+def load_marker_jump(path=MARKER_JUMP_DECLARATION):
+    """A frozen marker-jump declaration and its content hash (the lag-turn declaration's canonical hash); refuses an
+    unfrozen or edited file and another rule version than FastRaceCue implements (fast_race_cue.MARKER_JUMP_VERSION)."""
+    from .fast_race_cue import MARKER_JUMP_VERSION
+    declaration = json.loads(Path(path).read_text(encoding='utf-8'))
+    digest = lag_turn_declaration_sha256(declaration)
+    if declaration.get('frozen') is not True or declaration.get('sha256') != digest:
+        raise ValueError(f'{path} is not a frozen marker-jump declaration, or it changed after the freeze')
+    if declaration.get('version') != MARKER_JUMP_VERSION:
+        raise ValueError(f'{path} declares marker-jump rule version {declaration.get("version")}; the fast pilot '
+                         f'implements version {MARKER_JUMP_VERSION}')
+    return declaration, digest
+
+
+def resolve_marker_jump(args):
+    """(declaration path, mode) of --marker-jump (on: applied; shadow: computed and logged, no marker held; off/absent:
+    (None, None)). It is part of the fast race-cue pilot."""
+    flag = getattr(args,'marker_jump',None)
+    if flag in (None,'off'):
+        return None, None
+    if flag not in ('on','shadow'):
+        raise ValueError('--marker-jump is on, off or shadow')
+    if getattr(args,'pilot_assistance','none') != 'race-cue' or getattr(args,'pilot_profile','standard') != 'fast':
+        raise ValueError('The marker-jump rule is part of the fast race-cue pilot: use --pilot-assistance race-cue '
+                         '--pilot-profile fast')
+    return str(MARKER_JUMP_DECLARATION), flag
+
+
 CAMERA_STAGES = ('capture','preprocess','inference','publish','looming','gap','total','cue_latency')
 
 
@@ -398,7 +430,7 @@ class VisualController:
                  pilot_profile='standard', pd_profile='teacher', dynamics_profile=None, lag_turn=None,
                  lag_turn_apply=True, gap_pilot=None, gap_apply=True, wall_pilot=None, wall_apply=True,
                  vertical_guard=None, vertical_apply=True, descent_view=None, motor_assist=None, stale_evidence=None,
-                 stale_apply=True, contact_support='on'):
+                 stale_apply=True, contact_support='on', marker_jump=None, marker_jump_apply=True):
         if pilot_profile not in ('standard', 'fast') or pd_profile not in ('teacher', 'fast'):
             raise ValueError('Unknown pilot or PD profile')
         if lag_turn and pilot_profile != 'fast':
@@ -418,6 +450,8 @@ class VisualController:
             raise ValueError('--contact-support is on, off or shadow, and off/shadow need the view-keeping descent')
         if motor_assist and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
             raise ValueError('The motor assist is part of the fast pilot profile')
+        if marker_jump and (pilot_profile != 'fast' or pilot_assistance != 'race-cue'):
+            raise ValueError('The marker-jump rule is part of the fast pilot profile')
         if pilot_profile == 'fast' and pilot_assistance != 'race-cue':
             raise ValueError('The fast pilot profile is a race-cue guidance profile')
         if pd_profile == 'fast' and (motor_controller != 'pd' or pilot_profile != 'fast' or not dynamics_profile):
@@ -495,6 +529,7 @@ class VisualController:
         self.descent_view_declaration = None
         self.motor_assist_declaration = None
         self.stale_evidence_declaration = None
+        self.marker_jump_declaration = None
         if pilot_assistance == 'rabbit':
             from .visual_assistance import VisualPilotAssistance
             self.assistance = VisualPilotAssistance(self.meta.get('gate_sensor'),self.camera_poses,assist_speed)
@@ -596,6 +631,16 @@ class VisualController:
                                                        file_sha256=sha256(stale_evidence),
                                                        schema=declaration.get('schema'),
                                                        version=declaration.get('version'), applied=bool(stale_apply))
+            if marker_jump:
+                # Declared once for every motor contract and course; absent (not passed) when off, so the pilot is built
+                # exactly as before.
+                from .fast_race_cue import marker_jump_config
+                declaration, digest = load_marker_jump(marker_jump)
+                descent_kw.update(marker_jump=marker_jump_config(declaration), marker_jump_apply=bool(marker_jump_apply))
+                self.marker_jump_declaration = dict(path=str(marker_jump), sha256=digest,
+                                                    file_sha256=sha256(marker_jump), schema=declaration.get('schema'),
+                                                    version=declaration.get('version'),
+                                                    applied=bool(marker_jump_apply))
             # A fast PD tracks the requested speed itself; other motor
             # controllers retain their trained reference as the ceiling.
             self.assistance = FastRaceCue(self.meta.get('gate_sensor'),self.camera_poses,assist_speed,
@@ -1073,6 +1118,20 @@ def stale_row(assistance):
     return tuple(values[k] for k in STALE_COLUMNS)
 
 
+# Marker-jump rule (configs/pilot/marker_jump.json): appended last, only when --marker-jump declares it.
+MARKER_JUMP_COLUMNS = ('marker_held','marker_candidates')
+
+
+def marker_jump_row(assistance):
+    """CSV values for MARKER_JUMP_COLUMNS (written only with --marker-jump on|shadow): 1 when the latest capture's marker
+    was held (in shadow: would have been) and the candidate readings held so far."""
+    log = getattr(assistance,'marker_jump_log',None)
+    if log is None or getattr(assistance,'marker_jump',None) is None:
+        return (float('nan'),)*len(MARKER_JUMP_COLUMNS)
+    values = log()
+    return tuple(values[k] for k in MARKER_JUMP_COLUMNS)
+
+
 def clearance_row(assistance):
     governor = getattr(assistance,'clearance',None)
     if governor is None:
@@ -1235,6 +1294,7 @@ def run(args):
                                   applied=True)
     contact_mode = resolve_contact_support(args)
     motor_assist = resolve_motor_assist(args)
+    marker_jump, marker_jump_mode = resolve_marker_jump(args)
     gap_declaration = gap_aim_config = None
     if stack['gap']:
         from .gap_aim import GapAimConfig
@@ -1261,10 +1321,13 @@ def run(args):
                                   vertical_guard=stack.get('vertical_guard'),vertical_apply=stack['apply'],
                                   descent_view=descent_view,motor_assist=motor_assist,
                                   stale_evidence=stack.get('stale_evidence'),stale_apply=stack['apply'],
-                                  contact_support=contact_mode)
+                                  contact_support=contact_mode,
+                                  **({} if marker_jump is None else dict(marker_jump=marker_jump,
+                                                                         marker_jump_apply=marker_jump_mode == 'on')))
     view_columns = descent_view_columns(controller.assistance) if controller.descent_view_declaration is not None else ()
     assist_columns = MOTOR_ASSIST_COLUMNS if controller.motor_assist_declaration is not None else ()
     stale_columns = STALE_COLUMNS if controller.stale_evidence_declaration is not None else ()
+    marker_columns = MARKER_JUMP_COLUMNS if controller.marker_jump_declaration is not None else ()
     from .neural_replay import NeuralReplay,replay_camera_sensor
     replay_out = getattr(args,'replay_out','')
     replay = NeuralReplay(replay_out,controller.brain.channel_dims,
@@ -1397,7 +1460,7 @@ def run(args):
                                  'clearance_status','clearance_cap','clearance_climb','descent_scale',
                                  'lag_turn_weight','lag_turn_lead_deg',*GAP_COLUMNS,*STAGE_COLUMNS,*WALL_COLUMNS,
                                  *VERTICAL_COLUMNS,*COMMIT_COLUMNS,*view_columns,*assist_columns,
-                                 *stale_columns])
+                                 *stale_columns,*marker_columns])
             while time.monotonic()-begin < args.seconds:
                 loop_mark = time.monotonic()
                 loop_phases = {}
@@ -1514,7 +1577,8 @@ def run(args):
                                  *commit_row(controller.assistance),
                                  *(descent_view_row(controller.assistance) if view_columns else ()),
                                  *(motor_assist_row(controller.assistance) if assist_columns else ()),
-                                 *(stale_row(controller.assistance) if stale_columns else ())])
+                                 *(stale_row(controller.assistance) if stale_columns else ()),
+                                 *(marker_jump_row(controller.assistance) if marker_columns else ())])
                 loop_phases['csv_ms'] = 1000*(time.monotonic()-loop_mark)
                 loop_mark = time.monotonic()
                 if replay is not None:
@@ -1592,6 +1656,8 @@ def run(args):
             pilot_meta['motor_assist_declaration'] = controller.motor_assist_declaration
         if controller.stale_evidence_declaration is not None:
             pilot_meta['stale_evidence_declaration'] = controller.stale_evidence_declaration
+        if controller.marker_jump_declaration is not None:
+            pilot_meta['marker_jump_declaration'] = controller.marker_jump_declaration
         if ring_marker_record is not None:
             pilot_meta['ring_marker_declaration'] = ring_marker_record
         obstacle_meta = obstacle_stack_metadata(stack, gap_spec, gap_declaration, camera_status)
@@ -1784,6 +1850,12 @@ def main():
                         'vertical request or is asked to accelerate hard from low speed gets a bounded climb bias (on: '
                         'configs/pilot/motor_assist.json, declared per motor contract; the fast PD has no entry and flies '
                         'unchanged; recorded in the flight-log metadata)')
+    p.add_argument('--marker-jump',choices=['on','off','shadow'],default=None,
+                   help='EXPERIMENTAL checkpoint-marker jump confirmation of the fast race-cue pilot (off by default): '
+                        'an in-view marker that jumps at least 10 deg from the last ring bearing after a gap in the '
+                        'readings is taken only once 3 consecutive captures agree (a banner logo read for two captures '
+                        'no longer turns the pilot); shadow computes and logs it and holds nothing '
+                        '(configs/pilot/marker_jump.json; recorded in the flight-log metadata)')
     p.add_argument('--pause-on-stop',action='store_true',help='Pause the foreground game when a live control attempt ends')
     p.add_argument('--capture-backend',choices=['mss','dxgi'],default='mss',help='DXGI uses original Windows frame timestamps')
     p.add_argument('--max-height',type=float,default=8.)

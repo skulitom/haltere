@@ -752,6 +752,64 @@ def stale_evidence_configs(declaration):
     return dict(clearance_ray=ClearanceRayConfig(**declaration['clearance_ray']))
 
 
+# The marker-jump declaration version whose rule this code implements (MarkerJumpConfig); runners refuse others.
+MARKER_JUMP_VERSION = 1
+# Runner modes of the marker-jump rule: applied, or computed and logged without holding any marker (the matched
+# control).
+MARKER_JUMP_MODES = ('on', 'shadow')
+
+
+@dataclass(frozen=True)
+class MarkerJumpConfig:
+    """Confirm a checkpoint marker that jumps after a gap in the readings (off unless a runner passes it; the marker-jump
+    declaration in configs/pilot, version 1). Reads only the ring cue's image position, its capture time and the camera
+    pose at capture; no course geometry.
+
+    The ring reader sometimes reads something else as the marker for a frame or two, typically where the marker is
+    unread (on straw-brain11cw13-r4b-noassist-02 a dark logo on a fence banner, 16.8 deg right of the last ring
+    bearing, at two captures after 0.55 s without any reading; the pilot turned toward it and the drone clipped the next
+    arch's leg). A marker that moves directly from one reading to the next (a checkpoint switch, or motion) is taken as
+    before. A fresh in-view (not edge-clamped) marker whose ring-centre ray lies at least jump_deg from the ring-centre
+    ray of the last accepted in-view marker, and that follows a gap (no accepted reading for more than gap_s), is a
+    candidate and is held: the pilot treats that capture as no reading (it coasts, then searches, as for a lost
+    marker). The candidate is accepted with its `confirm`-th reading, each within agree_deg of the previous one and all
+    within window_s of the first (captures without a marker in between do not end it); a reading beyond agree_deg or
+    window_s starts a new candidate, and an accepted reading ends it (the earlier candidate is counted as rejected).
+    Edge-clamped markers (the side, bottom and top clamps) are taken as before and count as readings: a clamped azimuth
+    is no reliable evidence of a jump. Parameters (a priori): jump_deg is the lag-aware turn's switch trigger (10 deg);
+    agree_deg the gap pilot's ring-conflict angle (6 deg: consecutive readings of one ring agree within it at race
+    speed); gap_s two missed captures at the 18 Hz camera; confirm one more reading than the longest false reading
+    seen (two captures); window_s three readings with one unread capture between each at the slowest live camera rate
+    (14.6 Hz: 4 x 0.068 s = 0.27 s).
+    """
+    jump_deg: float = 10.
+    gap_s: float = .15
+    confirm: int = 3
+    agree_deg: float = 6.
+    window_s: float = .3
+
+    def __post_init__(self):
+        if not all(np.isfinite([self.jump_deg, self.gap_s, self.agree_deg, self.window_s])):
+            raise ValueError('Use finite marker-jump parameters')
+        if not 0 < self.jump_deg < 90 or not 0 < self.agree_deg < 90 or not 0 < self.gap_s <= 1:
+            raise ValueError('Use angles in (0, 90) degrees and a gap in (0, 1] s')
+        if not 0 < self.window_s <= 2:
+            raise ValueError('Use a confirmation window in (0, 2] s')
+        if not isinstance(self.confirm, int) or isinstance(self.confirm, bool) or not 2 <= self.confirm <= 10:
+            raise ValueError('confirm is a whole number of readings in [2, 10]')
+
+
+def marker_jump_config(declaration):
+    """The MarkerJumpConfig of a marker-jump declaration already parsed (and hash-checked) by the runner; refuses another
+    rule version than this code implements (MARKER_JUMP_VERSION). This module reads no files."""
+    if (declaration or {}).get('version') != MARKER_JUMP_VERSION:
+        raise ValueError(f'The marker-jump declaration is version {(declaration or {}).get("version")}; the fast '
+                         f'pilot implements version {MARKER_JUMP_VERSION}')
+    if not isinstance(declaration.get('marker_jump'), dict):
+        raise ValueError('A marker-jump declaration declares its marker_jump rule')
+    return MarkerJumpConfig(**declaration['marker_jump'])
+
+
 # The vertical-guard declaration version whose rules this code implements (VerticalGuardConfig); runners refuse others.
 VERTICAL_GUARD_VERSION = 4
 
@@ -1613,7 +1671,7 @@ class FastRaceCue:
                  lag_turn=None, lag_turn_apply=True, gap_aim=None, gap_apply=True, turn_first=None,
                  ceiling_guard=None, wall_apply=True, vertical_guard=None, vertical_apply=True, descent_view=None,
                  contact_support=None, clearance_brake=None, motor_assist=None, clearance_ray=None, stale_apply=True,
-                 contact_apply=True):
+                 contact_apply=True, marker_jump=None, marker_jump_apply=True):
         if not sensor:
             raise ValueError('Race cue assistance requires a calibrated camera')
         if not np.isfinite(speed) or not 0 < speed <= 20:
@@ -1807,6 +1865,16 @@ class FastRaceCue:
         if clearance_ray is not None and not isinstance(self.clearance_config, TtcClearanceConfig):
             raise ValueError('The cap-ray rule is part of the TTC clearance policy')
         self.clearance_ray, self.stale_apply = clearance_ray, bool(stale_apply)
+        # Marker-jump confirmation (off unless declared): see MarkerJumpConfig. marker_jump_apply False computes and logs
+        # the verdicts without holding any marker (the matched control).
+        if marker_jump is not None and not isinstance(marker_jump, MarkerJumpConfig):
+            raise ValueError('Pass a MarkerJumpConfig (or None) for the marker-jump rule')
+        self.marker_jump, self.marker_jump_apply = marker_jump, bool(marker_jump_apply)
+        self.marker_ref = None                 # world ring-centre ray of the last accepted in-view marker
+        self.marker_accepted_at = None         # capture time of the last accepted reading (in view or clamped)
+        self.marker_candidates = []            # (capture time, world ring-centre ray) of the held candidate readings
+        self.marker_held = False               # the latest fresh capture's marker was held (or, in shadow, would be)
+        self.marker_counts = dict(held=0, candidates=0, confirmed=0, rejected=0)
 
     def _ingest_clearance(self, clearance, velocity, yaw, now):
         c = self.clearance_config
@@ -1855,12 +1923,17 @@ class FastRaceCue:
         self.last_capture = capture_time
         self.cue = cue
         if cue is None:
+            if self.marker_jump is not None:
+                self.marker_held = False       # an unread capture does not end a candidate (window_s does)
             return
         if not np.isfinite([cue['u'], cue['v']]).all() or not (0 <= cue['u'] <= 1 and 0 <= cue['v'] <= 1):
             raise ValueError('Invalid race cue image position')
         aim_u = cue.get('aim_u', cue['u'])
         if not np.isfinite(aim_u) or not 0 <= aim_u <= 1:
             raise ValueError('Invalid race cue clearance position')
+        if self.marker_jump is not None and self._marker_jump_hold(cue, capture_time) and self.marker_jump_apply:
+            self.cue = None                    # held: this capture counts as no reading
+            return
         _, q = self.pose_history.at(capture_time)
         ray = self.camera.unproject_body(np.array([[aim_u*320, cue['v']*180]]))[0]
         ray = quat_wxyz_to_mat(q) @ ray
@@ -1907,6 +1980,62 @@ class FastRaceCue:
         elif self.vertical_clip_since is None:
             self.vertical_clip_since = capture_time
         self.frames += 1
+
+    def _marker_jump_end(self):
+        """Drop the held candidate readings (a rejected candidate, counted) without accepting them."""
+        if self.marker_candidates:
+            self.marker_counts['rejected'] += 1
+            self.marker_candidates = []
+
+    def _marker_jump_hold(self, cue, capture_time):
+        """Whether the marker of this fresh capture is held (MarkerJumpConfig); updates the rule's state and counts. In
+        shadow the verdicts are the same (they depend only on the readings) and nothing is held."""
+        mj = self.marker_jump
+        self.marker_held = False
+        if bool(cue['edge']):
+            # clamped: taken as before, and a reading (the marker is there); no evidence of a jump
+            self._marker_jump_end()
+            self.marker_accepted_at = capture_time
+            return False
+        _, q = self.pose_history.at(capture_time)
+        centre = quat_wxyz_to_mat(q) @ self.camera.unproject_body(np.array([[cue['u']*320, cue['v']*180]]))[0]
+        centre = centre/max(np.linalg.norm(centre), 1e-9)
+        gap = self.marker_accepted_at is None or capture_time-self.marker_accepted_at > mj.gap_s
+        jumped = (self.marker_ref is not None
+                  and np.degrees(np.arccos(np.clip(centre @ self.marker_ref, -1, 1))) >= mj.jump_deg)
+        if gap and jumped:
+            candidates = self.marker_candidates
+            if candidates and (capture_time-candidates[0][0] > mj.window_s or np.degrees(np.arccos(np.clip(
+                    centre @ candidates[-1][1], -1, 1))) > mj.agree_deg):
+                self._marker_jump_end()        # another candidate: the earlier one was not confirmed
+                candidates = self.marker_candidates
+            if not candidates:
+                self.marker_counts['candidates'] += 1
+            self.marker_candidates = candidates+[(capture_time, centre)]
+            if len(self.marker_candidates) < mj.confirm:
+                self.marker_counts['held'] += 1
+                self.marker_held = True
+                return True
+            self.marker_counts['confirmed'] += 1
+            self.marker_candidates = []
+        else:
+            self._marker_jump_end()
+        self.marker_ref, self.marker_accepted_at = centre, capture_time
+        return False
+
+    def marker_jump_log(self):
+        """Per-tick log of the marker-jump rule: marker_held (1: the latest capture's marker was held, or in shadow would
+        be) and marker_candidates (candidate readings held so far)."""
+        return dict(marker_held=float(self.marker_held), marker_candidates=float(len(self.marker_candidates)))
+
+    def _marker_jump_metadata(self):
+        mj = self.marker_jump
+        return dict(rule=('a fresh in-view marker at least jump_deg from the last accepted in-view ring centre after '
+                          'more than gap_s without an accepted reading is held (no reading) until its confirm-th '
+                          'reading, each within agree_deg of the previous one and all within window_s of the first; '
+                          'edge-clamped markers are taken as before'),
+                    version=MARKER_JUMP_VERSION, parameters=asdict(mj), applied=self.marker_jump_apply,
+                    counts=dict(self.marker_counts, pending=len(self.marker_candidates)))
 
     def _blend(self, previous, ray):
         """(filtered bearing after one more cue ray, whether it was a new target): a ray more than new_target_deg
@@ -3318,4 +3447,6 @@ class FastRaceCue:
         stale = self._stale_metadata()
         if stale is not None:
             out['stale_evidence'] = stale                           # absent when the rules are off (default unchanged)
+        if self.marker_jump is not None:
+            out['marker_jump'] = self._marker_jump_metadata()      # absent when the rule is off (default unchanged)
         return out

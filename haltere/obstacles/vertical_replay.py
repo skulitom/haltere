@@ -37,7 +37,11 @@ contract without an entry, the fast PD): the arrays gain the pilot's own request
 assist_horizontal, assist_vertical and assist_source, while cvx/cvy/cvz are the assisted request. The recorded motion
 does not respond to it either. ``--contact-support off|shadow`` (a descent-view declaration of version 3) leaves the
 contact rule out or computes it without a climb (tag -csoff / -csshadow; the arrays of shadow carry contact_fire where it
-would have fired); version 3's arrays add contact_armed and contact_excluded.
+would have fired); version 3's arrays add contact_armed and contact_excluded. ``--marker-jump DECLARATION`` adds the
+marker-jump rule of a frozen declaration to any variant (tag -mj<version>; with ``--marker-jump-mode shadow`` computed and
+logged, nothing held: tag -mj<version>-mjshadow); the arrays gain marker_held and marker_candidates. ``--lag-turn off`` and
+``--gap-aim off`` leave the lag-aware turn or the gap aim out of a stack variant (tags -ltoff, -gaoff; report-only
+diagnostics of their share, round 6).
 
 usage: python -m haltere.obstacles.vertical_replay --out PREFIX [--tree TREE] [--stack ...] flight ...
 """
@@ -95,7 +99,8 @@ def variant_tag(stack, wall, vertical, stream):
 
 
 def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, descent_view=None, contact_support=None,
-          wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True):
+          wall_pilot=None, motor_assist=None, stale_evidence=None, contact_apply=True, lag_turn=True, gap_aim=True,
+          marker_jump=None, marker_jump_apply=True):
     """The FastRaceCue variant for a flight's sidecar and its description. `gap_pilot`: the gap pilot declaration
     whose pilot values the gap aim uses (default: the tree's configs/obstacles/gap_pilot.json). ``descent_view``: an
     optional DescentViewConfig added to any variant; ``contact_support``: an optional ContactSupportConfig (descent
@@ -104,7 +109,10 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     ``motor_assist``: an optional motor-assist declaration (parsed and hash-checked) whose entry for the flight's motor
     contract is added to any variant. ``stale_evidence``: an optional stale-evidence declaration (parsed and
     hash-checked) whose rules are added to a stack variant (applied with --stack on, computed in shadow; ignored by
-    --stack none and by --stack flown without the stack)."""
+    --stack none and by --stack flown without the stack). ``lag_turn`` / ``gap_aim`` False leave the lag-aware turn /
+    the gap aim out of a stack variant (report-only diagnostics of their share; the default keeps every earlier
+    replay). ``marker_jump``: an optional marker-jump declaration (parsed and hash-checked) whose rule is added to any
+    variant (applied unless the variant is --stack shadow or ``marker_jump_apply`` is False: computed and logged)."""
     frc, CameraPoseHistory, GapAimConfig = _modules()
     ob = Path(tree)/'configs'/'obstacles'
     contract = side['motor_controller'].get('contract') or 'fast_velocity_brain_v1'
@@ -114,10 +122,12 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         raise ValueError(stack)
     kw, applied = {}, stack != 'shadow'
     if stack in ('on', 'shadow') or (stack == 'flown' and flown_on):
-        kw['lag_turn'] = frc.lag_turn_for_contract(json.loads((ob/'lag_turn.json').read_text(encoding='utf-8')),
-                                                   contract)
-        declaration = Path(gap_pilot) if gap_pilot else ob/'gap_pilot.json'
-        kw['gap_aim'] = GapAimConfig.from_dict(json.loads(declaration.read_text(encoding='utf-8'))['pilot'])
+        if lag_turn:
+            kw['lag_turn'] = frc.lag_turn_for_contract(json.loads((ob/'lag_turn.json').read_text(encoding='utf-8')),
+                                                       contract)
+        if gap_aim:
+            declaration = Path(gap_pilot) if gap_pilot else ob/'gap_pilot.json'
+            kw['gap_aim'] = GapAimConfig.from_dict(json.loads(declaration.read_text(encoding='utf-8'))['pilot'])
     walls = 'on' if stack == 'on' else 'shadow' if stack == 'shadow' else wall if stack == 'flown' else 'off'
     verticals = resolve_vertical(stack, vertical, has_vertical)
     if verticals != 'off' and not has_vertical:
@@ -135,6 +145,8 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
         kw['vertical_apply'] = verticals == 'on' and applied
     if stale_evidence is not None and (stack in ('on', 'shadow') or (stack == 'flown' and flown_on)):
         kw.update(frc.stale_evidence_configs(stale_evidence), stale_apply=applied)
+    if marker_jump is not None:
+        kw.update(marker_jump=frc.marker_jump_config(marker_jump), marker_jump_apply=applied and marker_jump_apply)
     if not applied:
         kw.update(lag_turn_apply=False, gap_apply=False)
     if descent_view is not None:
@@ -154,10 +166,15 @@ def build(side, tree, stack='flown', wall='off', vertical=None, gap_pilot=None, 
     yaw_curve = tuple(pa.get('yaw_curve') or frc.DEFAULT_YAW_CURVE)
     pilot = frc.FastRaceCue(side['gate_sensor'], CameraPoseHistory(), speed, reference_speed=reference,
                             yaw_curve=yaw_curve, calibration=CALIBRATION, **kw)
-    return pilot, dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
-                       descent_view=descent_view is not None, contact_support=contact_support is not None,
-                       wall_pilot=None if wall_pilot is None else str(wall_pilot), motor_assist=assist is not None,
-                       stale_evidence='stale_apply' in kw)
+    info = dict(contract=contract, flown_stack=flown_on, stack=stack, wall=walls, vertical=verticals,
+                descent_view=descent_view is not None, contact_support=contact_support is not None,
+                wall_pilot=None if wall_pilot is None else str(wall_pilot), motor_assist=assist is not None,
+                stale_evidence='stale_apply' in kw)
+    if not lag_turn or not gap_aim:
+        info.update(lag_turn=bool(lag_turn), gap_aim=bool(gap_aim))
+    if marker_jump is not None:
+        info['marker_jump'] = 'applied' if kw['marker_jump_apply'] else 'shadow'
+    return pilot, info
 
 
 def _near_on_path(value):
@@ -171,7 +188,8 @@ def _near_on_path(value):
 
 def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None, looming_stream=None,
            gap_pilot=None, near_on_path=False, descent_view=None, contact_support=None, throttle_column='thr',
-           wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True):
+           wall_pilot=None, motor_assist=None, sources=None, stale_evidence=None, cue_drop=None, contact_apply=True,
+           lag_turn=True, gap_aim=True, marker_jump=None, marker_jump_apply=True, probe=None):
     """Per-tick arrays of one flight replayed through one variant, and the pilot and description.
 
     `gap_pilot`: the gap pilot declaration of the gap aim (default: the tree's). `near_on_path`: the gap samples
@@ -188,7 +206,10 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     (FastRaceCue.assist_sources) and pilot state (not saved). ``stale_evidence``: an optional stale-evidence declaration
     (see build); with it the arrays also carry cap_ray_deg and cap_reseat (FastRaceCue.stale_log). ``cue_drop``: logged
     capture times (the CSV's capture_time values) whose ring cue is replaced by no detection (a frame the reader read no
-    marker in; e.g. the logged detections a reader rule rejects on the aligned recorded frame)."""
+    marker in; e.g. the logged detections a reader rule rejects on the aligned recorded frame). ``lag_turn`` /
+    ``gap_aim`` / ``marker_jump`` / ``marker_jump_apply``: see build; with a marker-jump declaration the arrays also
+    carry the rule's log (FastRaceCue.marker_jump_log). ``probe``: an optional callable (pilot, row) -> dict of extra per-tick values, saved as
+    arrays of the same names (analysis only; changes nothing)."""
     import pandas as pd
     import torch
     torch.set_num_threads(2)
@@ -197,7 +218,10 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                         **({} if wall_pilot is None else dict(wall_pilot=wall_pilot)),
                         **({} if motor_assist is None else dict(motor_assist=motor_assist)),
                         **({} if stale_evidence is None else dict(stale_evidence=stale_evidence)),
-                        **({} if contact_apply else dict(contact_apply=False)))
+                        **({} if contact_apply else dict(contact_apply=False)),
+                        **({} if lag_turn else dict(lag_turn=False)), **({} if gap_aim else dict(gap_aim=False)),
+                        **({} if marker_jump is None else dict(marker_jump=marker_jump,
+                                                                marker_jump_apply=marker_jump_apply)))
     info['gap_pilot'] = None if gap_pilot is None else str(gap_pilot)
     info['throttle_column'] = throttle_column
     info['near_on_path'] = bool(near_on_path)
@@ -234,7 +258,11 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
     has_stale = info.get('stale_evidence', False)
     if has_stale:
         keys += ('cap_ray_deg', 'cap_reseat')
+    has_marker = marker_jump is not None
+    if has_marker:
+        keys += tuple(pilot.marker_jump_log())
     rows = {k: [] for k in keys}
+    probed = {}
     drop = None if cue_drop is None else {round(float(c), 6) for c in cue_drop}
     last_ts = None
     nan = float('nan')
@@ -330,9 +358,15 @@ def replay(flight, tree, runs=RUNS, *, stack='flown', wall='off', vertical=None,
                                 bool(getattr(pilot, 'assist_wall_ahead', False))))
         if has_stale:
             values.update(pilot.stale_log())
+        if has_marker:
+            values.update(pilot.marker_jump_log())
         for k in keys:
             rows[k].append(values.get(k, nan))
+        if probe is not None:
+            for k, v in probe(pilot, r).items():
+                probed.setdefault(k, []).append(v)
     arrays = {k: np.asarray(v) for k, v in rows.items()}
+    arrays.update({k: np.asarray(v) for k, v in probed.items()})
     info.update(flight=flight, ticks=len(arrays['t']), stop_reason=side.get('stop_reason'), impact=side.get('impact'),
                 looming_stream=looming_stream, haltere=_haltere_file())
     return arrays, pilot, info
@@ -682,6 +716,16 @@ def main(argv=None):
     parser.add_argument('--motor-assist', default=None, metavar='DECLARATION',
                         help='add the motor assist of a frozen motor-assist declaration (configs/pilot/motor_assist.json) '
                              'for the motor contract of each flight; the file tag gains -ma<version>')
+    parser.add_argument('--lag-turn', default='on', choices=['on', 'off'],
+                        help='off: a stack variant without the lag-aware turn (report-only diagnostic; tag -ltoff)')
+    parser.add_argument('--gap-aim', default='on', choices=['on', 'off'],
+                        help='off: a stack variant without the gap aim (report-only diagnostic; tag -gaoff)')
+    parser.add_argument('--marker-jump', default=None, metavar='DECLARATION',
+                        help='add the marker-jump rule of a frozen declaration (configs/pilot/marker_jump.json) to the '
+                             'variant; the file tag gains -mj<version>')
+    parser.add_argument('--marker-jump-mode', default='on', choices=['on', 'shadow'],
+                        help='with --marker-jump: shadow computes and logs the rule without holding any marker (tag '
+                             'suffix -mjshadow)')
     args = parser.parse_args(argv)
     os.environ.setdefault('OMP_NUM_THREADS', '2')
     here = str(Path(__file__).resolve().parent)
@@ -748,6 +792,25 @@ def main(argv=None):
         extra['stale_evidence'] = declaration
     if args.cue_drop:
         tag += '-cd'
+    if args.lag_turn == 'off':
+        tag += '-ltoff'
+        extra['lag_turn'] = False
+    if args.gap_aim == 'off':
+        tag += '-gaoff'
+        extra['gap_aim'] = False
+    if args.marker_jump:
+        from haltere.liftoff.gap_stack import config_sha256
+        declaration = json.loads(Path(args.marker_jump).read_text(encoding='utf-8'))
+        if declaration.get('frozen') is not True or declaration.get('sha256') != config_sha256(declaration):
+            raise SystemExit(f'{args.marker_jump} is not a frozen marker-jump declaration, or it changed after the '
+                             'freeze')
+        tag += f'-mj{declaration["version"]}'
+        extra['marker_jump'] = declaration
+        if args.marker_jump_mode == 'shadow':
+            tag += '-mjshadow'
+            extra['marker_jump_apply'] = False
+    elif args.marker_jump_mode != 'on':
+        raise SystemExit('--marker-jump-mode shadow needs --marker-jump')
     results = {}
     for flight in args.flights:
         if args.cue_drop:
@@ -769,6 +832,8 @@ def main(argv=None):
         results[flight]['motor_assist_metadata'] = meta.get('motor_assist')
         if args.stale_evidence:
             results[flight]['stale_evidence_metadata'] = meta.get('stale_evidence')
+        if args.marker_jump:
+            results[flight]['marker_jump_metadata'] = meta.get('marker_jump')
         print(flight, json.dumps({k: v for k, v in results[flight].items() if not k.endswith('_metadata')},
                                  default=str), flush=True)
     Path(f'{args.out}_{tag}_summary.json').write_text(json.dumps(results, indent=1, default=str), encoding='utf-8')
