@@ -2780,3 +2780,29 @@ at 15.2 s, the end hillside escalation near 19.05 s; no rule arrests a descent i
   the drone slowed (replay: 1.75 m/s at 8.06 s, state below); only a rule-caused dip (early-brake floor or
   `assist_source`) is a flag.
 
+
+## Round 6 (live), 2026-09-29: m6 stack
+
+Branch `m6` at `9269a62`: `--looming-brake --obstacle-stack on --stale-evidence on --early-brake on --descent-view on
+--contact-support shadow --sighted-descent on --motor-assist on --marker-jump shadow` for every run (wall pilot v6,
+vertical guard v4, descent view v3, early brake v1, sighted descent v1, motor assist v4 (no-op for the fast PD),
+stale evidence v2, gap pilot v5, lag turn v2). Seat session 4 (hidden viewer), pad 32 `seatOnly`, ground checks 36
+(Minus), 37 (Straw), 38 (Pine). Every run is a disclosed development deviation (no brain is selected; every round-4b..6
+rule fails at least one frozen gate). The postflight checks of the three Minus/Straw runs found a `rustc.exe` compile
+in the user's session (0.71-0.73 core; 6.22 cores at the end of the Minus brain run); no controller-deadline, camera or
+telemetry failure was recorded. Crash causes were checked on the video.
+
+| Run | Motor | Outcome |
+|---|---|---|
+| `minus-fast6-r6-01` | fast PD | Pillar A (y 5.35), hairpin (exit 20.1 s), pillar C (22.0 s), round 4's floor/ceiling spot (31.9 s), on to y 96.7. At the garage wall behind the arch (where `r4b-01` hit at ~6 m/s) the governor braked it from 6.0 to 1.4 m/s (40.4-40.9 s); maneuvering slowly toward the next ring it bumped that arch's ring structure at 2.1 m/s, 41.4 s, (54.8, 94.1) (impact 30.7 m/s^2, the gentlest yet) |
+| `minus-brain11cw13-r6-01` | fast-brain-11-b-cw13 | **First brain run through the Minus Two hairpin and past pillar C.** Pillar A (y 5.76); the early brake engaged before the hairpin (early_brake 1 from ~27 s at the next wall), hairpin exit 23.9 s, pillar C 25.7 s. At 29.6 s, passing through a low floor-standing arch as the marker switched to the next ring, the pilot turned right and the arch's leg hit the drone's right side at 4.65 m/s, (76.0, 46.5). Stick change 0.0046 |
+| `straw-brain11cw13-r6-01` | fast-brain-11-b-cw13 | **No ground contact on the downhill** (contact audit 0; every earlier brain-11 run touched at ~79.4 s): the sighted descent withheld 0.8-1.6 m/s of sink while the ring was bottom-clipped. Passed the ImmersionRC arch that ended `r5-04`. Further down, still descending at 1.6-2.3 m/s with the ring bottom-clipped, it came down onto the next arch's white top banner at 87.3 s, (-36.2, 95.9, 7.1), 5.2 m/s. Stick change 0.0034 |
+| `pine-fast6-r6-01` | fast PD | The Pine hillside at 14.8 s, (59.1, -16.3, 4.1), 5.9 m/s: vertical guard v4 answered the hillside with its 1 m/s gentle climb (stage 1); the round-3 stack's 3.5 m/s climb carried `pine-fast6-ttc-01` to 21.2 s. The expected outcome of the failed V-Pine gate |
+
+What this shows:
+
+- The round-6 hairpin braking (early brake + assist v4) works live for the brain; the sighted descent removed the Straw
+  downhill touch in this run.
+- The common blocker now is gate structures around checkpoint switches: turning toward the next ring while still
+  inside a gate (Minus floor arch, earlier FAT SHARK) and descending onto the next gate's top bar with the ring clipped
+  below the image (Straw, twice). Pine needs a guard that answers real hillsides.
