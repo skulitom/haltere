@@ -1,0 +1,31 @@
+{
+  "name": "m6-baseline",
+  "purpose": "Baseline of the main-track race eval: the m6 stack exactly as flown live in round 6, with brain-11 and with the fast PD motors (docs/race_eval.md)",
+  "cases": "configs/race_eval/main_tracks_v1.json",
+  "case_order": ["straw", "minus", "pine", "autumn", "hangar"],
+  "order": ["brain11", "fastpd", "fastpd", "brain11", "brain11", "fastpd"],
+  "variants": {
+    "brain11": {
+      "label": "fast-brain-11-b-cw13 motors",
+      "checkpoint": "runs/fast-brain-11-b-cw13/candidate.pt",
+      "flags": ["--motor-controller", "brain"]
+    },
+    "fastpd": {
+      "label": "fast PD motors (calibration checkpoint fast-brain-08)",
+      "checkpoint": "runs/fast-brain-08-vgs04-s10r03m30/candidate.pt",
+      "flags": ["--motor-controller", "pd", "--pd-profile", "fast"]
+    }
+  },
+  "stack_flags": [
+    "--mapping", "runs/pine-route-collection-01/liftoff-original-drone.yaml",
+    "--device", "cpu", "--vision-device", "cuda",
+    "--pilot-assistance", "race-cue", "--pilot-profile", "fast", "--assist-speed", "6",
+    "--dynamics-profile", "runs/measured-dynamics-low-speed-20260923/profile.json",
+    "--looming-brake", "--obstacle-stack", "on", "--stale-evidence", "on", "--early-brake", "on",
+    "--descent-view", "on", "--contact-support", "shadow", "--sighted-descent", "on",
+    "--motor-assist", "on", "--marker-jump", "shadow",
+    "--max-height", "250", "--max-speed", "14",
+    "--udp-out", "127.0.0.1:9003", "--pause-on-stop"
+  ],
+  "recording_flags": ["--video-encoder", "h264_nvenc"]
+}
