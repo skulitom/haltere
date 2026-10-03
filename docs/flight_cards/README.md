@@ -9,6 +9,14 @@ and success criterion rather than substitute a gate count.
 One card per flight, written **before** it and appended to after. A prediction written after the
 flight does not exist. Rules: `docs/generalisation.md`.
 
+## 2026-10-03 main-track race eval baseline (m6 stack)
+
+The first frozen batch of the [main-track race eval](../race_eval.md): 30 attempts, five races x
+brain-11 and fast PD x 3, all crash causes checked on video. Mean race progress **0.139**
+(brain-11) and **0.199** (fast PD); the paired difference is not resolved (95% CI -0.04 to
++0.17). One finish: fast PD on Straw in **4:34.661**, not clean (two downhill-crest scrapes).
+Both motors stop at the same obstacles (trees, top banners, the Hangar container stack).
+
 ## 2026-09-23 live visual geometry
 
 The first [matched geometry off/on comparison](2026-09-23_geometry_control.md)

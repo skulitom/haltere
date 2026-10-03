@@ -6,6 +6,49 @@ fast PD on the m6 stack; attempt cap about 6x the user's race time). Grader appr
 equally). Nothing has been flown for this eval yet; the baseline batch is
 [batch_m6_baseline.json](../configs/race_eval/batch_m6_baseline.json).
 
+## Baseline result: m6 stack, 2026-10-03 (30 of 30 attempts)
+
+Batch `runs/race-eval/m6-baseline-20261003` (plan frozen at `ddf9df5`; raw logs, videos, finish
+evidence, `results.jsonl`, `errors.jsonl`, `summary.md` and per-attempt video notes in
+`observations.md` there). Flown 00:08-03:22 in the hidden Anode seat with the original
+`[Copy] New Drone`, including a one-hour pause the user requested after attempt 6. Every crash
+cause was checked on the video.
+
+| Variant | Mean progress (95% CI) | Straw | Minus | Pine | Autumn | Hangar | Finishes | Clean |
+|---|---|---|---|---|---|---|---|---|
+| brain-11 | **0.139** [0.085, 0.190] | 0.313 | 0.088 | 0.018 | 0.247 | 0.030 | 0/15 | 0/15 |
+| fast PD | **0.199** [0.117, 0.302] | 0.486 | 0.222 | 0.007 | 0.247 | 0.030 | 1/15 | 0/15 |
+
+Paired difference (fast PD - brain-11): **+0.059, 95% CI -0.039 to +0.171**, so the batch does
+not resolve a motor difference overall. Per track: Straw +0.174, Minus +0.134, Pine -0.011,
+Autumn 0, Hangar 0.
+
+- **One finish:** fast PD on Straw, game race time **4:34.661** (1:30.171, 1:31.213, 1:31.762),
+  the fastest autonomous Straw finish so far (3.48x the user's time). Not clean: the telemetry
+  shows two belly scrapes on the same downhill crest (laps 1 and 3), which the up-tilted camera
+  cannot show.
+- **Brain bests:** Straw 0.563 (27/48: lap 1 and most of lap 2), Minus 0.140 (to arch 287 by
+  the garage wall), Autumn 0.296.
+- **The blockers are shared by both motors, at the same places**, which points at
+  perception/pilot rather than motor control (the program's step-2 reading):
+  - Straw: descending onto the next arch's top banner with the ring clipped below (PD 2/3,
+    identical; brain-11 r6 too); FAT SHARK arch entered obliquely (brain 2/3); hillside ground
+    after the ImmersionRC arch (brain 1).
+  - Minus: hairpin exit into the dark pillar at (78, 23) (one each); low arches 243/99/287
+    struck while passing; the PD's one full lap ended beside arch 8 on lap 2.
+  - Pine: a pine trunk on the hillside at (70.5, -8.5) (4 of 6, both motors), other trees
+    (2). No run passed checkpoint 3 of 90.
+  - Autumn: the red tree just before the lap line at (-9.2, -9.3) (4 of 6, both motors,
+    8 of 9 lap-1 checkpoints); the tree stand before box 140 (2).
+  - Hangar: the dark container stack at (15.2, -64.3) right after checkpoint 1 (6 of 6).
+- **The fast PD is nearly deterministic** (attempts 3/6, 14/15, 19-24, 26/27/30 crash at the same
+  point and time), so its repetitions add little information; brain-11 varies more.
+- **Runtime:** two runner preflight refusals (attempts 16 and 25) from other agents' jobs on the
+  desktop (an eval batch, a test suite, .NET builds); nothing flew, both retried unchanged.
+- **Grader note for the next version:** in attempt 18 the PD overflew the start arch, came back
+  through it backwards, and Liftoff started the race timer on that reverse pass. The approved rule
+  (start from the race side only) scored it 0/90; a reverse-allowed start would give 1/90.
+
 ## Running a batch
 
 ```powershell
